@@ -15,6 +15,10 @@ extends Node3D
 ## и занавесками (у бедных — короткая занавеска, у средних — тюль и шторы,
 ## у зажиточных — тюль, тяжёлые портьеры и ламбрекен).
 ##
+## Двери — настоящие створки на петлях: открываются сами, когда к ним
+## подходит персонаж, и закрываются за ним. Входная дверь у среднего и
+## зажиточного дома обита дерматином с гвоздиками, как в СССР.
+##
 ## Всё строится в ОДИН меш с шестью поверхностями — по одной на текстуру
 ## (стены, пол, побелка, дерево, ткань) и полупрозрачная для стекла и тюля.
 ## Это 6 вызовов отрисовки на весь интерьер, сколько бы мебели ни было. Текстуры рисуются кодом при старте,
@@ -42,10 +46,13 @@ enum Wealth { POOR, MIDDLE, RICH }
 @export var windows := true
 @export var window_size := Vector2(1.0, 1.2)
 @export var window_sill_height := 0.9
+## Двери сами открываются перед персонажем и закрываются за ним.
+@export var auto_doors := true
 
 enum { WALLS, FLOOR, PLASTER, WOOD, FABRIC, GLASS }
 
 var _tools: Array[SurfaceTool] = []
+var _mats: Array[StandardMaterial3D] = []
 var _body: StaticBody3D
 
 
@@ -56,11 +63,8 @@ func _ready() -> void:
 func build() -> void:
 	for c in get_children():
 		c.queue_free()
-	_tools.clear()
-	for i in 6:
-		var st := SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_tools.append(st)
+	_mats = _make_materials()
+	_tools = _new_tools()
 
 	if build_collision:
 		_body = StaticBody3D.new()
@@ -81,16 +85,33 @@ func build() -> void:
 	_details()
 	_build_lamps()
 
-	var mesh := ArrayMesh.new()
-	var mats := _make_materials()
-	for i in _tools.size():
-		_tools[i].commit(mesh)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, mats[i])
 	var mi := MeshInstance3D.new()
 	mi.name = "InteriorMesh"
-	mi.mesh = mesh
+	mi.mesh = _commit(_tools)
 	add_child(mi)
 	_tools.clear()
+
+
+func _new_tools() -> Array[SurfaceTool]:
+	var list: Array[SurfaceTool] = []
+	for i in 6:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		list.append(st)
+	return list
+
+
+## Собирает меш из поверхностей; пустые пропускаются.
+func _commit(tools: Array[SurfaceTool]) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	for i in tools.size():
+		var arrays := tools[i].commit_to_arrays()
+		var verts = arrays[Mesh.ARRAY_VERTEX]
+		if verts == null or verts.size() == 0:
+			continue
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, _mats[i])
+	return mesh
 
 
 # --- Коробка дома ---------------------------------------------------------
@@ -174,6 +195,11 @@ func _wall(a: Vector3, b: Vector3, openings: Array) -> void:
 			_piece_box(WOOD, a, dir, jamb, o0 - 0.07, o0, 0.0, top + 0.07, wood)
 			_piece_box(WOOD, a, dir, jamb, o1, o1 + 0.07, 0.0, top + 0.07, wood)
 			_piece_box(WOOD, a, dir, jamb, o0, o1, top, top + 0.07, wood)
+			# Выключатель рядом с дверью, с обеих сторон стены
+			var sw := Color(0.15, 0.13, 0.12) if wealth == Wealth.POOR else Color(0.95, 0.95, 0.92)
+			_piece_box(PLASTER, a, dir, across + across.normalized() * 0.012, o1 + 0.15, o1 + 0.23, 1.35, 1.43, sw)
+			var swing := inward if inward != Vector3.ZERO else across.normalized()
+			_door(a + dir * o0, dir, swing, o1 - o0, top, absf(inward.z) > 0.5)
 		cursor = o1
 	_wall_piece(a, dir, across, cursor, length, 0.0, h)
 
@@ -211,6 +237,14 @@ func _window(a: Vector3, dir: Vector3, across: Vector3, inward: Vector3, o0: flo
 			_side_box(FABRIC, a, dir, inward, o1 - 0.05, o1 + 0.45, 0.03, y1 + 0.15, face + 0.13, face + 0.18, drape)
 			_side_box(FABRIC, a, dir, inward, o0 - 0.45, o1 + 0.45, y1 - 0.1, y1 + 0.16, face + 0.18, face + 0.2, Color(0.65, 0.5, 0.25))
 			_flower(a, dir, inward, mid - 0.28, y0, face)
+			# Чугунная батарея под окном: секции и две трубы
+			var rad := Color(0.92, 0.92, 0.9)
+			var sx := o0 + 0.08
+			while sx < o1 - 0.12:
+				_side_box(PLASTER, a, dir, inward, sx, sx + 0.06, 0.15, 0.7, face + 0.03, face + 0.11, rad)
+				sx += 0.08
+			for py in [0.2, 0.62]:
+				_side_box(PLASTER, a, dir, inward, o0 + 0.05, o1 - 0.05, py, py + 0.03, face + 0.06, face + 0.08, rad.darkened(0.1))
 		_:
 			var side := Color(0.55, 0.6, 0.35)
 			_side_box(GLASS, a, dir, inward, o0 - 0.1, o1 + 0.1, y0 - 0.1, y1 + 0.15, face + 0.12, face + 0.125, Color(1, 1, 1, 0.45))
@@ -238,6 +272,10 @@ func _wall_piece(a: Vector3, dir: Vector3, across: Vector3, s0: float, s1: float
 		return
 	var box := _piece_box(WALLS, a, dir, across, s0, s1, y0, y1, Color.WHITE)
 	_collide(box[0], box[1])
+	if y1 > inner_size.y - 0.01 and wealth != Wealth.POOR:
+		# Потолочный плинтус-карниз
+		var cornice := across + across.normalized() * 0.03
+		_piece_box(PLASTER, a, dir, cornice, s0, s1, inner_size.y - 0.07, inner_size.y, Color(0.98, 0.97, 0.94))
 	if y0 < 0.01 and wealth != Wealth.POOR:
 		# Плинтус на уровне пола; в срубе его нет
 		var skirt := across + across.normalized() * 0.015
@@ -489,6 +527,108 @@ func _room_rich() -> void:
 	_box(WOOD, w0 + Vector3(-0.01, 0.1, 0.69), w0 + Vector3(0.0, 2.0, 0.71), Color(0.1, 0.05, 0.03))
 	_rug(Vector3(x0 + 0.3, 0, z0 + 0.8), Vector3(x0 + 2.6, 0, z0 + 3.1), Color(0.55, 0.1, 0.1))
 	_box(FABRIC, Vector3(x1 - 0.015, 0.8, z0 + 0.3), Vector3(x1, 2.1, z0 + 2.2), Color(0.5, 0.1, 0.12))
+
+
+# --- Двери ---------------------------------------------------------------
+
+## Створка на петле в точке hinge. Открывается в сторону swing.
+func _door(hinge: Vector3, dir: Vector3, swing: Vector3, width: float, height: float, entrance: bool) -> void:
+	# Локальные оси створки: X — вдоль проёма, Z — поперёк стены
+	var side := dir.cross(Vector3.UP)
+	var pivot := Node3D.new()
+	pivot.name = "Door%d" % get_child_count()
+	pivot.basis = Basis(dir, Vector3.UP, side)
+	pivot.position = hinge
+	add_child(pivot)
+
+	var main_tools := _tools
+	_tools = _new_tools()
+	var w := width - 0.02
+	var h := height - 0.01
+	var t := 0.02
+	var handle := Color(0.75, 0.65, 0.35) if wealth == Wealth.RICH else Color(0.6, 0.6, 0.62)
+	var padded := entrance and wealth != Wealth.POOR
+	if padded:
+		# Обивка дерматином с гвоздиками ромбом
+		var leather := Color(0.3, 0.14, 0.09)
+		_box(FABRIC, Vector3(0.01, 0.01, -t - 0.01), Vector3(w, h, t + 0.01), leather)
+		for iy in range(1, 8):
+			for ix in range(1, 4):
+				if (ix + iy) % 2 == 0:
+					var p := Vector3(w * ix / 4.0, h * iy / 8.0, 0)
+					for z in [-1.0, 1.0]:
+						var c := p + Vector3(0, 0, z * (t + 0.012))
+						_box(PLASTER, c - Vector3(0.012, 0.012, 0.004), c + Vector3(0.012, 0.012, 0.004), Color(0.8, 0.7, 0.4), false)
+	else:
+		match wealth:
+			Wealth.POOR:
+				# Дощатая дверь: доски, щели и две поперечные планки
+				var plank := Color(0.45, 0.35, 0.25)
+				_box(WOOD, Vector3(0.01, 0.01, -t), Vector3(w, h, t), plank)
+				var x := 0.15
+				while x < w - 0.05:
+					_box(WOOD, Vector3(x - 0.004, 0.02, -t - 0.002), Vector3(x + 0.004, h - 0.02, t + 0.002), plank.darkened(0.5), false)
+					x += 0.15
+				for y in [0.25, h - 0.35]:
+					_box(WOOD, Vector3(0.04, y, t), Vector3(w - 0.04, y + 0.1, t + 0.025), plank.darkened(0.15))
+			Wealth.RICH:
+				# Лакированная филёнчатая дверь со стеклом наверху
+				var lac := Color(0.35, 0.18, 0.1)
+				_box(WOOD, Vector3(0.01, 0.01, -t), Vector3(w, 0.9, t), lac)
+				_box(WOOD, Vector3(0.01, 1.75, -t), Vector3(w, h, t), lac)
+				_box(WOOD, Vector3(0.01, 0.9, -t), Vector3(0.13, 1.75, t), lac)
+				_box(WOOD, Vector3(w - 0.12, 0.9, -t), Vector3(w, 1.75, t), lac)
+				_box(WOOD, Vector3(w * 0.5 - 0.02, 0.9, -t * 0.5), Vector3(w * 0.5 + 0.02, 1.75, t * 0.5), lac)
+				_box(GLASS, Vector3(0.13, 0.9, -0.005), Vector3(w - 0.12, 1.75, 0.005), Color(0.85, 0.9, 0.85, 0.35))
+				_box(WOOD, Vector3(0.12, 0.15, -t - 0.01), Vector3(w - 0.11, 0.75, t + 0.01), lac.lightened(0.08))
+			_:
+				# Крашеная дверь с двумя филёнками
+				var paint := Color(0.92, 0.92, 0.88)
+				_box(WOOD, Vector3(0.01, 0.01, -t), Vector3(w, h, t), paint)
+				for y in [[0.15, 0.85], [1.05, h - 0.15]]:
+					_box(WOOD, Vector3(0.12, y[0], -t - 0.008), Vector3(w - 0.11, y[1], t + 0.008), paint.darkened(0.06))
+	# Ручки с обеих сторон
+	for z in [-1.0, 1.0]:
+		var hz: float = z * (t + 0.015)
+		_box(PLASTER, Vector3(w - 0.14, 0.98, hz - 0.012), Vector3(w - 0.04, 1.01, hz + 0.012), handle, false)
+	var leaf := MeshInstance3D.new()
+	leaf.mesh = _commit(_tools)
+	pivot.add_child(leaf)
+	_tools = main_tools
+
+	if not auto_doors:
+		return
+	# Открывается в сторону swing: при повороте на +угол створка уходит к -Z
+	var open_angle := deg_to_rad(95.0) * (-1.0 if swing.dot(side) > 0.0 else 1.0)
+	var area := Area3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(width + 1.2, 2.0, 3.2)
+	shape.shape = box
+	shape.position = Vector3(width * 0.5, 1.0, 0)
+	area.add_child(shape)
+	pivot.add_child(area)
+	var inside := [0]
+	area.body_entered.connect(func(b: Node3D) -> void:
+		if b is CharacterBody3D:
+			inside[0] += 1
+			_swing(pivot, open_angle))
+	area.body_exited.connect(func(b: Node3D) -> void:
+		if b is CharacterBody3D:
+			inside[0] = maxi(inside[0] - 1, 0)
+			if inside[0] == 0:
+				_swing(pivot, 0.0))
+
+
+func _swing(pivot: Node3D, angle: float) -> void:
+	var leaf: Node3D = pivot.get_child(0)
+	if leaf.has_meta("tween"):
+		var old: Tween = leaf.get_meta("tween")
+		if old and old.is_valid():
+			old.kill()
+	var tw := create_tween()
+	tw.tween_property(leaf, "rotation:y", angle, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	leaf.set_meta("tween", tw)
 
 
 # --- Мелочи, которые делают дом жилым ------------------------------------
