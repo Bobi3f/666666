@@ -1,0 +1,51 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="FIRST GEAR"
+run/main_scene="res://scenes/World.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+Detail="*res://scripts/core/detail.gd"
+GameManager="*res://scripts/core/game_manager.gd"
+Build="*res://scripts/core/build.gd"
+TextureLibrary="*res://scripts/core/texture_library.gd"
+SoundLibrary="*res://scripts/core/sound_library.gd"
+VehicleDynamics="*res://scripts/core/vehicle_dynamics.gd"
+TimeManager="*res://scripts/core/time_manager.gd"
+ItemDatabase="*res://scripts/core/item_database.gd"
+InventoryManager="*res://scripts/core/inventory_manager.gd"
+NeedsManager="*res://scripts/core/needs_manager.gd"
+WeatherManager="*res://scripts/core/weather_manager.gd"
+AudioManager="*res://scripts/core/audio_manager.gd"
+SettingsManager="*res://scripts/core/settings_manager.gd"
+QuestManager="*res://scripts/quests/quest_manager.gd"
+SaveManager="*res://scripts/core/save_manager.gd"
+ControlsHelp="*res://scripts/ui/controls_help.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+lights_and_shadows/directional_shadow/size=1024
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+textures/default_filters/anisotropic_filtering_level=0
