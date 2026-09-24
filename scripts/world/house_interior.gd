@@ -11,9 +11,13 @@ extends Node3D
 ## (у тонкой наружной стены изнутри видна изнанка, которую видеокарта
 ## отбрасывает, и стена кажется прозрачной).
 ##
-## Всё строится в ОДИН меш с пятью поверхностями — по одной на текстуру
-## (стены, пол, побелка, дерево, ткань). Это 5 вызовов отрисовки на весь
-## интерьер, сколько бы мебели ни было. Текстуры рисуются кодом при старте,
+## Окна — настоящие проёмы с рамой, переплётом, подоконником, стеклом
+## и занавесками (у бедных — короткая занавеска, у средних — тюль и шторы,
+## у зажиточных — тюль, тяжёлые портьеры и ламбрекен).
+##
+## Всё строится в ОДИН меш с шестью поверхностями — по одной на текстуру
+## (стены, пол, побелка, дерево, ткань) и полупрозрачная для стекла и тюля.
+## Это 6 вызовов отрисовки на весь интерьер, сколько бы мебели ни было. Текстуры рисуются кодом при старте,
 ## файлов-картинок не нужно.
 ##
 ## Как поставить: добавить Node3D внутрь дома, повесить этот скрипт,
@@ -34,8 +38,12 @@ enum Wealth { POOR, MIDDLE, RICH }
 @export var entrance_offset := -1.6
 @export var build_collision := true
 @export var lamp_energy := 1.2
+## Окна в наружных стенах. Изнутри сквозь них виден мир снаружи.
+@export var windows := true
+@export var window_size := Vector2(1.0, 1.2)
+@export var window_sill_height := 0.9
 
-enum { WALLS, FLOOR, PLASTER, WOOD, FABRIC }
+enum { WALLS, FLOOR, PLASTER, WOOD, FABRIC, GLASS }
 
 var _tools: Array[SurfaceTool] = []
 var _body: StaticBody3D
@@ -49,7 +57,7 @@ func build() -> void:
 	for c in get_children():
 		c.queue_free()
 	_tools.clear()
-	for i in 5:
+	for i in 6:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		_tools.append(st)
@@ -70,6 +78,7 @@ func build() -> void:
 		_:
 			_kitchen_middle()
 			_room_middle()
+	_details()
 	_build_lamps()
 
 	var mesh := ArrayMesh.new()
@@ -104,23 +113,37 @@ func _build_shell() -> void:
 		_box(PLASTER, Vector3(-hx - t, h, -hz - t), ceiling, Color(0.97, 0.96, 0.93), false)
 
 	# Наружные стены. Стена ставится снаружи от inner_size, внутрь смотрит отделкой.
-	var door := [[hx + t + entrance_offset, door_width, door_height]]
-	_wall(Vector3(-hx - t, 0, hz + t * 0.5), Vector3(hx + t, 0, hz + t * 0.5), door)
+	# Проём: [расстояние от начала стены, ширина, верх, низ]. Низ 0 — дверь.
+	var front := [[hx + t + entrance_offset, door_width, door_height, 0.0]]
+	var left := []
+	var right := []
+	if windows:
+		var wy0 := window_sill_height
+		var wy1 := minf(wy0 + window_size.y, inner_size.y - 0.25)
+		var ww := window_size.x
+		# Кухня: окно над столом в торце и окно слева от входа
+		left.append([hz + 0.55, ww, wy1, wy0])
+		front.append([hx + t + (-hx + entrance_offset - door_width * 0.5) * 0.5, ww, wy1, wy0])
+		# Комната: окно между кроватью и шкафом и окно на улицу по центру
+		right.append([hz + 0.3, ww, wy1, wy0])
+		front.append([hx + t + _room_rect().get_center().x, ww, wy1, wy0])
+	_wall(Vector3(-hx - t, 0, hz + t * 0.5), Vector3(hx + t, 0, hz + t * 0.5), front)
 	_wall(Vector3(-hx - t, 0, -hz - t * 0.5), Vector3(hx + t, 0, -hz - t * 0.5), [])
-	_wall(Vector3(-hx - t * 0.5, 0, -hz), Vector3(-hx - t * 0.5, 0, hz), [])
-	_wall(Vector3(hx + t * 0.5, 0, -hz), Vector3(hx + t * 0.5, 0, hz), [])
+	_wall(Vector3(-hx - t * 0.5, 0, -hz), Vector3(-hx - t * 0.5, 0, hz), left)
+	_wall(Vector3(hx + t * 0.5, 0, -hz), Vector3(hx + t * 0.5, 0, hz), right)
 
 	# Перегородка кухня/комната с проходом ближе к задней стене
 	var px := _partition_x()
 	var pass_z := -hz * 0.45
-	_wall(Vector3(px, 0, hz), Vector3(px, 0, -hz), [[hz - pass_z, door_width, door_height]])
+	_wall(Vector3(px, 0, hz), Vector3(px, 0, -hz), [[hz - pass_z, door_width, door_height, 0.0]])
 
 
 func _partition_x() -> float:
 	return -inner_size.x * 0.5 + inner_size.x * partition_at
 
 
-## Стена вдоль оси X или Z от a до b. openings: [[расстояние от a, ширина, высота], ...]
+## Стена вдоль оси X или Z от a до b.
+## openings: [[расстояние от a, ширина, верх, низ], ...]; низ 0 — дверь, иначе окно.
 func _wall(a: Vector3, b: Vector3, openings: Array) -> void:
 	var h := inner_size.y
 	var t := wall_thickness
@@ -128,21 +151,86 @@ func _wall(a: Vector3, b: Vector3, openings: Array) -> void:
 	var dir := (b - a) / length
 	var across := Vector3(absf(dir.z), 0, absf(dir.x)) * t * 0.5
 	var wood := _trim_color()
+	# Куда смотрит внутренняя сторона: к центру дома. У перегородки — ноль.
+	var mid := (a + b) * 0.5
+	var inward := -(mid * across.normalized())
+	inward = inward.normalized() if inward.length() > 0.5 else Vector3.ZERO
 
 	openings.sort_custom(func(p, q): return p[0] < q[0])
 	var cursor := 0.0
 	for o in openings:
 		var o0: float = o[0] - o[1] * 0.5
 		var o1: float = o[0] + o[1] * 0.5
+		var top: float = o[2]
+		var bottom: float = o[3]
 		_wall_piece(a, dir, across, cursor, o0, 0.0, h)
-		_wall_piece(a, dir, across, o0, o1, o[2], h)
-		# Наличник: два косяка и перекладина, чуть толще стены
-		var jamb := across + across.normalized() * 0.02
-		_piece_box(WOOD, a, dir, jamb, o0 - 0.07, o0, 0.0, o[2] + 0.07, wood)
-		_piece_box(WOOD, a, dir, jamb, o1, o1 + 0.07, 0.0, o[2] + 0.07, wood)
-		_piece_box(WOOD, a, dir, jamb, o0, o1, o[2], o[2] + 0.07, wood)
+		_wall_piece(a, dir, across, o0, o1, top, h)
+		if bottom > 0.0:
+			_wall_piece(a, dir, across, o0, o1, 0.0, bottom)
+			_window(a, dir, across, inward, o0, o1, bottom, top)
+		else:
+			# Наличник: два косяка и перекладина, чуть толще стены
+			var jamb := across + across.normalized() * 0.02
+			_piece_box(WOOD, a, dir, jamb, o0 - 0.07, o0, 0.0, top + 0.07, wood)
+			_piece_box(WOOD, a, dir, jamb, o1, o1 + 0.07, 0.0, top + 0.07, wood)
+			_piece_box(WOOD, a, dir, jamb, o0, o1, top, top + 0.07, wood)
 		cursor = o1
 	_wall_piece(a, dir, across, cursor, length, 0.0, h)
+
+
+## Окно: наличник, подоконник, переплёт крестом, стекло, занавески, цветок.
+func _window(a: Vector3, dir: Vector3, across: Vector3, inward: Vector3, o0: float, o1: float, y0: float, y1: float) -> void:
+	var paint := _trim_color() if wealth == Wealth.POOR else Color(0.93, 0.93, 0.9)
+	var casing := across + across.normalized() * 0.02
+	var w := 0.07
+	_piece_box(WOOD, a, dir, casing, o0 - w, o0, y0, y1 + w, paint)
+	_piece_box(WOOD, a, dir, casing, o1, o1 + w, y0, y1 + w, paint)
+	_piece_box(WOOD, a, dir, casing, o0 - w, o1 + w, y1, y1 + w, paint)
+	_piece_box(WOOD, a, dir, across + across.normalized() * 0.1, o0 - 0.1, o1 + 0.1, y0 - 0.05, y0, paint.darkened(0.08))
+	var thin := across * 0.4
+	var mid := (o0 + o1) * 0.5
+	var ty := y0 + (y1 - y0) * 0.66
+	_piece_box(WOOD, a, dir, thin, mid - 0.025, mid + 0.025, y0, y1, paint)
+	_piece_box(WOOD, a, dir, thin, o0, o1, ty - 0.025, ty + 0.025, paint)
+	_piece_box(GLASS, a, dir, across * 0.1, o0, o1, y0, y1, Color(0.75, 0.88, 1.0, 0.15))
+	if inward == Vector3.ZERO:
+		return
+
+	var face := wall_thickness * 0.5
+	# Карниз
+	_side_box(WOOD, a, dir, inward, o0 - 0.5, o1 + 0.5, y1 + 0.15, y1 + 0.18, face, face + 0.22, _trim_color())
+	match wealth:
+		Wealth.POOR:
+			# Короткая занавеска на нижнюю половину окна
+			_side_box(WOOD, a, dir, inward, o0, o1, ty - 0.01, ty + 0.01, face + 0.03, face + 0.05, _trim_color())
+			_side_box(FABRIC, a, dir, inward, o0, o1, y0 + 0.05, ty, face + 0.035, face + 0.045, Color(0.92, 0.9, 0.84))
+		Wealth.RICH:
+			var drape := Color(0.5, 0.1, 0.12)
+			_side_box(GLASS, a, dir, inward, o0 - 0.1, o1 + 0.1, 0.1, y1 + 0.15, face + 0.12, face + 0.125, Color(1, 1, 1, 0.5))
+			_side_box(FABRIC, a, dir, inward, o0 - 0.45, o0 + 0.05, 0.03, y1 + 0.15, face + 0.13, face + 0.18, drape)
+			_side_box(FABRIC, a, dir, inward, o1 - 0.05, o1 + 0.45, 0.03, y1 + 0.15, face + 0.13, face + 0.18, drape)
+			_side_box(FABRIC, a, dir, inward, o0 - 0.45, o1 + 0.45, y1 - 0.1, y1 + 0.16, face + 0.18, face + 0.2, Color(0.65, 0.5, 0.25))
+			_flower(a, dir, inward, mid - 0.28, y0, face)
+		_:
+			var side := Color(0.55, 0.6, 0.35)
+			_side_box(GLASS, a, dir, inward, o0 - 0.1, o1 + 0.1, y0 - 0.1, y1 + 0.15, face + 0.12, face + 0.125, Color(1, 1, 1, 0.45))
+			_side_box(FABRIC, a, dir, inward, o0 - 0.35, o0 - 0.02, y0 - 0.25, y1 + 0.15, face + 0.13, face + 0.16, side)
+			_side_box(FABRIC, a, dir, inward, o1 + 0.02, o1 + 0.35, y0 - 0.25, y1 + 0.15, face + 0.13, face + 0.16, side)
+			_flower(a, dir, inward, mid - 0.28, y0, face)
+
+
+## Горшок с цветком на подоконнике.
+func _flower(a: Vector3, dir: Vector3, inward: Vector3, s: float, y: float, face: float) -> void:
+	_side_box(PLASTER, a, dir, inward, s - 0.06, s + 0.06, y, y + 0.12, face - 0.02, face + 0.08, Color(0.7, 0.35, 0.2))
+	_side_box(FABRIC, a, dir, inward, s - 0.09, s + 0.09, y + 0.12, y + 0.3, face - 0.04, face + 0.1, Color(0.2, 0.5, 0.2))
+
+
+## Коробка у стены: s0..s1 вдоль стены, y0..y1 по высоте,
+## d0..d1 — расстояние от середины стены в сторону комнаты.
+func _side_box(surf: int, a: Vector3, dir: Vector3, inward: Vector3, s0: float, s1: float, y0: float, y1: float, d0: float, d1: float, color: Color) -> void:
+	var p0 := a + dir * s0 + inward * d0
+	var p1 := a + dir * s1 + inward * d1
+	_box(surf, Vector3(minf(p0.x, p1.x), y0, minf(p0.z, p1.z)), Vector3(maxf(p0.x, p1.x), y1, maxf(p0.z, p1.z)), color)
 
 
 func _wall_piece(a: Vector3, dir: Vector3, across: Vector3, s0: float, s1: float, y0: float, y1: float) -> void:
@@ -339,7 +427,7 @@ func _kitchen_rich() -> void:
 
 	# Обеденный стол с четырьмя стульями
 	var brown := Color(0.4, 0.22, 0.12)
-	var c := Vector3(x0 + 0.95, 0, z0 + 3.7)
+	var c := Vector3(x0 + 1.05, 0, z0 + 3.7)
 	_table(c + Vector3(-0.45, 0, -0.6), c + Vector3(0.45, 0.76, 0.6), brown)
 	for p in [Vector3(-0.72, 0, -0.3), Vector3(-0.72, 0, 0.3), Vector3(0.72, 0, -0.3), Vector3(0.72, 0, 0.3)]:
 		_chair(c + p, brown, signf(p.x))
@@ -401,6 +489,122 @@ func _room_rich() -> void:
 	_box(WOOD, w0 + Vector3(-0.01, 0.1, 0.69), w0 + Vector3(0.0, 2.0, 0.71), Color(0.1, 0.05, 0.03))
 	_rug(Vector3(x0 + 0.3, 0, z0 + 0.8), Vector3(x0 + 2.6, 0, z0 + 3.1), Color(0.55, 0.1, 0.1))
 	_box(FABRIC, Vector3(x1 - 0.015, 0.8, z0 + 0.3), Vector3(x1, 2.1, z0 + 2.2), Color(0.5, 0.1, 0.12))
+
+
+# --- Мелочи, которые делают дом жилым ------------------------------------
+
+func _details() -> void:
+	var k := _kitchen_rect()
+	var r := _room_rect()
+	var s0 := Vector3(k.position.x, 0, k.position.y)
+
+	# Вешалка с одеждой у входа, на перегородке со стороны кухни
+	var hx := k.end.x
+	_box(WOOD, Vector3(hx - 0.03, 1.6, 1.5), Vector3(hx, 1.7, 2.6), _trim_color())
+	_box(FABRIC, Vector3(hx - 0.2, 0.85, 1.62), Vector3(hx - 0.03, 1.62, 1.98), Color(0.25, 0.26, 0.3))
+	_box(FABRIC, Vector3(hx - 0.18, 1.0, 2.1), Vector3(hx - 0.03, 1.62, 2.45), Color(0.42, 0.3, 0.2))
+
+	match wealth:
+		Wealth.POOR:
+			_pot_on_stove(s0)
+			# Рукомойник у стены: тумба с тазом, бачок, полотенце на гвозде
+			var wz := k.position.y + 4.7
+			var wood := Color(0.5, 0.38, 0.26)
+			_solid(WOOD, Vector3(k.position.x, 0, wz), Vector3(k.position.x + 0.45, 0.8, wz + 0.5), wood)
+			_box(PLASTER, Vector3(k.position.x + 0.08, 0.8, wz + 0.08), Vector3(k.position.x + 0.38, 0.88, wz + 0.42), Color(0.6, 0.62, 0.66))
+			_box(PLASTER, Vector3(k.position.x, 1.1, wz + 0.12), Vector3(k.position.x + 0.2, 1.45, wz + 0.38), Color(0.55, 0.57, 0.6))
+			_box(FABRIC, Vector3(k.position.x, 0.95, wz + 0.6), Vector3(k.position.x + 0.02, 1.5, wz + 0.9), Color(0.9, 0.88, 0.82))
+			# Ходики с гирьками в комнате
+			_wall_clock(r.position.x, -0.25, true)
+		Wealth.RICH:
+			# Чайник на плите
+			var sx := k.position.x + 1.25
+			_box(PLASTER, Vector3(sx + 0.05, 0.915, s0.z + 0.09), Vector3(sx + 0.21, 1.1, s0.z + 0.25), Color(0.8, 0.2, 0.15))
+			_box(PLASTER, Vector3(sx + 0.1, 1.1, s0.z + 0.14), Vector3(sx + 0.16, 1.14, s0.z + 0.2), Color(0.1, 0.1, 0.1))
+			# Сервировка обеденного стола и ваза с цветами
+			var c := Vector3(k.position.x + 1.05, 0.76, k.position.y + 3.7)
+			for p in [Vector2(-0.25, -0.3), Vector2(-0.25, 0.3), Vector2(0.25, -0.3), Vector2(0.25, 0.3)]:
+				_plate(c + Vector3(p.x, 0, p.y))
+			_box(PLASTER, c + Vector3(-0.05, 0, -0.05), c + Vector3(0.05, 0.22, 0.05), Color(0.3, 0.4, 0.7))
+			_box(FABRIC, c + Vector3(-0.1, 0.22, -0.1), c + Vector3(0.1, 0.35, 0.1), Color(0.85, 0.25, 0.3))
+			# Торшер у дивана и ваза на журнальном столике
+			var fx := r.position.x + 2.8
+			_box(WOOD, Vector3(fx - 0.15, 0, -0.45), Vector3(fx + 0.15, 0.04, -0.15), Color(0.2, 0.2, 0.2))
+			_box(WOOD, Vector3(fx - 0.015, 0.04, -0.315), Vector3(fx + 0.015, 1.45, -0.285), Color(0.7, 0.6, 0.3))
+			_box(FABRIC, Vector3(fx - 0.2, 1.4, -0.5), Vector3(fx + 0.2, 1.7, -0.1), Color(0.95, 0.85, 0.6))
+			var t := Vector3(r.position.x + 1.45, 0.45, -1.7)
+			_box(PLASTER, t + Vector3(-0.05, 0, -0.05), t + Vector3(0.05, 0.25, 0.05), Color(0.85, 0.85, 0.9))
+			# Картина над кроватью
+			_picture(Vector3(r.end.x - 1.2, 1.7, r.position.y), Vector2(0.8, 0.5), Color(0.3, 0.45, 0.35))
+			_wall_clock(r.position.x, -0.25, false)
+		_:
+			_pot_on_stove(s0)
+			# Радиоприёмник на кухонном шкафчике
+			var rx := k.end.x - 0.45
+			var rz := k.position.y + 0.4
+			_box(WOOD, Vector3(rx, 0.89, rz), Vector3(rx + 0.2, 1.1, rz + 0.36), Color(0.35, 0.2, 0.1))
+			_box(FABRIC, Vector3(rx - 0.005, 0.93, rz + 0.04), Vector3(rx, 1.06, rz + 0.22), Color(0.8, 0.7, 0.5))
+			_box(PLASTER, Vector3(rx - 0.005, 0.95, rz + 0.26), Vector3(rx, 1.04, rz + 0.32), Color(0.9, 0.85, 0.6))
+			# Тарелки на столе, отрывной календарь на стене
+			var c := Vector3(k.position.x + 0.5, 0.75, k.position.y + 3.0)
+			_plate(c + Vector3(0, 0, 0.3))
+			_plate(c + Vector3(0, 0, 0.8))
+			_box(PLASTER, Vector3(k.position.x, 1.35, 1.4), Vector3(k.position.x + 0.01, 1.85, 1.75), Color(0.95, 0.95, 0.92))
+			_box(PLASTER, Vector3(k.position.x, 1.75, 1.4), Vector3(k.position.x + 0.015, 1.85, 1.75), Color(0.75, 0.15, 0.12))
+			# Книги на полке, часы с маятником, фотографии
+			_books(r.position.x, 1.43, r.end.y - 2.15, r.end.y - 1.25)
+			_books(r.position.x, 1.78, r.end.y - 2.15, r.end.y - 1.6)
+			_wall_clock(r.position.x, -0.25, false)
+			_picture(Vector3(r.position.x + 1.0, 1.6, r.position.y), Vector2(0.3, 0.4), Color(0.6, 0.55, 0.45))
+			_picture(Vector3(r.position.x + 1.5, 1.65, r.position.y), Vector2(0.3, 0.4), Color(0.5, 0.5, 0.5))
+
+
+func _pot_on_stove(s0: Vector3) -> void:
+	# Чугунок на уступе печи
+	_box(PLASTER, s0 + Vector3(1.1, 1.5, 0.6), s0 + Vector3(1.4, 1.72, 0.9), Color(0.15, 0.15, 0.15))
+	_box(WOOD, s0 + Vector3(1.08, 1.72, 0.58), s0 + Vector3(1.42, 1.74, 0.92), Color(0.4, 0.3, 0.2))
+
+
+func _plate(c: Vector3) -> void:
+	_box(PLASTER, c + Vector3(-0.1, 0, -0.1), c + Vector3(0.1, 0.012, 0.1), Color(0.97, 0.97, 0.95), false)
+
+
+## Картина или фото в рамке на задней стене (z = стена), center — середина рамки.
+func _picture(center: Vector3, size: Vector2, canvas: Color) -> void:
+	var h := Vector3(size.x * 0.5, size.y * 0.5, 0)
+	var z := Vector3(0, 0, 0.025)
+	_box(WOOD, center - h, center + h + z, Color(0.6, 0.45, 0.2), false)
+	_box(FABRIC, center - h + Vector3(0.04, 0.04, 0), center + h - Vector3(0.04, 0.04, 0) + z * 1.2, canvas, false)
+
+
+## Настенные часы на перегородке со стороны комнаты.
+func _wall_clock(x: float, z: float, weights: bool) -> void:
+	var body := Color(0.35, 0.2, 0.1)
+	if weights:
+		# Ходики: маленький домик, циферблат, цепочки с гирьками
+		_box(WOOD, Vector3(x, 1.75, z - 0.12), Vector3(x + 0.08, 2.0, z + 0.12), body, false)
+		_box(PLASTER, Vector3(x + 0.08, 1.8, z - 0.09), Vector3(x + 0.085, 1.96, z + 0.09), Color(0.95, 0.92, 0.8), false)
+		for dz in [-0.05, 0.05]:
+			_box(WOOD, Vector3(x + 0.03, 1.3, z + dz - 0.005), Vector3(x + 0.04, 1.75, z + dz + 0.005), Color(0.3, 0.3, 0.3), false)
+			_box(PLASTER, Vector3(x + 0.02, 1.2, z + dz - 0.02), Vector3(x + 0.05, 1.3, z + dz + 0.02), Color(0.2, 0.2, 0.2), false)
+	else:
+		# Часы с маятником в деревянном корпусе
+		_box(WOOD, Vector3(x, 1.25, z - 0.17), Vector3(x + 0.12, 2.0, z + 0.17), body, false)
+		_box(PLASTER, Vector3(x + 0.12, 1.72, z - 0.12), Vector3(x + 0.125, 1.94, z + 0.12), Color(0.95, 0.92, 0.8), false)
+		_box(PLASTER, Vector3(x + 0.12, 1.32, z - 0.1), Vector3(x + 0.125, 1.66, z + 0.1), Color(0.15, 0.12, 0.1), false)
+		_box(PLASTER, Vector3(x + 0.125, 1.36, z - 0.035), Vector3(x + 0.13, 1.44, z + 0.035), Color(0.8, 0.65, 0.3), false)
+
+
+## Ряд книг на полке у перегородки (со стороны комнаты).
+func _books(x: float, y: float, z0: float, z1: float) -> void:
+	var rng := _rng()
+	var colors := [Color(0.5, 0.1, 0.1), Color(0.15, 0.25, 0.45), Color(0.2, 0.35, 0.2), Color(0.55, 0.45, 0.25), Color(0.3, 0.3, 0.3)]
+	var z := z0
+	while z < z1:
+		var w := rng.randf_range(0.03, 0.06)
+		var hh := rng.randf_range(0.18, 0.26)
+		_box(WOOD, Vector3(x + 0.02, y, z), Vector3(x + 0.2, y + hh, z + w), colors[rng.randi() % colors.size()], false)
+		z += w + 0.004
 
 
 # --- Мебель ---------------------------------------------------------------
@@ -546,7 +750,7 @@ func _box(surf: int, mn: Vector3, mx: Vector3, color: Color, shade_bottom := tru
 			var k := 1.0
 			if shade_bottom:
 				k = lerpf(0.78, 1.0, clampf(p.y / 0.8, 0.0, 1.0))
-			st.set_color(Color(color.r * k, color.g * k, color.b * k))
+			st.set_color(Color(color.r * k, color.g * k, color.b * k, color.a))
 			st.set_normal(n)
 			st.set_uv(Vector2(p.dot(r), -p.dot(u)) / tile)
 			st.add_vertex(p)
@@ -577,6 +781,12 @@ func _make_materials() -> Array[StandardMaterial3D]:
 		m.roughness = 0.9
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		list.append(m)
+	# Стекло и тюль: без текстуры, прозрачность берётся из цвета вершин
+	var glass := StandardMaterial3D.new()
+	glass.vertex_color_use_as_albedo = true
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.1
+	list.append(glass)
 	return list
 
 
