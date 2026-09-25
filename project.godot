@@ -20,20 +20,9 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
-Detail="*res://scripts/core/detail.gd"
 GameManager="*res://scripts/core/game_manager.gd"
-Build="*res://scripts/core/build.gd"
-TextureLibrary="*res://scripts/core/texture_library.gd"
-SoundLibrary="*res://scripts/core/sound_library.gd"
-VehicleDynamics="*res://scripts/core/vehicle_dynamics.gd"
 TimeManager="*res://scripts/core/time_manager.gd"
-ItemDatabase="*res://scripts/core/item_database.gd"
-InventoryManager="*res://scripts/core/inventory_manager.gd"
 NeedsManager="*res://scripts/core/needs_manager.gd"
-WeatherManager="*res://scripts/core/weather_manager.gd"
-AudioManager="*res://scripts/core/audio_manager.gd"
-SettingsManager="*res://scripts/core/settings_manager.gd"
-QuestManager="*res://scripts/quests/quest_manager.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
 ControlsHelp="*res://scripts/ui/controls_help.gd"
 

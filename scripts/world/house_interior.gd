@@ -88,6 +88,8 @@ func build() -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "InteriorMesh"
 	mi.mesh = _commit(_tools)
+	# Издалека интерьер не рисуется — его всё равно не видно
+	mi.visibility_range_end = 70.0
 	add_child(mi)
 	_tools.clear()
 
@@ -157,6 +159,35 @@ func _build_shell() -> void:
 	var px := _partition_x()
 	var pass_z := -hz * 0.45
 	_wall(Vector3(px, 0, hz), Vector3(px, 0, -hz), [[hz - pass_z, door_width, door_height, 0.0]])
+
+
+## Проёмы в наружных стенах в локальных координатах — чтобы фасад дома
+## вырезал окна и дверь ровно там же, где они внутри.
+## front: [[x, ширина, верх, низ]], left/right: [[z, ширина, верх, низ]]. Низ 0 — дверь.
+func exterior_openings() -> Dictionary:
+	var front := [[entrance_offset, door_width, door_height, 0.0]]
+	var left := []
+	var right := []
+	if windows:
+		var wy0 := window_sill_height
+		var wy1 := minf(wy0 + window_size.y, inner_size.y - 0.25)
+		var hx := inner_size.x * 0.5
+		front.append([(-hx + entrance_offset - door_width * 0.5) * 0.5, window_size.x, wy1, wy0])
+		front.append([_room_rect().get_center().x, window_size.x, wy1, wy0])
+		left.append([0.55, window_size.x, wy1, wy0])
+		right.append([0.3, window_size.x, wy1, wy0])
+	return {"front": front, "left": left, "right": right}
+
+
+## Середина кровати в локальных координатах — там можно лечь спать.
+func bed_center() -> Vector3:
+	var r := _room_rect()
+	match wealth:
+		Wealth.POOR:
+			return Vector3(r.end.x - 0.5, 0.5, r.position.y + 1.1)
+		Wealth.RICH:
+			return Vector3(r.end.x - 0.8, 0.5, r.position.y + 1.1)
+	return Vector3(r.end.x - 0.525, 0.5, r.position.y + 1.1)
 
 
 func _partition_x() -> float:
@@ -593,6 +624,7 @@ func _door(hinge: Vector3, dir: Vector3, swing: Vector3, width: float, height: f
 		_box(PLASTER, Vector3(w - 0.14, 0.98, hz - 0.012), Vector3(w - 0.04, 1.01, hz + 0.012), handle, false)
 	var leaf := MeshInstance3D.new()
 	leaf.mesh = _commit(_tools)
+	leaf.visibility_range_end = 70.0
 	pivot.add_child(leaf)
 	_tools = main_tools
 
@@ -823,6 +855,9 @@ func _build_lamps() -> void:
 		light.light_color = Color(1.0, 0.85, 0.65)
 		light.omni_range = maxf(inner_size.x, inner_size.z) * 0.6
 		light.shadow_enabled = false
+		light.distance_fade_enabled = true
+		light.distance_fade_begin = 30.0
+		light.distance_fade_length = 10.0
 		add_child(light)
 
 
