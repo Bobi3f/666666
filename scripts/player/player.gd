@@ -1,39 +1,67 @@
 class_name Player
 extends CharacterBody3D
-## Персонаж от первого лица: ходьба, бег, прыжок, действие по E, еда по Q.
+## Персонаж от первого лица: ходьба с разгоном, бег, прыжок, приседание,
+## подъём на ступеньки, покачивание камеры, действие по E, еда по Q.
 
 const WALK := 4.0
 const RUN := 7.0
-const JUMP := 4.6
+const CROUCH := 1.8
+## Разгон и торможение на земле и в воздухе, м/с²
+const ACCEL := 30.0
+const AIR_ACCEL := 6.0
+const JUMP := 4.8
 const GRAVITY := 12.0
+## Прыжок ещё засчитывается чуть после края и чуть до приземления
+const COYOTE_TIME := 0.12
+const JUMP_BUFFER := 0.15
 const MOUSE_SENS := 0.0025
+## Поворот камеры стрелками, рад/с
+const KEY_TURN := 2.4
+const STAND_HEIGHT := 1.75
+const CROUCH_HEIGHT := 1.1
+const STAND_EYES := 1.62
+const CROUCH_EYES := 0.98
+## Ступенька, на которую персонаж заходит сам, без прыжка
+const STEP_HEIGHT := 0.45
+const FOV := 75.0
+const RUN_FOV := 82.0
 
 var camera: Camera3D
 var car: Node3D  # машина, в которой сидим; null — пешком
+var crouching := false
 var _head: Node3D
+var _shape: CollisionShape3D
+var _capsule: CapsuleShape3D
 var _zones: Array[InteractZone] = []
+var _crouch_toggled := false
+var _coyote := 0.0
+var _jump_buffer := 0.0
+var _bob_time := 0.0
+var _land_dip := 0.0
+var _fall_speed := 0.0
 
 
 func _ready() -> void:
 	add_to_group("persist")
 	GameManager.player = self
-	var cs := CollisionShape3D.new()
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.3
-	capsule.height = 1.75
-	cs.shape = capsule
-	cs.position.y = 0.875
-	add_child(cs)
+	_shape = CollisionShape3D.new()
+	_capsule = CapsuleShape3D.new()
+	_capsule.radius = 0.3
+	_capsule.height = STAND_HEIGHT
+	_shape.shape = _capsule
+	_shape.position.y = STAND_HEIGHT * 0.5
+	add_child(_shape)
 	_head = Node3D.new()
-	_head.position.y = 1.62
+	_head.position.y = STAND_EYES
 	add_child(_head)
 	camera = Camera3D.new()
 	camera.near = 0.05
 	camera.far = 700.0
-	camera.fov = 75.0
+	camera.fov = FOV
 	_head.add_child(camera)
 	camera.current = true
 	floor_snap_length = 0.3
+	floor_max_angle = deg_to_rad(50.0)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -50,17 +78,30 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_Q:
 				if car == null:
 					NeedsManager.eat_snack()
+			KEY_SPACE:
+				if car == null:
+					_jump_buffer = JUMP_BUFFER
+			KEY_C:
+				if car == null:
+					_crouch_toggled = not _crouch_toggled
 	if car != null:
 		return
 	var motion := event as InputEventMouseMotion
 	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-motion.relative.x * MOUSE_SENS)
-		_head.rotation.x = clampf(_head.rotation.x - motion.relative.y * MOUSE_SENS, -1.45, 1.45)
+		_look(-motion.relative.x * MOUSE_SENS, -motion.relative.y * MOUSE_SENS)
+
+
+func _look(yaw: float, pitch: float) -> void:
+	rotate_y(yaw)
+	_head.rotation.x = clampf(_head.rotation.x + pitch, -1.45, 1.45)
 
 
 func _physics_process(delta: float) -> void:
 	if car != null:
 		return
+	_turn_with_keys(delta)
+	_update_crouch(delta)
+
 	var input := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W):
 		input.y -= 1
@@ -70,21 +111,124 @@ func _physics_process(delta: float) -> void:
 		input.x -= 1
 	if Input.is_physical_key_pressed(KEY_D):
 		input.x += 1
-	var speed := RUN if Input.is_physical_key_pressed(KEY_SHIFT) else WALK
+	var running := Input.is_physical_key_pressed(KEY_SHIFT) and not crouching and input.y < 0.0
+	var speed := CROUCH if crouching else (RUN if running else WALK)
 	speed *= NeedsManager.walk_factor()
 	var dir := (transform.basis * Vector3(input.x, 0, input.y)).normalized()
-	velocity.x = dir.x * speed
-	velocity.z = dir.z * speed
-	if is_on_floor():
-		if Input.is_physical_key_pressed(KEY_SPACE):
-			velocity.y = JUMP
-	else:
+
+	# Плавный разгон и торможение; в воздухе направление меняется слабо
+	var on_floor := is_on_floor()
+	var accel := ACCEL if on_floor else AIR_ACCEL
+	var flat := Vector2(velocity.x, velocity.z).move_toward(Vector2(dir.x, dir.z) * speed, accel * delta)
+	velocity.x = flat.x
+	velocity.z = flat.y
+
+	_coyote = COYOTE_TIME if on_floor else maxf(_coyote - delta, 0.0)
+	_jump_buffer = maxf(_jump_buffer - delta, 0.0)
+	if _jump_buffer > 0.0 and _coyote > 0.0 and _can_stand():
+		velocity.y = JUMP
+		_jump_buffer = 0.0
+		_coyote = 0.0
+		_crouch_toggled = false
+	elif not on_floor:
 		velocity.y -= GRAVITY * delta
-	move_and_slide()
+		_fall_speed = maxf(_fall_speed, -velocity.y)
+
+	if not (on_floor and _try_step(delta)):
+		move_and_slide()
+
+	# Приземление: камера чуть проседает, тем сильнее, чем выше падали
+	if is_on_floor() and _fall_speed > 0.0:
+		if _fall_speed > 3.0:
+			_land_dip = minf(_fall_speed * 0.025, 0.25)
+		_fall_speed = 0.0
+	_update_camera(delta, running and flat.length() > WALK)
+
 	# Упал за край мира — вернуть на дорогу
 	if global_position.y < -20.0:
 		global_position = Vector3(global_position.x, 2.0, global_position.z)
 		velocity = Vector3.ZERO
+
+
+## Стрелки поворачивают камеру — если мышь неудобна или не захвачена.
+func _turn_with_keys(delta: float) -> void:
+	var yaw := 0.0
+	var pitch := 0.0
+	if Input.is_physical_key_pressed(KEY_LEFT):
+		yaw += 1.0
+	if Input.is_physical_key_pressed(KEY_RIGHT):
+		yaw -= 1.0
+	if Input.is_physical_key_pressed(KEY_UP):
+		pitch += 1.0
+	if Input.is_physical_key_pressed(KEY_DOWN):
+		pitch -= 1.0
+	if yaw != 0.0 or pitch != 0.0:
+		_look(yaw * KEY_TURN * delta, pitch * KEY_TURN * 0.6 * delta)
+
+
+## Ctrl — держать, C — переключить. Встать можно, только если над головой пусто.
+func _update_crouch(delta: float) -> void:
+	var want := Input.is_physical_key_pressed(KEY_CTRL) or _crouch_toggled
+	if want != crouching:
+		if want:
+			crouching = true
+		elif _can_stand():
+			crouching = false
+	var h := CROUCH_HEIGHT if crouching else STAND_HEIGHT
+	if not is_equal_approx(_capsule.height, h):
+		_capsule.height = move_toward(_capsule.height, h, 6.0 * delta)
+		_shape.position.y = _capsule.height * 0.5
+	var eyes := CROUCH_EYES if crouching else STAND_EYES
+	_head.position.y = move_toward(_head.position.y, eyes, 4.0 * delta)
+
+
+func _can_stand() -> bool:
+	if not crouching and is_equal_approx(_capsule.height, STAND_HEIGHT):
+		return true
+	return not test_move(global_transform, Vector3(0, STAND_HEIGHT - _capsule.height + 0.05, 0))
+
+
+## Заходим на крыльцо и бордюр без прыжка: если впереди невысокое препятствие,
+## а над ним свободно — поднимаемся и опускаемся на него.
+func _try_step(delta: float) -> bool:
+	var motion := Vector3(velocity.x, 0, velocity.z) * delta
+	if motion.length() < 0.001 or not test_move(global_transform, motion):
+		return false
+	var up := Vector3(0, STEP_HEIGHT, 0)
+	if test_move(global_transform, up):
+		return false
+	# Низ капсулы круглый: чтобы встать на ступеньку, а не зацепиться
+	# за её ребро, шагаем сразу на четверть метра
+	var ahead := motion.normalized() * maxf(motion.length(), 0.25)
+	var raised := global_transform.translated(up)
+	if test_move(raised, ahead):
+		return false
+	var start := global_transform
+	global_position += up + ahead
+	var col := move_and_collide(-up)
+	if col == null or col.get_normal().y < 0.7:
+		# Под ногами не ступенька — откатываемся
+		global_transform = start
+		return false
+	velocity.y = 0.0
+	return true
+
+
+## Покачивание при ходьбе, просадка при приземлении, шире обзор на бегу.
+func _update_camera(delta: float, sprinting: bool) -> void:
+	var speed := Vector2(velocity.x, velocity.z).length()
+	var bob := Vector3.ZERO
+	if is_on_floor() and speed > 0.5:
+		_bob_time += delta * speed * 1.9
+		var amp := 0.035 if speed <= WALK + 0.1 else 0.06
+		if crouching:
+			amp *= 0.5
+		bob = Vector3(cos(_bob_time * 0.5) * amp * 0.6, absf(sin(_bob_time)) * amp, 0)
+	else:
+		_bob_time = 0.0
+	_land_dip = move_toward(_land_dip, 0.0, 0.8 * delta)
+	camera.position = camera.position.lerp(bob - Vector3(0, _land_dip, 0), minf(delta * 12.0, 1.0))
+	camera.fov = lerpf(camera.fov, RUN_FOV if sprinting else FOV, minf(delta * 6.0, 1.0))
 
 
 # --- Действия -------------------------------------------------------------
@@ -140,6 +284,11 @@ func sit_in(c: Node3D) -> void:
 func stand_up(at: Vector3, yaw: float) -> void:
 	car = null
 	visible = true
+	crouching = false
+	_crouch_toggled = false
+	_capsule.height = STAND_HEIGHT
+	_shape.position.y = STAND_HEIGHT * 0.5
+	_head.position.y = STAND_EYES
 	for ch in get_children():
 		if ch is CollisionShape3D:
 			ch.disabled = false

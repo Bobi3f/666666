@@ -717,8 +717,8 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	sign.rotation.y = yaw
 	add_child(sign)
 
-	var zone := InteractZone.create("E — сельмаг: хлеб и молоко (40 грн)", Vector3(2.8, 2.0, 2.4))
-	zone.position = xf * Vector3(0, 0, 5.0)
+	var zone := InteractZone.create("E — сельмаг: хлеб и молоко (40 грн)", Vector3(2.8, 2.4, 3.2))
+	zone.position = xf * Vector3(0, 0, 4.5)
 	zone.rotation.y = yaw
 	zone.activated.connect(_buy_village_food)
 	add_child(zone)
