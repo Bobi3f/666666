@@ -82,6 +82,13 @@ func _build() -> void:
 	box.add_child(HSeparator.new())
 	_slider(box, "Чувствительность мыши", 0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
 	_slider(box, "Громкость", 0.0, 1.0, SettingsManager.volume, SettingsManager.set_volume)
+	var gearbox := CheckButton.new()
+	gearbox.text = "Автоматическая коробка передач (T)"
+	gearbox.button_pressed = SettingsManager.auto_gearbox
+	gearbox.toggled.connect(SettingsManager.set_auto_gearbox)
+	# T в машине тоже переключает — держим галочку в согласии
+	SettingsManager.changed.connect(func() -> void: gearbox.set_pressed_no_signal(SettingsManager.auto_gearbox))
+	box.add_child(gearbox)
 	box.add_child(HSeparator.new())
 	_button(box, "Выйти из игры", func() -> void: get_tree().quit())
 	var hint := Label.new()

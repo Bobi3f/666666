@@ -108,15 +108,18 @@ func _draw_map() -> void:
 			off = Vector2(-14, -9)
 		_canvas.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
-	# Машина и игрок
-	var car := GameManager.car as Node3D
-	if car:
-		var cp := _p(car.global_position.x, car.global_position.z)
-		_canvas.draw_rect(Rect2(cp - Vector2(4, 4), Vector2(8, 8)), Color(0.85, 0.8, 0.55))
+	# Машина, мотоцикл и игрок
+	for pair in [[GameManager.car, Color(0.85, 0.8, 0.55), 4.0], [GameManager.moto, Color(0.85, 0.2, 0.15), 3.0]]:
+		var v := pair[0] as Node3D
+		if v:
+			var cp := _p(v.global_position.x, v.global_position.z)
+			var r: float = pair[2]
+			_canvas.draw_rect(Rect2(cp - Vector2(r, r), Vector2(r, r) * 2.0), pair[1])
 	var who := GameManager.player as Node3D
 	var yaw := 0.0
 	var pos := Vector3.ZERO
-	if car and (car as Car).driver:
+	var car := GameManager.vehicle as Node3D
+	if car:
 		pos = car.global_position
 		yaw = car.rotation.y
 	elif who:

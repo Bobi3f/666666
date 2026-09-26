@@ -2,6 +2,7 @@ extends Node3D
 ## Движение по трассе: легковушки в обе стороны и рейсовый автобус,
 ## который стоит на остановках у Каменки и в городе.
 ##
+## Ночью у всех горят фары, при торможении — стоп-сигналы.
 ## Машины едут по своей полосе и притормаживают, если впереди кто-то есть:
 ## другая машина, машина игрока или сам игрок на дороге. Долго стоят —
 ## сигналят. За краем мира переезжают на другой край.
@@ -40,6 +41,8 @@ func _spawn(dir: int, x: float, color: Color, bus: bool) -> void:
 	cs.position.y = size.y * 0.5 + 0.3
 	body.add_child(cs)
 	body.add_child(_build_mesh(size, color, bus))
+	var lights := _build_lights(size)
+	body.add_child(lights[0])
 	var snd := AudioStreamPlayer3D.new()
 	snd.stream = SoundLibrary.stream("engine")
 	snd.unit_size = 5.0
@@ -53,7 +56,7 @@ func _spawn(dir: int, x: float, color: Color, bus: bool) -> void:
 	body.rotation.y = -PI / 2.0 if dir > 0 else PI / 2.0
 	snd.play()
 	_vehicles.append({"body": body, "dir": dir, "speed": BUS_CRUISE if bus else CRUISE, "bus": bus,
-		"wait": 0.0, "stopped": 0.0, "snd": snd, "len": size.z})
+		"wait": 0.0, "stopped": 0.0, "snd": snd, "len": size.z, "head": lights[1], "tail": lights[2]})
 
 
 func _build_mesh(size: Vector3, color: Color, bus: bool) -> MeshInstance3D:
@@ -81,7 +84,31 @@ func _build_mesh(size: Vector3, color: Color, bus: bool) -> MeshInstance3D:
 	return b.build_mesh()
 
 
+## Фары и стоп-сигналы: отдельный меш, у каждой машины свои материалы —
+## их цвет меняется на ходу. Возвращает [узел, фары, стопы].
+func _build_lights(size: Vector3) -> Array:
+	var root := Node3D.new()
+	var head := StandardMaterial3D.new()
+	head.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var tail := StandardMaterial3D.new()
+	tail.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	var box := BoxMesh.new()
+	box.size = Vector3(0.3, 0.18, 0.04)
+	for x in [-hx + 0.3, hx - 0.3]:
+		for front in [true, false]:
+			var mi := MeshInstance3D.new()
+			mi.mesh = box
+			mi.material_override = head if front else tail
+			mi.position = Vector3(x, 0.65, (-hz - 0.03) if front else (hz + 0.03))
+			root.add_child(mi)
+	return [root, head, tail]
+
+
 func _physics_process(delta: float) -> void:
+	var h := TimeManager.hour()
+	var dark := h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
 	for v in _vehicles:
 		var body: AnimatableBody3D = v.body
 		var dir: int = v.dir
@@ -108,6 +135,9 @@ func _physics_process(delta: float) -> void:
 
 		var sp: float = v.speed
 		var accel := 3.0 if target > sp else 8.0
+		var slowing := target < sp - 0.5 or sp < 0.3
+		(v.head as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.8) if dark else Color(0.75, 0.75, 0.7)
+		(v.tail as StandardMaterial3D).albedo_color = Color(1.0, 0.1, 0.05) if slowing else (Color(0.6, 0.06, 0.04) if dark else Color(0.35, 0.05, 0.04))
 		sp = move_toward(sp, target, accel * delta)
 		v.speed = sp
 		x += sp * dir * delta
@@ -139,7 +169,9 @@ func _gap_ahead(v: Dictionary) -> float:
 		var d: float = ((other.body as Node3D).global_position.x - x) * dir - other.len * 0.5
 		if d > 0.0:
 			best = minf(best, d)
-	for n in [GameManager.player, GameManager.car]:
+	var others: Array = [GameManager.player]
+	others.append_array(get_tree().get_nodes_in_group("vehicles"))
+	for n in others:
 		var node := n as Node3D
 		if node == null or not node.is_inside_tree() or not node.visible:
 			continue

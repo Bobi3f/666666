@@ -58,8 +58,9 @@ func _process(delta: float) -> void:
 	var h := TimeManager.hour()
 	var night := h < 5.0 or h > 21.0
 	var rain := WeatherManager.rain
-	var car := GameManager.car as Car
-	var in_car := car != null and car.driver != null
+	# Под крышей машины дождь стучит по крыше сам; на мотоцикле — как пешком
+	var car := GameManager.vehicle as Vehicle
+	var in_car: bool = car != null and car.spec.roof
 
 	# Дождь: капли над головой, шум — снаружи (в машине стучит по крыше сама машина)
 	_rain.global_position = cam.global_position + Vector3(0, 9, 0)

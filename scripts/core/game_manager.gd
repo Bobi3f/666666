@@ -9,7 +9,10 @@ const START_MONEY := 1500
 
 var money := START_MONEY
 var player: Node3D
+## Жигули игрока и мотоцикл; vehicle — то, на чём игрок едет сейчас.
 var car: Node3D
+var moto: Node3D
+var vehicle: Node3D
 
 
 func add_money(amount: int) -> void:

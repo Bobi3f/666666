@@ -80,16 +80,23 @@ func _process(delta: float) -> void:
 	_food_pct.text = "%d%%" % int(NeedsManager.food)
 	_energy_pct.text = "%d%%" % int(NeedsManager.energy)
 	_snacks.text = "Еда в запасе: %d (Q)" % NeedsManager.snacks
-	var car := GameManager.car as Car
+	var car := GameManager.vehicle as Vehicle
 	var p := GameManager.player as Player
 	if car and car.driver:
 		_car.visible = true
-		_car.text = "%3d км/ч   %4d об/мин   Передача: %s   %s   Сцепление: %s\nБензин: %d л   Машина: %d%%%s" % [
-			int(car.speed_kmh()), int(car.rpm), car.gear_name(),
-			"Мотор работает" if car.engine_on else "Мотор заглушен (R)",
-			"выжато" if car.clutch < 0.2 else ("схватывает" if car.clutch < 0.8 else "отпущено"),
-			int(ceilf(car.fuel)), int(car.condition),
-			"   Грязь — машина вязнет" if not car.on_asphalt() and WeatherManager.wetness > 0.3 else ""]
+		var auto := SettingsManager.auto_gearbox
+		var box := "Автомат: %s" % car.gear_name() if auto else "Механика: %s   Сцепление: %s" % [car.gear_name(),
+			"выжато" if car.clutch < 0.2 else ("схватывает" if car.clutch < 0.8 else "отпущено")]
+		var motor := "Мотор работает" if car.engine_on else ("Мотор заглушен (W — завести)" if auto else "Мотор заглушен (R)")
+		var slide := ""
+		if absf(car.lateral) > 2.5:
+			slide = "   ЗАНОС"
+		elif not car.on_asphalt() and WeatherManager.wetness > 0.3:
+			slide = "   Грязь — вязнет"
+		_car.text = "%3d км/ч   %4d об/мин   %s   %s\n%s   Бензин: %d л   Состояние: %d%%   %s%s" % [
+			int(car.speed_kmh()), int(car.rpm), box, motor,
+			car.spec.title, int(ceilf(car.fuel)), int(car.condition),
+			"T — коробка, V — вид", slide]
 		_prompt.text = ""
 	else:
 		_car.visible = false

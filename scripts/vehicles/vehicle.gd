@@ -1,0 +1,807 @@
+class_name Vehicle
+extends CharacterBody3D
+## Транспорт игрока: Жигули и мотоцикл «Ява». Одна механика на всех,
+## различия — в SPECS (масса, мотор, передачи, руль, сцепление с дорогой).
+##
+## Двигатель и колёса связаны через сцепление-трение: пока диски
+## проскальзывают, передаётся не больше, чем позволяет прижим; когда обороты
+## сравнялись — сцепление «схватилось», и двигатель крутится вместе с колёсами.
+##
+## Две коробки (T — переключить, по умолчанию автомат):
+##   * АВТОМАТ — сцепление не нужно: гидротрансформатор проскальзывает на
+##     низких оборотах и схватывает на высоких, передачи переключаются сами,
+##     мотор не глохнет. W — газ (заглушенный мотор заведётся сам),
+##     S — тормоз, а стоя на месте — задний ход.
+##   * МЕХАНИКА — Shift — сцепление, ] [ — передачи, R — зажигание:
+##     бросил сцепление — заглох, переключил без сцепления — скрежет.
+##
+## Машина едет не по рельсам: скорость — вектор, боковое скольжение гасится
+## сцеплением шин с дорогой. На асфальте держит, на траве и в грязи — плывёт,
+## с ручником (Пробел) на скорости — заносит. На скорости руль ограничен
+## сцеплением: слишком резкий поворот — машину сносит наружу.
+##
+## Бензин тратится по оборотам и газу. Износ — от скрежета, заглохания,
+## ударов. Изношенная сама глохнет, разбитая не заводится.
+
+const GRAVITY := 12.0
+const STALL_RPM := 380.0
+const FUEL_IDLE := 0.004
+const FUEL_LOAD := 0.05
+
+const SPECS := {
+	"car": {
+		"title": "Жигули", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
+		"final": 4.1, "wheel_r": 0.29, "mass": 1050.0, "idle": 850.0, "redline": 6200.0,
+		"torque": 175.0, "peak_rpm": 3500.0, "inertia": 0.18, "wheelbase": 2.4, "max_steer": 0.6,
+		"tank": 40.0, "fuel_k": 1.0, "grip": 9.0, "drag": 0.42, "brake": 9.0,
+		"shape": Vector3(1.66, 1.1, 4.15), "shape_y": 0.72,
+		"seat": Vector3(-0.36, 1.22, 0.4), "exit": Vector3(-1.6, 0.2, 0.2),
+		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
+	},
+	"moto": {
+		"title": "Ява", "ratios": {-1: 0.0, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
+		"final": 6.0, "wheel_r": 0.31, "mass": 210.0, "idle": 1300.0, "redline": 7800.0,
+		"torque": 34.0, "peak_rpm": 5000.0, "inertia": 0.035, "wheelbase": 1.35, "max_steer": 0.55,
+		"tank": 14.0, "fuel_k": 0.35, "grip": 11.0, "drag": 0.22, "brake": 8.0,
+		"shape": Vector3(0.7, 1.2, 2.0), "shape_y": 0.7,
+		"seat": Vector3(0, 1.45, 0.25), "exit": Vector3(-1.0, 0.2, 0.0),
+		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true,
+	},
+}
+
+## Вид сзади (V) — общий для всего транспорта.
+static var chase_view := false
+
+@export var kind := "car"
+
+var spec: Dictionary
+var driver: Player
+var engine_on := false
+var gear := 0
+var rpm := 0.0
+## Скорость вдоль машины, м/с (вперёд — плюс), и поперёк (занос).
+var speed := 0.0
+var lateral := 0.0
+## 1 — педаль отпущена (сцепление включено), 0 — выжата.
+var clutch := 1.0
+var locked := false
+var fuel := 25.0
+var condition := 100.0
+var braking := false
+
+var _steer := 0.0
+var _yaw_rate := 0.0
+var _lean := 0.0
+var _camera: Camera3D
+var _chase: Camera3D
+var _body: Node3D  # всё, что наклоняется (мотоцикл в повороте)
+var _rider: Node3D
+var _zone: InteractZone
+var _wheels: Array[Node3D] = []
+var _engine_snd: AudioStreamPlayer3D
+var _skid_snd: AudioStreamPlayer3D
+var _rain_snd: AudioStreamPlayer
+var _rng := RandomNumberGenerator.new()
+var _warned_fuel := false
+var _headlights: Array[SpotLight3D] = []
+var _lights_forced := false
+var _brake_mat: StandardMaterial3D
+var _shift_timer := 0.0
+var _rev_timer := 0.0
+var _auto_start_cool := 0.0
+
+
+func _ready() -> void:
+	spec = SPECS[kind]
+	add_to_group("persist")
+	add_to_group("vehicles")
+	fuel = minf(fuel, spec.tank)
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = spec.shape
+	cs.shape = shape
+	cs.position.y = spec.shape_y
+	add_child(cs)
+	_body = Node3D.new()
+	add_child(_body)
+	if spec.two_wheels:
+		_build_moto()
+	else:
+		_build_car()
+	_camera = Camera3D.new()
+	_camera.position = spec.seat
+	_camera.rotation.x = -0.06
+	_camera.near = 0.05
+	_camera.far = 700.0
+	_camera.fov = 78.0
+	_body.add_child(_camera)
+	_chase = Camera3D.new()
+	_chase.top_level = true
+	_chase.far = 700.0
+	_chase.fov = 70.0
+	add_child(_chase)
+	if spec.roof:
+		# Мягкий свет в салоне: без него при солнце сверху салон в глубокой тени
+		var cabin := OmniLight3D.new()
+		cabin.position = Vector3(0, 1.25, 0.2)
+		cabin.omni_range = 2.2
+		cabin.light_energy = 0.9
+		cabin.distance_fade_enabled = true
+		cabin.distance_fade_begin = 20.0
+		cabin.distance_fade_length = 5.0
+		add_child(cabin)
+	var zone_size := Vector3(4.0, 2.0, 5.5) if not spec.two_wheels else Vector3(2.6, 2.0, 3.0)
+	_zone = InteractZone.create("E — %s: %s" % ["сесть за руль" if spec.roof else "сесть на мотоцикл", spec.title], zone_size)
+	_zone.position.y = -0.2
+	_zone.activated.connect(_on_enter)
+	add_child(_zone)
+	floor_snap_length = 0.4
+	_rng.randomize()
+	_engine_snd = AudioStreamPlayer3D.new()
+	_engine_snd.stream = SoundLibrary.stream("engine")
+	_engine_snd.unit_size = 6.0
+	_engine_snd.max_distance = 80.0
+	_engine_snd.position = Vector3(0, 0.7, -1.5 if spec.roof else 0.0)
+	add_child(_engine_snd)
+	_skid_snd = AudioStreamPlayer3D.new()
+	_skid_snd.stream = SoundLibrary.stream("skid")
+	_skid_snd.unit_size = 6.0
+	_skid_snd.volume_db = -80.0
+	add_child(_skid_snd)
+	# Дождь по крыше — только сидя в машине с крышей
+	_rain_snd = AudioStreamPlayer.new()
+	_rain_snd.stream = SoundLibrary.stream("rain")
+	_rain_snd.volume_db = -6.0
+	add_child(_rain_snd)
+	var lamps := [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)]
+	for p in lamps:
+		var l := SpotLight3D.new()
+		l.position = p
+		l.rotation.x = -0.06
+		l.spot_range = 40.0
+		l.spot_angle = 28.0
+		l.light_energy = 3.0 if spec.roof else 2.4
+		l.light_color = Color(1.0, 0.95, 0.82)
+		l.visible = false
+		_body.add_child(l)
+		_headlights.append(l)
+
+
+# --- Посадка ----------------------------------------------------------------
+
+func _on_enter() -> void:
+	var p := GameManager.player as Player
+	if p == null or driver != null or p.car != null:
+		return
+	driver = p
+	GameManager.vehicle = self
+	p.sit_in(self)
+	_update_camera(1.0)
+	_active_camera().current = true
+	if SettingsManager.auto_gearbox:
+		GameManager.notify("%s. Автомат: W — газ, S — тормоз и назад. T — механика, V — вид" % spec.title)
+	else:
+		GameManager.notify("%s. Механика: Shift — сцепление, R — зажигание, ] [ — передачи. T — автомат" % spec.title)
+
+
+func exit_car() -> void:
+	if driver == null:
+		return
+	if absf(speed) > 2.0:
+		GameManager.notify("Сначала остановись")
+		return
+	_drop_driver()
+
+
+func _drop_driver() -> void:
+	var p := driver
+	driver = null
+	if GameManager.vehicle == self:
+		GameManager.vehicle = null
+	if SettingsManager.auto_gearbox:
+		gear = 0
+	var out := global_transform * (spec.exit as Vector3)
+	p.stand_up(out, rotation.y)
+
+
+func _active_camera() -> Camera3D:
+	return _chase if chase_view else _camera
+
+
+# --- Управление -------------------------------------------------------------
+
+func _unhandled_input(event: InputEvent) -> void:
+	if driver == null:
+		return
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	match key.physical_keycode:
+		KEY_R:
+			_toggle_ignition()
+		KEY_BRACKETRIGHT:
+			if not SettingsManager.auto_gearbox:
+				_shift(gear + 1)
+		KEY_BRACKETLEFT:
+			if not SettingsManager.auto_gearbox:
+				_shift(gear - 1)
+		KEY_H:
+			SoundLibrary.play_at("horn", global_position, 2.0, 1.0 if spec.roof else 1.35)
+		KEY_L:
+			_lights_forced = not _lights_forced
+			SoundLibrary.play("click", -8.0)
+		KEY_T:
+			SettingsManager.set_auto_gearbox(not SettingsManager.auto_gearbox)
+			if SettingsManager.auto_gearbox:
+				clutch = 1.0
+				if gear == 0 and engine_on:
+					gear = 1
+			GameManager.notify("Коробка: %s" % ("АВТОМАТ — W газ, S тормоз и назад" if SettingsManager.auto_gearbox else "МЕХАНИКА — Shift сцепление, ] [ передачи"))
+		KEY_V:
+			chase_view = not chase_view
+			_update_camera(1.0)
+			_active_camera().current = true
+
+
+func _toggle_ignition() -> void:
+	if engine_on:
+		engine_on = false
+		GameManager.notify("Двигатель заглушен")
+		return
+	if not SettingsManager.auto_gearbox and gear != 0 and clutch > 0.2:
+		GameManager.notify("Выжми сцепление (Shift) или поставь нейтраль")
+		return
+	_try_start()
+
+
+func _try_start() -> bool:
+	SoundLibrary.play_at("starter", global_position, 0.0, 1.0 if spec.roof else 1.5)
+	if fuel <= 0.0:
+		GameManager.notify("Стартер крутит, а мотор не схватывает — бак пустой. Заправка у трассы")
+		return false
+	if condition < 10.0:
+		GameManager.notify("Мотор не заводится — техника разбита. Нужна СТО у трассы")
+		return false
+	engine_on = true
+	rpm = spec.idle
+	GameManager.notify("Двигатель заведён")
+	return true
+
+
+func _shift(g: int) -> void:
+	var top: int = _top_gear()
+	var low := -1 if (spec.ratios[-1] as float) != 0.0 else 0
+	g = clampi(g, low, top)
+	if g == gear:
+		return
+	if clutch > 0.15:
+		GameManager.notify("Скрежет! Выжми сцепление (Shift)")
+		SoundLibrary.play_at("grind", global_position)
+		_wear(1.5)
+		return
+	if g == -1 and speed > 1.0:
+		GameManager.notify("Задняя только с места")
+		return
+	gear = g
+	GameManager.notify(gear_name())
+
+
+func _top_gear() -> int:
+	var top := 0
+	for k in spec.ratios:
+		top = maxi(top, k)
+	return top
+
+
+func gear_name() -> String:
+	if SettingsManager.auto_gearbox:
+		match gear:
+			-1:
+				return "R"
+			0:
+				return "N"
+		return "D%d" % gear
+	match gear:
+		-1:
+			return "R"
+		0:
+			return "N"
+	return str(gear)
+
+
+# --- Физика -----------------------------------------------------------------
+
+func _physics_process(dt: float) -> void:
+	var drv := driver != null
+	var w := drv and Input.is_physical_key_pressed(KEY_W)
+	var s := drv and Input.is_physical_key_pressed(KEY_S)
+	var handbrake := (not drv) or Input.is_physical_key_pressed(KEY_SPACE)
+	var steer_in := 0.0
+	if drv:
+		steer_in = float(Input.is_physical_key_pressed(KEY_A)) - float(Input.is_physical_key_pressed(KEY_D))
+	if SettingsManager.auto_gearbox:
+		var io := _auto_inputs(dt, w, s)
+		_update(dt, io.x, io.y > 0.5, handbrake, false, steer_in)
+	else:
+		var pedal := drv and Input.is_physical_key_pressed(KEY_SHIFT)
+		_update(dt, 1.0 if w else 0.0, s, handbrake, pedal, steer_in)
+	if drv:
+		_update_camera(dt)
+
+
+## Автомат: педали → газ и тормоз, задний ход и запуск мотора сами.
+## Возвращает (газ, тормоз).
+func _auto_inputs(dt: float, w: bool, s: bool) -> Vector2:
+	_auto_start_cool = maxf(_auto_start_cool - dt, 0.0)
+	if not engine_on:
+		if (w or s) and _auto_start_cool <= 0.0:
+			_auto_start_cool = 2.0
+			if _try_start() and gear == 0:
+				gear = 1
+		return Vector2(0.0, 1.0 if s else 0.0)
+	var has_reverse := (spec.ratios[-1] as float) != 0.0
+	if gear == 0 and (w or s):
+		gear = 1
+	if gear == -1:
+		# Задний ход: S — газ назад, W — тормоз, а стоя — снова вперёд
+		if w and absf(speed) < 0.3:
+			gear = 1
+			return Vector2(1.0, 0.0)
+		# Назад больше ~20 км/ч автомат не разгоняет
+		var gas := 1.0 if s and speed > -5.5 else 0.0
+		return Vector2(gas, 1.0 if w else 0.0)
+	# Стоим и держим тормоз — через полсекунды включится задний
+	if s and speed < 0.3 and has_reverse:
+		_rev_timer += dt
+		if _rev_timer > 0.5:
+			gear = -1
+			_rev_timer = 0.0
+	else:
+		_rev_timer = 0.0
+	return Vector2(1.0 if w else 0.0, 1.0 if s else 0.0)
+
+
+## Один шаг симуляции. Вынесено отдельно, чтобы гонять в тестах без клавиатуры.
+func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bool, steer_in: float) -> void:
+	var auto: bool = SettingsManager.auto_gearbox
+	var idle: float = spec.idle
+	var redline: float = spec.redline
+	var mass: float = spec.mass
+	var wheel_r: float = spec.wheel_r
+	braking = brake
+	_shift_timer = maxf(_shift_timer - dt, 0.0)
+
+	if auto:
+		_auto_shift(throttle)
+		clutch = 0.0 if _shift_timer > 0.0 else 1.0
+	elif pedal:
+		clutch = move_toward(clutch, 0.0, dt * 6.0)
+	else:
+		# Педаль в зоне схватывания отпускается медленно, как ногой
+		var rate := 0.45 if clutch > 0.2 and clutch < 0.8 else 3.0
+		clutch = move_toward(clutch, 1.0, dt * rate)
+
+	var ratio: float = (spec.ratios[gear] as float) * (spec.final as float)
+	var wheel_rpm := speed / wheel_r * 60.0 / TAU * ratio
+	var cap := 0.0
+	if gear != 0 and ratio != 0.0:
+		if auto:
+			# Гидротрансформатор: на холостых почти не держит, на оборотах — как сцепление
+			var k := clampf((rpm - idle) / 1600.0, 0.0, 1.0)
+			cap = 0.0 if _shift_timer > 0.0 else (0.09 + 1.7 * k * k) * (spec.torque as float)
+		else:
+			var eff := smoothstep(0.2, 0.8, clutch)
+			cap = eff * eff * (spec.torque as float) * 1.7
+	var force := 0.0
+	locked = false
+	if engine_on:
+		var t_eng := _engine_torque(rpm, throttle)
+		var t_fric := (spec.torque as float) * (0.07 + rpm * 0.000023)
+		var slip := rpm - wheel_rpm
+		if cap > 0.0 and absf(slip) < 80.0 and absf(t_eng - t_fric) < cap:
+			locked = true
+			force = (t_eng - t_fric) * ratio / wheel_r
+		else:
+			var t_c := cap * signf(slip)
+			force = t_c * ratio / wheel_r
+			rpm += (t_eng - t_fric - t_c) / (spec.inertia as float) * dt * 60.0 / TAU
+
+	# Покрытие: асфальт, грунт, трава; в дождь грунт раскисает
+	var surf := surface()
+	var rolling: float = 0.012 * mass * 9.8 * (surf.roll as float)
+	var resist: float = rolling * signf(speed) + (spec.drag as float) * speed * absf(speed)
+	speed += (force - resist) / mass * dt
+	if absf(speed) < 0.05 and absf(force) < rolling:
+		speed = 0.0
+	if brake:
+		speed = move_toward(speed, 0.0, (spec.brake as float) * surf.grip * dt)
+	if handbrake:
+		speed = move_toward(speed, 0.0, 6.0 * dt)
+
+	if locked:
+		rpm = speed / wheel_r * 60.0 / TAU * ratio
+	rpm = clampf(rpm, 0.0, redline)
+	if engine_on and auto and rpm < idle * 0.8:
+		# Автомат не глохнет: трансформатор отпускает, регулятор держит холостые
+		rpm = idle * 0.8
+	if engine_on and not auto and rpm < STALL_RPM:
+		_stall("Заглох! Выжми сцепление и заведи снова (R)")
+	if engine_on:
+		fuel = maxf(fuel - (FUEL_IDLE + FUEL_LOAD * throttle * rpm / redline) * (spec.fuel_k as float) * dt, 0.0)
+		if fuel <= 0.0:
+			_stall("Мотор чихнул и заглох — кончился бензин. Заправка у трассы")
+		elif fuel < (spec.tank as float) * 0.12 and not _warned_fuel and driver:
+			_warned_fuel = true
+			GameManager.notify("Бензин на исходе — %d л" % int(ceilf(fuel)))
+		elif condition < 30.0 and _rng.randf() < dt * (30.0 - condition) * 0.004:
+			_stall("Мотор заглох сам — техника изношена. Почини на СТО")
+	if not engine_on:
+		rpm = move_toward(rpm, 0.0, 3000.0 * dt)
+
+	_steering(dt, steer_in, handbrake, surf.grip)
+	_move(dt, handbrake)
+	for wn in _wheels:
+		wn.rotation.x -= speed / wheel_r * dt
+	_update_sound()
+	_update_lights()
+
+
+## Автомат переключает передачи сам: вверх — тем позже, чем сильнее газ,
+## вниз — когда обороты провалились или вдавили газ в пол (кикдаун).
+func _auto_shift(throttle: float) -> void:
+	if not engine_on or gear < 1 or _shift_timer > 0.0:
+		return
+	var top := _top_gear()
+	var redline: float = spec.redline
+	var idle: float = spec.idle
+	var up := lerpf(idle + (redline - idle) * 0.3, redline * 0.88, throttle)
+	var down := idle + (redline - idle) * 0.12
+	if rpm > up and gear < top and locked:
+		gear += 1
+		_shift_timer = 0.35
+	elif gear > 1 and (rpm < down or (throttle > 0.9 and rpm < redline * 0.4 and absf(speed) > 3.0)):
+		# Вниз — только если на меньшей передаче не будет перекрута
+		var lower: float = (spec.ratios[gear - 1] as float) * (spec.final as float)
+		if speed / (spec.wheel_r as float) * 60.0 / TAU * lower < redline * 0.85:
+			gear -= 1
+			_shift_timer = 0.3
+
+
+## Руль и занос. Поворот ограничен сцеплением шин: max боковое ускорение
+## ≈ grip · g. Ручник отпускает зад — машину разворачивает сильнее и заносит.
+func _steering(dt: float, steer_in: float, handbrake: bool, grip: float) -> void:
+	var v := absf(speed)
+	var max_steer: float = (spec.max_steer as float) / (1.0 + v * 0.06)
+	_steer = move_toward(_steer, steer_in * max_steer, dt * 2.5)
+	var target := speed * tan(_steer) / (spec.wheelbase as float)
+	var mu := 0.85 * grip
+	if v > 1.0:
+		var limit := mu * 9.8 / v
+		if handbrake and v > 5.0 and not spec.two_wheels:
+			limit *= 1.8
+			target *= 1.5
+		target = clampf(target, -limit, limit)
+	_yaw_rate = target
+	rotate_y(_yaw_rate * dt)
+	# Мотоцикл в повороте ложится: tan(крен) = v · ω / g
+	if spec.two_wheels:
+		var want := clampf(atan(speed * _yaw_rate / 9.8), -0.75, 0.75)
+		_lean = lerpf(_lean, want, minf(dt * 6.0, 1.0))
+		_body.rotation.z = _lean
+
+
+## Движение вектором: часть скорости по курсу, часть — вбок (занос).
+## Боковую гасит сцепление шин; поворот курса сам рождает занос, если шины
+## не успевают.
+func _move(dt: float, handbrake: bool) -> void:
+	var fwd := -global_transform.basis.z
+	var right := global_transform.basis.x
+	var grip: float = (spec.grip as float) * surface().grip
+	if handbrake and driver and absf(speed) > 3.0 and not spec.two_wheels:
+		grip *= 0.18
+	# Прошлая скорость в мире, разложенная по новому курсу: если машина
+	# повернулась быстрее, чем её несёт, появляется скорость вбок — занос.
+	# Продольную задаёт трансмиссия, боковую гасят шины.
+	lateral = Vector3(velocity.x, 0, velocity.z).dot(right)
+	lateral *= exp(-grip * dt)
+	# Юз тормозит машину
+	speed = move_toward(speed, 0.0, absf(lateral) * 0.6 * dt)
+	var v := fwd * speed + right * lateral
+	velocity.x = v.x
+	velocity.z = v.z
+	if is_on_floor():
+		velocity.y = 0.0
+	else:
+		velocity.y -= GRAVITY * dt
+	var before := speed
+	move_and_slide()
+	# Упёрлись — скорость теряется, сильный удар бьёт технику
+	var after_v := Vector3(velocity.x, 0, velocity.z)
+	speed = fwd.dot(after_v)
+	lateral = right.dot(after_v)
+	var hit := absf(before) - absf(speed)
+	if hit > 3.0 and get_slide_collision_count() > 0:
+		SoundLibrary.play_at("crash", global_position, minf(hit, 8.0) - 4.0)
+		_wear(hit * (2.0 if spec.roof else 3.0))
+		if driver:
+			if spec.two_wheels and hit > 6.0:
+				# С мотоцикла на такой скорости вылетаешь
+				speed = 0.0
+				lateral = 0.0
+				velocity = Vector3.ZERO
+				engine_on = false
+				var p := driver
+				_drop_driver()
+				p.velocity = Vector3.ZERO
+				NeedsManager.rest(-10.0)
+				GameManager.notify("Упал с мотоцикла! Ява: %d%%" % int(condition))
+			else:
+				GameManager.notify("Бах! %s: %d%%" % [spec.title, int(condition)])
+
+
+## Покрытие под колёсами: сопротивление качению и сцепление шин.
+func surface() -> Dictionary:
+	if on_asphalt():
+		return {"roll": 1.0, "grip": 1.0 - WeatherManager.rain * 0.15}
+	var mud := WeatherManager.mud_factor()
+	var p := global_position
+	# Деревенская улица, съезд и тропинки — грунт; остальное — трава
+	var dirt := (p.x > -166.0 and p.x < -56.0 and p.z > -43.0 and p.z < -37.0) or (p.x > -63.0 and p.x < -56.0 and p.z > -43.0 and p.z < -4.0)
+	# Качение по грунту — вдвое тяжелее асфальта, по траве — в пять раз
+	if dirt:
+		return {"roll": 2.0 * mud, "grip": 0.8 / sqrt(mud)}
+	return {"roll": 5.0 * mud, "grip": 0.6 / sqrt(mud)}
+
+
+func _stall(text: String) -> void:
+	engine_on = false
+	rpm = 0.0
+	SoundLibrary.play_at("stall", global_position)
+	_wear(0.5)
+	if driver:
+		GameManager.notify(text)
+
+
+func _wear(amount: float) -> void:
+	condition = maxf(condition - amount, 0.0)
+
+
+func _update_sound() -> void:
+	if engine_on or rpm > 50.0:
+		if not _engine_snd.playing:
+			_engine_snd.play()
+		# 4 цилиндра — 2 вспышки на оборот, одноцилиндровая Ява — одна, но звонче;
+		# звук записан на 55 вспышек в секунду
+		var per_rev := 2.0 if spec.roof else 1.2
+		_engine_snd.pitch_scale = clampf(rpm / 60.0 * per_rev / 55.0, 0.3, 4.0)
+		var gas := 1.0 if driver and Input.is_physical_key_pressed(KEY_W) else 0.0
+		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0)
+	elif _engine_snd.playing:
+		_engine_snd.stop()
+	# Визг шин в заносе
+	var skid := absf(lateral)
+	if skid > 2.5 and on_asphalt():
+		if not _skid_snd.playing:
+			_skid_snd.play()
+		_skid_snd.volume_db = linear_to_db(clampf((skid - 2.5) / 5.0, 0.05, 1.0)) - 2.0
+	elif _skid_snd.playing:
+		_skid_snd.stop()
+	var want_rain: bool = driver != null and spec.roof and WeatherManager.rain > 0.3
+	if want_rain != _rain_snd.playing:
+		if want_rain:
+			_rain_snd.play()
+		else:
+			_rain_snd.stop()
+
+
+## Фары: сами — в темноте, тумане и дождь; L — в любое время.
+## Стоп-сигналы горят, пока жмут тормоз.
+func _update_lights() -> void:
+	var h := TimeManager.hour()
+	var dark := h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
+	var lit := engine_on and (dark or _lights_forced)
+	for l in _headlights:
+		l.visible = lit
+	if _brake_mat:
+		var on := braking and driver != null
+		_brake_mat.albedo_color = Color(1.0, 0.1, 0.05) if on else (Color(0.55, 0.05, 0.03) if lit else Color(0.3, 0.04, 0.03))
+
+
+func _update_camera(dt: float) -> void:
+	if not chase_view or _chase == null:
+		return
+	var back: Vector3 = spec.chase
+	var target := global_transform.origin + global_transform.basis * back
+	var look := global_transform.origin + Vector3(0, 1.0, 0)
+	var k := minf(dt * 5.0, 1.0)
+	_chase.global_position = _chase.global_position.lerp(target, k) if dt < 0.5 else target
+	_chase.look_at(look)
+
+
+## Асфальт — трасса, город, площадки АЗС и СТО.
+func on_asphalt() -> bool:
+	var p := global_position
+	if absf(p.z) < 4.2:
+		return true
+	if p.x > -120.0 and p.x < -78.0 and p.z > 0.0 and p.z < 21.0:
+		return true
+	return p.x > 38.0 and p.z > 0.0
+
+
+func headlights_on() -> bool:
+	return _headlights[0].visible
+
+
+func tank() -> float:
+	return spec.tank
+
+
+func refuel(liters: float) -> void:
+	fuel = minf(fuel + liters, spec.tank)
+	_warned_fuel = false
+
+
+func repair() -> void:
+	condition = 100.0
+
+
+func _engine_torque(r: float, throttle: float) -> float:
+	var idle: float = spec.idle
+	var torque: float = spec.torque
+	# Регулятор холостого хода держит обороты
+	var idle_t := clampf((idle - r) * torque * 0.002, 0.0, torque * 0.63)
+	var peak := torque * throttle * clampf(1.2 - absf(r - (spec.peak_rpm as float)) / (spec.redline as float * 0.8), 0.4, 1.0)
+	if r >= (spec.redline as float):
+		peak = 0.0
+	return idle_t + peak
+
+
+func speed_kmh() -> float:
+	return absf(speed) * 3.6
+
+
+# --- Внешний вид ------------------------------------------------------------
+
+func _build_car() -> void:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var paint := Color(0.78, 0.72, 0.52)
+	var dark := Color(0.08, 0.08, 0.09)
+	var chrome := Color(0.75, 0.75, 0.78)
+	var seat := Color(0.3, 0.2, 0.15)
+	# Кузов: низ, капот и багажник (вперёд — к -Z)
+	b.box(Vector3(-0.82, 0.32, -2.05), Vector3(0.82, 0.9, 2.05), paint)
+	for x in [-0.72, 0.66]:
+		b.box(Vector3(x, 0.9, -0.55), Vector3(x + 0.06, 1.42, -0.45), paint)
+		b.box(Vector3(x, 0.9, 0.95), Vector3(x + 0.06, 1.42, 1.05), paint)
+		b.box(Vector3(x, 0.9, 0.2), Vector3(x + 0.06, 1.42, 0.26), paint)
+	b.box(Vector3(-0.74, 1.42, -0.6), Vector3(0.74, 1.47, 1.08), paint)
+	b.box(Vector3(-0.7, 1.4, -0.55), Vector3(0.7, 1.42, 1.03), Color(0.85, 0.82, 0.75))
+	var panel := Color(0.28, 0.24, 0.2)
+	b.box(Vector3(-0.72, 0.9, -0.55), Vector3(0.72, 1.02, -0.32), panel)
+	b.box(Vector3(-0.5, 1.0, -0.4), Vector3(-0.22, 1.08, -0.33), Color(0.1, 0.1, 0.1))
+	b.box(Vector3(-0.48, 1.01, -0.331), Vector3(-0.24, 1.07, -0.329), Color(0.9, 0.85, 0.6))
+	var rim := Color(0.12, 0.12, 0.12)
+	b.box(Vector3(-0.52, 0.96, -0.2), Vector3(-0.2, 0.99, -0.18), rim)
+	b.box(Vector3(-0.52, 1.17, -0.2), Vector3(-0.2, 1.2, -0.18), rim)
+	b.box(Vector3(-0.52, 0.96, -0.2), Vector3(-0.49, 1.2, -0.18), rim)
+	b.box(Vector3(-0.23, 0.96, -0.2), Vector3(-0.2, 1.2, -0.18), rim)
+	b.box(Vector3(-0.37, 0.96, -0.32), Vector3(-0.35, 1.05, -0.19), rim)
+	for x in [-0.36, 0.36]:
+		b.box(Vector3(x - 0.25, 0.9, 0.1), Vector3(x + 0.25, 1.0, 0.55), seat)
+		b.box(Vector3(x - 0.25, 1.0, 0.5), Vector3(x + 0.25, 1.45, 0.6), seat)
+	b.box(Vector3(-0.7, 0.9, 0.7), Vector3(0.7, 1.0, 1.0), seat)
+	b.box(Vector3(-0.85, 0.32, -2.12), Vector3(0.85, 0.45, -2.02), chrome)
+	b.box(Vector3(-0.85, 0.32, 2.02), Vector3(0.85, 0.45, 2.12), chrome)
+	b.box(Vector3(-0.35, 0.6, -2.07), Vector3(0.35, 0.78, -2.04), dark)
+	for x in [-0.62, 0.48]:
+		b.box(Vector3(x, 0.6, -2.08), Vector3(x + 0.14, 0.76, -2.04), Color(1.0, 0.97, 0.85))
+	_body.add_child(b.build_mesh())
+	_brake_lights([Vector3(-0.62, 0.62, 2.04), Vector3(0.48, 0.62, 2.04)], Vector3(0.14, 0.12, 0.04))
+	for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+		_wheel(p, 0.29, 0.2, dark, chrome)
+
+
+func _build_moto() -> void:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var paint := Color(0.7, 0.12, 0.1)
+	var dark := Color(0.08, 0.08, 0.09)
+	var chrome := Color(0.78, 0.78, 0.8)
+	# Рама, бак, сиденье, фара, руль, глушитель (вперёд — к -Z)
+	b.box(Vector3(-0.05, 0.35, -0.55), Vector3(0.05, 0.5, 0.6), dark)
+	b.box(Vector3(-0.2, 0.55, -0.45), Vector3(0.2, 0.85, 0.05), paint)
+	b.box(Vector3(-0.17, 0.8, 0.0), Vector3(0.17, 0.9, 0.65), Color(0.12, 0.1, 0.1))
+	b.box(Vector3(-0.22, 0.3, -0.35), Vector3(0.22, 0.55, 0.15), Color(0.3, 0.3, 0.32))
+	b.box(Vector3(-0.04, 0.35, -0.85), Vector3(0.04, 1.0, -0.75), chrome)
+	b.box(Vector3(-0.38, 1.0, -0.8), Vector3(0.38, 1.04, -0.74), dark)
+	b.box(Vector3(-0.1, 0.88, -0.97), Vector3(0.1, 1.05, -0.84), chrome)
+	b.box(Vector3(-0.07, 0.92, -0.98), Vector3(0.07, 1.02, -0.97), Color(1.0, 0.97, 0.85))
+	b.box(Vector3(0.18, 0.28, 0.0), Vector3(0.26, 0.36, 0.9), chrome)
+	b.box(Vector3(-0.26, 0.28, 0.0), Vector3(-0.18, 0.36, 0.9), chrome)
+	b.box(Vector3(-0.12, 0.62, 0.62), Vector3(0.12, 0.7, 0.85), paint)
+	_body.add_child(b.build_mesh())
+	_brake_lights([Vector3(0, 0.66, 0.85)], Vector3(0.12, 0.07, 0.03))
+	for p in [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]:
+		_wheel(p, 0.31, 0.1, dark, chrome)
+	# Мотоциклист — виден с вида сзади, пока кто-то едет
+	_rider = Node3D.new()
+	var r := MeshBuilder.new()
+	r.ground_shade = false
+	var jacket := Color(0.2, 0.25, 0.35)
+	r.box(Vector3(-0.2, 0.9, -0.05), Vector3(0.2, 1.45, 0.3), jacket)
+	r.box(Vector3(-0.25, 0.55, -0.35), Vector3(-0.12, 0.95, 0.2), Color(0.2, 0.2, 0.24))
+	r.box(Vector3(0.12, 0.55, -0.35), Vector3(0.25, 0.95, 0.2), Color(0.2, 0.2, 0.24))
+	r.box(Vector3(-0.32, 1.1, -0.75), Vector3(-0.2, 1.35, 0.1), jacket)
+	r.box(Vector3(0.2, 1.1, -0.75), Vector3(0.32, 1.35, 0.1), jacket)
+	r.box(Vector3(-0.14, 1.45, -0.05), Vector3(0.14, 1.75, 0.22), Color(0.9, 0.9, 0.2))
+	_rider.add_child(r.build_mesh())
+	_rider.visible = false
+	_body.add_child(_rider)
+
+
+func _wheel(p: Vector3, r: float, w: float, tyre: Color, hub: Color) -> void:
+	var wb := MeshBuilder.new()
+	wb.ground_shade = false
+	wb.box(Vector3(-w * 0.5, -r, -r), Vector3(w * 0.5, r, r), tyre)
+	wb.box(Vector3(-w * 0.55, -r * 0.4, -r * 0.4), Vector3(w * 0.55, r * 0.4, r * 0.4), hub)
+	var n := Node3D.new()
+	n.position = p
+	n.add_child(wb.build_mesh())
+	_body.add_child(n)
+	_wheels.append(n)
+
+
+## Стоп-сигналы — отдельный меш со своим материалом: его яркость меняется.
+func _brake_lights(points: Array, size: Vector3) -> void:
+	var box := BoxMesh.new()
+	box.size = size
+	_brake_mat = StandardMaterial3D.new()
+	_brake_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_brake_mat.albedo_color = Color(0.3, 0.04, 0.03)
+	for p in points:
+		var mi := MeshInstance3D.new()
+		mi.mesh = box
+		mi.material_override = _brake_mat
+		mi.position = p
+		_body.add_child(mi)
+
+
+func _process(_delta: float) -> void:
+	# От первого лица мотоциклиста не рисуем — камера у него в голове
+	if _rider:
+		_rider.visible = driver != null and chase_view
+
+
+# --- Сохранение -------------------------------------------------------------
+
+func save_state() -> Dictionary:
+	return {
+		"pos": SaveManager.vec_to_arr(global_position),
+		"yaw": rotation.y,
+		"engine": engine_on,
+		"gear": gear,
+		"driver": driver != null,
+		"fuel": fuel,
+		"condition": condition,
+	}
+
+
+func load_state(d: Dictionary) -> void:
+	global_position = SaveManager.arr_to_vec(d.get("pos"))
+	rotation.y = float(d.get("yaw", 0.0))
+	speed = 0.0
+	lateral = 0.0
+	velocity = Vector3.ZERO
+	fuel = float(d.get("fuel", 25.0))
+	condition = float(d.get("condition", 100.0))
+	engine_on = bool(d.get("engine", false))
+	rpm = spec.idle if engine_on else 0.0
+	# После загрузки — на нейтрали, иначе техника сразу поедет или заглохнет
+	gear = 0
+	clutch = 1.0
+	if driver:
+		_drop_driver()
+	# Игрок загружается отдельно — сажаем его после всех загрузок
+	if bool(d.get("driver", false)):
+		_on_enter.call_deferred()

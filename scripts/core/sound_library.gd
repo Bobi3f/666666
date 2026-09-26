@@ -32,6 +32,7 @@ func _ready() -> void:
 	_streams["horn"] = _make(_horn(), false)
 	_streams["hammer"] = _make(_hammer(), false)
 	_streams["splash"] = _make(_splash(), false)
+	_streams["skid"] = _make(_skid(), true)
 
 
 func stream(sound: String) -> AudioStreamWAV:
@@ -287,4 +288,16 @@ func _splash() -> PackedFloat32Array:
 		hp = 0.7 * (hp + n - prev)
 		prev = n
 		a[i] = hp * exp(-t * 7.0) * 0.5
+	return a
+
+
+## Визг шин: высокий тон, дрожащий по частоте, с шипением; петля 1 с.
+func _skid() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var phase := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var f := 1100.0 + sin(TAU * 7.0 * t) * 120.0 + sin(TAU * 13.0 * t) * 60.0
+		phase += f / RATE
+		a[i] = sin(TAU * phase) * 0.25 + _rng.randf_range(-0.12, 0.12)
 	return a

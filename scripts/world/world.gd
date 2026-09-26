@@ -1086,18 +1086,22 @@ func _fuel_station(b: MeshBuilder) -> void:
 	add_child(zone)
 
 
-func _car_near(p: Vector3, dist: float) -> Car:
-	var car := GameManager.car as Car
-	if car and car.global_position.distance_to(p) < dist:
-		return car
-	return null
+## Ближайший к точке транспорт игрока (машина или мотоцикл).
+func _car_near(p: Vector3, dist: float) -> Vehicle:
+	var best: Vehicle = null
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var d: float = (v as Vehicle).global_position.distance_to(p)
+		if d < dist:
+			dist = d
+			best = v
+	return best
 
 
 func _fuel_prompt() -> String:
 	var car := _car_near(FUEL_POS, 14.0)
 	if car == null:
-		return "Заправка: подгони машину к колонкам"
-	var need := int(ceilf(Car.TANK - car.fuel))
+		return "Заправка: подгони машину или мотоцикл к колонкам"
+	var need := int(ceilf(car.tank() - car.fuel))
 	if need <= 0:
 		return "Бак полный (%d л)" % int(car.fuel)
 	return "E — заправить %d л за %d грн (в баке %d л)" % [need, need * FUEL_PRICE, int(car.fuel)]
@@ -1106,9 +1110,9 @@ func _fuel_prompt() -> String:
 func _refuel() -> void:
 	var car := _car_near(FUEL_POS, 14.0)
 	if car == null:
-		GameManager.notify("Машины у колонок нет")
+		GameManager.notify("У колонок нет ни машины, ни мотоцикла")
 		return
-	var need := Car.TANK - car.fuel
+	var need := car.tank() - car.fuel
 	var liters := minf(need, floorf(GameManager.money / float(FUEL_PRICE)))
 	if liters < 1.0:
 		GameManager.notify("Бак полный" if need < 1.0 else "Не хватает денег даже на литр")
@@ -1142,17 +1146,17 @@ func _repair_garage(b: MeshBuilder) -> void:
 	add_child(zone)
 
 
-func _repair_cost(car: Car) -> int:
+func _repair_cost(car: Vehicle) -> int:
 	return int(ceilf((100.0 - car.condition) * 25.0))
 
 
 func _repair_prompt() -> String:
 	var car := _car_near(GARAGE_POS, 14.0)
 	if car == null:
-		return "СТО: загони машину в гараж"
+		return "СТО: загони машину или мотоцикл в гараж"
 	if car.condition >= 99.5:
-		return "Механик: «Машина в порядке — %d%%»" % int(car.condition)
-	return "E — починить машину (%d%%) за %d грн, 1 час" % [int(car.condition), _repair_cost(car)]
+		return "Механик: «%s в порядке — %d%%»" % [car.spec.title, int(car.condition)]
+	return "E — починить: %s (%d%%) за %d грн, 1 час" % [car.spec.title, int(car.condition), _repair_cost(car)]
 
 
 func _repair() -> void:
@@ -1218,7 +1222,7 @@ func _kolkhoz_work() -> void:
 func _check_delivery() -> void:
 	if not Progress.delivery_active:
 		return
-	var car := GameManager.car as Car
+	var car := GameManager.car as Vehicle
 	if car and car.driver and car.global_position.distance_to(SHOP_POS + Vector3(-6.0, 0, 0)) < 9.0 and car.speed_kmh() < 5.0:
 		Progress.finish_delivery()
 
@@ -1277,7 +1281,7 @@ func _build_shops(b: MeshBuilder) -> void:
 
 
 func _take_delivery() -> void:
-	var car := GameManager.car as Car
+	var car := GameManager.car as Vehicle
 	if car == null or car.global_position.distance_to(Vector3(27.5, 0, 28.0)) > 25.0:
 		GameManager.notify("Подгони машину к складу — хлеб грузят в багажник")
 		return
@@ -1365,9 +1369,19 @@ func _spawn_player_and_car() -> void:
 	add_child(player)
 	# Внутри своего дома, на кухне у входа, лицом к печи
 	player.global_position = Vector3(PLAYER_HOUSE.x - 1.6, HOUSE_Y + 0.05, PLAYER_HOUSE.y + 2.0)
-	var car := Car.new()
+	var car := Vehicle.new()
+	car.kind = "car"
 	car.name = "Car"
 	add_child(car)
+	GameManager.car = car
 	# Жигули на улице перед домом, носом вдоль улицы
 	car.global_position = Vector3(PLAYER_HOUSE.x + 4.0, 0.1, -39.5)
 	car.rotation.y = -PI / 2.0
+	# Ява у забора через дорогу от калитки
+	var moto := Vehicle.new()
+	moto.kind = "moto"
+	moto.name = "Moto"
+	add_child(moto)
+	GameManager.moto = moto
+	moto.global_position = Vector3(PLAYER_HOUSE.x - 5.0, 0.1, -41.6)
+	moto.rotation.y = -PI / 2.0

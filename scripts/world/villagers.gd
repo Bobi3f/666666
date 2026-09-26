@@ -116,9 +116,9 @@ func _walk(delta: float) -> void:
 	var p := GameManager.player as Node3D
 	if p and p.visible and p.global_position.distance_to(_walker.position) < 2.5:
 		return
-	var car := GameManager.car as Node3D
-	if car and car.global_position.distance_to(_walker.position + Vector3(_walk_dir * 2.0, 0, 0)) < 3.5:
-		return
+	for car in get_tree().get_nodes_in_group("vehicles"):
+		if (car as Node3D).global_position.distance_to(_walker.position + Vector3(_walk_dir * 2.0, 0, 0)) < 3.5:
+			return
 	_walker.position.x += _walk_dir * 1.2 * delta
 	if _walker.position.x > -66.0:
 		_walk_dir = -1.0
