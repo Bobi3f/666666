@@ -12,6 +12,11 @@ extends CharacterBody3D
 ##   * переключение без сцепления — скрежет, передача не включится.
 ## Педаль сцепления на клавиатуре — кнопка, поэтому в зоне схватывания
 ## она отпускается медленно сама, как это делает нога.
+##
+## Бензин тратится по оборотам и газу, заправка — на АЗС у трассы.
+## Машина изнашивается: скрежет, заглохание и удары. Изношенная глохнет
+## сама, разбитая не заводится — чинить на СТО рядом с АЗС.
+## В дождь грунтовки раскисают: вне асфальта машина вязнет.
 
 const RATIOS := {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82}
 const FINAL := 4.1
@@ -23,6 +28,10 @@ const STALL_RPM := 380.0
 const ENGINE_INERTIA := 0.18
 const WHEELBASE := 2.4
 const GRAVITY := 12.0
+const TANK := 40.0
+## Литров в секунду: холостые и прибавка на полном газу у отсечки
+const FUEL_IDLE := 0.004
+const FUEL_LOAD := 0.05
 
 var driver: Player
 var engine_on := false
@@ -33,11 +42,19 @@ var speed := 0.0
 ## 1 — педаль отпущена (сцепление включено), 0 — выжата.
 var clutch := 1.0
 var locked := false
+## Литры в баке.
+var fuel := 25.0
+## Состояние, 0–100 %.
+var condition := 100.0
 
 var _steer := 0.0
 var _camera: Camera3D
 var _zone: InteractZone
 var _wheels: Array[Node3D] = []
+var _engine_snd: AudioStreamPlayer3D
+var _rain_snd: AudioStreamPlayer
+var _rng := RandomNumberGenerator.new()
+var _warned_fuel := false
 
 
 func _ready() -> void:
@@ -71,6 +88,18 @@ func _ready() -> void:
 	_zone.activated.connect(_on_enter)
 	add_child(_zone)
 	floor_snap_length = 0.4
+	_rng.randomize()
+	_engine_snd = AudioStreamPlayer3D.new()
+	_engine_snd.stream = SoundLibrary.stream("engine")
+	_engine_snd.unit_size = 6.0
+	_engine_snd.max_distance = 80.0
+	_engine_snd.position = Vector3(0, 0.7, -1.5)
+	add_child(_engine_snd)
+	# Дождь по крыше — только сидя внутри
+	_rain_snd = AudioStreamPlayer.new()
+	_rain_snd.stream = SoundLibrary.stream("rain")
+	_rain_snd.volume_db = -6.0
+	add_child(_rain_snd)
 
 
 # --- Посадка ----------------------------------------------------------------
@@ -112,6 +141,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_shift(gear + 1)
 		KEY_BRACKETLEFT:
 			_shift(gear - 1)
+		KEY_H:
+			SoundLibrary.play_at("horn", global_position, 2.0)
 
 
 func _toggle_ignition() -> void:
@@ -121,6 +152,13 @@ func _toggle_ignition() -> void:
 		return
 	if gear != 0 and clutch > 0.2:
 		GameManager.notify("Выжми сцепление (Shift) или поставь нейтраль")
+		return
+	SoundLibrary.play_at("starter", global_position)
+	if fuel <= 0.0:
+		GameManager.notify("Стартер крутит, а мотор не схватывает — бак пустой. Заправка у трассы")
+		return
+	if condition < 10.0:
+		GameManager.notify("Мотор не заводится — машина разбита. Нужна СТО у трассы")
 		return
 	engine_on = true
 	rpm = IDLE
@@ -133,6 +171,8 @@ func _shift(g: int) -> void:
 		return
 	if clutch > 0.15:
 		GameManager.notify("Скрежет! Выжми сцепление (Shift)")
+		SoundLibrary.play_at("grind", global_position)
+		_wear(1.5)
 		return
 	if g == -1 and speed > 1.0:
 		GameManager.notify("Задняя только с места")
@@ -191,7 +231,10 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 			force = t_c * ratio / WHEEL_R
 			rpm += (t_eng - t_fric - t_c) / ENGINE_INERTIA * dt * 60.0 / TAU
 
+	# В грязи колёса вязнут: сопротивление качению растёт
 	var rolling := 0.012 * MASS * 9.8
+	if not on_asphalt():
+		rolling *= WeatherManager.mud_factor()
 	var resist := rolling * signf(speed) + 0.42 * speed * absf(speed)
 	speed += (force - resist) / MASS * dt
 	# Стоим и толкать нечем — не ползём от погрешностей
@@ -206,10 +249,17 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 		rpm = speed / WHEEL_R * 60.0 / TAU * ratio
 	rpm = clampf(rpm, 0.0, REDLINE)
 	if engine_on and rpm < STALL_RPM:
-		engine_on = false
-		rpm = 0.0
-		if driver:
-			GameManager.notify("Заглох! Выжми сцепление и заведи снова (R)")
+		_stall("Заглох! Выжми сцепление и заведи снова (R)")
+	if engine_on:
+		fuel = maxf(fuel - (FUEL_IDLE + FUEL_LOAD * throttle * rpm / REDLINE) * dt, 0.0)
+		if fuel <= 0.0:
+			_stall("Мотор чихнул и заглох — кончился бензин. Заправка у трассы")
+		elif fuel < 5.0 and not _warned_fuel and driver:
+			_warned_fuel = true
+			GameManager.notify("Бензин на исходе — меньше 5 литров")
+		# Изношенная машина сама глохнет на ходу
+		elif condition < 30.0 and _rng.randf() < dt * (30.0 - condition) * 0.004:
+			_stall("Мотор заглох сам — машина изношена. Почини на СТО")
 	if not engine_on:
 		rpm = move_toward(rpm, 0.0, 3000.0 * dt)
 
@@ -226,10 +276,69 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 	else:
 		velocity.y -= GRAVITY * dt
 	move_and_slide()
-	# Упёрлись в стену — скорость теряется
+	# Упёрлись в стену — скорость теряется, сильный удар бьёт машину
+	var before := speed
 	speed = fwd.dot(Vector3(velocity.x, 0, velocity.z))
+	var hit := absf(before) - absf(speed)
+	if hit > 3.0 and get_slide_collision_count() > 0:
+		SoundLibrary.play_at("crash", global_position, minf(hit, 8.0) - 4.0)
+		_wear(hit * 2.0)
+		if driver:
+			GameManager.notify("Бах! Машина: %d%%" % int(condition))
+	_update_sound()
 	for w in _wheels:
 		w.rotation.x -= speed / WHEEL_R * dt
+
+
+func _stall(text: String) -> void:
+	engine_on = false
+	rpm = 0.0
+	SoundLibrary.play_at("stall", global_position)
+	_wear(0.5)
+	if driver:
+		GameManager.notify(text)
+
+
+func _wear(amount: float) -> void:
+	condition = maxf(condition - amount, 0.0)
+
+
+func _update_sound() -> void:
+	if engine_on or rpm > 50.0:
+		if not _engine_snd.playing:
+			_engine_snd.play()
+		# 4 цилиндра — 2 вспышки на оборот; звук записан на 55 вспышек в секунду
+		_engine_snd.pitch_scale = clampf(rpm / 60.0 * 2.0 / 55.0, 0.3, 4.0)
+		var gas := 1.0 if driver and Input.is_physical_key_pressed(KEY_W) else 0.0
+		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0)
+	elif _engine_snd.playing:
+		_engine_snd.stop()
+	var want_rain := driver != null and WeatherManager.rain > 0.3
+	if want_rain != _rain_snd.playing:
+		if want_rain:
+			_rain_snd.play()
+		else:
+			_rain_snd.stop()
+
+
+## Асфальт — трасса и городские улицы. Остальное в дождь раскисает.
+func on_asphalt() -> bool:
+	var p := global_position
+	if absf(p.z) < 4.2:
+		return true
+	# Площадки АЗС и СТО
+	if p.x > -120.0 and p.x < -78.0 and p.z > 0.0 and p.z < 21.0:
+		return true
+	return p.x > 38.0 and p.z > 0.0
+
+
+func refuel(liters: float) -> void:
+	fuel = minf(fuel + liters, TANK)
+	_warned_fuel = false
+
+
+func repair() -> void:
+	condition = 100.0
 
 
 func _engine_torque(r: float, throttle: float) -> float:
@@ -309,6 +418,8 @@ func save_state() -> Dictionary:
 		"engine": engine_on,
 		"gear": gear,
 		"driver": driver != null,
+		"fuel": fuel,
+		"condition": condition,
 	}
 
 
@@ -316,6 +427,8 @@ func load_state(d: Dictionary) -> void:
 	global_position = SaveManager.arr_to_vec(d.get("pos"))
 	rotation.y = float(d.get("yaw", 0.0))
 	speed = 0.0
+	fuel = float(d.get("fuel", 25.0))
+	condition = float(d.get("condition", 100.0))
 	engine_on = bool(d.get("engine", false))
 	rpm = IDLE if engine_on else 0.0
 	# После загрузки — на нейтрали, иначе машина сразу поедет или заглохнет

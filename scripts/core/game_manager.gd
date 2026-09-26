@@ -4,7 +4,8 @@ extends Node
 signal money_changed(value: int)
 signal message(text: String)
 
-const START_MONEY := 10000
+## Денег в обрез: на жизнь хватит, на новый дом — надо заработать.
+const START_MONEY := 1500
 
 var money := START_MONEY
 var player: Node3D
@@ -22,6 +23,7 @@ func spend(amount: int) -> bool:
 		notify("Не хватает денег: нужно %d грн" % amount)
 		return false
 	add_money(-amount)
+	SoundLibrary.play("cash", -6.0)
 	return true
 
 

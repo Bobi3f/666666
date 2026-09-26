@@ -8,11 +8,11 @@ extends Node
 ## всё работает.
 ##
 ## Сохраняется всё, что лежит в группе "persist" и умеет save_state/load_state,
-## плюс синглтоны с деньгами, временем и потребностями.
+## плюс синглтоны с деньгами, временем, потребностями, погодой и целями.
 
 const PATH := "user://save.json"
 
-var _singletons := ["GameManager", "TimeManager", "NeedsManager"]
+var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress"]
 
 
 func _input(event: InputEvent) -> void:

@@ -39,6 +39,8 @@ var _jump_buffer := 0.0
 var _bob_time := 0.0
 var _land_dip := 0.0
 var _fall_speed := 0.0
+## Пройдено с последнего шага — для звука шагов
+var _stride := 0.0
 
 
 func _ready() -> void:
@@ -71,8 +73,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key and key.pressed and not key.echo:
 		match key.physical_keycode:
-			KEY_ESCAPE:
-				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			KEY_E:
 				_use()
 			KEY_Q:
@@ -88,7 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var motion := event as InputEventMouseMotion
 	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_look(-motion.relative.x * MOUSE_SENS, -motion.relative.y * MOUSE_SENS)
+		var k := MOUSE_SENS * SettingsManager.mouse_sens
+		_look(-motion.relative.x * k, -motion.relative.y * k)
 
 
 func _look(yaw: float, pitch: float) -> void:
@@ -130,6 +131,7 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		_crouch_toggled = false
+		SoundLibrary.play("jump", -8.0, randf_range(0.9, 1.1))
 	elif not on_floor:
 		velocity.y -= GRAVITY * delta
 		_fall_speed = maxf(_fall_speed, -velocity.y)
@@ -141,8 +143,10 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and _fall_speed > 0.0:
 		if _fall_speed > 3.0:
 			_land_dip = minf(_fall_speed * 0.025, 0.25)
+			SoundLibrary.play("land", -6.0 + minf(_fall_speed, 8.0), randf_range(0.9, 1.1))
 		_fall_speed = 0.0
 	_update_camera(delta, running and flat.length() > WALK)
+	_footsteps(delta)
 
 	# Упал за край мира — вернуть на дорогу
 	if global_position.y < -20.0:
@@ -214,6 +218,19 @@ func _try_step(delta: float) -> bool:
 	return true
 
 
+## Шаг — каждые ~0.7 м пути по земле; в присяде тише.
+func _footsteps(delta: float) -> void:
+	var v := Vector2(velocity.x, velocity.z).length()
+	if not is_on_floor() or v < 0.5:
+		_stride = 0.0
+		return
+	_stride += v * delta
+	var step_len := 0.9 if v > WALK + 0.5 else 0.7
+	if _stride >= step_len:
+		_stride = 0.0
+		SoundLibrary.play("step", -14.0 if crouching else -8.0, randf_range(0.8, 1.2))
+
+
 ## Покачивание при ходьбе, просадка при приземлении, шире обзор на бегу.
 func _update_camera(delta: float, sprinting: bool) -> void:
 	var speed := Vector2(velocity.x, velocity.z).length()
@@ -245,7 +262,7 @@ func exit_zone(z: InteractZone) -> void:
 ## Подсказка для HUD: ближайшее действие.
 func current_prompt() -> String:
 	var z := _nearest_zone()
-	return z.prompt if z else ""
+	return z.text() if z else ""
 
 
 func _nearest_zone() -> InteractZone:

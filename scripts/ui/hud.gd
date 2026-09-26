@@ -12,6 +12,7 @@ var _car: Label
 var _prompt: Label
 var _msg: Label
 var _msg_time := 0.0
+var _goal: Label
 
 
 func _ready() -> void:
@@ -27,7 +28,7 @@ func _ready() -> void:
 	_car = _label(Vector2(16, 0), 22)
 	_car.anchor_top = 1.0
 	_car.anchor_bottom = 1.0
-	_car.offset_top = -70
+	_car.offset_top = -95
 	_prompt = _label(Vector2(0, 0), 20)
 	_prompt.set_anchors_preset(Control.PRESET_CENTER)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -39,11 +40,13 @@ func _ready() -> void:
 	_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg.offset_left = -400
 	_msg.offset_right = 400
-	_msg.offset_top = 80
+	_msg.offset_top = 110
+	_goal = _label(Vector2(16, 70), 16)
+	_goal.modulate = Color(1.0, 0.92, 0.6)
 	var hint := _label(Vector2(0, 12), 15)
 	hint.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	hint.offset_left = -230
-	hint.text = "F1 — управление\nF5 — сохранить  F9 — загрузить"
+	hint.text = "F1 — управление   Esc — меню\nF5 — сохранить  F9 — загрузить"
 	# Прицел-точка
 	var dot := ColorRect.new()
 	dot.color = Color(1, 1, 1, 0.7)
@@ -70,7 +73,8 @@ func show_message(text: String) -> void:
 
 
 func _process(delta: float) -> void:
-	_top.text = "%s     %d грн" % [TimeManager.clock_text(), GameManager.money]
+	_top.text = "%s     %d грн     %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
+	_goal.text = Progress.goal_text()
 	_food_bar.value = NeedsManager.food
 	_energy_bar.value = NeedsManager.energy
 	_food_pct.text = "%d%%" % int(NeedsManager.food)
@@ -80,10 +84,12 @@ func _process(delta: float) -> void:
 	var p := GameManager.player as Player
 	if car and car.driver:
 		_car.visible = true
-		_car.text = "%3d км/ч   %4d об/мин   Передача: %s   %s   Сцепление: %s" % [
+		_car.text = "%3d км/ч   %4d об/мин   Передача: %s   %s   Сцепление: %s\nБензин: %d л   Машина: %d%%%s" % [
 			int(car.speed_kmh()), int(car.rpm), car.gear_name(),
 			"Мотор работает" if car.engine_on else "Мотор заглушен (R)",
-			"выжато" if car.clutch < 0.2 else ("схватывает" if car.clutch < 0.8 else "отпущено")]
+			"выжато" if car.clutch < 0.2 else ("схватывает" if car.clutch < 0.8 else "отпущено"),
+			int(ceilf(car.fuel)), int(car.condition),
+			"   Грязь — машина вязнет" if not car.on_asphalt() and WeatherManager.wetness > 0.3 else ""]
 		_prompt.text = ""
 	else:
 		_car.visible = false

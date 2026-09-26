@@ -20,9 +20,13 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
+SettingsManager="*res://scripts/core/settings_manager.gd"
+SoundLibrary="*res://scripts/core/sound_library.gd"
 GameManager="*res://scripts/core/game_manager.gd"
 TimeManager="*res://scripts/core/time_manager.gd"
 NeedsManager="*res://scripts/core/needs_manager.gd"
+WeatherManager="*res://scripts/core/weather_manager.gd"
+Progress="*res://scripts/core/progress_manager.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
 ControlsHelp="*res://scripts/ui/controls_help.gd"
 

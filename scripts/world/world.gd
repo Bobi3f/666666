@@ -24,6 +24,16 @@ const LAMP_Z := -36.9
 ## Сельмаг за съездом к трассе, дверью к деревне.
 const SHOP_POS := Vector3(-45.0, 0, -24.0)
 const POND_POS := Vector3(-182.0, 0, -40.0)
+## Остановки: у Каменки (северная обочина) и в городе у склада (южная).
+const STOP_VILLAGE := Vector3(-68.5, 0, -7.6)
+const STOP_TOWN := Vector3(32.0, 0, 10.5)
+const BUS_FARE := 15
+## АЗС и СТО у трассы напротив деревни.
+const FUEL_POS := Vector3(-110.0, 0, 13.0)
+const GARAGE_POS := Vector3(-86.0, 0, 14.0)
+const FUEL_PRICE := 32
+## Колхозный сарай у стогов.
+const BARN_POS := Vector3(-35.0, 0, -47.0)
 
 const HOUSE_Y := 0.05  # пол дома чуть выше земли
 const SKIN := 0.1       # толщина наружной обшивки
@@ -38,6 +48,10 @@ var _vrng := RandomNumberGenerator.new()
 ## Лампы фонарей и пятна света под ними: видны только в темноте.
 var _street_lights: Array[Node3D] = []
 var _light_pool_mat: StandardMaterial3D
+## Двор игрока строится отдельно от общего меша: его перестраивают.
+var _yard_nodes: Array[Node] = []
+var _sky_top: Color
+var _sky_horizon: Color
 
 
 func _ready() -> void:
@@ -53,6 +67,7 @@ func _ready() -> void:
 	_build_power_line(b)
 	_build_village(b)
 	_build_village_life(b, glow)
+	_build_roadside(b)
 	_build_town(b, glow)
 	_build_shops(b)
 	_build_forest(b)
@@ -69,13 +84,19 @@ func _ready() -> void:
 	add_child(glow_mesh)
 	print("Мир: %d треугольников в одном меше, %d коллизий" % [b.triangle_count(), body.get_child_count()])
 
+	_build_player_yard()
+	Progress.house_changed.connect(func(_l: int) -> void: _build_player_yard())
 	_spawn_player_and_car()
+	add_child(preload("res://scripts/world/ambience.gd").new())
+	add_child(preload("res://scripts/world/traffic.gd").new())
+	add_child(preload("res://scripts/world/villagers.gd").new())
 	add_child(preload("res://scripts/ui/hud.gd").new())
-	GameManager.notify("Ты дома. F1 — управление. Работа — склад в городе")
+	add_child(preload("res://scripts/ui/pause_menu.gd").new())
 
 
 func _process(_delta: float) -> void:
 	_update_daylight()
+	_check_delivery()
 
 
 # --- Небо, солнце, смена дня и ночи ----------------------------------------
@@ -84,6 +105,8 @@ func _setup_environment() -> void:
 	_sky = ProceduralSkyMaterial.new()
 	var sky := Sky.new()
 	sky.sky_material = _sky
+	_sky_top = _sky.sky_top_color
+	_sky_horizon = _sky.sky_horizon_color
 	_env = Environment.new()
 	_env.background_mode = Environment.BG_SKY
 	_env.sky = sky
@@ -107,13 +130,19 @@ func _update_daylight() -> void:
 	var t := (h - 6.0) / 14.0
 	var elev := sin(clampf(t, 0.0, 1.0) * PI)
 	var day := clampf(elev * 3.0, 0.0, 1.0)
+	# Тучи гасят солнце и серят небо, туман и дождь сжимают видимость
+	var cloud := WeatherManager.cloud
 	_sun.rotation = Vector3(-lerpf(0.08, 1.1, elev), lerpf(-1.9, 1.9, clampf(t, 0.0, 1.0)), 0.0)
-	_sun.light_energy = lerpf(0.0, 1.15, day)
+	_sun.light_energy = lerpf(0.0, 1.15, day) * (1.0 - cloud * 0.65)
+	var grey := Color(0.52, 0.54, 0.56)
+	_sky.sky_top_color = _sky_top.lerp(grey, cloud * 0.8)
+	_sky.sky_horizon_color = _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8)
+	_env.fog_density = 0.0025 + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
 	_sun.visible = day > 0.01
 	_env.background_energy_multiplier = lerpf(0.06, 1.0, day)
 	_env.ambient_light_energy = lerpf(0.12, 1.0, day)
-	_env.fog_light_color = Color(0.05, 0.06, 0.1).lerp(Color(0.7, 0.78, 0.88), day)
+	_env.fog_light_color = Color(0.05, 0.06, 0.1).lerp(Color(0.7, 0.78, 0.88).lerp(Color(0.5, 0.52, 0.55), cloud * 0.8), day)
 	if _glow_mat:
 		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 	# Фонари зажигаются в сумерках
@@ -203,11 +232,34 @@ func _build_power_line(b: MeshBuilder) -> void:
 
 func _build_village(b: MeshBuilder) -> void:
 	for i in 4:
-		_build_yard(b, Vector3(VILLAGE_X[i], 0, ROW_A_Z), 0.0, ROW_A[i])
+		if Vector2(VILLAGE_X[i], ROW_A_Z) != PLAYER_HOUSE:
+			_build_yard(b, Vector3(VILLAGE_X[i], 0, ROW_A_Z), 0.0, ROW_A[i])
 		_build_yard(b, Vector3(VILLAGE_X[i], 0, ROW_B_Z), PI, ROW_B[i])
 
 
-func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> void:
+## Двор игрока: свой меш и коллизии, перестраивается при каждом новом уровне дома.
+func _build_player_yard() -> void:
+	for n in _yard_nodes:
+		# Имя освобождаем сразу: новый дом должен получить то же имя
+		n.name = "%s_old" % n.name
+		n.queue_free()
+	_yard_nodes.clear()
+	var yb := MeshBuilder.new()
+	var level: int = clampi(Progress.house_level, W.POOR, W.RICH)
+	_yard_nodes.append_array(_build_yard(yb, Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y), 0.0, level))
+	var mesh := yb.build_mesh()
+	mesh.name = "PlayerYardMesh"
+	add_child(mesh)
+	_yard_nodes.append(mesh)
+	var body := yb.build_body()
+	body.name = "PlayerYardCollision"
+	add_child(body)
+	_yard_nodes.append(body)
+
+
+## Строит двор в b и возвращает созданные узлы (интерьер, зоны).
+func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array[Node]:
+	var nodes: Array[Node] = []
 	var hi: HouseInterior = HouseInteriorScript.new()
 	hi.wealth = wealth
 	hi.position = pos + Vector3(0, HOUSE_Y, 0)
@@ -220,12 +272,29 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> void:
 	_yard_extras(b, hi)
 	b.xf = Transform3D.IDENTITY
 	add_child(hi)
+	nodes.append(hi)
 	if Vector2(pos.x, pos.z) == PLAYER_HOUSE:
 		var bed := InteractZone.create("E — лечь спать до 7:00", Vector3(1.6, 1.4, 2.6))
 		bed.position = hi.position + Basis(Vector3.UP, yaw) * hi.bed_center() - Vector3(0, 0.5, 0)
 		bed.rotation.y = yaw
 		bed.activated.connect(_sleep)
 		add_child(bed)
+		nodes.append(bed)
+		# Прораб у калитки: перестройка дома за деньги
+		var boss := InteractZone.create("", Vector3(2.6, 2.0, 2.0))
+		boss.position = pos + Basis(Vector3.UP, yaw) * Vector3(hi.entrance_offset, 0, 13.4)
+		boss.rotation.y = yaw
+		boss.activated.connect(Progress.upgrade_house)
+		boss.prompt_fn = _upgrade_prompt
+		add_child(boss)
+		nodes.append(boss)
+	return nodes
+
+
+func _upgrade_prompt() -> String:
+	if Progress.max_level():
+		return "Прораб: «Лучше дома в Каменке нет, хозяин!»"
+	return "E — прораб: построить %s за %d грн" % [Progress.UPGRADE_TEXT[Progress.house_level], Progress.next_cost()]
 
 
 ## Наружные стены с проёмами ровно там, где окна и дверь интерьера, крыша, труба.
@@ -595,7 +664,7 @@ func _build_village_life(b: MeshBuilder, glow: MeshBuilder) -> void:
 	for x in LAMP_X:
 		_street_lamp(b, glow, Vector3(x, 0, LAMP_Z))
 	_village_shop(b, glow)
-	_bus_stop(b, Vector3(-68.5, 0, -7.6))
+	_bus_stop(b, STOP_VILLAGE, 0.0, true)
 	_village_sign(b, Vector3(-54.5, 0, -7.2))
 	_pond(b, POND_POS)
 	for p in [Vector3(-42, 0, -62), Vector3(-33, 0, -70), Vector3(-26, 0, -57)]:
@@ -735,30 +804,59 @@ func _buy_village_food() -> void:
 
 
 ## Бетонная остановка у трассы: стенка, крыша, лавка, табличка «А».
-func _bus_stop(b: MeshBuilder, p: Vector3) -> void:
+## Локально дорога — со стороны +Z, yaw разворачивает к ней.
+func _bus_stop(b: MeshBuilder, p: Vector3, yaw: float, to_town: bool) -> void:
+	var xf := Transform3D(Basis(Vector3.UP, yaw), p)
+	b.xf = xf
 	var concrete := Color(0.7, 0.7, 0.67)
-	b.box(p + Vector3(-2.5, 0, -1.25), p + Vector3(2.5, 0.12, 1.2), Color(0.55, 0.55, 0.53))
-	b.box(p + Vector3(-2.5, 0, -1.25), p + Vector3(2.5, 2.6, -1.05), concrete, true)
+	b.box(Vector3(-2.5, 0, -1.25), Vector3(2.5, 0.12, 1.2), Color(0.55, 0.55, 0.53))
+	b.box(Vector3(-2.5, 0, -1.25), Vector3(2.5, 2.6, -1.05), concrete, true)
 	for s in [-1.0, 1.0]:
-		b.box(p + Vector3(s * 2.5 - 0.1, 0, -1.25), p + Vector3(s * 2.5 + 0.1, 2.6, 0.2), concrete, true)
-	b.box(p + Vector3(-2.8, 2.6, -1.4), p + Vector3(2.8, 2.8, 1.3), concrete.darkened(0.1))
+		b.box(Vector3(s * 2.5 - 0.1, 0, -1.25), Vector3(s * 2.5 + 0.1, 2.6, 0.2), concrete, true)
+	b.box(Vector3(-2.8, 2.6, -1.4), Vector3(2.8, 2.8, 1.3), concrete.darkened(0.1))
 	# Мозаика на задней стенке
 	for i in 5:
 		var c: Color = [Color(0.3, 0.5, 0.75), Color(0.9, 0.75, 0.3), Color(0.8, 0.3, 0.25)][i % 3]
-		b.box(p + Vector3(-2.0 + i * 0.85, 1.0, -1.06), p + Vector3(-1.4 + i * 0.85, 2.0, -1.03), c)
-	b.box(p + Vector3(-2.0, 0.45, -1.05), p + Vector3(2.0, 0.52, -0.65), Color(0.5, 0.35, 0.2))
+		b.box(Vector3(-2.0 + i * 0.85, 1.0, -1.06), Vector3(-1.4 + i * 0.85, 2.0, -1.03), c)
+	b.box(Vector3(-2.0, 0.45, -1.05), Vector3(2.0, 0.52, -0.65), Color(0.5, 0.35, 0.2))
 	# Табличка на столбе
-	var s := p + Vector3(3.3, 0, 0.6)
+	var s := Vector3(3.3, 0, 0.6)
 	b.box(s + Vector3(-0.04, 0, -0.04), s + Vector3(0.04, 2.5, 0.04), Color(0.4, 0.4, 0.4))
 	b.box(s + Vector3(-0.3, 2.0, 0.04), s + Vector3(0.3, 2.6, 0.07), Color(0.95, 0.85, 0.2))
+	b.xf = Transform3D.IDENTITY
 	var lbl := Label3D.new()
 	lbl.text = "А"
 	lbl.font_size = 96
 	lbl.pixel_size = 0.004
 	lbl.modulate = Color(0.1, 0.1, 0.1)
 	lbl.outline_size = 0
-	lbl.position = s + Vector3(0, 2.3, 0.08)
+	lbl.position = xf * (s + Vector3(0, 2.3, 0.08))
+	lbl.rotation.y = yaw
 	add_child(lbl)
+	var zone := InteractZone.create("E — автобус до %s (%d грн)" % ["города" if to_town else "Каменки", BUS_FARE], Vector3(5.0, 2.2, 3.0))
+	zone.position = xf * Vector3(0, 0, 0.3)
+	zone.rotation.y = yaw
+	zone.activated.connect(_ride_bus.bind(to_town))
+	add_child(zone)
+
+
+## Автобус: ждёшь минут двадцать и выходишь на другой остановке.
+func _ride_bus(to_town: bool) -> void:
+	var h := TimeManager.hour()
+	if h < 6.0 or h >= 22.0:
+		GameManager.notify("Автобусы ходят с 6:00 до 22:00")
+		return
+	if not GameManager.spend(BUS_FARE):
+		return
+	TimeManager.advance(20.0)
+	var p := GameManager.player as Player
+	var stop := STOP_TOWN if to_town else STOP_VILLAGE
+	# Выходим на обочину перед остановкой, лицом от дороги
+	var out := stop + (Vector3(0, 0.1, -2.2) if to_town else Vector3(0, 0.1, 2.2))
+	p.global_position = out
+	p.velocity = Vector3.ZERO
+	p.rotation.y = PI if to_town else 0.0
+	GameManager.notify("Приехал %s. %s" % ["в город" if to_town else "в Каменку", TimeManager.clock_text()])
 
 
 ## Синий указатель с названием села у съезда с трассы.
@@ -889,6 +987,196 @@ func _panel_building(b: MeshBuilder, glow: MeshBuilder, center: Vector3, length:
 	glow.xf = Transform3D.IDENTITY
 
 
+# --- У трассы: АЗС, СТО, городская остановка; колхоз у села ------------------
+
+func _build_roadside(b: MeshBuilder) -> void:
+	_bus_stop(b, STOP_TOWN, PI, false)
+	_fuel_station(b)
+	_repair_garage(b)
+	_kolkhoz_barn(b)
+
+
+## АЗС: навес на столбах, две колонки, будка кассира, стела.
+func _fuel_station(b: MeshBuilder) -> void:
+	var c := FUEL_POS
+	var asphalt := Color(0.3, 0.3, 0.31)
+	b.box(c + Vector3(-9, 0, -7.5), c + Vector3(9, 0.05, 7), asphalt)
+	for x in [-4.5, 4.5]:
+		for z in [-3.0, 3.0]:
+			b.box(c + Vector3(x - 0.2, 0, z - 0.2), c + Vector3(x + 0.2, 4.6, z + 0.2), Color(0.85, 0.85, 0.85), true)
+	b.box(c + Vector3(-6, 4.6, -4.5), c + Vector3(6, 5.2, 4.5), Color(0.9, 0.9, 0.9))
+	b.box(c + Vector3(-6.05, 4.7, -4.55), c + Vector3(6.05, 5.1, -4.45), Color(0.15, 0.45, 0.25))
+	# Колонки на островке
+	b.box(c + Vector3(-3.0, 0, -0.6), c + Vector3(3.0, 0.2, 0.6), Color(0.6, 0.6, 0.58))
+	for x in [-1.6, 1.6]:
+		b.box(c + Vector3(x - 0.4, 0.2, -0.3), c + Vector3(x + 0.4, 1.8, 0.3), Color(0.9, 0.3, 0.2), true)
+		b.box(c + Vector3(x - 0.3, 1.1, -0.31), c + Vector3(x + 0.3, 1.5, -0.3), Color(0.15, 0.2, 0.15))
+		b.box(c + Vector3(x + 0.4, 0.9, -0.05), c + Vector3(x + 0.55, 1.2, 0.05), Color(0.1, 0.1, 0.1))
+	# Будка кассира
+	b.box(c + Vector3(-3, 0, 4.5), c + Vector3(3, 2.8, 7), Color(0.85, 0.82, 0.72), true)
+	b.box(c + Vector3(-3.2, 2.8, 4.3), c + Vector3(3.2, 3.0, 7.2), Color(0.35, 0.35, 0.36))
+	b.box(c + Vector3(-1.2, 1.0, 4.48), c + Vector3(1.2, 2.2, 4.5), Color(0.25, 0.3, 0.35))
+	# Стела с ценой
+	var p := c + Vector3(-8, 0, -6.5)
+	b.box(p + Vector3(-0.8, 0, -0.2), p + Vector3(0.8, 4.0, 0.2), Color(0.15, 0.45, 0.25), true)
+	_label("АЗС\n%d грн/л" % FUEL_PRICE, p + Vector3(0, 3.0, -0.22), PI, 0.006, Color(1, 1, 0.8))
+	var zone := InteractZone.create("", Vector3(9.0, 2.4, 6.0))
+	zone.position = c + Vector3(0, 0, 0)
+	zone.prompt_fn = _fuel_prompt
+	zone.activated.connect(_refuel)
+	add_child(zone)
+
+
+func _car_near(p: Vector3, dist: float) -> Car:
+	var car := GameManager.car as Car
+	if car and car.global_position.distance_to(p) < dist:
+		return car
+	return null
+
+
+func _fuel_prompt() -> String:
+	var car := _car_near(FUEL_POS, 14.0)
+	if car == null:
+		return "Заправка: подгони машину к колонкам"
+	var need := int(ceilf(Car.TANK - car.fuel))
+	if need <= 0:
+		return "Бак полный (%d л)" % int(car.fuel)
+	return "E — заправить %d л за %d грн (в баке %d л)" % [need, need * FUEL_PRICE, int(car.fuel)]
+
+
+func _refuel() -> void:
+	var car := _car_near(FUEL_POS, 14.0)
+	if car == null:
+		GameManager.notify("Машины у колонок нет")
+		return
+	var need := Car.TANK - car.fuel
+	var liters := minf(need, floorf(GameManager.money / float(FUEL_PRICE)))
+	if liters < 1.0:
+		GameManager.notify("Бак полный" if need < 1.0 else "Не хватает денег даже на литр")
+		return
+	GameManager.spend(int(ceilf(liters)) * FUEL_PRICE)
+	car.refuel(liters)
+	GameManager.notify("Заправил %d л. В баке %d л" % [int(liters), int(car.fuel)])
+
+
+## СТО: гараж с открытыми воротами, покрышки, вывеска.
+func _repair_garage(b: MeshBuilder) -> void:
+	var c := GARAGE_POS
+	var wall := Color(0.62, 0.62, 0.6)
+	b.box(c + Vector3(-7, 0, -5.5), c + Vector3(7, 0.05, 6), Color(0.35, 0.35, 0.34))
+	# Стены: зад и бока, спереди — широкие ворота
+	b.box(c + Vector3(-5, 0, 5.5), c + Vector3(5, 4, 6), wall, true)
+	b.box(c + Vector3(-5, 0, -1), c + Vector3(-4.6, 4, 6), wall, true)
+	b.box(c + Vector3(4.6, 0, -1), c + Vector3(5, 4, 6), wall, true)
+	b.box(c + Vector3(-5, 3.0, -1), c + Vector3(5, 4, -0.6), wall, true)
+	b.box(c + Vector3(-5.3, 4, -1.3), c + Vector3(5.3, 4.25, 6.3), Color(0.4, 0.4, 0.42))
+	b.box(c + Vector3(-4.5, 0.05, 1.5), c + Vector3(-3.5, 0.08, 4.5), Color(0.15, 0.15, 0.15))
+	# Покрышки стопкой
+	for i in 4:
+		b.box(c + Vector3(5.4, i * 0.25, -0.6), c + Vector3(6.2, i * 0.25 + 0.24, 0.2), Color(0.1, 0.1, 0.1))
+	b.box(c + Vector3(-3, 3.1, -1.05), c + Vector3(3, 3.9, -1.0), Color(0.2, 0.3, 0.6))
+	_label("СТО", c + Vector3(0, 3.5, -1.07), PI, 0.006, Color(1, 1, 1))
+	var zone := InteractZone.create("", Vector3(9.0, 2.4, 8.0))
+	zone.position = c + Vector3(0, 0, 1.0)
+	zone.prompt_fn = _repair_prompt
+	zone.activated.connect(_repair)
+	add_child(zone)
+
+
+func _repair_cost(car: Car) -> int:
+	return int(ceilf((100.0 - car.condition) * 25.0))
+
+
+func _repair_prompt() -> String:
+	var car := _car_near(GARAGE_POS, 14.0)
+	if car == null:
+		return "СТО: загони машину в гараж"
+	if car.condition >= 99.5:
+		return "Механик: «Машина в порядке — %d%%»" % int(car.condition)
+	return "E — починить машину (%d%%) за %d грн, 1 час" % [int(car.condition), _repair_cost(car)]
+
+
+func _repair() -> void:
+	var car := _car_near(GARAGE_POS, 14.0)
+	if car == null or car.condition >= 99.5:
+		return
+	if not GameManager.spend(_repair_cost(car)):
+		return
+	SoundLibrary.play("hammer")
+	TimeManager.advance(60.0)
+	car.repair()
+	GameManager.notify("Механик перебрал машину: 100%%. %s" % TimeManager.clock_text())
+
+
+## Колхозный сарай у стогов: здесь можно подработать на сене.
+func _kolkhoz_barn(b: MeshBuilder) -> void:
+	var c := BARN_POS
+	var wood := Color(0.45, 0.32, 0.22)
+	b.box(c + Vector3(-6, 0, -4), c + Vector3(6, 4, 4), wood, true)
+	# Вертикальные доски
+	var x := -6.0
+	while x < 6.0:
+		b.box(c + Vector3(x, 0, 4.0), c + Vector3(x + 0.05, 4, 4.03), wood.darkened(0.25))
+		x += 0.6
+	for sx in [-1.0, 1.0]:
+		b.tri(c + Vector3(sx * 6, 4, -4), c + Vector3(sx * 6, 4, 4), c + Vector3(sx * 6, 6, 0), wood, true)
+	var slate := Color(0.38, 0.4, 0.4)
+	b.quad(c + Vector3(-6.4, 3.8, 4.4), c + Vector3(6.4, 3.8, 4.4), c + Vector3(6.4, 6.1, 0), c + Vector3(-6.4, 6.1, 0), slate, true)
+	b.quad(c + Vector3(6.4, 3.8, -4.4), c + Vector3(-6.4, 3.8, -4.4), c + Vector3(-6.4, 6.1, 0), c + Vector3(6.4, 6.1, 0), slate, true)
+	# Ворота и тюки сена у входа
+	b.box(c + Vector3(-1.8, 0, 4.03), c + Vector3(1.8, 3.2, 4.08), Color(0.3, 0.2, 0.14))
+	for i in 5:
+		b.box(c + Vector3(2.5 + (i % 3) * 1.1, (i / 3) * 0.5, 4.6), c + Vector3(3.5 + (i % 3) * 1.1, 0.5 + (i / 3) * 0.5, 5.4), Color(0.75, 0.65, 0.35), true)
+	# Тропинка от съезда
+	b.box(Vector3(-57.0, 0, -42.2), Vector3(c.x - 1.0, 0.03, -40.8), Color(0.46, 0.39, 0.28))
+	b.box(c + Vector3(-2.6, 3.28, 4.03), c + Vector3(2.6, 3.72, 4.08), Color(0.75, 0.2, 0.15))
+	_label("КОЛХОЗ «ЗАРЯ»", c + Vector3(0, 3.5, 4.1), 0.0, 0.004, Color(1, 0.95, 0.8))
+	var zone := InteractZone.create("E — колхоз: грузить сено, 3 часа, +400 грн", Vector3(6.0, 2.2, 3.0))
+	zone.position = c + Vector3(0, 0, 5.5)
+	zone.activated.connect(_kolkhoz_work)
+	add_child(zone)
+
+
+func _kolkhoz_work() -> void:
+	var h := TimeManager.hour()
+	if h < 7.0 or h > 19.0:
+		GameManager.notify("Бригадир ушёл домой. Работа в колхозе с 7:00 до 19:00")
+		return
+	if NeedsManager.energy < 25.0:
+		GameManager.notify("Сил нет вилы держать. Выспись")
+		return
+	if WeatherManager.kind == WeatherManager.Kind.RAIN:
+		GameManager.notify("Сено в дождь не грузят — приходи, как распогодится")
+		return
+	TimeManager.advance(180.0)
+	NeedsManager.rest(-18.0)
+	GameManager.add_money(400)
+	SoundLibrary.play("cash")
+	GameManager.notify("Отработал в колхозе: +400 грн. %s" % TimeManager.clock_text())
+
+
+## Развоз: хлеб грузится на складе, сдаётся у сельмага — только на машине.
+func _check_delivery() -> void:
+	if not Progress.delivery_active:
+		return
+	var car := GameManager.car as Car
+	if car and car.driver and car.global_position.distance_to(SHOP_POS + Vector3(-6.0, 0, 0)) < 9.0 and car.speed_kmh() < 5.0:
+		Progress.finish_delivery()
+
+
+func _label(text: String, pos: Vector3, yaw: float, px: float, color: Color) -> Label3D:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 96
+	l.pixel_size = px
+	l.outline_size = 0
+	l.modulate = color
+	l.position = pos
+	l.rotation.y = yaw
+	add_child(l)
+	return l
+
+
 # --- Ларёк и склад: где тратить и где зарабатывать ---------------------------
 
 func _build_shops(b: MeshBuilder) -> void:
@@ -919,6 +1207,22 @@ func _build_shops(b: MeshBuilder) -> void:
 	job.position = s + Vector3(0, 0, -8.5)
 	job.activated.connect(_work)
 	add_child(job)
+	var bread := InteractZone.create("", Vector3(4.0, 2.0, 3.0))
+	bread.position = s + Vector3(-7.5, 0, -8.5)
+	bread.prompt_fn = func() -> String:
+		if Progress.delivery_active:
+			return "Хлеб в машине — вези в сельмаг «Каменка»"
+		return "E — развоз: хлеб в сельмаг на машине, +%d грн" % Progress.DELIVERY_PAY
+	bread.activated.connect(_take_delivery)
+	add_child(bread)
+
+
+func _take_delivery() -> void:
+	var car := GameManager.car as Car
+	if car == null or car.global_position.distance_to(Vector3(27.5, 0, 28.0)) > 25.0:
+		GameManager.notify("Подгони машину к складу — хлеб грузят в багажник")
+		return
+	Progress.start_delivery()
 
 
 func _buy_food() -> void:
