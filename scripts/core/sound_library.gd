@@ -31,6 +31,7 @@ func _ready() -> void:
 	_streams["chicken"] = _make(_chicken(), false)
 	_streams["horn"] = _make(_horn(), false)
 	_streams["hammer"] = _make(_hammer(), false)
+	_streams["splash"] = _make(_splash(), false)
 
 
 func stream(sound: String) -> AudioStreamWAV:
@@ -272,4 +273,18 @@ func _hammer() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		var local := fmod(t, 0.3)
 		a[i] = (sin(TAU * 900.0 * local) * 0.5 + _rng.randf_range(-0.3, 0.3)) * exp(-local * 40.0)
+	return a
+
+
+## Всплеск: шипящий шум, быстро гаснет.
+func _splash() -> PackedFloat32Array:
+	var a := _buf(0.5)
+	var hp := 0.0
+	var prev := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var n := _rng.randf_range(-1.0, 1.0)
+		hp = 0.7 * (hp + n - prev)
+		prev = n
+		a[i] = hp * exp(-t * 7.0) * 0.5
 	return a

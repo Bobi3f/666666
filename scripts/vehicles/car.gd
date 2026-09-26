@@ -55,6 +55,9 @@ var _engine_snd: AudioStreamPlayer3D
 var _rain_snd: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 var _warned_fuel := false
+var _headlights: Array[SpotLight3D] = []
+## L переключает фары вручную; без этого они включаются сами в темноте
+var _lights_forced := false
 
 
 func _ready() -> void:
@@ -100,6 +103,17 @@ func _ready() -> void:
 	_rain_snd.stream = SoundLibrary.stream("rain")
 	_rain_snd.volume_db = -6.0
 	add_child(_rain_snd)
+	for x in [-0.55, 0.55]:
+		var l := SpotLight3D.new()
+		l.position = Vector3(x, 0.68, -2.1)
+		l.rotation.x = -0.06
+		l.spot_range = 40.0
+		l.spot_angle = 28.0
+		l.light_energy = 3.0
+		l.light_color = Color(1.0, 0.95, 0.82)
+		l.visible = false
+		add_child(l)
+		_headlights.append(l)
 
 
 # --- Посадка ----------------------------------------------------------------
@@ -143,6 +157,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_shift(gear - 1)
 		KEY_H:
 			SoundLibrary.play_at("horn", global_position, 2.0)
+		KEY_L:
+			_lights_forced = not _lights_forced
+			SoundLibrary.play("click", -8.0)
 
 
 func _toggle_ignition() -> void:
@@ -313,6 +330,12 @@ func _update_sound() -> void:
 		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0)
 	elif _engine_snd.playing:
 		_engine_snd.stop()
+	# Фары: сами — в темноте, тумане и дождь; L — включить в любое время
+	var h := TimeManager.hour()
+	var dark := h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
+	var lit := engine_on and (dark or _lights_forced)
+	for l in _headlights:
+		l.visible = lit
 	var want_rain := driver != null and WeatherManager.rain > 0.3
 	if want_rain != _rain_snd.playing:
 		if want_rain:
@@ -330,6 +353,10 @@ func on_asphalt() -> bool:
 	if p.x > -120.0 and p.x < -78.0 and p.z > 0.0 and p.z < 21.0:
 		return true
 	return p.x > 38.0 and p.z > 0.0
+
+
+func headlights_on() -> bool:
+	return _headlights[0].visible
 
 
 func refuel(liters: float) -> void:

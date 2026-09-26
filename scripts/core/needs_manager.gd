@@ -11,6 +11,8 @@ var food := 80.0
 var energy := 90.0
 ## Еда в запасе (купленная в ларьке). Съесть — клавиша Q.
 var snacks := 1
+## Пойманная рыба — сдаётся в сельмаг.
+var fish := 0
 
 var _warned_food := false
 var _warned_energy := false
@@ -63,13 +65,14 @@ func walk_factor() -> float:
 
 
 func save_state() -> Dictionary:
-	return {"food": food, "energy": energy, "snacks": snacks}
+	return {"food": food, "energy": energy, "snacks": snacks, "fish": fish}
 
 
 func load_state(d: Dictionary) -> void:
 	food = float(d.get("food", 80.0))
 	energy = float(d.get("energy", 90.0))
 	snacks = int(d.get("snacks", 1))
+	fish = int(d.get("fish", 0))
 	_warned_food = food < 20.0
 	_warned_energy = energy < 15.0
 	changed.emit()

@@ -32,6 +32,7 @@ const BUS_FARE := 15
 const FUEL_POS := Vector3(-110.0, 0, 13.0)
 const GARAGE_POS := Vector3(-86.0, 0, 14.0)
 const FUEL_PRICE := 32
+const FISH_PRICE := 60
 ## Колхозный сарай у стогов.
 const BARN_POS := Vector3(-35.0, 0, -47.0)
 
@@ -90,6 +91,10 @@ func _ready() -> void:
 	add_child(preload("res://scripts/world/ambience.gd").new())
 	add_child(preload("res://scripts/world/traffic.gd").new())
 	add_child(preload("res://scripts/world/villagers.gd").new())
+	var garden: Node3D = preload("res://scripts/world/garden.gd").new()
+	garden.position = Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y)
+	add_child(garden)
+	add_child(preload("res://scripts/ui/map.gd").new())
 	add_child(preload("res://scripts/ui/hud.gd").new())
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
 
@@ -540,7 +545,9 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	_tree(b, Vector3(7.5, 0, -6.0), 0.0, 1)
 	_gate_bench(b, hi.wealth)
 	_front_garden(b, hi)
-	_vegetable_plot(b, hi.wealth)
+	# На огороде игрока растёт то, что он сам посадил (garden.gd)
+	var own := is_equal_approx(hi.position.x, PLAYER_HOUSE.x) and is_equal_approx(hi.position.z, PLAYER_HOUSE.y)
+	_vegetable_plot(b, hi.wealth, not own)
 	if hi.wealth != W.RICH:
 		_kennel(b, Vector3(3.6, 0, 8.2))
 	match hi.wealth:
@@ -623,7 +630,7 @@ func _front_garden(b: MeshBuilder, hi: HouseInterior) -> void:
 
 
 ## Огород за задним забором: картошка рядами, у бедных ещё и пугало.
-func _vegetable_plot(b: MeshBuilder, wealth: int) -> void:
+func _vegetable_plot(b: MeshBuilder, wealth: int, plants := true) -> void:
 	var soil := Color(0.33, 0.24, 0.16)
 	var leaf := Color(0.26, 0.45, 0.18)
 	b.box(Vector3(-10.5, 0, -14.0), Vector3(10.5, 0.03, -9.5), soil.lightened(0.08))
@@ -631,7 +638,7 @@ func _vegetable_plot(b: MeshBuilder, wealth: int) -> void:
 	while z < -9.8:
 		b.box(Vector3(-10.2, 0, z), Vector3(10.2, 0.16, z + 0.45), soil)
 		var x := -10.0
-		while x < 10.0:
+		while plants and x < 10.0:
 			b.box_rot(Vector3(x, 0.26, z + 0.22), Vector3(0.45, 0.22, 0.4), _vrng.randf() * TAU,
 				leaf.lightened(_vrng.randf() * 0.12))
 			x += _vrng.randf_range(0.8, 1.1)
@@ -792,6 +799,27 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	zone.activated.connect(_buy_village_food)
 	add_child(zone)
 
+	var fish_zone := InteractZone.create("", Vector3(1.8, 2.4, 1.8))
+	fish_zone.position = xf * Vector3(3.4, 0, 4.6)
+	fish_zone.rotation.y = yaw
+	fish_zone.prompt_fn = func() -> String:
+		if NeedsManager.fish <= 0:
+			return "Продавщица принимает рыбу по %d грн" % FISH_PRICE
+		return "E — сдать рыбу: %d шт × %d грн" % [NeedsManager.fish, FISH_PRICE]
+	fish_zone.activated.connect(_sell_fish)
+	add_child(fish_zone)
+
+
+func _sell_fish() -> void:
+	if NeedsManager.fish <= 0:
+		GameManager.notify("Рыбы нет. Порыбачь на пруду с мостков")
+		return
+	var pay := NeedsManager.fish * FISH_PRICE
+	NeedsManager.fish = 0
+	GameManager.add_money(pay)
+	SoundLibrary.play("cash")
+	GameManager.notify("Сдал рыбу: +%d грн" % pay)
+
 
 func _buy_village_food() -> void:
 	var h := TimeManager.hour()
@@ -896,11 +924,42 @@ func _pond(b: MeshBuilder, c: Vector3) -> void:
 			b.box(c + p + Vector3(-0.05, h - 0.25, -0.05), c + p + Vector3(0.05, h, 0.05), Color(0.35, 0.22, 0.12))
 	# Мостки с восточного берега, тропинка от улицы
 	var m := c + Vector3(pts[0].x - 0.8, 0, 0)
-	b.box(m + Vector3(-3.5, 0.3, -0.6), m + Vector3(0.8, 0.38, 0.6), Color(0.5, 0.4, 0.28))
+	b.box(m + Vector3(-3.5, 0.3, -0.6), m + Vector3(0.8, 0.38, 0.6), Color(0.5, 0.4, 0.28), true)
 	for x in [-3.3, -1.8, -0.3]:
 		for z in [-0.55, 0.45]:
 			b.box(m + Vector3(x, -0.3, z), m + Vector3(x + 0.1, 0.3, z + 0.1), Color(0.3, 0.24, 0.16))
 	b.box(Vector3(m.x + 0.8, 0, -40.6), Vector3(-164.0, 0.03, -39.4), Color(0.46, 0.39, 0.28))
+	# Рыбалка — с конца мостков
+	var fishing := InteractZone.create("E — порыбачить час", Vector3(2.4, 2.0, 1.6))
+	fishing.position = m + Vector3(-2.4, 0.38, 0)
+	fishing.activated.connect(_fish)
+	add_child(fishing)
+
+
+## Час на мостках: клюёт по-разному, ночью — никак.
+func _fish() -> void:
+	var h := TimeManager.hour()
+	if h < 4.0 or h >= 22.0:
+		GameManager.notify("Ночью не клюёт. Лучше всего — на рассвете")
+		return
+	if NeedsManager.energy < 10.0:
+		GameManager.notify("Глаза слипаются — уснёшь с удочкой")
+		return
+	SoundLibrary.play("splash", -4.0)
+	TimeManager.advance(60.0)
+	NeedsManager.rest(-4.0)
+	# На рассвете и в пасмурную погоду клюёт лучше
+	var luck := 0.45 + (0.25 if h < 8.0 else 0.0) + (0.15 if WeatherManager.cloud > 0.5 else 0.0)
+	var caught := 0
+	for i in 3:
+		if randf() < luck * (0.8 if i == 0 else 0.35):
+			caught += 1
+	if caught == 0:
+		GameManager.notify("Час просидел — ни поклёвки. %s" % TimeManager.clock_text())
+		return
+	NeedsManager.fish += caught
+	SoundLibrary.play("splash", -2.0, 1.3)
+	GameManager.notify("Поймал %d %s! Всего рыбы: %d — сдай в сельмаг" % [caught, "рыбу" if caught == 1 else "рыбы", NeedsManager.fish])
 
 
 ## Стог сена на лугу с шестом посередине.
@@ -1251,7 +1310,9 @@ func _sleep() -> void:
 		return
 	TimeManager.skip_to(7.0)
 	NeedsManager.rest(100.0)
-	GameManager.notify("Выспался. %s" % TimeManager.clock_text())
+	# Автосохранение: утро после сна — надёжная точка
+	SaveManager.save_game()
+	GameManager.notify("Выспался. %s. Игра сохранена" % TimeManager.clock_text())
 
 
 # --- Лес --------------------------------------------------------------------
