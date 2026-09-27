@@ -27,6 +27,9 @@ const GRAVITY := 12.0
 const STALL_RPM := 380.0
 const FUEL_IDLE := 0.004
 const FUEL_LOAD := 0.05
+## Насколько быстрее шины гасят скольжение вбок, чем в «честной» модели:
+## с кнопками руля без этого машину на грунте разворачивает поперёк.
+const SIDE_GRIP := 2.2
 
 const SPECS := {
 	"car": {
@@ -115,7 +118,6 @@ func _ready() -> void:
 	# вдоль машины. Плоское дно цеплялось бы за любой порожек (край асфальта
 	# на выезде к трассе — 5 см), а круглое перекатывается, как колесо.
 	var size: Vector3 = spec.shape
-	var bottom: float = spec.shape_y - size.y * 0.5
 	var r := 0.3 if not spec.two_wheels else 0.25
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -129,7 +131,8 @@ func _ready() -> void:
 	cap.height = size.z - 0.1
 	skid.shape = cap
 	skid.rotation.x = PI / 2.0
-	skid.position.y = bottom + r
+	# Низ «лыжи» — на уровне колёс (y = 0), иначе машина проседает в землю
+	skid.position.y = r
 	add_child(skid)
 	_body = Node3D.new()
 	add_child(_body)
@@ -507,10 +510,10 @@ func _auto_shift(throttle: float) -> void:
 ## ≈ grip · g. Ручник отпускает зад — машину разворачивает сильнее и заносит.
 func _steering(dt: float, steer_in: float, handbrake: bool, grip: float) -> void:
 	var v := absf(speed)
-	var max_steer: float = (spec.max_steer as float) / (1.0 + v * 0.06)
+	var max_steer: float = (spec.max_steer as float) / (1.0 + v * 0.05)
 	_steer = move_toward(_steer, steer_in * max_steer, dt * 2.5)
 	var target := speed * tan(_steer) / (spec.wheelbase as float)
-	var mu := 0.85 * grip
+	var mu := 1.15 * grip
 	if v > 1.0:
 		var limit := mu * 9.8 / v
 		if handbrake and v > 5.0 and not spec.two_wheels:
@@ -542,7 +545,9 @@ func _move(dt: float, handbrake: bool) -> void:
 	# повернулась быстрее, чем её несёт, появляется скорость вбок — занос.
 	# Продольную задаёт трансмиссия, боковую гасят шины.
 	lateral = Vector3(velocity.x, 0, velocity.z).dot(right)
-	lateral *= exp(-grip * dt)
+	# Шины гасят боковое скольжение: машина едет туда, куда смотрит.
+	# С ручником — сцепление уже ослаблено выше, машина уходит в занос.
+	lateral *= exp(-grip * SIDE_GRIP * dt)
 	# Юз тормозит машину
 	speed = move_toward(speed, 0.0, absf(lateral) * 0.6 * dt)
 	var v := fwd * speed + right * lateral
@@ -733,12 +738,26 @@ func _paint_body() -> void:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
 	var col: Color = paints()[paint % paints().size()]
+	var glass := MeshBuilder.new()
+	glass.ground_shade = false
 	if spec.two_wheels:
 		VehicleModels.java(b, col)
 	else:
-		VehicleModels.zhiguli(b, col)
+		VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
+	# Стёкла — прозрачные, чтобы из салона было видно дорогу
+	if not spec.two_wheels:
+		var gm := glass.build_mesh()
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.6, 0.72, 0.78, 0.22)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.roughness = 0.1
+		mat.metallic = 0.4
+		gm.material_override = mat
+		gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_paint_mesh.add_child(gm)
 
 
 ## Яма на дороге: машину подбрасывает, скорость теряется, подвеска

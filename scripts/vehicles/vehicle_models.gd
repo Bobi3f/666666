@@ -10,7 +10,10 @@ extends RefCounted
 ## Жигули-«копейка»: кузов с выштамповками, двери со щелями и ручками,
 ## хромированные бамперы с клыками, решётка, круглые фары, зеркала,
 ## дворники, номера, салон с торпедо, рулём и сиденьями.
-static func zhiguli(b: MeshBuilder, paint: Color, interior := true) -> void:
+## glass_b — куда класть стёкла: у машины игрока они отдельным прозрачным
+## мешем, иначе из салона дороги не видно; у попуток — вместе с кузовом.
+static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: MeshBuilder = null) -> void:
+	var gb := glass_b if glass_b else b
 	var dark := Color(0.07, 0.07, 0.08)
 	var chrome := Color(0.78, 0.78, 0.8)
 	var glass := Color(0.35, 0.45, 0.5)
@@ -39,11 +42,11 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true) -> void:
 		b.box(Vector3(x, 0.9, -0.62), Vector3(x + 0.06, 1.42, -0.5), paint)
 		b.box(Vector3(x, 0.9, 1.0), Vector3(x + 0.06, 1.42, 1.12), paint)
 		b.box(Vector3(x, 0.9, 0.24), Vector3(x + 0.06, 1.42, 0.32), paint)
-		b.box(Vector3(x + 0.02, 0.92, -0.5), Vector3(x + 0.04, 1.38, 0.24), glass)
-		b.box(Vector3(x + 0.02, 0.92, 0.32), Vector3(x + 0.04, 1.38, 1.0), glass)
+		gb.box(Vector3(x + 0.02, 0.92, -0.5), Vector3(x + 0.04, 1.38, 0.24), glass)
+		gb.box(Vector3(x + 0.02, 0.92, 0.32), Vector3(x + 0.04, 1.38, 1.0), glass)
 	b.box(Vector3(-0.76, 1.42, -0.64), Vector3(0.76, 1.48, 1.14), paint)
-	b.box(Vector3(-0.7, 0.92, -0.64), Vector3(0.7, 1.4, -0.6), glass)
-	b.box(Vector3(-0.7, 0.92, 1.12), Vector3(0.7, 1.4, 1.16), glass)
+	gb.box(Vector3(-0.7, 0.92, -0.64), Vector3(0.7, 1.4, -0.6), glass)
+	gb.box(Vector3(-0.7, 0.92, 1.12), Vector3(0.7, 1.4, 1.16), glass)
 	# Водостоки на крыше, дворники
 	for x in [-0.76, 0.72]:
 		b.box(Vector3(x, 1.46, -0.64), Vector3(x + 0.04, 1.5, 1.14), chrome)
