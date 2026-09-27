@@ -46,11 +46,15 @@ var _glow_mat: StandardMaterial3D
 var _rng := RandomNumberGenerator.new()
 ## Отдельный генератор для деревенских мелочей: лес и город остаются прежними.
 var _vrng := RandomNumberGenerator.new()
+## И ещё один — для мелких деталей (трещины, столбики, знаки, двор города).
+var _drng := RandomNumberGenerator.new()
 ## Лампы фонарей и пятна света под ними: видны только в темноте.
 var _street_lights: Array[Node3D] = []
 var _light_pool_mat: StandardMaterial3D
 ## Двор игрока строится отдельно от общего меша: его перестраивают.
 var _yard_nodes: Array[Node] = []
+## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
+var _veg := Vegetation.new()
 var _sky_top: Color
 var _sky_horizon: Color
 
@@ -58,6 +62,7 @@ var _sky_horizon: Color
 func _ready() -> void:
 	_rng.seed = 20260925
 	_vrng.seed = 1986
+	_drng.seed = 1991
 	_setup_environment()
 
 	var b := MeshBuilder.new()
@@ -65,13 +70,19 @@ func _ready() -> void:
 	glow.ground_shade = false
 	_build_ground(b)
 	_build_roads(b)
+	_road_details(b)
 	_build_power_line(b)
 	_build_village(b)
 	_build_village_life(b, glow)
 	_build_roadside(b)
 	_build_town(b, glow)
+	_town_details(b, glow)
 	_build_shops(b)
 	_build_forest(b)
+	_block_grass()
+	# Двор игрока — до сборки растительности: его яблоня и кусты регистрируются
+	# один раз, при перестройке дома они стоят на тех же местах
+	_build_player_yard()
 
 	var world_mesh := b.build_mesh()
 	world_mesh.name = "WorldMesh"
@@ -79,13 +90,16 @@ func _ready() -> void:
 	var body := b.build_body()
 	body.name = "WorldCollision"
 	add_child(body)
+	_veg.name = "Vegetation"
+	_veg.build()
+	add_child(_veg)
+	print("Растительность: ", _veg.counts)
 	var glow_mesh := glow.build_mesh(true)
 	glow_mesh.name = "WindowGlow"
 	_glow_mat = glow_mesh.mesh.surface_get_material(0) if glow_mesh.mesh else null
 	add_child(glow_mesh)
 	print("Мир: %d треугольников в одном меше, %d коллизий" % [b.triangle_count(), body.get_child_count()])
 
-	_build_player_yard()
 	Progress.house_changed.connect(func(_l: int) -> void: _build_player_yard())
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
@@ -126,7 +140,19 @@ func _setup_environment() -> void:
 	_sun.shadow_enabled = true
 	_sun.directional_shadow_max_distance = 70.0
 	add_child(_sun)
+	SettingsManager.changed.connect(_apply_detail)
+	_apply_detail()
 	_update_daylight()
+
+
+## Детализация: на высокой — тени в два каскада, на средней — один
+## (дешевле вдвое), на низкой — без теней.
+func _apply_detail() -> void:
+	var r := SettingsManager.shadow_range()
+	_sun.shadow_enabled = r > 0.0
+	_sun.directional_shadow_max_distance = maxf(r, 1.0)
+	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if SettingsManager.detail >= 2 \
+		else DirectionalLight3D.SHADOW_ORTHOGONAL
 
 
 func _update_daylight() -> void:
@@ -159,21 +185,38 @@ func _update_daylight() -> void:
 # --- Земля и дороги ---------------------------------------------------------
 
 func _build_ground(b: MeshBuilder) -> void:
-	var n := 40
+	# Земля пятнами: крупные — сухая и сочная трава, мелкие — проплешины
+	# и тёмные влажные места. Сетка 4×4 м, цвет в каждой вершине.
+	var n := 100
 	var cell := 400.0 / n
 	var noise := FastNoiseLite.new()
 	noise.seed = 3
 	noise.frequency = 0.02
+	var detail := FastNoiseLite.new()
+	detail.seed = 8
+	detail.frequency = 0.11
 	var grass := Color(0.32, 0.47, 0.21)
 	var dry := Color(0.47, 0.5, 0.27)
+	var damp := Color(0.24, 0.38, 0.17)
+	var bare := Color(0.45, 0.4, 0.28)
+	var cols_at := {}
+	for i in n + 1:
+		for j in n + 1:
+			var x := -200.0 + i * cell
+			var z := -200.0 + j * cell
+			var c := grass.lerp(dry, clampf(noise.get_noise_2d(x, z) * 0.8 + 0.35, 0.0, 1.0))
+			var d := detail.get_noise_2d(x, z)
+			if d > 0.35:
+				c = c.lerp(bare, (d - 0.35) * 0.9)
+			elif d < -0.3:
+				c = c.lerp(damp, (-0.3 - d) * 1.2)
+			cols_at[Vector2i(i, j)] = c
 	for i in n:
 		for j in n:
 			var x0 := -200.0 + i * cell
 			var z0 := -200.0 + j * cell
 			var pts := [Vector3(x0, 0, z0 + cell), Vector3(x0 + cell, 0, z0 + cell), Vector3(x0 + cell, 0, z0), Vector3(x0, 0, z0)]
-			var cols: Array[Color] = []
-			for p in pts:
-				cols.append(grass.lerp(dry, clampf(noise.get_noise_2d(p.x, p.z) * 0.8 + 0.35, 0.0, 1.0)))
+			var cols: Array[Color] = [cols_at[Vector2i(i, j + 1)], cols_at[Vector2i(i + 1, j + 1)], cols_at[Vector2i(i + 1, j)], cols_at[Vector2i(i, j)]]
 			b.quad_vc(pts, cols)
 	b.add_collider(Vector3(-200, -1, -200), Vector3(200, 0, 200))
 	# Невидимые стены по краю мира
@@ -344,6 +387,64 @@ func _house_exterior(b: MeshBuilder, hi: HouseInterior) -> void:
 		# Спутниковая тарелка на фасаде
 		b.box(Vector3(ox - 1.2, H - 0.6, oz), Vector3(ox - 1.15, H - 0.5, oz + 0.35), Color(0.6, 0.6, 0.6))
 		b.box(Vector3(ox - 1.5, H - 0.85, oz + 0.3), Vector3(ox - 0.85, H - 0.2, oz + 0.36), Color(0.9, 0.9, 0.9))
+	_house_details(b, hi, ox, oz, H, e, drop, ridge_y, style, open)
+
+
+## Мелочи снаружи дома: водостоки с трубами, козырёк над дверью, ставни,
+## антенна на коньке, продухи в цоколе, табличка с номером, лампочка у входа.
+func _house_details(b: MeshBuilder, hi: HouseInterior, ox: float, oz: float, H: float, e: float, drop: float,
+		ridge_y: float, style: Dictionary, open: Dictionary) -> void:
+	var metal := Color(0.55, 0.57, 0.58) if hi.wealth != W.POOR else Color(0.45, 0.38, 0.32)
+	var gy := H - drop
+	for sz in [1.0, -1.0]:
+		var z0: float = sz * (oz + e)
+		b.box(Vector3(-ox - e, gy - 0.14, minf(z0, z0 + sz * 0.13)), Vector3(ox + e, gy - 0.04, maxf(z0, z0 + sz * 0.13)), metal)
+		for sx in [-1.0, 1.0]:
+			var x: float = sx * (ox + e - 0.12)
+			var pz: float = z0 + sz * 0.06
+			b.box(Vector3(x - 0.05, 0.25, pz - 0.05), Vector3(x + 0.05, gy - 0.1, pz + 0.05), metal)
+			b.box(Vector3(x - 0.06, 0.05, pz - 0.06), Vector3(x + 0.06, 0.3, pz + sz * 0.25 + 0.06 * sz), metal.darkened(0.1))
+	# Козырёк над дверью на кронштейнах
+	var door: Array = open.front[0]
+	var dx: float = door[0]
+	b.box(Vector3(dx - 0.85, 2.32, oz), Vector3(dx + 0.85, 2.4, oz + 0.95), style.roof)
+	for x in [dx - 0.75, dx + 0.7]:
+		b.box(Vector3(x, 2.0, oz), Vector3(x + 0.05, 2.32, oz + 0.05), style.trim)
+		b.box(Vector3(x, 2.28, oz), Vector3(x + 0.05, 2.33, oz + 0.85), style.trim)
+	# Лампочка у двери и табличка с номером дома
+	b.box(Vector3(dx + 0.6, 2.05, oz), Vector3(dx + 0.72, 2.2, oz + 0.12), Color(0.95, 0.92, 0.75))
+	b.box(Vector3(dx + 0.85, 1.65, oz), Vector3(dx + 1.2, 1.85, oz + 0.03), Color(0.15, 0.3, 0.6))
+	b.box(Vector3(dx + 0.95, 1.7, oz + 0.03), Vector3(dx + 1.1, 1.8, oz + 0.035), Color(0.95, 0.95, 0.95))
+	# Ставни у окон фасада (кроме кирпичного дома)
+	if hi.wealth != W.RICH:
+		for o in open.front:
+			var bottom: float = o[3]
+			if bottom <= 0.0:
+				continue
+			var c: float = o[0]
+			var w: float = o[1]
+			var top: float = o[2]
+			for side in [-1.0, 1.0]:
+				var x0: float = c + side * (w * 0.5 + 0.1)
+				var x1: float = x0 + side * w * 0.5
+				b.box(Vector3(minf(x0, x1), bottom, oz), Vector3(maxf(x0, x1), top, oz + 0.04), style.trim.darkened(0.1))
+				for k in 3:
+					var y := bottom + (top - bottom) * (0.2 + k * 0.3)
+					b.box(Vector3(minf(x0, x1), y, oz + 0.04), Vector3(maxf(x0, x1), y + 0.03, oz + 0.05), style.trim.darkened(0.3))
+	# Продухи в цоколе
+	var x := -ox + 0.8
+	while x < ox - 0.5:
+		if absf(x - dx) > 1.0:
+			b.box(Vector3(x, 0.08, oz), Vector3(x + 0.18, 0.2, oz + 0.02), Color(0.12, 0.12, 0.12))
+		x += 2.0
+	# Антенна на коньке — «ёлочка»
+	if hi.wealth != W.RICH:
+		var ax := ox - 1.4
+		b.box(Vector3(ax - 0.025, ridge_y, -0.025), Vector3(ax + 0.025, ridge_y + 2.0, 0.025), Color(0.4, 0.4, 0.42))
+		for k in 4:
+			var y := ridge_y + 1.2 + k * 0.22
+			var half := 0.55 - k * 0.1
+			b.box(Vector3(ax - 0.015, y, -half), Vector3(ax + 0.015, y + 0.02, half), Color(0.4, 0.4, 0.42))
 
 
 func _house_style(wealth: int) -> Dictionary:
@@ -543,6 +644,9 @@ func _fence_run(b: MeshBuilder, a: Vector3, c: Vector3, wealth: int) -> void:
 func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	# Яблоня во дворе у всех
 	_tree(b, Vector3(7.5, 0, -6.0), 0.0, 1)
+	# Кусты сирени и смородины вдоль забора
+	for p in [Vector3(-10.0, 0, 10.8), Vector3(-10.0, 0, 3.0), Vector3(10.0, 0, 11.0), Vector3(-6.0, 0, -8.0)]:
+		_tree(b, p, _rng.randf() * TAU, Vegetation.TreeKind.BUSH)
 	_gate_bench(b, hi.wealth)
 	_front_garden(b, hi)
 	# На огороде игрока растёт то, что он сам посадил (garden.gd)
@@ -1019,6 +1123,17 @@ func _panel_building(b: MeshBuilder, glow: MeshBuilder, center: Vector3, length:
 					continue
 				var z: float = s * hd
 				b.box(Vector3(x - 0.7, y, minf(z, z + s * 0.03)), Vector3(x + 0.7, y + 1.4, maxf(z, z + s * 0.03)), Color(0.2, 0.24, 0.28))
+				# Рама с переплётом и форточкой, отлив под окном
+				var fz0 := minf(z + s * 0.03, z + s * 0.05)
+				var fz1 := maxf(z + s * 0.03, z + s * 0.05)
+				var frame := Color(0.88, 0.87, 0.82) if _drng.randf() < 0.7 else Color(0.55, 0.4, 0.28)
+				b.box(Vector3(x - 0.04, y, fz0), Vector3(x + 0.04, y + 1.4, fz1), frame)
+				b.box(Vector3(x - 0.7, y + 0.95, fz0), Vector3(x + 0.7, y + 1.0, fz1), frame)
+				b.box(Vector3(x - 0.74, y - 0.06, minf(z, z + s * 0.12)), Vector3(x + 0.74, y, maxf(z, z + s * 0.12)), Color(0.6, 0.62, 0.64))
+				# Кое-где занавески видны сквозь стекло
+				if _drng.randf() < 0.4:
+					var cur := [Color(0.8, 0.65, 0.5), Color(0.75, 0.8, 0.85), Color(0.85, 0.75, 0.55)][_drng.randi() % 3] as Color
+					b.box(Vector3(x - 0.66, y + 0.05, minf(z + s * 0.03, z + s * 0.036)), Vector3(x - 0.3, y + 1.35, maxf(z + s * 0.03, z + s * 0.036)), cur)
 				if _rng.randf() < 0.35:
 					var gz: float = z + s * 0.04
 					var c := Color(1.0, 0.85, 0.55) if _rng.randf() < 0.8 else Color(0.7, 0.85, 1.0)
@@ -1030,6 +1145,25 @@ func _panel_building(b: MeshBuilder, glow: MeshBuilder, center: Vector3, length:
 				if s < 0.0 and f > 0 and m % 2 == 0:
 					b.box(Vector3(x - 1.3, y - 0.75, -hd - 1.1), Vector3(x + 1.3, y - 0.6, -hd), panel.darkened(0.1))
 					b.box(Vector3(x - 1.3, y - 0.6, -hd - 1.1), Vector3(x + 1.3, y + 0.35, -hd - 1.02), Color(0.55, 0.6, 0.62))
+					for bx in [x - 1.3, x + 1.24]:
+						b.box(Vector3(bx, y - 0.6, -hd - 1.1), Vector3(bx + 0.06, y + 0.35, -hd), Color(0.5, 0.55, 0.57))
+					var kind := _drng.randf()
+					if kind < 0.4:
+						# Застеклённый балкон — рамы и стёкла до потолка
+						b.box(Vector3(x - 1.28, y + 0.35, -hd - 1.08), Vector3(x + 1.28, y + 1.9, -hd - 1.04), Color(0.3, 0.38, 0.44))
+						for k in 5:
+							b.box(Vector3(x - 1.3 + k * 0.64, y + 0.35, -hd - 1.1), Vector3(x - 1.26 + k * 0.64, y + 1.9, -hd - 1.02), Color(0.85, 0.85, 0.82))
+						b.box(Vector3(x - 1.35, y + 1.9, -hd - 1.15), Vector3(x + 1.35, y + 1.98, -hd), Color(0.5, 0.5, 0.52))
+					elif kind < 0.6:
+						# Бельё на верёвках
+						b.box(Vector3(x - 1.2, y + 1.3, -hd - 0.9), Vector3(x + 1.2, y + 1.32, -hd - 0.88), Color(0.8, 0.8, 0.8))
+						for k in 4:
+							var cl := [Color(0.9, 0.9, 0.95), Color(0.75, 0.3, 0.3), Color(0.35, 0.5, 0.8), Color(0.9, 0.8, 0.4)][k] as Color
+							b.box(Vector3(x - 1.0 + k * 0.55, y + 0.8, -hd - 0.91), Vector3(x - 0.6 + k * 0.55, y + 1.3, -hd - 0.87), cl)
+					if _drng.randf() < 0.18:
+						# Спутниковая тарелка на ограждении
+						b.box(Vector3(x + 0.6, y + 0.1, -hd - 1.4), Vector3(x + 1.2, y + 0.7, -hd - 1.34), Color(0.88, 0.88, 0.88))
+						b.box(Vector3(x + 0.85, y + 0.35, -hd - 1.34), Vector3(x + 0.95, y + 0.45, -hd - 1.1), Color(0.5, 0.5, 0.5))
 	# Подъезды: дверь, козырёк, ступени, лавочка
 	for m in entrances:
 		var x: float = start + m * 3.0 + 1.5
@@ -1042,8 +1176,174 @@ func _panel_building(b: MeshBuilder, glow: MeshBuilder, center: Vector3, length:
 	b.box(Vector3(-hl, h, -hd), Vector3(hl, h + 0.4, -hd + 0.2), panel.darkened(0.1))
 	b.box(Vector3(-hl, h, hd - 0.2), Vector3(hl, h + 0.4, hd), panel.darkened(0.1))
 	b.box(Vector3(-2, h, -2), Vector3(2, h + 2.2, 2), panel.darkened(0.05))
+	# Антенны и вентшахты на крыше, водосток на торцах
+	for k in 4:
+		var ax := -hl + 4.0 + k * (length - 8.0) / 3.0
+		b.box(Vector3(ax - 0.03, h, -0.03), Vector3(ax + 0.03, h + 2.4, 0.03), Color(0.45, 0.45, 0.47))
+		for j in 3:
+			b.box(Vector3(ax - 0.5 + j * 0.1, h + 1.6 + j * 0.25, -0.02), Vector3(ax + 0.5 - j * 0.1, h + 1.63 + j * 0.25, 0.02), Color(0.45, 0.45, 0.47))
+		b.box(Vector3(ax + 2.0, h, -3.5), Vector3(ax + 3.0, h + 1.0, -2.5), panel.darkened(0.12))
+	for sx in [-1.0, 1.0]:
+		b.box(Vector3(sx * hl - 0.08, 0.2, hd - 0.2), Vector3(sx * hl + 0.08, h, hd - 0.04), Color(0.5, 0.52, 0.53))
 	b.xf = Transform3D.IDENTITY
 	glow.xf = Transform3D.IDENTITY
+
+
+# --- Мелочи на дорогах и в городе ----------------------------------------------
+
+## Трещины и заплатки на асфальте, выбоины на грунтовке, белые столбики
+## вдоль трассы, километровые столбы, дорожные знаки, люки.
+func _road_details(b: MeshBuilder) -> void:
+	var r := _drng
+	var crack := Color(0.17, 0.17, 0.18)
+	# Трещины: ломаные из коротких отрезков
+	for i in 260:
+		var p := Vector3(r.randf_range(-198, 198), 0.051, r.randf_range(-3.6, 3.6))
+		var a := r.randf() * TAU
+		for k in r.randi_range(2, 5):
+			var seg := r.randf_range(0.3, 1.1)
+			b.box_rot(p, Vector3(seg, 0.004, 0.035), a, crack)
+			p += Vector3(cos(a), 0, -sin(a)) * seg * 0.5
+			a += r.randf_range(-0.8, 0.8)
+	# Заплатки свежего и старого асфальта
+	for i in 45:
+		var x := r.randf_range(-195, 195)
+		var z := r.randf_range(-3.5, 2.0)
+		var shade := Color(0.2, 0.2, 0.21) if r.randf() < 0.5 else Color(0.3, 0.3, 0.3)
+		b.box(Vector3(x, 0.05, z), Vector3(x + r.randf_range(0.8, 3.0), 0.054, z + r.randf_range(0.6, 1.6)), shade)
+	# Выбоины на деревенской улице и съезде
+	for i in 28:
+		var x := r.randf_range(-163, -58)
+		var z := r.randf_range(-42, -38)
+		if i % 4 == 0:
+			x = r.randf_range(-61.5, -57.5)
+			z = r.randf_range(-36, -7)
+		b.box_rot(Vector3(x, 0.04, z), Vector3(r.randf_range(0.4, 1.0), 0.005, r.randf_range(0.3, 0.8)), r.randf() * TAU, Color(0.33, 0.28, 0.2))
+	# Белые столбики с чёрной полосой и катафотом вдоль обочин
+	var x := -195.0
+	while x < 195.0:
+		for zs in [-1.0, 1.0]:
+			var z: float = zs * 6.3
+			if _post_clear(x, z):
+				b.box(Vector3(x - 0.06, 0, z - 0.06), Vector3(x + 0.06, 0.95, z + 0.06), Color(0.93, 0.93, 0.9))
+				b.box(Vector3(x - 0.065, 0.62, z - 0.065), Vector3(x + 0.065, 0.82, z + 0.065), Color(0.1, 0.1, 0.1))
+				b.box(Vector3(x - 0.03, 0.7, z - zs * 0.07), Vector3(x + 0.03, 0.78, z - zs * 0.066), Color(0.95, 0.5, 0.1))
+		x += 20.0
+	# Километровые столбы
+	for kx in [-150.0, -50.0, 50.0, 150.0]:
+		b.box(Vector3(kx - 0.12, 0, 6.9), Vector3(kx + 0.12, 1.1, 7.1), Color(0.93, 0.93, 0.9))
+		b.box(Vector3(kx - 0.13, 0.75, 6.88), Vector3(kx + 0.13, 1.05, 6.9), Color(0.1, 0.1, 0.1))
+	# Знаки: ограничение 60 перед селом, пешеходный переход, АЗС, остановка
+	_round_sign(b, Vector3(-40.0, 0, -6.6), 0.0, "60")
+	_round_sign(b, Vector3(-190.0, 0, 6.6), PI, "60")
+	_square_sign(b, Vector3(19.0, 0, 6.2), PI, Color(0.15, 0.35, 0.7), "🚶")
+	_square_sign(b, Vector3(-135.0, 0, 6.6), PI, Color(0.15, 0.35, 0.7), "АЗС\n200 м")
+	# Люки на городских улицах
+	for p in [Vector3(97, 0.051, 20), Vector3(97, 0.051, 45), Vector3(60, 0.051, 58), Vector3(120, 0.051, 58), Vector3(160, 0.051, 58)]:
+		for k in 4:
+			b.box_rot(p, Vector3(0.7, 0.01, 0.29), k * PI / 4.0, Color(0.2, 0.2, 0.2))
+
+
+## Столбики не ставим на съездах, у АЗС и остановок.
+func _post_clear(x: float, z: float) -> bool:
+	if x > -64.0 and x < -54.0:
+		return false
+	if absf(x - STOP_VILLAGE.x) < 4.0 and z < 0.0:
+		return false
+	if x > -122.0 and x < -76.0 and z > 0.0:
+		return false
+	if x > 10.0 and z > 0.0:
+		return false
+	return true
+
+
+## Круглый знак: белый круг в красном ободе на столбе, число — надписью.
+func _round_sign(b: MeshBuilder, p: Vector3, yaw: float, text: String) -> void:
+	var xf := Transform3D(Basis(Vector3.UP, yaw), p)
+	b.xf = xf
+	b.box(Vector3(-0.04, 0, -0.04), Vector3(0.04, 2.6, 0.04), Color(0.55, 0.55, 0.57))
+	for k in 4:
+		var saved := b.xf
+		b.xf = xf * Transform3D(Basis(Vector3.BACK, k * PI / 4.0), Vector3(0, 2.2, 0.05))
+		b.box(Vector3(-0.35, -0.145, 0), Vector3(0.35, 0.145, 0.02), Color(0.85, 0.12, 0.1))
+		b.box(Vector3(-0.27, -0.112, 0.02), Vector3(0.27, 0.112, 0.03), Color(0.95, 0.95, 0.93))
+		b.xf = saved
+	b.xf = Transform3D.IDENTITY
+	_label(text, xf * Vector3(0, 2.2, 0.09), yaw, 0.004, Color(0.05, 0.05, 0.05))
+
+
+func _square_sign(b: MeshBuilder, p: Vector3, yaw: float, color: Color, text: String) -> void:
+	var xf := Transform3D(Basis(Vector3.UP, yaw), p)
+	b.xf = xf
+	b.box(Vector3(-0.04, 0, -0.04), Vector3(0.04, 2.6, 0.04), Color(0.55, 0.55, 0.57))
+	b.box(Vector3(-0.4, 1.85, 0.04), Vector3(0.4, 2.65, 0.07), Color(0.95, 0.95, 0.93))
+	b.box(Vector3(-0.36, 1.89, 0.07), Vector3(0.36, 2.61, 0.08), color)
+	b.xf = Transform3D.IDENTITY
+	_label(text, xf * Vector3(0, 2.25, 0.09), yaw, 0.0028, Color(1, 1, 1))
+
+
+## Двор в городе: припаркованные машины, мусорные баки, фонари вдоль
+## улицы, ряд гаражей, берёзы, скамейки и столбы для белья.
+func _town_details(b: MeshBuilder, glow: MeshBuilder) -> void:
+	var r := _drng
+	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3),
+		Color(0.6, 0.6, 0.62), Color(0.85, 0.7, 0.3), Color(0.35, 0.2, 0.3)]
+	# Машины вдоль внутриквартальной дороги (z 55–61), у подъездов второго ряда
+	for i in 9:
+		var x := 52.0 + i * 13.5 + r.randf_range(-2.0, 2.0)
+		if absf(x - 97.0) < 5.0:
+			continue
+		var yaw := PI / 2.0 if r.randf() < 0.5 else -PI / 2.0
+		b.xf = Transform3D(Basis(Vector3.UP, yaw), Vector3(x, 0, 63.4))
+		VehicleModels.zhiguli(b, colors[r.randi() % colors.size()], false)
+		for wp in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+			var saved := b.xf
+			b.xf = saved * Transform3D(Basis.IDENTITY, wp)
+			VehicleModels.car_wheel(b, 0.29, 0.2)
+			b.xf = saved
+		b.add_collider(Vector3(-0.85, 0, -2.1), Vector3(0.85, 1.45, 2.1))
+		b.xf = Transform3D.IDENTITY
+	# Мусорные контейнеры на площадке
+	for i in 3:
+		var p := Vector3(44.0 + i * 1.6, 0, 62.5)
+		b.box(p + Vector3(-0.7, 0.15, -0.55), p + Vector3(0.7, 1.25, 0.55), Color(0.25, 0.4, 0.3), true)
+		b.box(p + Vector3(-0.75, 1.25, -0.6), p + Vector3(0.75, 1.32, 0.6), Color(0.2, 0.32, 0.24))
+		for dx in [-0.55, 0.45]:
+			b.box(p + Vector3(dx, 0, -0.5), p + Vector3(dx + 0.1, 0.15, -0.4), Color(0.1, 0.1, 0.1))
+	b.box(Vector3(42.5, 0, 61.6), Vector3(49.5, 0.06, 63.6), Color(0.55, 0.55, 0.53))
+	# Фонари вдоль улицы: бетонная опора и плафон — светится ночью
+	var x := 45.0
+	while x < 190.0:
+		b.box(Vector3(x - 0.1, 0, 53.9), Vector3(x + 0.1, 7.5, 54.1), Color(0.6, 0.6, 0.58), true)
+		b.box(Vector3(x - 0.04, 7.3, 54.0), Vector3(x + 0.04, 7.38, 55.6), Color(0.5, 0.5, 0.5))
+		b.box(Vector3(x - 0.22, 7.1, 55.4), Vector3(x + 0.22, 7.32, 56.0), Color(0.4, 0.4, 0.42))
+		glow.box(Vector3(x - 0.16, 7.04, 55.48), Vector3(x + 0.16, 7.1, 55.92), Color(1.0, 0.85, 0.55))
+		x += 22.0
+	# Ряд гаражей с воротами и номерами
+	for i in 7:
+		var gx := 148.0 + i * 5.2
+		b.box(Vector3(gx, 0, 17), Vector3(gx + 5.0, 2.6, 23), Color(0.58, 0.56, 0.52), true)
+		b.box(Vector3(gx - 0.1, 2.6, 16.6), Vector3(gx + 5.1, 2.72, 23.2), Color(0.35, 0.35, 0.36))
+		var door := [Color(0.45, 0.5, 0.55), Color(0.55, 0.35, 0.25), Color(0.3, 0.45, 0.35)][i % 3] as Color
+		b.box(Vector3(gx + 0.5, 0.05, 16.95), Vector3(gx + 4.5, 2.25, 17.0), door)
+		b.box(Vector3(gx + 2.48, 0.05, 16.93), Vector3(gx + 2.52, 2.25, 16.95), door.darkened(0.4))
+		b.box(Vector3(gx + 2.2, 1.1, 16.92), Vector3(gx + 2.35, 1.2, 16.94), Color(0.7, 0.7, 0.7))
+	b.box(Vector3(146, 0, 12), Vector3(186, 0.04, 17), Color(0.4, 0.38, 0.35))
+	# Берёзы и кусты во дворах, скамейки, столбы для белья
+	for p in [Vector3(56, 0, 50), Vector3(84, 0, 51), Vector3(108, 0, 50), Vector3(140, 0, 51), Vector3(150, 0, 49),
+			Vector3(58, 0, 86), Vector3(90, 0, 88), Vector3(115, 0, 87), Vector3(145, 0, 86), Vector3(30, 0, 50), Vector3(20, 0, 60)]:
+		_tree(b, p, r.randf() * TAU, Vegetation.TreeKind.BIRCH)
+	for p in [Vector3(78, 0, 49), Vector3(102, 0, 49), Vector3(132, 0, 49), Vector3(64, 0, 88), Vector3(104, 0, 88)]:
+		_tree(b, p, r.randf() * TAU, Vegetation.TreeKind.BUSH)
+	for p in [Vector3(88, 0, 50.5), Vector3(118, 0, 50.5)]:
+		b.box(p + Vector3(-0.9, 0.42, -0.2), p + Vector3(0.9, 0.47, 0.2), Color(0.5, 0.35, 0.2))
+		b.box(p + Vector3(-0.9, 0.47, 0.18), p + Vector3(0.9, 0.85, 0.22), Color(0.5, 0.35, 0.2))
+		for dx in [-0.8, 0.7]:
+			b.box(p + Vector3(dx, 0, -0.18), p + Vector3(dx + 0.1, 0.42, 0.18), Color(0.3, 0.3, 0.3))
+	for px in [150.0, 160.0]:
+		b.box(Vector3(px - 0.05, 0, 88.0), Vector3(px + 0.05, 2.2, 88.1), Color(0.4, 0.4, 0.42))
+		b.box(Vector3(px - 0.6, 2.1, 88.0), Vector3(px + 0.6, 2.16, 88.1), Color(0.4, 0.4, 0.42))
+	b.box(Vector3(149.5, 2.0, 88.03), Vector3(160.5, 2.02, 88.07), Color(0.8, 0.8, 0.8))
 
 
 # --- У трассы: АЗС, СТО, городская остановка; колхоз у села ------------------
@@ -1332,33 +1632,55 @@ func _build_forest(b: MeshBuilder) -> void:
 		_tree(b, Vector3(x, 0, -44.5), _rng.randf() * TAU, 2)
 
 
-## kind: 0 — ель, 1 — яблоня, 2 — берёза. Крона из повёрнутых кусков.
+## kind: 0 — ель, 1 — яблоня, 2 — берёза, 3 — куст (Vegetation.TreeKind).
+## Сама модель — в vegetation.gd (MultiMesh), здесь — тень, ствол-коллизия
+## и регистрация места.
 func _tree(b: MeshBuilder, p: Vector3, yaw: float, kind: int) -> void:
 	var s := _rng.randf_range(0.85, 1.25)
 	var saved := b.xf
 	b.xf = b.xf * Transform3D(Basis(Vector3.UP, yaw), p)
-	# Тень под деревом
-	b.box(Vector3(-1.4, 0, -1.4) * s, Vector3(1.4, 0.015, 1.4) * s, Color(0.2, 0.3, 0.14))
-	match kind:
-		0:
-			b.box(Vector3(-0.15, 0, -0.15) * s, Vector3(0.15, 2.0, 0.15) * s, Color(0.35, 0.25, 0.18), true)
-			var green := Color(0.14, 0.3, 0.15)
-			for i in 4:
-				var w := (2.2 - i * 0.5) * s
-				b.box_rot(Vector3(0, (1.5 + i * 1.4) * s, 0), Vector3(w, 1.5 * s, w), i * 0.4, green.lightened(i * 0.04))
-		1:
-			b.box(Vector3(-0.12, 0, -0.12) * s, Vector3(0.12, 1.4, 0.12) * s, Color(0.4, 0.3, 0.2), true)
-			for i in 3:
-				b.box_rot(Vector3(0, 2.0 * s, 0), Vector3(2.2, 1.4, 2.2) * s, i * 0.5, Color(0.25, 0.45, 0.2))
-			for i in 5:
-				b.box(Vector3(-1.0 + i * 0.45, 1.3, 1.05) * s, Vector3(-0.9 + i * 0.45, 1.4, 1.15) * s, Color(0.8, 0.2, 0.15))
-		_:
-			b.box(Vector3(-0.12, 0, -0.12) * s, Vector3(0.12, 4.5, 0.12) * s, Color(0.9, 0.9, 0.86), true)
-			for i in 3:
-				b.box(Vector3(-0.13, 1.0 + i * 1.1, -0.13) * s, Vector3(0.13, 1.08 + i * 1.1, 0.13) * s, Color(0.15, 0.15, 0.15))
-			for i in 3:
-				b.box_rot(Vector3(0, (4.2 + i * 0.6) * s, 0), Vector3(2.4 - i * 0.5, 1.2, 2.4 - i * 0.5) * s, i * 0.6, Color(0.35, 0.55, 0.22))
+	var shade := 1.0 if kind != Vegetation.TreeKind.BUSH else 0.6
+	b.box(Vector3(-1.4, 0, -1.4) * s * shade, Vector3(1.4, 0.015, 1.4) * s * shade, Color(0.2, 0.3, 0.14))
+	if kind != Vegetation.TreeKind.BUSH:
+		b.add_collider(Vector3(-0.16, 0, -0.16) * s, Vector3(0.16, 3.0, 0.16) * s)
+	if not _veg.is_inside_tree():
+		_veg.add_tree(kind, b.xf * Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3.ZERO))
 	b.xf = saved
+
+
+## Где травы нет: дороги, дворы у домов, площадки, город, пруд.
+func _block_grass() -> void:
+	var v := _veg
+	v.block(-200, -6, 200, 6)
+	v.block(-166, -43, -56, -37)
+	v.block(-63, -43, -56, -5)
+	for x in VILLAGE_X:
+		for z in [ROW_A_Z, ROW_B_Z]:
+			v.block(x - 5, z - 4.2, x + 5, z + 4.2)
+	# Город: дороги, тротуар, дома, склад, площадка, гаражи; во дворах — трава
+	v.block(10, 4, 200, 7.6)
+	v.block(93.5, 4, 100.5, 100)
+	v.block(40, 54.5, 190, 61.5)
+	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
+		v.block(c.x - 22, c.y - 8.5, c.x + 22, c.y + 8.5)
+	v.block(163, 52, 180, 98)
+	v.block(14, 26, 41, 45)
+	v.block(22, 8, 29, 13)
+	v.block(59, 49, 74, 55)
+	v.block(146, 16, 186, 29)
+	v.block(STOP_VILLAGE.x - 3, STOP_VILLAGE.z - 1.5, STOP_VILLAGE.x + 3, STOP_VILLAGE.z + 1.5)
+	v.block(FUEL_POS.x - 9, FUEL_POS.z - 7.5, FUEL_POS.x + 9, FUEL_POS.z + 7.5)
+	v.block(GARAGE_POS.x - 7, GARAGE_POS.z - 5.5, GARAGE_POS.x + 7, GARAGE_POS.z + 6.5)
+	v.block(SHOP_POS.x - 5, SHOP_POS.z - 5, SHOP_POS.x + 3.5, SHOP_POS.z + 5)
+	v.block(-57, -25, SHOP_POS.x - 4, -23)
+	v.block(BARN_POS.x - 6.5, BARN_POS.z - 4.5, BARN_POS.x + 6.5, BARN_POS.z + 6)
+	v.block(-57, -42.2, BARN_POS.x, -40.8)
+	v.block(POND_POS.x - 13, POND_POS.z - 10, POND_POS.x + 13, POND_POS.z + 10)
+	v.block(POND_POS.x + 9, -40.6, -164, -39.4)
+	# Огороды за домами
+	for x in VILLAGE_X:
+		v.block(x - 10.5, ROW_A_Z - 14, x + 10.5, ROW_A_Z - 9.5)
+		v.block(x - 10.5, ROW_B_Z + 9.5, x + 10.5, ROW_B_Z + 14)
 
 
 # --- Игрок и машина ---------------------------------------------------------

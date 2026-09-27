@@ -15,7 +15,7 @@ const DOG_YARDS := [
 const CHICKEN_YARDS := [[-150.0, -56.0, 0.0], [-125.0, -24.0, PI], [-75.0, -24.0, PI], [-100.0, -24.0, PI]]
 
 const PEOPLE := [
-	{"name": "Баба Галя", "pos": Vector3(-102.0, 0, -36.45), "yaw": 0.0, "sit": true,
+	{"name": "Баба Галя", "pos": Vector3(-102.0, 0, -36.45), "yaw": 0.0, "sit": true, "woman": true,
 		"shirt": Color(0.45, 0.25, 0.35), "hat": Color(0.85, 0.3, 0.3),
 		"lines": ["Здравствуй, сынок! В сельмаге хлеб дешевле, чем в городском ларьке.",
 			"В колхозе «Заря» сено грузят — платят четыреста за смену. Только не в дождь.",
@@ -32,7 +32,7 @@ const PEOPLE := [
 		"lines": ["Работа есть — с семи до семи. Жми E у ворот сарая.",
 			"Вилы в руки — и три часа на сене. Устанешь, зато четыреста в кармане.",
 			"Выспись сначала. Сонный на скирде — это не работник."]},
-	{"name": "Тётя Люда", "pos": Vector3(-68.0, 0, -8.0), "yaw": PI, "sit": false,
+	{"name": "Тётя Люда", "pos": Vector3(-68.0, 0, -8.0), "yaw": PI, "sit": false, "woman": true,
 		"shirt": Color(0.55, 0.45, 0.25), "hat": Color(0.9, 0.9, 0.85),
 		"lines": ["Автобус в город ходит с шести утра до десяти вечера. Пятнадцать гривен.",
 			"В городе у склада остановка — оттуда обратно так же уедешь.",
@@ -55,7 +55,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.seed = 55
 	for d in PEOPLE:
-		var n := _person(d.shirt, d.hat, d.sit)
+		var n := _person(d.shirt, d.hat, d.sit, d.get("woman", false))
 		n.position = d.pos
 		n.rotation.y = d.yaw
 		add_child(n)
@@ -64,7 +64,7 @@ func _ready() -> void:
 	var walker_data := {"name": "Почтальонка Оля", "shirt": Color(0.2, 0.35, 0.65), "hat": Color(0.2, 0.35, 0.65),
 		"lines": ["Писем вам нет, только квитанция за свет.", "Вся Каменка на мне — от пруда до трассы, два раза в день.",
 			"Говорят, в город на машине быстрее, чем автобусом. Если бензин есть."]}
-	_walker = _person(walker_data.shirt, walker_data.hat, false)
+	_walker = _person(walker_data.shirt, walker_data.hat, false, true)
 	_walker.position = Vector3(-150.0, 0, -37.9)
 	add_child(_walker)
 	_talk_zone(_walker, walker_data)
@@ -152,29 +152,11 @@ func _chicken_step(c: Dictionary, delta: float, ppos: Vector3) -> void:
 # --- Внешний вид ------------------------------------------------------------
 
 ## Человек из коробок, носом в -Z. Сидящий — ниже и с согнутыми ногами.
-func _person(shirt: Color, hat: Color, sit: bool) -> Node3D:
+func _person(shirt: Color, hat: Color, sit: bool, woman := false) -> Node3D:
 	var root := Node3D.new()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var skin := Color(0.85, 0.68, 0.55)
-	var pants := Color(0.2, 0.2, 0.24)
-	var base := 0.0
-	if sit:
-		# Бёдра вперёд по лавке, голени вниз
-		b.box(Vector3(-0.2, 0.42, -0.45), Vector3(0.2, 0.58, 0.0), pants)
-		b.box(Vector3(-0.2, 0.0, -0.5), Vector3(0.2, 0.45, -0.35), pants)
-		base = 0.5
-	else:
-		b.box(Vector3(-0.2, 0.0, -0.1), Vector3(-0.03, 0.85, 0.1), pants)
-		b.box(Vector3(0.03, 0.0, -0.1), Vector3(0.2, 0.85, 0.1), pants)
-		base = 0.85
-	b.box(Vector3(-0.24, base, -0.13), Vector3(0.24, base + 0.62, 0.13), shirt)
-	for x in [-0.33, 0.24]:
-		b.box(Vector3(x, base + 0.05, -0.08), Vector3(x + 0.09, base + 0.6, 0.08), shirt)
-	b.box(Vector3(-0.11, base + 0.62, -0.11), Vector3(0.11, base + 0.88, 0.11), skin)
-	b.box(Vector3(-0.13, base + 0.85, -0.13), Vector3(0.13, base + 0.95, 0.13), hat)
-	b.box(Vector3(-0.06, base + 0.74, -0.115), Vector3(-0.03, base + 0.77, -0.11), Color(0.1, 0.1, 0.1))
-	b.box(Vector3(0.03, base + 0.74, -0.115), Vector3(0.06, base + 0.77, -0.11), Color(0.1, 0.1, 0.1))
+	person_model(b, shirt, hat, sit, woman)
 	root.add_child(b.build_mesh())
 	var body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
@@ -186,6 +168,76 @@ func _person(shirt: Color, hat: Color, sit: bool) -> Node3D:
 	body.add_child(cs)
 	root.add_child(body)
 	return root
+
+
+## Человек носом в -Z: ботинки, брюки или юбка с фартуком, ремень, рубаха
+## с воротником и пуговицами, рукава и кисти, шея, лицо (глаза, брови, нос,
+## рот), уши, волосы; у женщин — косынка, у мужчин — кепка с козырьком.
+## Сидящий — бёдра вперёд по лавке, руки на коленях.
+static func person_model(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, woman: bool) -> void:
+	var skin := Color(0.86, 0.68, 0.56)
+	var pants := Color(0.2, 0.2, 0.24)
+	var shoe := Color(0.12, 0.1, 0.09)
+	var hair := Color(0.35, 0.3, 0.26) if not woman else Color(0.55, 0.5, 0.45)
+	var base := 0.85
+	if sit:
+		base = 0.5
+		for x in [-0.19, 0.03]:
+			b.box(Vector3(x, 0.42, -0.45), Vector3(x + 0.16, 0.58, 0.0), pants if not woman else shirt.darkened(0.25))
+			b.box(Vector3(x + 0.01, 0.06, -0.5), Vector3(x + 0.15, 0.45, -0.36), pants if not woman else Color(0.75, 0.7, 0.62))
+			b.box(Vector3(x, 0.0, -0.58), Vector3(x + 0.16, 0.08, -0.34), shoe)
+	elif woman:
+		# Юбка колоколом, фартук, ноги в чулках
+		b.box(Vector3(-0.26, 0.35, -0.16), Vector3(0.26, 0.88, 0.16), shirt.darkened(0.25))
+		b.box(Vector3(-0.2, 0.4, -0.17), Vector3(0.2, 0.85, -0.16), Color(0.92, 0.9, 0.84))
+		for x in [-0.15, 0.04]:
+			b.box(Vector3(x, 0.06, -0.05), Vector3(x + 0.11, 0.36, 0.06), Color(0.75, 0.7, 0.62))
+			b.box(Vector3(x - 0.01, 0.0, -0.1), Vector3(x + 0.12, 0.07, 0.07), shoe)
+	else:
+		for x in [-0.19, 0.03]:
+			b.box(Vector3(x, 0.07, -0.09), Vector3(x + 0.16, 0.85, 0.09), pants)
+			b.box(Vector3(x - 0.005, 0.0, -0.15), Vector3(x + 0.165, 0.08, 0.1), shoe)
+		b.box(Vector3(-0.23, base - 0.04, -0.13), Vector3(0.23, base + 0.02, 0.13), Color(0.25, 0.18, 0.12))
+		b.box(Vector3(-0.03, base - 0.035, -0.135), Vector3(0.03, base + 0.015, -0.13), Color(0.75, 0.7, 0.5))
+	# Туловище, воротник, пуговицы
+	b.box(Vector3(-0.23, base, -0.13), Vector3(0.23, base + 0.6, 0.13), shirt)
+	b.box(Vector3(-0.1, base + 0.55, -0.14), Vector3(0.1, base + 0.62, -0.1), shirt.lightened(0.2))
+	if not woman:
+		for i in 4:
+			b.box(Vector3(-0.012, base + 0.12 + i * 0.12, -0.135), Vector3(0.012, base + 0.14 + i * 0.12, -0.13), Color(0.85, 0.85, 0.8))
+	# Руки: плечо, рукав, кисть
+	for side in [-1.0, 1.0]:
+		var x0 := 0.23 if side > 0.0 else -0.33
+		if sit:
+			b.box(Vector3(x0, base + 0.3, -0.08), Vector3(x0 + 0.1, base + 0.58, 0.08), shirt)
+			b.box(Vector3(x0, base + 0.22, -0.32), Vector3(x0 + 0.1, base + 0.32, -0.02), shirt)
+			b.box(Vector3(x0 + 0.01, base + 0.2, -0.42), Vector3(x0 + 0.09, base + 0.3, -0.32), skin)
+		else:
+			b.box(Vector3(x0, base + 0.08, -0.07), Vector3(x0 + 0.1, base + 0.58, 0.07), shirt)
+			b.box(Vector3(x0 + 0.005, base - 0.02, -0.06), Vector3(x0 + 0.095, base + 0.1, 0.06), skin)
+	# Шея и голова
+	b.box(Vector3(-0.05, base + 0.6, -0.05), Vector3(0.05, base + 0.66, 0.05), skin)
+	var h := base + 0.66
+	b.box(Vector3(-0.11, h, -0.12), Vector3(0.11, h + 0.26, 0.1), skin)
+	for x in [-0.125, 0.11]:
+		b.box(Vector3(x, h + 0.09, -0.02), Vector3(x + 0.015, h + 0.15, 0.03), skin.darkened(0.08))
+	for x in [-0.065, 0.025]:
+		b.box(Vector3(x, h + 0.13, -0.122), Vector3(x + 0.04, h + 0.155, -0.118), Color(0.95, 0.95, 0.95))
+		b.box(Vector3(x + 0.012, h + 0.133, -0.125), Vector3(x + 0.028, h + 0.152, -0.121), Color(0.15, 0.2, 0.3))
+		b.box(Vector3(x - 0.005, h + 0.17, -0.123), Vector3(x + 0.045, h + 0.18, -0.118), hair.darkened(0.3))
+	b.box(Vector3(-0.018, h + 0.08, -0.15), Vector3(0.018, h + 0.14, -0.12), skin.darkened(0.05))
+	b.box(Vector3(-0.04, h + 0.045, -0.122), Vector3(0.04, h + 0.058, -0.118), Color(0.6, 0.3, 0.28))
+	if woman:
+		# Косынка, завязанная под подбородком
+		b.box(Vector3(-0.13, h + 0.12, -0.1), Vector3(0.13, h + 0.3, 0.12), hat)
+		b.box(Vector3(-0.125, h + 0.02, -0.08), Vector3(-0.11, h + 0.2, 0.08), hat)
+		b.box(Vector3(0.11, h + 0.02, -0.08), Vector3(0.125, h + 0.2, 0.08), hat)
+		b.box(Vector3(-0.1, h + 0.25, -0.125), Vector3(0.1, h + 0.29, -0.1), hair)
+	else:
+		# Волосы из-под кепки, кепка с козырьком
+		b.box(Vector3(-0.115, h + 0.14, 0.02), Vector3(0.115, h + 0.24, 0.105), hair)
+		b.box(Vector3(-0.125, h + 0.22, -0.12), Vector3(0.125, h + 0.3, 0.11), hat)
+		b.box(Vector3(-0.1, h + 0.22, -0.2), Vector3(0.1, h + 0.24, -0.12), hat.darkened(0.2))
 
 
 func _chicken_mesh() -> Node3D:

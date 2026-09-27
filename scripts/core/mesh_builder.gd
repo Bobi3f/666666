@@ -112,16 +112,61 @@ func _emit(p: Vector3, n: Vector3, color: Color) -> void:
 
 ## Готовый узел с мешем. unshaded — для светящихся окон.
 func build_mesh(unshaded := false) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = build_array_mesh(unshaded)
+	return mi
+
+
+## Только меш с материалом, без узла — для MultiMesh.
+func build_array_mesh(unshaded := false) -> ArrayMesh:
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 0.92
 	if unshaded:
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var mi := MeshInstance3D.new()
-	if _count > 0:
-		mi.mesh = _st.commit()
-		mi.mesh.surface_set_material(0, mat)
-	return mi
+	else:
+		# Фактура: мелкое зерно и пятна поверх цвета вершин, наложенные
+		# по трём осям — доски, штукатурка, асфальт и трава перестают быть
+		# ровной заливкой. Геометрии и вызовов отрисовки не добавляет.
+		mat.albedo_texture = grain()
+		mat.uv1_triplanar = true
+		mat.uv1_scale = Vector3(0.9, 0.9, 0.9)
+		mat.albedo_color = Color(1.08, 1.08, 1.08)
+	if _count == 0:
+		return null
+	var mesh := _st.commit()
+	mesh.surface_set_material(0, mat)
+	return mesh
+
+
+static var _grain: ImageTexture
+
+
+## Общая для всех текстура-зерно: крупные пятна + мелкая крупка, яркость 0.8–1.05.
+static func grain() -> ImageTexture:
+	if _grain:
+		return _grain
+	var big := FastNoiseLite.new()
+	big.seed = 7
+	big.frequency = 0.04
+	var fine := FastNoiseLite.new()
+	fine.seed = 11
+	fine.frequency = 0.35
+	var n := 128
+	var img := Image.create(n, n, true, Image.FORMAT_RGB8)
+	# Бесшовно: шум на торе — четыре угла плитки усредняются
+	for y in n:
+		for x in n:
+			var v := 0.0
+			for dy in [0, n]:
+				for dx in [0, n]:
+					var w := (1.0 - absf(float(x + dx - n) / n)) * (1.0 - absf(float(y + dy - n) / n))
+					v += w * (big.get_noise_2d(x + dx, y + dy) * 0.55 + fine.get_noise_2d(x + dx, y + dy) * 0.45)
+			var k := clampf(0.93 + v * 0.22, 0.78, 1.06)
+			img.set_pixel(x, y, Color(k, k, k))
+	img.generate_mipmaps()
+	_grain = ImageTexture.create_from_image(img)
+	return _grain
 
 
 ## Одно статическое тело со всеми коллизиями.

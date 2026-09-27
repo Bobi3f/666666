@@ -62,25 +62,16 @@ func _spawn(dir: int, x: float, color: Color, bus: bool) -> void:
 func _build_mesh(size: Vector3, color: Color, bus: bool) -> MeshInstance3D:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var hx := size.x * 0.5
-	var hz := size.z * 0.5
-	var dark := Color(0.08, 0.08, 0.09)
-	var glass := Color(0.2, 0.25, 0.3)
 	if bus:
-		b.box(Vector3(-hx, 0.4, -hz), Vector3(hx, 3.2, hz), color)
-		b.box(Vector3(-hx - 0.01, 1.6, -hz + 0.8), Vector3(hx + 0.01, 2.6, hz - 0.5), glass)
-		b.box(Vector3(-hx + 0.2, 1.3, -hz - 0.01), Vector3(hx - 0.2, 2.8, -hz), glass)
-		b.box(Vector3(-hx, 0.4, -hz), Vector3(hx, 1.0, hz), color.darkened(0.3))
+		VehicleModels.bus(b, color, size)
 	else:
-		b.box(Vector3(-hx, 0.35, -hz), Vector3(hx, 0.95, hz), color)
-		b.box(Vector3(-hx + 0.1, 0.95, -hz + 1.3), Vector3(hx - 0.1, 1.5, hz - 0.9), glass)
-		b.box(Vector3(-hx + 0.08, 1.5, -hz + 1.35), Vector3(hx - 0.08, 1.56, hz - 0.95), color)
-		for x in [-hx + 0.15, hx - 0.45]:
-			b.box(Vector3(x, 0.55, -hz - 0.02), Vector3(x + 0.3, 0.72, -hz), Color(1.0, 0.95, 0.8))
-			b.box(Vector3(x, 0.55, hz), Vector3(x + 0.3, 0.72, hz + 0.02), Color(0.8, 0.1, 0.08))
-	for z in [-hz + 1.0, hz - 1.0]:
-		for x in [-hx, hx - 0.2]:
-			b.box(Vector3(x - 0.02, 0.0, z - 0.35), Vector3(x + 0.22, 0.7, z + 0.35), dark)
+		# Попутки — те же Жигули другого цвета, салон затемнён
+		VehicleModels.zhiguli(b, color, false)
+		for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+			var saved := b.xf
+			b.xf = Transform3D(Basis.IDENTITY, p)
+			VehicleModels.car_wheel(b, 0.29, 0.2)
+			b.xf = saved
 	return b.build_mesh()
 
 

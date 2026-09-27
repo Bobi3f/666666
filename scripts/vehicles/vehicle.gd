@@ -665,65 +665,21 @@ func speed_kmh() -> float:
 func _build_car() -> void:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var paint := Color(0.78, 0.72, 0.52)
-	var dark := Color(0.08, 0.08, 0.09)
-	var chrome := Color(0.75, 0.75, 0.78)
-	var seat := Color(0.3, 0.2, 0.15)
-	# Кузов: низ, капот и багажник (вперёд — к -Z)
-	b.box(Vector3(-0.82, 0.32, -2.05), Vector3(0.82, 0.9, 2.05), paint)
-	for x in [-0.72, 0.66]:
-		b.box(Vector3(x, 0.9, -0.55), Vector3(x + 0.06, 1.42, -0.45), paint)
-		b.box(Vector3(x, 0.9, 0.95), Vector3(x + 0.06, 1.42, 1.05), paint)
-		b.box(Vector3(x, 0.9, 0.2), Vector3(x + 0.06, 1.42, 0.26), paint)
-	b.box(Vector3(-0.74, 1.42, -0.6), Vector3(0.74, 1.47, 1.08), paint)
-	b.box(Vector3(-0.7, 1.4, -0.55), Vector3(0.7, 1.42, 1.03), Color(0.85, 0.82, 0.75))
-	var panel := Color(0.28, 0.24, 0.2)
-	b.box(Vector3(-0.72, 0.9, -0.55), Vector3(0.72, 1.02, -0.32), panel)
-	b.box(Vector3(-0.5, 1.0, -0.4), Vector3(-0.22, 1.08, -0.33), Color(0.1, 0.1, 0.1))
-	b.box(Vector3(-0.48, 1.01, -0.331), Vector3(-0.24, 1.07, -0.329), Color(0.9, 0.85, 0.6))
-	var rim := Color(0.12, 0.12, 0.12)
-	b.box(Vector3(-0.52, 0.96, -0.2), Vector3(-0.2, 0.99, -0.18), rim)
-	b.box(Vector3(-0.52, 1.17, -0.2), Vector3(-0.2, 1.2, -0.18), rim)
-	b.box(Vector3(-0.52, 0.96, -0.2), Vector3(-0.49, 1.2, -0.18), rim)
-	b.box(Vector3(-0.23, 0.96, -0.2), Vector3(-0.2, 1.2, -0.18), rim)
-	b.box(Vector3(-0.37, 0.96, -0.32), Vector3(-0.35, 1.05, -0.19), rim)
-	for x in [-0.36, 0.36]:
-		b.box(Vector3(x - 0.25, 0.9, 0.1), Vector3(x + 0.25, 1.0, 0.55), seat)
-		b.box(Vector3(x - 0.25, 1.0, 0.5), Vector3(x + 0.25, 1.45, 0.6), seat)
-	b.box(Vector3(-0.7, 0.9, 0.7), Vector3(0.7, 1.0, 1.0), seat)
-	b.box(Vector3(-0.85, 0.32, -2.12), Vector3(0.85, 0.45, -2.02), chrome)
-	b.box(Vector3(-0.85, 0.32, 2.02), Vector3(0.85, 0.45, 2.12), chrome)
-	b.box(Vector3(-0.35, 0.6, -2.07), Vector3(0.35, 0.78, -2.04), dark)
-	for x in [-0.62, 0.48]:
-		b.box(Vector3(x, 0.6, -2.08), Vector3(x + 0.14, 0.76, -2.04), Color(1.0, 0.97, 0.85))
+	VehicleModels.zhiguli(b, Color(0.78, 0.72, 0.52))
 	_body.add_child(b.build_mesh())
-	_brake_lights([Vector3(-0.62, 0.62, 2.04), Vector3(0.48, 0.62, 2.04)], Vector3(0.14, 0.12, 0.04))
+	_brake_lights([Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)], Vector3(0.16, 0.12, 0.03))
 	for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
-		_wheel(p, 0.29, 0.2, dark, chrome)
+		_wheel(p, false)
 
 
 func _build_moto() -> void:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var paint := Color(0.7, 0.12, 0.1)
-	var dark := Color(0.08, 0.08, 0.09)
-	var chrome := Color(0.78, 0.78, 0.8)
-	# Рама, бак, сиденье, фара, руль, глушитель (вперёд — к -Z)
-	b.box(Vector3(-0.05, 0.35, -0.55), Vector3(0.05, 0.5, 0.6), dark)
-	b.box(Vector3(-0.2, 0.55, -0.45), Vector3(0.2, 0.85, 0.05), paint)
-	b.box(Vector3(-0.17, 0.8, 0.0), Vector3(0.17, 0.9, 0.65), Color(0.12, 0.1, 0.1))
-	b.box(Vector3(-0.22, 0.3, -0.35), Vector3(0.22, 0.55, 0.15), Color(0.3, 0.3, 0.32))
-	b.box(Vector3(-0.04, 0.35, -0.85), Vector3(0.04, 1.0, -0.75), chrome)
-	b.box(Vector3(-0.38, 1.0, -0.8), Vector3(0.38, 1.04, -0.74), dark)
-	b.box(Vector3(-0.1, 0.88, -0.97), Vector3(0.1, 1.05, -0.84), chrome)
-	b.box(Vector3(-0.07, 0.92, -0.98), Vector3(0.07, 1.02, -0.97), Color(1.0, 0.97, 0.85))
-	b.box(Vector3(0.18, 0.28, 0.0), Vector3(0.26, 0.36, 0.9), chrome)
-	b.box(Vector3(-0.26, 0.28, 0.0), Vector3(-0.18, 0.36, 0.9), chrome)
-	b.box(Vector3(-0.12, 0.62, 0.62), Vector3(0.12, 0.7, 0.85), paint)
+	VehicleModels.java(b, Color(0.7, 0.12, 0.1))
 	_body.add_child(b.build_mesh())
-	_brake_lights([Vector3(0, 0.66, 0.85)], Vector3(0.12, 0.07, 0.03))
+	_brake_lights([Vector3(0, 0.66, 0.965)], Vector3(0.12, 0.07, 0.03))
 	for p in [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]:
-		_wheel(p, 0.31, 0.1, dark, chrome)
+		_wheel(p, true)
 	# Мотоциклист — виден с вида сзади, пока кто-то едет
 	_rider = Node3D.new()
 	var r := MeshBuilder.new()
@@ -740,11 +696,13 @@ func _build_moto() -> void:
 	_body.add_child(_rider)
 
 
-func _wheel(p: Vector3, r: float, w: float, tyre: Color, hub: Color) -> void:
+func _wheel(p: Vector3, moto: bool) -> void:
 	var wb := MeshBuilder.new()
 	wb.ground_shade = false
-	wb.box(Vector3(-w * 0.5, -r, -r), Vector3(w * 0.5, r, r), tyre)
-	wb.box(Vector3(-w * 0.55, -r * 0.4, -r * 0.4), Vector3(w * 0.55, r * 0.4, r * 0.4), hub)
+	if moto:
+		VehicleModels.moto_wheel(wb, spec.wheel_r)
+	else:
+		VehicleModels.car_wheel(wb, spec.wheel_r, 0.2)
 	var n := Node3D.new()
 	n.position = p
 	n.add_child(wb.build_mesh())

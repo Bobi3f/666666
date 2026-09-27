@@ -89,6 +89,18 @@ func _build() -> void:
 	# T в машине тоже переключает — держим галочку в согласии
 	SettingsManager.changed.connect(func() -> void: gearbox.set_pressed_no_signal(SettingsManager.auto_gearbox))
 	box.add_child(gearbox)
+	var detail_row := HBoxContainer.new()
+	var detail_label := Label.new()
+	detail_label.text = "Детализация:"
+	detail_row.add_child(detail_label)
+	var detail := OptionButton.new()
+	for t in ["низкая — быстро", "средняя", "высокая — трава, тени"]:
+		detail.add_item(t)
+	detail.selected = SettingsManager.detail
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.item_selected.connect(SettingsManager.set_detail)
+	detail_row.add_child(detail)
+	box.add_child(detail_row)
 	box.add_child(HSeparator.new())
 	_button(box, "Выйти из игры", func() -> void: get_tree().quit())
 	var hint := Label.new()
