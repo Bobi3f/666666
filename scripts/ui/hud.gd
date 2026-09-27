@@ -29,6 +29,12 @@ func _ready() -> void:
 	_car.anchor_top = 1.0
 	_car.anchor_bottom = 1.0
 	_car.offset_top = -95
+	if GameManager.touch_mode:
+		# Слева внизу — джойстик: приборы уводим наверх под трекер
+		_car.anchor_top = 0.0
+		_car.anchor_bottom = 0.0
+		_car.offset_top = 150
+		_car.add_theme_font_size_override("font_size", 16)
 	_prompt = _label(Vector2(0, 0), 20)
 	_prompt.set_anchors_preset(Control.PRESET_CENTER)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

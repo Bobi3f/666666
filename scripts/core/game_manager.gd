@@ -13,6 +13,9 @@ var player: Node3D
 var car: Node3D
 var moto: Node3D
 var vehicle: Node3D
+## Телефон: Android или браузер на телефоне — показываем сенсорное управление,
+## мышь не захватываем.
+var touch_mode := OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 
 
 func add_money(amount: int) -> void:

@@ -56,9 +56,9 @@ const QUESTS := {
 		"steps": [{"text": "Проедь 1 км на механической коробке (T — переключить)", "event": "manual_m", "count": 1000},
 			{"text": "Вернись к механику Ваське на СТО", "talk": true}]},
 	"s_olya": {"title": "Почта Каменки", "giver": "Почтальонка Оля", "reward": 300,
-		"offer": "Ноги не держат. Разнесёшь три письма? Калитки с конвертом ✉ сразу увидишь.",
+		"offer": "Ноги не держат. Разнесёшь три письма? Синие почтовые ящики с надписью «ПИСЬМО» у калиток сразу увидишь.",
 		"thanks": "Какой ты молодец! Вот, из моей зарплаты.",
-		"steps": [{"text": "Разнеси 3 письма по калиткам с ✉", "event": "letter", "count": 3},
+		"steps": [{"text": "Разнеси 3 письма по ящикам с надписью «ПИСЬМО»", "event": "letter", "count": 3},
 			{"text": "Вернись к почтальонке Оле", "talk": true}]},
 }
 
@@ -257,9 +257,9 @@ func tracker_lines() -> Array[String]:
 	var lines: Array[String] = []
 	var m := active_main()
 	if m != "":
-		lines.append("★ %s: %s" % [QUESTS[m].title, step_text(m)])
+		lines.append("» %s: %s" % [QUESTS[m].title, step_text(m)])
 	elif won:
-		lines.append("★ Ты — хозяин Каменки! Играй дальше в своё удовольствие")
+		lines.append("» Ты — хозяин Каменки! Играй дальше в своё удовольствие")
 	var side := 0
 	for id in quests:
 		if QUESTS[id].get("main", false) or quests[id].state != 1:

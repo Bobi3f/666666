@@ -14,7 +14,9 @@ var volume := 0.8
 var auto_gearbox := true
 ## Детализация: 0 — низкая (без травы и теней), 1 — средняя, 2 — высокая.
 ## В браузере по умолчанию средняя: WebGL медленнее настольной графики.
-var detail := 1 if OS.has_feature("web") else 2
+## На телефоне — низкая: трава и тени для мобильной графики слишком тяжелы.
+var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
+	else (1 if OS.has_feature("web") else 2)
 
 
 func _ready() -> void:

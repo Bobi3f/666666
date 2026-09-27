@@ -16,12 +16,15 @@ var _save: Button
 var _new: Button
 var _load: Button
 var _main_mode := false
+var _scroll: ScrollContainer
+var _box: VBoxContainer
 
 
 func _ready() -> void:
 	layer = 40
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	get_viewport().size_changed.connect(_fit_height)
 	if not _started and not "--no-menu" in OS.get_cmdline_user_args():
 		_open(true)
 	else:
@@ -55,7 +58,13 @@ func _build() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	box.custom_minimum_size = Vector2(380, 0)
-	_panel.add_child(box)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# На низком экране (телефон) меню не влезает — прокручиваем
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.add_child(box)
+	_panel.add_child(_scroll)
+	_box = box
 	_title = Label.new()
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_size_override("font_size", 34)
@@ -159,9 +168,20 @@ func _open(main: bool) -> void:
 	_main_mode = main
 	_title.text = "FIRST GEAR" if main else "Пауза"
 	_refresh()
+	_fit_height()
+	# Размер окна в браузере и на телефоне устанавливается чуть позже — подгоняем ещё раз
+	_fit_height.call_deferred()
 	_panel.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+## Высота меню — по содержимому, но не выше экрана.
+func _fit_height() -> void:
+	var need := _box.get_combined_minimum_size()
+	var room := get_viewport().get_visible_rect().size.y - 90.0
+	_scroll.custom_minimum_size = Vector2(need.x + 12.0, minf(need.y, maxf(room, 200.0)))
+	_scroll.scroll_vertical = 0
 
 
 func _refresh() -> void:
@@ -178,7 +198,8 @@ func _close() -> void:
 	_main_mode = false
 	_panel.visible = false
 	get_tree().paused = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not GameManager.touch_mode:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 ## Новая игра: сбросить деньги, время, потребности, погоду и цели, мир — заново.
@@ -191,5 +212,6 @@ func _new_game() -> void:
 	Progress.load_state({})
 	QuestManager.reset()
 	get_tree().paused = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not GameManager.touch_mode:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	get_tree().reload_current_scene()

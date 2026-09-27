@@ -114,6 +114,19 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
 	# Журнал — после меню: Esc при открытом журнале закрывает журнал, а не открывает паузу
 	add_child(preload("res://scripts/ui/journal.gd").new())
+	if GameManager.touch_mode or "--touch" in OS.get_cmdline_user_args():
+		GameManager.touch_mode = true
+		add_child(preload("res://scripts/ui/touch_controls.gd").new())
+		# Телефон: экран с высокой плотностью точек — 3D рисуем в 65 %
+		# разрешения, интерфейс остаётся чётким
+		get_viewport().scaling_3d_scale = 0.65
+		# Интерфейс под высоту экрана: около 600 точек по высоте, как на мониторе,
+		# иначе на плотном экране телефона надписи и кнопки крошечные
+		var win := get_window()
+		var fit := func() -> void:
+			win.content_scale_factor = maxf(1.0, win.size.y / 600.0)
+		fit.call()
+		win.size_changed.connect(fit)
 	GameManager.notify("Утро в Каменке. Задание — слева вверху, журнал — J, управление — F1")
 
 
@@ -1241,7 +1254,7 @@ func _road_details(b: MeshBuilder) -> void:
 	# Знаки: ограничение 60 перед селом, пешеходный переход, АЗС, остановка
 	_round_sign(b, Vector3(-40.0, 0, -6.6), 0.0, "60")
 	_round_sign(b, Vector3(-190.0, 0, 6.6), PI, "60")
-	_square_sign(b, Vector3(19.0, 0, 6.2), PI, Color(0.15, 0.35, 0.7), "🚶")
+	_square_sign(b, Vector3(19.0, 0, 6.2), PI, Color(0.15, 0.35, 0.7), "Пеше-\nходный\nпереход")
 	_square_sign(b, Vector3(-135.0, 0, 6.6), PI, Color(0.15, 0.35, 0.7), "АЗС\n200 м")
 	# Люки на городских улицах
 	for p in [Vector3(97, 0.051, 20), Vector3(97, 0.051, 45), Vector3(60, 0.051, 58), Vector3(120, 0.051, 58), Vector3(160, 0.051, 58)]:

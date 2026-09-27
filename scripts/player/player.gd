@@ -64,11 +64,12 @@ func _ready() -> void:
 	camera.current = true
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50.0)
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not GameManager.touch_mode:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
+	if event is InputEventMouseButton and event.pressed and not GameManager.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	var key := event as InputEventKey
 	if key and key.pressed and not key.echo:
@@ -86,8 +87,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					_crouch_toggled = not _crouch_toggled
 	if car != null:
 		return
+	# На телефоне касания эмулируют мышь — камеру крутит сенсорное управление
 	var motion := event as InputEventMouseMotion
-	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not GameManager.touch_mode:
 		var k := MOUSE_SENS * SettingsManager.mouse_sens
 		_look(-motion.relative.x * k, -motion.relative.y * k)
 

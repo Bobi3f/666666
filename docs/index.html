@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="index.icon.png">
+<title>First Gear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=PT+Sans:wght@400;700&display=swap">
+<style>
+  /* Одна тёмная «приборная» тема: игра выглядит одинаково на любом фоне */
+  :root {
+    color-scheme: dark;
+    --asphalt: #17191b;
+    --panel: #22262a;
+    --line: #3a3f44;
+    --amber: #f2b33d;
+    --cream: #efe6cf;
+    --muted: #9a968b;
+    --danger: #e0664f;
+  }
+  html, body { height: 100%; margin: 0; }
+  /* Скрытие через атрибут hidden сильнее любых display ниже */
+  [hidden] { display: none !important; }
+  body {
+    background: var(--asphalt);
+    color: var(--cream);
+    font: 16px/1.5 "PT Sans", "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  #stage { position: relative; height: 100%; width: 100%; }
+  #canvas { display: block; width: 100%; height: 100%; outline: none; background: #000; }
+  #canvas:focus-visible { outline: 2px solid var(--amber); }
+  #cover {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    padding-inline: 16px; padding-block: 12px;
+    overflow-y: auto;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 46%, rgba(242, 179, 61, .08) 46% 54%, transparent 54% 100%) center / 220px 100% no-repeat,
+      radial-gradient(ellipse at 50% 30%, #2a2f33 0%, var(--asphalt) 70%);
+  }
+  .card {
+    width: min(560px, 100%);
+    display: grid; gap: 18px;
+    padding: 28px 26px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  h1 {
+    margin: 0;
+    font: 400 clamp(34px, 7vw, 52px)/1 "Russo One", "Arial Black", sans-serif;
+    letter-spacing: .02em;
+    color: var(--amber);
+    text-wrap: balance;
+  }
+  .sub { margin: 6px 0 0; color: var(--muted); }
+  .gear {
+    display: inline-grid; place-items: center;
+    width: 1.6em; height: 1.6em; margin-right: .35em;
+    border: 2px solid var(--amber); border-radius: 50%;
+    font-size: .55em; vertical-align: .35em; color: var(--cream);
+  }
+  #play {
+    font: 400 20px "Russo One", "Arial Black", sans-serif;
+    letter-spacing: .04em;
+    padding: 14px 18px;
+    color: var(--asphalt);
+    background: var(--amber);
+    border: 0; border-radius: 8px;
+    cursor: pointer;
+  }
+  #play:hover { filter: brightness(1.08); }
+  #play:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+  #play:disabled { cursor: progress; filter: saturate(.4); }
+  .bar { height: 8px; background: #111416; border-radius: 4px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s linear; }
+  #status { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  #status.err { color: var(--danger); }
+  .keys {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 14px;
+  }
+  .keys li { display: flex; gap: 8px; align-items: baseline; }
+  kbd {
+    display: inline-block; min-width: 1.7em; padding: 1px 6px;
+    font: 700 12px/1.6 "PT Sans", sans-serif; text-align: center;
+    color: var(--cream); background: #111416;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+  }
+  .note { margin: 0; font-size: 13px; color: var(--muted); }
+  .note a { color: var(--amber); }
+  #fs {
+    position: absolute; right: 12px; bottom: 12px;
+    padding: 6px 10px; font: 700 13px "PT Sans", sans-serif;
+    color: var(--cream); background: rgba(23, 25, 27, .7);
+    border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  }
+  .touch-only { display: none; }
+  .hint { margin: 0; font-size: 14px; color: var(--cream); }
+  /* Телефон: вместо клавиш — подсказка по касаниям */
+  @media (pointer: coarse) {
+    .keys { display: none; }
+    .touch-only { display: block; }
+  }
+  /* Низкий экран (телефон лёжа): карточка компактнее */
+  @media (max-height: 520px) {
+    .card { gap: 10px; padding: 16px 18px; }
+    h1 { font-size: 30px; }
+    .sub { font-size: 14px; }
+    #play { padding: 10px 14px; font-size: 18px; }
+    .note { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+
+</head>
+<body>
+<div id="stage">
+  <canvas id="canvas" tabindex="0">Браузер не поддерживает canvas.</canvas>
+  <div id="cover">
+    <div class="card">
+      <div>
+        <h1><span class="gear">1</span>First Gear</h1>
+        <p class="sub">Жизнь в Каменке на первой передаче. От покосившейся избы — до кирпичного дома под черепицей.</p>
+      </div>
+      <button id="play" type="button">Играть</button>
+      <div class="bar" aria-hidden="true"><i id="fill"></i></div>
+      <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
+      <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
+        кнопки действий — справа внизу, «Меню» — справа вверху. Лучше держать телефон горизонтально.</p>
+      <ul class="keys">
+        <li><kbd>WASD</kbd> идти, ехать</li>
+        <li><kbd>Мышь</kbd> смотреть</li>
+        <li><kbd>E</kbd> действие, сесть</li>
+        <li><kbd>Q</kbd> поесть</li>
+        <li><kbd>J</kbd> журнал заданий</li>
+        <li><kbd>M</kbd> карта</li>
+        <li><kbd>Esc</kbd> меню, мышь</li>
+        <li><kbd>F1</kbd> всё управление</li>
+      </ul>
+      <p class="note">На компьютере — клавиатура и мышь. На телефоне — джойстик слева, камера — пальцем
+        справа, кнопки действий справа внизу. Сохранения (F5 или «Меню») остаются в этом браузере.
+        Если игра идёт медленно — в меню Esc поставьте детализацию «низкая».
+        Версия для Windows — <a href="https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Windows.zip" target="_blank" rel="noopener">FirstGear-Windows.zip</a>.</p>
+    </div>
+  </div>
+  <button id="fs" type="button" hidden>На весь экран</button>
+</div>
+
+<script src="index.js"></script>
+<script>
+  (function () {
+    const cover = document.getElementById("cover");
+    const play = document.getElementById("play");
+    const fill = document.getElementById("fill");
+    const status = document.getElementById("status");
+    const fs = document.getElementById("fs");
+    const canvas = document.getElementById("canvas");
+
+    function fail(text) {
+      status.textContent = text;
+      status.classList.add("err");
+      play.disabled = false;
+      play.textContent = "Попробовать ещё раз";
+    }
+
+    if (typeof Engine === "undefined") {
+      fail("Не загрузился движок игры. Обновите страницу.");
+      return;
+    }
+    const missing = Engine.getMissingFeatures({ threads: false });
+    if (missing.length) {
+      fail("Браузеру не хватает: " + missing.join(", ") + ". Откройте в свежем Chrome, Edge или Firefox.");
+      play.disabled = true;
+      return;
+    }
+
+    const engine = new Engine({
+      args: [],
+      canvas: canvas,
+      canvasResizePolicy: 2,
+      executable: "index",
+      fileSizes: { "index.pck": 244984, "index.wasm": 38034280 },
+      focusCanvas: true,
+      ensureCrossOriginIsolationHeaders: false,
+      experimentalVK: false,
+      gdextensionLibs: []
+    });
+
+    play.addEventListener("click", function () {
+      play.disabled = true;
+      play.textContent = "Загружаю…";
+      status.classList.remove("err");
+      status.textContent = "Скачиваю движок и мир…";
+      engine.startGame({
+        onProgress: function (cur, total) {
+          if (total > 0) {
+            const pct = Math.min(100, Math.round(cur / total * 100));
+            fill.style.width = pct + "%";
+            status.textContent = pct < 100 ? "Загрузка: " + pct + "%" : "Строю Каменку…";
+          }
+        }
+      }).then(function () {
+        cover.hidden = true;
+        fs.hidden = false;
+        canvas.focus();
+      }).catch(function (err) {
+        fail("Игра не запустилась: " + (err && err.message ? err.message : err));
+      });
+    });
+
+    fs.addEventListener("click", function () {
+      const el = document.getElementById("stage");
+      if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+      canvas.focus();
+    });
+  })();
+</script>
+
+</body>
+</html>

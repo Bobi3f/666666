@@ -50,7 +50,7 @@ var _walk_dir := 1.0
 var _chickens: Array[Dictionary] = []
 var _dogs: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
-## Калитки, куда носить письма почтальонки: [зона, значок ✉]
+## Калитки, куда носить письма почтальонки: [зона, надпись «ПИСЬМО»]
 var _letter_gates: Array = []
 
 
@@ -87,7 +87,7 @@ func _ready() -> void:
 		z.activated.connect(_deliver_letter.bind(i))
 		add_child(z)
 		var mark := Label3D.new()
-		mark.text = "✉"
+		mark.text = "ПИСЬМО"
 		mark.font_size = 128
 		mark.pixel_size = 0.006
 		mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED

@@ -81,7 +81,8 @@ func _open(victory: bool) -> void:
 func _close() -> void:
 	_panel.visible = false
 	get_tree().paused = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not GameManager.touch_mode:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _on_victory() -> void:
@@ -128,10 +129,10 @@ func _quest_line(id: String) -> String:
 	var def: Dictionary = QuestManager.QUESTS[id]
 	match q.state:
 		2:
-			return "  [color=#7fbf6a]✓ %s[/color]\n" % def.title
+			return "  [color=#7fbf6a]+ %s — готово[/color]\n" % def.title
 		1:
 			var giver := " (%s)" % def.giver if def.has("giver") else ""
-			return "  [b]▶ %s[/b]%s\n      %s\n" % [def.title, giver, QuestManager.step_text(id)]
+			return "  [b]» %s[/b]%s\n      %s\n" % [def.title, giver, QuestManager.step_text(id)]
 	return "  [color=#777777]· %s[/color]\n" % def.title
 
 
