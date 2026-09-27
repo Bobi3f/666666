@@ -28,6 +28,8 @@ var delivery_left := 0.0
 var deliveries_done := 0
 ## Целость хлеба в процентах: удары и тряска по бездорожью её снижают.
 var bread := 100.0
+## Обучение первых минут пройдено или пропущено.
+var tutorial_done := false
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
 var planted_at := 0.0
@@ -184,7 +186,7 @@ func finish_delivery() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread,
+	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done,
 		"planted": planted, "planted_at": planted_at}
 
 
@@ -195,6 +197,8 @@ func load_state(d: Dictionary) -> void:
 	delivery_left = float(d.get("left", 0.0))
 	deliveries_done = int(d.get("done", 0))
 	bread = float(d.get("bread", 100.0))
+	# В старых сохранениях ключа нет — там игрок уже освоился
+	tutorial_done = bool(d.get("tutorial", true))
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))
 	_last_stage = garden_stage()

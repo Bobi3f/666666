@@ -11,8 +11,41 @@ extends Node
 ## плюс синглтоны с деньгами, временем, потребностями, погодой и целями.
 
 const PATH := "user://save.json"
+## Автосохранение раз в столько секунд настоящей игры (не паузы).
+const AUTOSAVE_EVERY := 150.0
 
 var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager"]
+var _since_save := 0.0
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Каждые пару минут игры — тихое сохранение: на телефоне вкладку легко
+## закрыть случайно, и день пропадёт.
+func _process(delta: float) -> void:
+	if not GameManager.in_game or get_tree().paused:
+		return
+	_since_save += delta
+	if _since_save >= AUTOSAVE_EVERY:
+		autosave()
+
+
+## Свернули игру, ушли на другую вкладку, позвонили — сохраняем сразу.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST:
+			autosave()
+
+
+## Сохранить без сообщения. Пока открыто главное меню при запуске, не
+## сохраняем: иначе пустая новая игра затрёт настоящее сохранение.
+func autosave() -> bool:
+	_since_save = 0.0
+	if not GameManager.in_game or not is_instance_valid(GameManager.player):
+		return false
+	return save_game(true)
 
 
 func _input(event: InputEvent) -> void:
@@ -28,7 +61,8 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func save_game() -> bool:
+func save_game(quiet := false) -> bool:
+	_since_save = 0.0
 	var data := {}
 	for n in _singletons:
 		data[n] = get_node("/root/" + n).save_state()
@@ -39,7 +73,8 @@ func save_game() -> bool:
 		GameManager.notify("Не удалось сохранить: " + error_string(FileAccess.get_open_error()))
 		return false
 	f.store_string(JSON.stringify(data, "\t"))
-	GameManager.notify("Игра сохранена (F9 — загрузить)")
+	if not quiet:
+		GameManager.notify("Игра сохранена (F9 — загрузить)")
 	return true
 
 

@@ -41,6 +41,7 @@ func _ready() -> void:
 		_open(true)
 	else:
 		_started = true
+		GameManager.in_game = true
 		_panel.visible = false
 
 
@@ -160,7 +161,9 @@ func _build_main(box: VBoxContainer) -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
 	if not OS.has_feature("web"):
-		_button(box, "Выйти из игры", func() -> void: get_tree().quit())
+		_button(box, "Выйти из игры", func() -> void:
+			SaveManager.autosave()
+			get_tree().quit())
 
 
 func _build_settings(box: VBoxContainer) -> void:
@@ -324,6 +327,14 @@ func is_open() -> bool:
 	return _panel.visible
 
 
+## Свернули игру или ушли на другую вкладку — ставим на паузу, чтобы
+## в фоне не тратились сытость и время. Вернулся — нажми «Продолжить».
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		if _panel and not _panel.visible and GameManager.in_game and not get_tree().paused:
+			_open(false)
+
+
 func _open(main: bool) -> void:
 	_main_mode = main
 	_title.text = "FIRST GEAR" if main else "Пауза"
@@ -384,6 +395,7 @@ func _refresh() -> void:
 
 func _close() -> void:
 	_started = true
+	GameManager.in_game = true
 	_main_mode = false
 	_panel.visible = false
 	get_tree().paused = false
@@ -394,11 +406,13 @@ func _close() -> void:
 ## Новая игра: сбросить деньги, время, потребности, погоду и цели, мир — заново.
 func _new_game() -> void:
 	_started = true
+	GameManager.in_game = true
 	GameManager.load_state({})
 	TimeManager.load_state({})
 	NeedsManager.load_state({})
 	WeatherManager.load_state({})
 	Progress.load_state({})
+	Progress.tutorial_done = false
 	QuestManager.reset()
 	get_tree().paused = false
 	if not GameManager.touch_mode:
