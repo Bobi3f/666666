@@ -18,6 +18,7 @@ var _keys_hint: Label
 
 func _ready() -> void:
 	layer = 10
+	add_child(preload("res://scripts/ui/speedometer.gd").new())
 	_top = _label(Vector2(16, 12), 20)
 	_label(Vector2(16, 42), 17).text = "Сытость"
 	_food_bar = _bar_node(Vector2(100, 49), Color(0.85, 0.6, 0.2))
@@ -111,8 +112,9 @@ func _process(delta: float) -> void:
 			slide = "   ЗАНОС"
 		elif not car.on_asphalt() and WeatherManager.wetness > 0.3:
 			slide = "   Грязь — вязнет"
-		_car.text = "%3d км/ч   %4d об/мин   %s   %s\n%s   Бензин: %d л   Состояние: %d%%   %s%s" % [
-			int(car.speed_kmh()), int(car.rpm), box, motor,
+		# Скорость, обороты, передачу и бензин показывает спидометр
+		_car.text = "%s   %s\n%s   Бензин: %d л   Состояние: %d%%   %s%s" % [
+			box, motor,
 			car.spec.title, int(ceilf(car.fuel)), int(car.condition),
 			"T — коробка, V — вид", slide]
 		_car.text = GameManager.touch_text(_car.text)

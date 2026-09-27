@@ -141,6 +141,7 @@ func _place() -> void:
 	_panel.reset_size()
 	var x := (left + right - w) * 0.5
 	var y := size.y - _panel.size.y - 14.0
-	if driving and not _touch():
+	# За рулём внизу — спидометр: подсказка поднимается выше
+	if driving:
 		y = 250.0
 	_panel.position = Vector2(x, y)
