@@ -50,6 +50,8 @@ var _walk_dir := 1.0
 var _chickens: Array[Dictionary] = []
 var _dogs: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
+## Калитки, куда носить письма почтальонки: [зона, значок ✉]
+var _letter_gates: Array = []
 
 
 func _ready() -> void:
@@ -76,6 +78,29 @@ func _ready() -> void:
 			c.position = home * Vector3(_rng.randf_range(-9.0, -3.5), 0, _rng.randf_range(6.0, 11.0))
 			add_child(c)
 			_chickens.append({"node": c, "xf": home, "target": c.position, "wait": _rng.randf_range(0.0, 3.0)})
+	# Калитки для писем: у двух дворов первого ряда и одного — второго
+	for g in [Vector3(-151.6, 0, -43.2), Vector3(-98.4, 0, -36.8), Vector3(-76.6, 0, -43.2)]:
+		var i := _letter_gates.size()
+		var z := InteractZone.create("", Vector3(2.4, 2.0, 1.8))
+		z.position = g
+		z.prompt_fn = func() -> String: return "E — опустить письмо в ящик" if _letter_pending(i) else ""
+		z.activated.connect(_deliver_letter.bind(i))
+		add_child(z)
+		var mark := Label3D.new()
+		mark.text = "✉"
+		mark.font_size = 128
+		mark.pixel_size = 0.006
+		mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		mark.modulate = Color(1.0, 0.9, 0.4)
+		mark.outline_size = 12
+		mark.position = g + Vector3(0, 2.4, 0)
+		add_child(mark)
+		# Почтовый ящик на заборе
+		var box := MeshBuilder.new()
+		box.box(g + Vector3(-0.2, 1.0, -0.12), g + Vector3(0.2, 1.35, 0.12), Color(0.2, 0.35, 0.65))
+		box.box(g + Vector3(-0.03, 0, -0.03), g + Vector3(0.03, 1.0, 0.03), Color(0.35, 0.3, 0.25))
+		add_child(box.build_mesh())
+		_letter_gates.append([z, mark])
 	for y in DOG_YARDS:
 		var xf := Transform3D(Basis(Vector3.UP, y[2]), Vector3(y[0], 0, y[1]))
 		var dog := _dog_mesh()
@@ -91,13 +116,39 @@ func _talk_zone(n: Node3D, d: Dictionary) -> void:
 	n.add_child(zone)
 	var state := {"i": 0}
 	zone.activated.connect(func() -> void:
+		# Сначала — задания: предложить, принять вещь, поблагодарить
+		var quest_line := QuestManager.talk(d.name)
+		if quest_line != "":
+			GameManager.notify("%s: «%s»" % [d.name, quest_line])
+			return
 		var lines: Array = d.lines
 		GameManager.notify("%s: «%s»" % [d.name, lines[state.i % lines.size()]])
 		state.i += 1)
+	zone.prompt_fn = func() -> String:
+		if _has_quest_for(d.name):
+			return "E — поговорить: %s  (!)" % d.name
+		return "E — поговорить: %s" % d.name
+
+
+## Есть ли у жителя что сказать по заданию: новая просьба или ждёт отчёта.
+func _has_quest_for(npc: String) -> bool:
+	for id in QuestManager.QUESTS:
+		var def: Dictionary = QuestManager.QUESTS[id]
+		if def.get("giver", "") != npc:
+			continue
+		var q: Dictionary = QuestManager.quests[id]
+		if q.state == 0:
+			return true
+		if q.state == 1:
+			var step: Dictionary = def.steps[q.step]
+			if step.get("talk", false):
+				return true
+	return false
 
 
 func _process(delta: float) -> void:
 	_walk(delta)
+	_update_letters()
 	var p := GameManager.player as Node3D
 	var ppos := p.global_position if p else Vector3(1e6, 0, 0)
 	for c in _chickens:
@@ -273,3 +324,29 @@ func _dog_mesh() -> Node3D:
 	b.box(Vector3(-0.02, 0.45, 0.3), Vector3(0.02, 0.5, 0.5), fur)
 	root.add_child(b.build_mesh())
 	return root
+
+
+# --- Письма почтальонки ------------------------------------------------------
+
+func _letter_pending(i: int) -> bool:
+	return int(QuestManager.items.get("letters", 0)) > 0 and not QuestManager.items.has("gate_%d" % i)
+
+
+func _update_letters() -> void:
+	for i in _letter_gates.size():
+		var pending := _letter_pending(i)
+		(_letter_gates[i][1] as Label3D).visible = pending
+
+
+func _deliver_letter(i: int) -> void:
+	if not _letter_pending(i):
+		return
+	QuestManager.items["gate_%d" % i] = 1
+	QuestManager.items["letters"] = int(QuestManager.items["letters"]) - 1
+	if QuestManager.items["letters"] <= 0:
+		QuestManager.items.erase("letters")
+		for k in 3:
+			QuestManager.items.erase("gate_%d" % k)
+	SoundLibrary.play("click")
+	GameManager.notify("Письмо в ящике")
+	QuestManager.event("letter")

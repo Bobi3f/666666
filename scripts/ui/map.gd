@@ -29,6 +29,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key and key.pressed and not key.echo and key.physical_keycode == KEY_M:
 		_canvas.visible = not _canvas.visible
+		if _canvas.visible:
+			QuestManager.event("map")
 
 
 func _process(_delta: float) -> void:

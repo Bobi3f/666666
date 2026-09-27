@@ -33,6 +33,7 @@ func _ready() -> void:
 	_streams["hammer"] = _make(_hammer(), false)
 	_streams["splash"] = _make(_splash(), false)
 	_streams["skid"] = _make(_skid(), true)
+	_streams["quest"] = _make(_quest(), false)
 
 
 func stream(sound: String) -> AudioStreamWAV:
@@ -300,4 +301,20 @@ func _skid() -> PackedFloat32Array:
 		var f := 1100.0 + sin(TAU * 7.0 * t) * 120.0 + sin(TAU * 13.0 * t) * 60.0
 		phase += f / RATE
 		a[i] = sin(TAU * phase) * 0.25 + _rng.randf_range(-0.12, 0.12)
+	return a
+
+
+## Задание выполнено: три восходящие ноты с колокольным хвостом.
+func _quest() -> PackedFloat32Array:
+	var a := _buf(0.9)
+	var notes := [523.25, 659.25, 783.99]
+	for i in a.size():
+		var t := float(i) / RATE
+		var v := 0.0
+		for k in notes.size():
+			var t0: float = k * 0.12
+			if t >= t0:
+				var tt := t - t0
+				v += (sin(TAU * notes[k] * tt) + 0.3 * sin(TAU * notes[k] * 2.0 * tt)) * exp(-tt * 4.0)
+		a[i] = v * 0.22
 	return a

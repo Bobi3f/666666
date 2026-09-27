@@ -131,6 +131,7 @@ func upgrade_house() -> bool:
 	TimeManager.advance(8.0 * 60.0)
 	GameManager.notify("Бригада отработала день — теперь у тебя %s!" % UPGRADE_TEXT[house_level - 1])
 	house_changed.emit(house_level)
+	QuestManager.event("house_%d" % house_level)
 	return true
 
 
@@ -152,6 +153,7 @@ func finish_delivery() -> void:
 	GameManager.add_money(DELIVERY_PAY)
 	SoundLibrary.play("cash")
 	GameManager.notify("Хлеб доставлен: +%d грн" % DELIVERY_PAY)
+	QuestManager.event("delivery")
 	delivery_changed.emit()
 
 

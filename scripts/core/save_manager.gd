@@ -12,7 +12,7 @@ extends Node
 
 const PATH := "user://save.json"
 
-var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress"]
+var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager"]
 
 
 func _input(event: InputEvent) -> void:

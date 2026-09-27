@@ -187,6 +187,7 @@ func _new_game() -> void:
 	NeedsManager.load_state({})
 	WeatherManager.load_state({})
 	Progress.load_state({})
+	QuestManager.reset()
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	get_tree().reload_current_scene()

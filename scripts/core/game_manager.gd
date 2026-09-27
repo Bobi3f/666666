@@ -18,6 +18,8 @@ var vehicle: Node3D
 func add_money(amount: int) -> void:
 	money += amount
 	money_changed.emit(money)
+	if amount > 0:
+		QuestManager.event("earned", amount)
 
 
 ## Списывает деньги, если хватает. Иначе пишет на экран и возвращает false.

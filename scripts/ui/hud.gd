@@ -40,13 +40,13 @@ func _ready() -> void:
 	_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg.offset_left = -400
 	_msg.offset_right = 400
-	_msg.offset_top = 110
+	_msg.offset_top = 150
 	_goal = _label(Vector2(16, 70), 16)
 	_goal.modulate = Color(1.0, 0.92, 0.6)
 	var hint := _label(Vector2(0, 12), 15)
 	hint.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	hint.offset_left = -230
-	hint.text = "F1 — управление   Esc — меню\nF5 — сохранить  F9 — загрузить"
+	hint.text = "F1 — управление   Esc — меню\nJ — журнал   M — карта\nF5 — сохранить  F9 — загрузить"
 	# Прицел-точка
 	var dot := ColorRect.new()
 	dot.color = Color(1, 1, 1, 0.7)
@@ -74,7 +74,12 @@ func show_message(text: String) -> void:
 
 func _process(delta: float) -> void:
 	_top.text = "%s     %d грн     %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
-	_goal.text = Progress.goal_text()
+	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
+	var lines: Array[String] = []
+	if Progress.delivery_active:
+		lines.append(Progress.goal_text())
+	lines.append_array(QuestManager.tracker_lines())
+	_goal.text = "\n".join(lines)
 	_food_bar.value = NeedsManager.food
 	_energy_bar.value = NeedsManager.energy
 	_food_pct.text = "%d%%" % int(NeedsManager.food)

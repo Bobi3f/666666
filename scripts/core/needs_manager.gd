@@ -3,6 +3,8 @@ extends Node
 ## Сытость кончается примерно за сутки, бодрость — за 18 часов.
 
 signal changed
+## Обморок: от усталости (бодрость 0) или голода (сытость 0 три часа).
+signal fainted(reason: String)
 
 const HUNGER_PER_MIN := 100.0 / (26.0 * 60.0)
 const ENERGY_PER_MIN := 100.0 / (18.0 * 60.0)
@@ -14,6 +16,7 @@ var snacks := 1
 ## Пойманная рыба — сдаётся в сельмаг.
 var fish := 0
 
+var _starving := 0.0
 var _warned_food := false
 var _warned_energy := false
 
@@ -24,6 +27,7 @@ func _ready() -> void:
 
 func _on_minutes(m: float) -> void:
 	food = maxf(food - HUNGER_PER_MIN * m, 0.0)
+	_starving = _starving + m if food <= 0.0 else 0.0
 	# Голодный устаёт вдвое быстрее
 	var tire := ENERGY_PER_MIN * (2.0 if food <= 0.0 else 1.0)
 	energy = maxf(energy - tire * m, 0.0)
@@ -32,7 +36,17 @@ func _on_minutes(m: float) -> void:
 		GameManager.notify("Хочется есть. Купи еду в ларьке и нажми Q")
 	if energy < 15.0 and not _warned_energy:
 		_warned_energy = true
-		GameManager.notify("Слипаются глаза. Пора домой спать")
+		GameManager.notify("Слипаются глаза. Пора домой спать — иначе упадёшь где стоишь")
+	if food <= 0.0 and _starving > 0.0 and _starving < m + 0.01:
+		GameManager.notify("Живот сводит от голода. Не поешь за три часа — упадёшь в обморок")
+	# Обморок — только в обычном ходе времени, не во время перемотки (сон, смена)
+	if m < 30.0:
+		if energy <= 0.0:
+			_starving = 0.0
+			fainted.emit("Свалился от усталости.")
+		elif _starving > 180.0:
+			_starving = 0.0
+			fainted.emit("Потерял сознание от голода.")
 	changed.emit()
 
 
@@ -42,6 +56,7 @@ func eat_snack() -> void:
 		return
 	snacks -= 1
 	eat(35.0)
+	QuestManager.event("ate")
 	GameManager.notify("Поел. Сытость %d%%" % int(food))
 
 

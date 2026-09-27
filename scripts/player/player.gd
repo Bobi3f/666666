@@ -269,7 +269,8 @@ func _nearest_zone() -> InteractZone:
 	var best: InteractZone = null
 	var best_d := INF
 	for z in _zones:
-		if not is_instance_valid(z):
+		# Зоны без подсказки сейчас неактивны (письма уже разнесены и т. п.)
+		if not is_instance_valid(z) or z.text() == "":
 			continue
 		var d := z.global_position.distance_squared_to(global_position)
 		if d < best_d:

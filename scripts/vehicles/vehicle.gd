@@ -440,6 +440,13 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 
 	_steering(dt, steer_in, handbrake, surf.grip)
 	_move(dt, handbrake)
+	# Пройденный путь — для заданий и статистики
+	if driver:
+		var d := absf(speed) * dt
+		if d > 0.0:
+			QuestManager.event("drive_m", d)
+			if not auto:
+				QuestManager.event("manual_m", d)
 	for wn in _wheels:
 		wn.rotation.x -= speed / wheel_r * dt
 	_update_sound()

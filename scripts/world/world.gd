@@ -101,6 +101,7 @@ func _ready() -> void:
 	print("Мир: %d треугольников в одном меше, %d коллизий" % [b.triangle_count(), body.get_child_count()])
 
 	Progress.house_changed.connect(func(_l: int) -> void: _build_player_yard())
+	NeedsManager.fainted.connect(_faint)
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
 	add_child(preload("res://scripts/world/traffic.gd").new())
@@ -111,6 +112,9 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/map.gd").new())
 	add_child(preload("res://scripts/ui/hud.gd").new())
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
+	# Журнал — после меню: Esc при открытом журнале закрывает журнал, а не открывает паузу
+	add_child(preload("res://scripts/ui/journal.gd").new())
+	GameManager.notify("Утро в Каменке. Задание — слева вверху, журнал — J, управление — F1")
 
 
 func _process(_delta: float) -> void:
@@ -1062,6 +1066,7 @@ func _fish() -> void:
 		GameManager.notify("Час просидел — ни поклёвки. %s" % TimeManager.clock_text())
 		return
 	NeedsManager.fish += caught
+	QuestManager.event("fish", caught)
 	SoundLibrary.play("splash", -2.0, 1.3)
 	GameManager.notify("Поймал %d %s! Всего рыбы: %d — сдай в сельмаг" % [caught, "рыбу" if caught == 1 else "рыбы", NeedsManager.fish])
 
@@ -1419,6 +1424,7 @@ func _refuel() -> void:
 		return
 	GameManager.spend(int(ceilf(liters)) * FUEL_PRICE)
 	car.refuel(liters)
+	QuestManager.event("refuel")
 	GameManager.notify("Заправил %d л. В баке %d л" % [int(liters), int(car.fuel)])
 
 
@@ -1516,6 +1522,7 @@ func _kolkhoz_work() -> void:
 	GameManager.add_money(400)
 	SoundLibrary.play("cash")
 	GameManager.notify("Отработал в колхозе: +400 грн. %s" % TimeManager.clock_text())
+	QuestManager.event("kolkhoz")
 
 
 ## Развоз: хлеб грузится на складе, сдаётся у сельмага — только на машине.
@@ -1550,9 +1557,13 @@ func _build_shops(b: MeshBuilder) -> void:
 	b.box(k + Vector3(-1.2, 1.0, -0.02), k + Vector3(1.2, 2.0, 0.0), Color(0.85, 0.9, 0.95))
 	b.box(k + Vector3(-1.3, 0.9, -0.25), k + Vector3(1.3, 0.97, 0.0), Color(0.7, 0.7, 0.7))
 	b.box(k + Vector3(-1.5, 2.2, -0.05), k + Vector3(1.5, 2.55, -0.02), Color(0.85, 0.2, 0.15))
-	var kiosk := InteractZone.create("E — купить батон и кефир (45 грн)", Vector3(3.0, 2.0, 2.2))
+	var kiosk := InteractZone.create("", Vector3(3.0, 2.0, 2.2))
 	kiosk.position = k + Vector3(0, 0, -1.2)
-	kiosk.activated.connect(_buy_food)
+	kiosk.prompt_fn = func() -> String:
+		if _wants_medicine():
+			return "E — купить лекарство для тёти Люды (60 грн)"
+		return "E — купить батон и кефир (45 грн)"
+	kiosk.activated.connect(_kiosk_use)
 	add_child(kiosk)
 
 	# Склад: здесь можно подработать грузчиком
@@ -1588,6 +1599,21 @@ func _take_delivery() -> void:
 	Progress.start_delivery()
 
 
+func _wants_medicine() -> bool:
+	var q: Dictionary = QuestManager.quests["s_lyuda"]
+	return q.state == 1 and q.step == 0
+
+
+func _kiosk_use() -> void:
+	if _wants_medicine():
+		if GameManager.spend(60):
+			QuestManager.give_item("medicine")
+			QuestManager.event("medicine")
+			GameManager.notify("Купил лекарство. Отвези тёте Люде на остановку у Каменки")
+		return
+	_buy_food()
+
+
 func _buy_food() -> void:
 	if GameManager.spend(45):
 		NeedsManager.snacks += 1
@@ -1606,6 +1632,34 @@ func _work() -> void:
 	NeedsManager.rest(-20.0)
 	GameManager.add_money(600)
 	GameManager.notify("Отработал смену: +600 грн. %s" % TimeManager.clock_text())
+	QuestManager.event("shift")
+
+
+## Обморок от голода или усталости: просыпаешься дома через 8 часов,
+## соседи тратились на лекарства — минус до 150 грн.
+func _faint(reason: String) -> void:
+	var p := GameManager.player as Player
+	var v := GameManager.vehicle as Vehicle
+	if v:
+		v.speed = 0.0
+		v.lateral = 0.0
+		v.velocity = Vector3.ZERO
+		v.engine_on = false
+		v._drop_driver()
+	# Там же, где игрок просыпается в начале игры — у входа на кухне
+	var bed := Vector3(PLAYER_HOUSE.x - 1.6, HOUSE_Y + 0.1, PLAYER_HOUSE.y + 2.0)
+	if p:
+		p.global_position = bed
+		p.velocity = Vector3.ZERO
+	TimeManager.advance(8.0 * 60.0)
+	NeedsManager.rest(70.0)
+	NeedsManager.food = maxf(NeedsManager.food, 30.0)
+	var loss := mini(GameManager.money, 150)
+	GameManager.money -= loss
+	GameManager.money_changed.emit(GameManager.money)
+	QuestManager.stats.fainted += 1
+	SoundLibrary.play("land", 0.0, 0.6)
+	GameManager.notify("%s Очнулся дома — соседи дотащили. На лекарства ушло %d грн" % [reason, loss])
 
 
 func _sleep() -> void:
