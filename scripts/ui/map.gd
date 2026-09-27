@@ -80,6 +80,8 @@ func _draw_map() -> void:
 		_rect(c.x - 21, c.y - 6, c.x + 21, c.y + 6, Color(0.7, 0.7, 0.68))
 	_rect(165, 54, 177, 96, Color(0.7, 0.7, 0.68))
 	_rect(15.5, 30, 39.5, 44, Color(0.6, 0.58, 0.5))
+	var ad: Rect2 = _world.AUTODROME
+	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.55, 0.55, 0.57))
 
 	var shop: Vector3 = _world.SHOP_POS
 	var places := [
@@ -93,6 +95,8 @@ func _draw_map() -> void:
 		["Склад", Vector3(27.5, 0, 37), Color(0.9, 0.9, 0.9)],
 		["Ларёк", Vector3(25, 0, 9), Color(0.5, 0.7, 1.0)],
 		["Пруд", pond, Color(0.6, 0.85, 1.0)],
+		["Автошкола", Vector3(9, 0, -45), Color(0.95, 0.7, 0.25)],
+		["Колька", _world.RACE_START, Color(0.95, 0.45, 0.35)],
 	]
 	var blink := fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
 	for pl in places:

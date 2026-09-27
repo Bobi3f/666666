@@ -49,6 +49,13 @@ const SPECS := {
 	},
 }
 
+## Краски в СТО: первая — заводская.
+const PAINTS := [Color(0.78, 0.72, 0.52), Color(0.55, 0.09, 0.09), Color(0.13, 0.3, 0.55),
+	Color(0.2, 0.4, 0.22), Color(0.88, 0.88, 0.85), Color(0.11, 0.11, 0.12)]
+const PAINT_NAMES := ["бежевый", "вишнёвый", "синий", "зелёный", "белый", "чёрный"]
+const MOTO_PAINTS := [Color(0.7, 0.12, 0.1), Color(0.13, 0.3, 0.55), Color(0.1, 0.1, 0.11)]
+const MOTO_PAINT_NAMES := ["красный", "синий", "чёрный"]
+
 ## Вид сзади (V) — общий для всего транспорта.
 static var chase_view := false
 
@@ -67,6 +74,12 @@ var clutch := 1.0
 var locked := false
 var fuel := 25.0
 var condition := 100.0
+## Тюнинг в СТО: всесезонная резина (держит на грунте и в грязи),
+## форсированный мотор (+20% тяги), цвет кузова.
+var tires := false
+var engine_tuned := false
+var paint := 0
+var _paint_mesh: MeshInstance3D
 var braking := false
 
 var _steer := 0.0
@@ -96,12 +109,26 @@ func _ready() -> void:
 	add_to_group("persist")
 	add_to_group("vehicles")
 	fuel = minf(fuel, spec.tank)
+	# Кузов — коробка, но приподнятая: снизу её заменяет закруглённая «лыжа»
+	# вдоль машины. Плоское дно цеплялось бы за любой порожек (край асфальта
+	# на выезде к трассе — 5 см), а круглое перекатывается, как колесо.
+	var size: Vector3 = spec.shape
+	var bottom: float = spec.shape_y - size.y * 0.5
+	var r := 0.3 if not spec.two_wheels else 0.25
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = spec.shape
+	shape.size = Vector3(size.x, size.y - r, size.z)
 	cs.shape = shape
-	cs.position.y = spec.shape_y
+	cs.position.y = spec.shape_y + r * 0.5
 	add_child(cs)
+	var skid := CollisionShape3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = r
+	cap.height = size.z - 0.1
+	skid.shape = cap
+	skid.rotation.x = PI / 2.0
+	skid.position.y = bottom + r
+	add_child(skid)
 	_body = Node3D.new()
 	add_child(_body)
 	if spec.two_wheels:
@@ -388,15 +415,15 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 		if auto:
 			# Гидротрансформатор: на холостых почти не держит, на оборотах — как сцепление
 			var k := clampf((rpm - idle) / 1600.0, 0.0, 1.0)
-			cap = 0.0 if _shift_timer > 0.0 else (0.09 + 1.7 * k * k) * (spec.torque as float)
+			cap = 0.0 if _shift_timer > 0.0 else (0.09 + 1.7 * k * k) * _torque()
 		else:
 			var eff := smoothstep(0.2, 0.8, clutch)
-			cap = eff * eff * (spec.torque as float) * 1.7
+			cap = eff * eff * _torque() * 1.7
 	var force := 0.0
 	locked = false
 	if engine_on:
 		var t_eng := _engine_torque(rpm, throttle)
-		var t_fric := (spec.torque as float) * (0.07 + rpm * 0.000023)
+		var t_fric := _torque() * (0.07 + rpm * 0.000023)
 		var slip := rpm - wheel_rpm
 		if cap > 0.0 and absf(slip) < 80.0 and absf(t_eng - t_fric) < cap:
 			locked = true
@@ -504,6 +531,9 @@ func _move(dt: float, handbrake: bool) -> void:
 	var fwd := -global_transform.basis.z
 	var right := global_transform.basis.x
 	var grip: float = (spec.grip as float) * surface().grip
+	# Всесезонка: на грунте, траве и в грязи держит заметно лучше
+	if tires:
+		grip *= 1.08 if on_asphalt() else 1.35
 	if handbrake and driver and absf(speed) > 3.0 and not spec.two_wheels:
 		grip *= 0.18
 	# Прошлая скорость в мире, разложенная по новому курсу: если машина
@@ -634,6 +664,11 @@ func on_asphalt() -> bool:
 		return true
 	if p.x > -120.0 and p.x < -78.0 and p.z > 0.0 and p.z < 21.0:
 		return true
+	# Автодром и въезд к нему
+	if p.x > -2.0 and p.x < 20.0 and p.z > -75.0 and p.z < -18.0:
+		return true
+	if p.x > 6.0 and p.x < 12.0 and p.z > -18.0 and p.z < 0.0:
+		return true
 	return p.x > 38.0 and p.z > 0.0
 
 
@@ -656,7 +691,7 @@ func repair() -> void:
 
 func _engine_torque(r: float, throttle: float) -> float:
 	var idle: float = spec.idle
-	var torque: float = spec.torque
+	var torque: float = _torque()
 	# Регулятор холостого хода держит обороты
 	var idle_t := clampf((idle - r) * torque * 0.002, 0.0, torque * 0.63)
 	var peak := torque * throttle * clampf(1.2 - absf(r - (spec.peak_rpm as float)) / (spec.redline as float * 0.8), 0.4, 1.0)
@@ -671,21 +706,48 @@ func speed_kmh() -> float:
 
 # --- Внешний вид ------------------------------------------------------------
 
-func _build_car() -> void:
+func paints() -> Array:
+	return MOTO_PAINTS if spec.two_wheels else PAINTS
+
+
+func paint_name() -> String:
+	return (MOTO_PAINT_NAMES if spec.two_wheels else PAINT_NAMES)[paint]
+
+
+## Кузов строится заново в нужном цвете — при покраске и после загрузки.
+func _paint_body() -> void:
+	if _paint_mesh:
+		_paint_mesh.queue_free()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	VehicleModels.zhiguli(b, Color(0.78, 0.72, 0.52))
-	_body.add_child(b.build_mesh())
+	var col: Color = paints()[paint % paints().size()]
+	if spec.two_wheels:
+		VehicleModels.java(b, col)
+	else:
+		VehicleModels.zhiguli(b, col)
+	_paint_mesh = b.build_mesh()
+	_body.add_child(_paint_mesh)
+
+
+func repaint() -> void:
+	paint = (paint + 1) % paints().size()
+	_paint_body()
+
+
+## Тяга мотора с учётом форсировки.
+func _torque() -> float:
+	return (spec.torque as float) * (1.2 if engine_tuned else 1.0)
+
+
+func _build_car() -> void:
+	_paint_body()
 	_brake_lights([Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)], Vector3(0.16, 0.12, 0.03))
 	for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
 		_wheel(p, false)
 
 
 func _build_moto() -> void:
-	var b := MeshBuilder.new()
-	b.ground_shade = false
-	VehicleModels.java(b, Color(0.7, 0.12, 0.1))
-	_body.add_child(b.build_mesh())
+	_paint_body()
 	_brake_lights([Vector3(0, 0.66, 0.965)], Vector3(0.12, 0.07, 0.03))
 	for p in [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]:
 		_wheel(p, true)
@@ -751,6 +813,9 @@ func save_state() -> Dictionary:
 		"driver": driver != null,
 		"fuel": fuel,
 		"condition": condition,
+		"tires": tires,
+		"engine_tuned": engine_tuned,
+		"paint": paint,
 	}
 
 
@@ -762,6 +827,12 @@ func load_state(d: Dictionary) -> void:
 	velocity = Vector3.ZERO
 	fuel = float(d.get("fuel", 25.0))
 	condition = float(d.get("condition", 100.0))
+	tires = bool(d.get("tires", false))
+	engine_tuned = bool(d.get("engine_tuned", false))
+	var p := int(d.get("paint", 0)) % paints().size()
+	if p != paint:
+		paint = p
+		_paint_body()
 	engine_on = bool(d.get("engine", false))
 	rpm = spec.idle if engine_on else 0.0
 	# После загрузки — на нейтрали, иначе техника сразу поедет или заглохнет

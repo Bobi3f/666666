@@ -55,6 +55,8 @@ var _light_pool_mat: StandardMaterial3D
 var _yard_nodes: Array[Node] = []
 ## Смещение двери своего дома вдоль фасада — от неё считаем стартовую точку.
 var _home_door_x := 0.0
+var _exam: DrivingChallenge
+var _race: DrivingChallenge
 var _fishing: FishingGame
 var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
@@ -83,6 +85,7 @@ func _ready() -> void:
 	_town_details(b, glow)
 	_build_shops(b)
 	_build_forest(b)
+	_build_autodrome(b)
 	_block_grass()
 	# Двор игрока — до сборки растительности: его яблоня и кусты регистрируются
 	# один раз, при перестройке дома они стоят на тех же местах
@@ -1496,6 +1499,25 @@ func _repair_garage(b: MeshBuilder) -> void:
 	zone.prompt_fn = _repair_prompt
 	zone.activated.connect(_repair)
 	add_child(zone)
+	# Тюнинг — снаружи у правой стены: резина у стопки покрышек, мотор на
+	# поддоне, краска на стеллаже
+	b.box(c + Vector3(5.5, 0, 1.3), c + Vector3(6.6, 0.15, 2.3), Color(0.5, 0.38, 0.25))
+	b.box(c + Vector3(5.65, 0.15, 1.45), c + Vector3(6.45, 0.75, 2.15), Color(0.25, 0.26, 0.28))
+	b.box(c + Vector3(5.8, 0.75, 1.6), c + Vector3(6.3, 0.95, 2.0), Color(0.35, 0.36, 0.38))
+	b.box(c + Vector3(5.5, 0, 3.4), c + Vector3(6.7, 1.9, 3.8), Color(0.42, 0.3, 0.2))
+	for i in 6:
+		var pc: Color = Vehicle.PAINTS[i]
+		var px := 5.6 + (i % 3) * 0.37
+		var py := 0.5 + (i / 3) * 0.7
+		b.box(c + Vector3(px, py, 3.25), c + Vector3(px + 0.28, py + 0.34, 3.5), pc)
+	_label("ТЮНИНГ", c + Vector3(5.02, 2.9, 2.2), PI / 2.0, 0.005, Color(0.95, 0.7, 0.25))
+	for spot in [["tires", Vector3(5.8, 0, -0.2)], ["engine", Vector3(6.1, 0, 1.8)], ["paint", Vector3(6.1, 0, 3.9)]]:
+		var what: String = spot[0]
+		var tz := InteractZone.create("", Vector3(1.7, 2.2, 1.7))
+		tz.position = c + (spot[1] as Vector3)
+		tz.prompt_fn = func() -> String: return _tuning_prompt(what)
+		tz.activated.connect(func() -> void: _tune(what))
+		add_child(tz)
 
 
 func _repair_cost(car: Vehicle) -> int:
@@ -1521,6 +1543,207 @@ func _repair() -> void:
 	TimeManager.advance(60.0)
 	car.repair()
 	GameManager.notify("Механик перебрал машину: 100%%. %s" % TimeManager.clock_text())
+
+
+## Цены тюнинга: [Жигули, Ява].
+const TUNING := {
+	"tires": {"price": [1500, 600], "minutes": 60.0},
+	"engine": {"price": [3000, 1200], "minutes": 120.0},
+	"paint": {"price": [400, 200], "minutes": 30.0},
+}
+
+
+func _tuning_price(car: Vehicle, what: String) -> int:
+	return TUNING[what].price[1 if car.spec.two_wheels else 0]
+
+
+func _tuning_prompt(what: String) -> String:
+	var car := _car_near(GARAGE_POS, 14.0)
+	if car == null:
+		return "Тюнинг: сначала подгони машину или мотоцикл к СТО"
+	var price := _tuning_price(car, what)
+	match what:
+		"tires":
+			if car.tires:
+				return "На %s уже всесезонная резина" % car.spec.title
+			return "E — всесезонная резина на %s: держит на грунте и в грязи (%d грн)" % [car.spec.title, price]
+		"engine":
+			if car.engine_tuned:
+				return "Мотор %s уже форсирован" % car.spec.title
+			return "E — форсировать мотор %s: +20%% тяги (%d грн)" % [car.spec.title, price]
+	var next: int = (car.paint + 1) % car.paints().size()
+	var names: Array = Vehicle.MOTO_PAINT_NAMES if car.spec.two_wheels else Vehicle.PAINT_NAMES
+	return "E — перекрасить %s: сейчас %s, будет %s (%d грн)" % [car.spec.title, car.paint_name(), names[next], price]
+
+
+func _tune(what: String) -> void:
+	var car := _car_near(GARAGE_POS, 14.0)
+	if car == null:
+		return
+	if (what == "tires" and car.tires) or (what == "engine" and car.engine_tuned):
+		return
+	if not GameManager.spend(_tuning_price(car, what)):
+		return
+	SoundLibrary.play("hammer")
+	TimeManager.advance(TUNING[what].minutes)
+	match what:
+		"tires":
+			car.tires = true
+			GameManager.notify("Поставили всесезонку: теперь по грунту и в грязи держит лучше")
+		"engine":
+			car.engine_tuned = true
+			GameManager.notify("Мотор форсирован: тянет заметно бодрее. %s" % TimeManager.clock_text())
+		"paint":
+			car.repaint()
+			GameManager.notify("%s теперь %s!" % [car.spec.title, car.paint_name()])
+	QuestManager.event("tuning")
+
+
+# --- Автодром и заезды --------------------------------------------------------
+
+## Площадка автошколы у трассы (x, z, ширина, длина) и въезд к ней.
+const AUTODROME := Rect2(-2, -75, 22, 57)
+const Villagers := preload("res://scripts/world/villagers.gd")
+const EXAM_PRICE := 300
+const RACE_BET := 200
+## Старт заезда — на съезде из деревни к трассе, финиш — въезд в город.
+const RACE_START := Vector3(-59.5, 0, -20.0)
+
+
+func _build_autodrome(b: MeshBuilder) -> void:
+	var a := AUTODROME
+	var asphalt := Color(0.3, 0.3, 0.31)
+	var white := Color(0.88, 0.88, 0.85)
+	b.box(Vector3(a.position.x, 0, a.position.y), Vector3(a.end.x, 0.04, a.end.y), asphalt)
+	b.box(Vector3(6, 0, a.end.y), Vector3(12, 0.04, -5.5), asphalt)
+	# Разметка: бортики-линии по краю, старт, стоянка
+	for r in [[a.position.x, a.position.y, a.position.x + 0.15, a.end.y], [a.end.x - 0.15, a.position.y, a.end.x, a.end.y],
+			[a.position.x, a.position.y, a.end.x, a.position.y + 0.15]]:
+		b.box(Vector3(r[0], 0.04, r[1]), Vector3(r[2], 0.05, r[3]), white)
+	b.box(Vector3(6.2, 0.04, -21.3), Vector3(11.8, 0.05, -20.7), Color(0.95, 0.8, 0.2))
+	_label("СТАРТ", Vector3(9, 0.06, -19.6), 0.0, 0.012, Color(0.95, 0.8, 0.2)).rotation = Vector3(-PI / 2.0, 0, 0)
+	var pc := Vector3(16.5, 0, -40)
+	for r in [[-1.7, -3.1, 1.7, -3.0], [-1.7, 3.0, 1.7, 3.1], [-1.75, -3.1, -1.65, 3.1], [1.65, -3.1, 1.75, 3.1]]:
+		b.box(pc + Vector3(r[0], 0.04, r[1]), pc + Vector3(r[2], 0.05, r[3]), white)
+	_label("P", pc + Vector3(0, 0.06, 0), 0.0, 0.03, white).rotation = Vector3(-PI / 2.0, 0, 0)
+	# Будка автошколы с вывеской и инструктор у въезда
+	var k := Vector3(-5, 0, -21.5)
+	b.box(k + Vector3(-2, 0, -2), k + Vector3(2, 2.6, 2), Color(0.85, 0.82, 0.72), true)
+	b.box(k + Vector3(-2.2, 2.6, -2.2), k + Vector3(2.2, 2.8, 2.2), Color(0.35, 0.4, 0.5))
+	b.box(k + Vector3(2.0, 1.0, -1.2), k + Vector3(2.03, 1.9, 1.2), Color(0.6, 0.75, 0.85))
+	b.box(k + Vector3(-1.9, 2.1, 2.0), k + Vector3(1.9, 2.55, 2.04), Color(0.2, 0.35, 0.65))
+	_label("АВТОШКОЛА", k + Vector3(0, 2.33, 2.06), 0.0, 0.0045, Color(1, 1, 1))
+	var who := MeshBuilder.new()
+	who.ground_shade = false
+	who.xf = Transform3D(Basis(Vector3.UP, PI * 0.75), Vector3(-1.8, 0, -17.5))
+	Villagers.person_model(who, Color(0.25, 0.3, 0.45), Color(0.2, 0.2, 0.22), false, false)
+	var who_mesh := who.build_mesh()
+	who_mesh.name = "Instructor"
+	add_child(who_mesh)
+	var zone := InteractZone.create("", Vector3(2.4, 2.0, 2.4))
+	zone.position = Vector3(-1.8, 0, -17.5)
+	zone.prompt_fn = _exam_prompt
+	zone.activated.connect(_exam_start)
+	add_child(zone)
+
+	_exam = DrivingChallenge.new()
+	_exam.name = "Exam"
+	_exam.title = "Экзамен"
+	_exam.only_car = true
+	_exam.start_pos = Vector3(9, 0, -22.5)
+	_exam.points = [Vector3(5.5, 0, -28), Vector3(12.5, 0, -35), Vector3(5.5, 0, -42), Vector3(12.5, 0, -49), Vector3(9, 0, -66)]
+	_exam.stage_names = {0: "змейка между конусами", 4: "разворот в конце площадки"}
+	_exam.cone_positions = [Vector3(9, 0, -28), Vector3(9, 0, -35), Vector3(9, 0, -42), Vector3(9, 0, -49),
+		pc + Vector3(-1.9, 0, -3.3), pc + Vector3(1.9, 0, -3.3), pc + Vector3(-1.9, 0, 3.3), pc + Vector3(1.9, 0, 3.3)]
+	_exam.park_center = pc
+	_exam.park_size = Vector2(3.4, 6.2)
+	_exam.max_cones = 2
+	_exam.time_limit = 120.0
+	_exam.finished.connect(_exam_result)
+	add_child(_exam)
+
+	# Колька-гонщик у съезда из деревни: заезд до города на время
+	var racer := MeshBuilder.new()
+	racer.ground_shade = false
+	racer.xf = Transform3D(Basis(Vector3.UP, PI / 2.0), RACE_START + Vector3(5.5, 0, 0))
+	Villagers.person_model(racer, Color(0.7, 0.2, 0.15), Color(0.1, 0.1, 0.1), false, false)
+	var racer_mesh := racer.build_mesh()
+	racer_mesh.name = "Racer"
+	add_child(racer_mesh)
+	var rz := InteractZone.create("", Vector3(2.4, 2.0, 2.4))
+	rz.position = RACE_START + Vector3(5.5, 0, 0)
+	rz.prompt_fn = _race_prompt
+	rz.activated.connect(_race_start)
+	add_child(rz)
+	_race = DrivingChallenge.new()
+	_race.name = "Race"
+	_race.title = "Заезд с Колькой"
+	_race.start_pos = RACE_START
+	_race.point_radius = 5.0
+	_race.points = [Vector3(-59.5, 0, 0.5), Vector3(-38, 0, 2.5), Vector3(30, 0, 2.5), Vector3(80, 0, 2.5), Vector3(97, 0, 18)]
+	_race.stage_names = {0: "на трассу, налево", 1: "по трассе на восток", 4: "финиш — поворот в город"}
+	_race.time_limit = RACE_TIME
+	_race.finished.connect(_race_result)
+	add_child(_race)
+
+
+func _exam_prompt() -> String:
+	if Progress.license:
+		return "Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»" % EXAM_PRICE if not _exam.active() else ""
+	if _exam.active():
+		return "Инструктор: «Садись в Жигули и заезжай на старт — жёлтый круг»"
+	return "E — сдать на права: змейка, разворот, стоянка (%d грн)" % EXAM_PRICE
+
+
+func _exam_start() -> void:
+	if _exam.active() or not GameManager.spend(EXAM_PRICE):
+		return
+	_exam.arm()
+	GameManager.notify("Инструктор: «Жигули — на старт, жёлтый круг у въезда. Конусы не сбивай, в конце — встань в разметку «P»»")
+
+
+func _exam_result(r: Dictionary) -> void:
+	if r.ok:
+		var first := not Progress.license
+		Progress.license = true
+		SoundLibrary.play("quest")
+		QuestManager.event("license")
+		if first:
+			GameManager.notify("Сдал за %d с! Права в кармане — за развоз хлеба теперь платят на %d грн больше" % [int(r.time), Progress.LICENSE_BONUS])
+		else:
+			GameManager.notify("Чисто прошёл за %d с, конусов сбито: %d" % [int(r.time), int(r.cones)])
+	else:
+		GameManager.notify("Не сдал: %s. Пересдача — у инструктора" % r.why)
+
+
+## Сколько даётся на заезд с Колькой.
+const RACE_TIME := 20.0
+
+
+func _race_prompt() -> String:
+	if _race.active():
+		return "Колька: «Ну, давай! Старт — жёлтый круг, финиш — первый поворот в город»"
+	if Progress.race_day == TimeManager.day:
+		return "Колька: «Сегодня уже гоняли. Приходи завтра»"
+	return "E — Колька: «Спорим на %d, что до города за %d с не доедешь?»" % [RACE_BET, int(RACE_TIME)]
+
+
+func _race_start() -> void:
+	if _race.active() or Progress.race_day == TimeManager.day or not GameManager.spend(RACE_BET):
+		return
+	Progress.race_day = TimeManager.day
+	_race.arm()
+	GameManager.notify("Колька: «Садись на Жигули или Яву и въезжай в жёлтый круг — время пойдёт»")
+
+
+func _race_result(r: Dictionary) -> void:
+	if r.ok:
+		GameManager.add_money(RACE_BET * 2)
+		SoundLibrary.play("cash")
+		QuestManager.event("race_won")
+		GameManager.notify("Успел за %.1f с! Колька отдаёт %d грн: «Ну ты гонщик!»" % [r.time, RACE_BET * 2])
+	else:
+		GameManager.notify("Колька: «Ха! %s — ставка моя. Завтра реванш?»" % ("не успел" if r.why == "не уложился во время" else r.why))
 
 
 ## Колхозный сарай у стогов: здесь можно подработать на сене.
@@ -1640,7 +1863,7 @@ func _build_shops(b: MeshBuilder) -> void:
 	bread.prompt_fn = func() -> String:
 		if Progress.delivery_active:
 			return "Хлеб в машине — вези в сельмаг «Каменка»"
-		return "E — развоз: хлеб в сельмаг на машине, +%d грн" % Progress.DELIVERY_PAY
+		return "E — развоз: хлеб в сельмаг на машине, +%d грн" % Progress.delivery_pay()
 	bread.activated.connect(_take_delivery)
 	add_child(bread)
 
@@ -1784,6 +2007,7 @@ func _block_grass() -> void:
 	v.block(BARN_POS.x - 6.5, BARN_POS.z - 4.5, BARN_POS.x + 6.5, BARN_POS.z + 6)
 	v.block(-57, -42.2, BARN_POS.x, -40.8)
 	v.block(POND_POS.x - 13, POND_POS.z - 10, POND_POS.x + 13, POND_POS.z + 10)
+	v.block(AUTODROME.position.x - 7, AUTODROME.position.y - 1, AUTODROME.end.x + 1, AUTODROME.end.y + 12)
 	v.block(POND_POS.x + 9, -40.6, -164, -39.4)
 	# Огороды за домами
 	for x in VILLAGE_X:

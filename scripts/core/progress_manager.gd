@@ -30,6 +30,11 @@ var deliveries_done := 0
 var bread := 100.0
 ## Обучение первых минут пройдено или пропущено.
 var tutorial_done := false
+## Права получены на автодроме: развоз хлеба платит больше.
+var license := false
+const LICENSE_BONUS := 150
+## В какой день уже был заезд с Колькой (раз в день).
+var race_day := 0
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
 var planted_at := 0.0
@@ -54,6 +59,10 @@ func _on_minutes(m: float) -> void:
 		delivery_active = false
 		GameManager.notify("Не успел: хлеб в сельмаге уже не ждут. Заказ сорван")
 		delivery_changed.emit()
+
+
+func delivery_pay() -> int:
+	return DELIVERY_PAY + (LICENSE_BONUS if license else 0)
 
 
 ## Хлеб бьётся: удар машины или тряска по кочкам.
@@ -169,7 +178,7 @@ func finish_delivery() -> void:
 	delivery_active = false
 	deliveries_done += 1
 	# Платят за целый хлеб; мятые буханки идут со скидкой
-	var pay := int(round(DELIVERY_PAY * bread / 100.0))
+	var pay := int(round(delivery_pay() * bread / 100.0))
 	var fast := delivery_left >= DELIVERY_TIME / 2.0
 	if fast:
 		pay += DELIVERY_BONUS
@@ -186,7 +195,7 @@ func finish_delivery() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done,
+	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day,
 		"planted": planted, "planted_at": planted_at}
 
 
@@ -199,6 +208,8 @@ func load_state(d: Dictionary) -> void:
 	bread = float(d.get("bread", 100.0))
 	# В старых сохранениях ключа нет — там игрок уже освоился
 	tutorial_done = bool(d.get("tutorial", true))
+	license = bool(d.get("license", false))
+	race_day = int(d.get("race_day", 0))
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))
 	_last_stage = garden_stage()

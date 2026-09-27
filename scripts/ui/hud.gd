@@ -85,6 +85,8 @@ func _process(delta: float) -> void:
 	_top.text = "%s     %d грн     %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
 	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
 	var lines: Array[String] = []
+	if GameManager.challenge_line != "":
+		lines.append("» " + GameManager.challenge_line)
 	if Progress.delivery_active:
 		lines.append(Progress.goal_text())
 	lines.append_array(QuestManager.tracker_lines())
