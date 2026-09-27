@@ -80,6 +80,17 @@ func _draw_map() -> void:
 		_rect(c.x - 21, c.y - 6, c.x + 21, c.y + 6, Color(0.7, 0.7, 0.68))
 	_rect(165, 54, 177, 96, Color(0.7, 0.7, 0.68))
 	_rect(15.5, 30, 39.5, 44, Color(0.6, 0.58, 0.5))
+	# Речка, полевое кольцо (гравий), лесная дорога, площадь в городе
+	var st: Rect2 = Roads.STREAM
+	_rect(st.position.x, st.position.y, st.end.x, st.end.y, Color(0.35, 0.55, 0.75))
+	for r in Roads.FIELD:
+		_rect(r.position.x, r.position.y, r.end.x, r.end.y, Color(0.72, 0.68, 0.6))
+	for r in Roads.FOREST:
+		_rect(r.position.x, r.position.y, r.end.x, r.end.y, Color(0.55, 0.43, 0.3))
+	var br: Rect2 = Roads.BRIDGE
+	_rect(br.position.x, br.position.y + 0.5, br.end.x, br.end.y - 0.5, Color(0.6, 0.45, 0.3))
+	var sq: Rect2 = _world.TOWN_SQUARE
+	_rect(sq.position.x, sq.position.y, sq.end.x, sq.end.y, Color(0.75, 0.73, 0.68))
 	var ad: Rect2 = _world.AUTODROME
 	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.55, 0.55, 0.57))
 
@@ -97,6 +108,10 @@ func _draw_map() -> void:
 		["Пруд", pond, Color(0.6, 0.85, 1.0)],
 		["Автошкола", Vector3(9, 0, -45), Color(0.95, 0.7, 0.25)],
 		["Колька", _world.RACE_START, Color(0.95, 0.45, 0.35)],
+		["Площадь", Vector3(122, 0, 21), Color(0.95, 0.9, 0.7)],
+		["Кафе", Vector3(84.5, 0, 16.5), Color(0.95, 0.6, 0.45)],
+		["Хозтовары", Vector3(84.5, 0, 28), Color(0.55, 0.85, 0.6)],
+		["Мост", Vector3(-110, 0, -86.5), Color(0.8, 0.65, 0.45)],
 	]
 	var blink := fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
 	for pl in places:

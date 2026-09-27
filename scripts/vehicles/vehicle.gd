@@ -80,6 +80,8 @@ var tires := false
 var engine_tuned := false
 var paint := 0
 var _paint_mesh: MeshInstance3D
+var _shake := 0.0
+var _shake_k := 0.0
 var braking := false
 
 var _steer := 0.0
@@ -587,7 +589,10 @@ func surface() -> Dictionary:
 	# Деревенская улица, съезд и тропинки — грунт; остальное — трава
 	var dirt := (p.x > -166.0 and p.x < -56.0 and p.z > -43.0 and p.z < -37.0) or (p.x > -63.0 and p.x < -56.0 and p.z > -43.0 and p.z < -4.0)
 	# Качение по грунту — вдвое тяжелее асфальта, по траве — в пять раз
-	if dirt:
+	# Гравийка полевого кольца — плотнее грунта, но не асфальт
+	if Roads.on_gravel(p.x, p.z):
+		return {"roll": 1.4 * sqrt(mud), "grip": 0.88 / sqrt(sqrt(mud))}
+	if dirt or Roads.on_forest_road(p.x, p.z):
 		return {"roll": 2.0 * mud, "grip": 0.8 / sqrt(mud)}
 	return {"roll": 5.0 * mud, "grip": 0.6 / sqrt(mud)}
 
@@ -647,6 +652,13 @@ func _update_lights() -> void:
 
 
 func _update_camera(dt: float) -> void:
+	# Тряска на яме — камера подпрыгивает и быстро успокаивается
+	if _shake > 0.0:
+		_shake = maxf(_shake - dt, 0.0)
+		var off := sin(_shake * 70.0) * 0.06 * _shake_k * (_shake / 0.4)
+		_camera.v_offset = off
+		if _chase:
+			_chase.v_offset = off
 	if not chase_view or _chase == null:
 		return
 	var back: Vector3 = spec.chase
@@ -727,6 +739,18 @@ func _paint_body() -> void:
 		VehicleModels.zhiguli(b, col)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
+
+
+## Яма на дороге: машину подбрасывает, скорость теряется, подвеска
+## изнашивается, в развозе бьётся хлеб.
+func bump(strength: float) -> void:
+	speed *= 1.0 - 0.05 * strength
+	_wear(strength * 0.6)
+	_shake = 0.25 + strength * 0.15
+	_shake_k = strength
+	SoundLibrary.play_at("land", global_position, -4.0 + strength * 3.0, 0.8)
+	if self == GameManager.car:
+		Progress.damage_bread(strength * 2.5)
 
 
 func repaint() -> void:

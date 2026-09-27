@@ -7,6 +7,7 @@ extends Node
 signal house_changed(level: int)
 signal delivery_changed
 signal garden_changed
+signal home_changed
 
 ## Цена перестройки на следующий уровень.
 const UPGRADE_COST := [12000, 30000]
@@ -35,6 +36,10 @@ var license := false
 const LICENSE_BONUS := 150
 ## В какой день уже был заезд с Колькой (раз в день).
 var race_day := 0
+## Купленное в «Хозтоварах»: tv — телевизор в комнате, dog — пёс с будкой
+## во дворе, greenhouse — теплица над огородом (картошка растёт быстрее).
+var home_items: Array = []
+const GREENHOUSE_SPEED := 1.5
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
 var planted_at := 0.0
@@ -61,6 +66,21 @@ func _on_minutes(m: float) -> void:
 		delivery_changed.emit()
 
 
+func has_item(id: String) -> bool:
+	return home_items.has(id)
+
+
+func add_item(id: String) -> void:
+	if not home_items.has(id):
+		home_items.append(id)
+		home_changed.emit()
+
+
+## Сколько растёт картошка: в теплице — быстрее.
+func grow_time() -> float:
+	return GROW_TIME / (GREENHOUSE_SPEED if has_item("greenhouse") else 1.0)
+
+
 func delivery_pay() -> int:
 	return DELIVERY_PAY + (LICENSE_BONUS if license else 0)
 
@@ -85,7 +105,7 @@ static func now() -> float:
 func garden_stage() -> int:
 	if not planted:
 		return 0
-	var k := (now() - planted_at) / GROW_TIME
+	var k := (now() - planted_at) / grow_time()
 	if k >= 1.0:
 		return 3
 	return 1 if k < 0.4 else 2
@@ -97,7 +117,7 @@ func garden_prompt() -> String:
 			return "E — посадить картошку (семена %d грн)" % SEED_COST
 		3:
 			return "E — выкопать картошку (%d в запас еды)" % HARVEST
-	var left := int(ceilf((planted_at + GROW_TIME - now()) / 60.0))
+	var left := int(ceilf((planted_at + grow_time() - now()) / 60.0))
 	return "Картошка растёт, копать через %d ч" % left
 
 
@@ -195,7 +215,7 @@ func finish_delivery() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day,
+	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items,
 		"planted": planted, "planted_at": planted_at}
 
 
@@ -210,6 +230,8 @@ func load_state(d: Dictionary) -> void:
 	tutorial_done = bool(d.get("tutorial", true))
 	license = bool(d.get("license", false))
 	race_day = int(d.get("race_day", 0))
+	home_items = (d.get("home", []) as Array).duplicate()
+	home_changed.emit()
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))
 	_last_stage = garden_stage()
