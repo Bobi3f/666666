@@ -114,10 +114,15 @@ func _physics_process(delta: float) -> void:
 		input.x -= 1
 	if Input.is_physical_key_pressed(KEY_D):
 		input.x += 1
+	# Джойстик и стик — плавно: чуть отклонил — идёшь медленно
+	var amount := 1.0
+	if input == Vector2.ZERO and GameManager.move_axis != Vector2.ZERO:
+		input = GameManager.move_axis
+		amount = clampf(input.length(), 0.0, 1.0)
 	var running := Input.is_physical_key_pressed(KEY_SHIFT) and not crouching and input.y < 0.0
 	var speed := CROUCH if crouching else (RUN if running else WALK)
 	speed *= NeedsManager.walk_factor()
-	var dir := (transform.basis * Vector3(input.x, 0, input.y)).normalized()
+	var dir := (transform.basis * Vector3(input.x, 0, input.y)).normalized() * amount
 
 	# Плавный разгон и торможение; в воздухе направление меняется слабо
 	var on_floor := is_on_floor()

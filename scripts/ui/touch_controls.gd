@@ -194,6 +194,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _release_all() -> void:
+	GameManager.move_axis = Vector2.ZERO
 	_stick_index = -1
 	_look_index = -1
 	_set_knob(Vector2.ZERO)
@@ -214,19 +215,18 @@ func _over_button(pos: Vector2) -> bool:
 	return false
 
 
-## Джойстик → клавиши W A S D (и бег у края).
+## Джойстик → плавное движение (GameManager.move_axis), у самого края — бег.
 func _update_stick(pos: Vector2) -> void:
 	var v := (pos - _stick_center) / STICK_R
 	if v.length() > 1.0:
 		v = v.normalized()
 	_stick_vec = v
 	_set_knob(v)
-	var dead := 0.3
-	_hold(KEY_W, v.y < -dead)
-	_hold(KEY_S, v.y > dead)
-	_hold(KEY_A, v.x < -dead)
-	_hold(KEY_D, v.x > dead)
-	_hold(KEY_SHIFT, not _driving() and v.length() > 0.92)
+	# Мёртвая зона в центре, дальше скорость растёт от нуля до полной
+	var dead := 0.15
+	var mag := v.length()
+	GameManager.move_axis = Vector2.ZERO if mag < dead else v / mag * minf((mag - dead) / (0.85 - dead), 1.0)
+	_hold(KEY_SHIFT, not _driving() and mag > 0.92)
 
 
 func _set_knob(v: Vector2) -> void:

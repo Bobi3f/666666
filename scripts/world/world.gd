@@ -118,6 +118,7 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
 	# Журнал — после меню: Esc при открытом журнале закрывает журнал, а не открывает паузу
 	add_child(preload("res://scripts/ui/journal.gd").new())
+	add_child(preload("res://scripts/ui/gamepad.gd").new())
 	if GameManager.touch_mode or "--touch" in OS.get_cmdline_user_args():
 		GameManager.touch_mode = true
 		# Кнопок сцепления и передач на экране нет — на телефоне только автомат

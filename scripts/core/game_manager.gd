@@ -24,7 +24,11 @@ const TOUCH_NAMES := [
 	["T — коробка, V — вид", "«Вид» — камера"],
 ]
 
-var touch_mode := OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+## Плавное движение пешком от джойстика телефона или стика геймпада:
+## x — вбок, y — вперёд(−)/назад(+), длина до 1 — насколько отклонён.
+var move_axis := Vector2.ZERO
+
+var touch_mode := "--touch" in OS.get_cmdline_user_args() or OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 
 
 func add_money(amount: int) -> void:

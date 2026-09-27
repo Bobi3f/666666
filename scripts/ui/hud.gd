@@ -52,6 +52,7 @@ func _ready() -> void:
 	_goal.modulate = Color(1.0, 0.92, 0.6)
 	var hint := _label(Vector2(0, 12), 15)
 	_keys_hint = hint
+	hint.visible = not GameManager.touch_mode
 	hint.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	hint.offset_left = -230
 	hint.text = "F1 — управление   Esc — меню\nJ — журнал   M — карта\nF5 — сохранить  F9 — загрузить"
