@@ -90,8 +90,11 @@ var braking := false
 var _steer := 0.0
 var _yaw_rate := 0.0
 var _lean := 0.0
-var _camera: Camera3D
-var _chase: Camera3D
+var _camera: SmoothCamera
+## Метки, за которыми плавно тянутся камеры: место водителя и точка сзади.
+var _seat_mark: Node3D
+var _chase_mark: Node3D
+var _chase: SmoothCamera
 var _body: Node3D  # всё, что наклоняется (мотоцикл в повороте)
 var _rider: Node3D
 var _zone: InteractZone
@@ -140,15 +143,23 @@ func _ready() -> void:
 		_build_moto()
 	else:
 		_build_car()
-	_camera = Camera3D.new()
-	_camera.position = spec.seat
-	_camera.rotation.x = -0.06
+	# Камеры отдельно от машины: сглаживаются между шагами физики, иначе
+	# на телефоне и в браузере картинка при езде подёргивается
+	_seat_mark = Node3D.new()
+	_seat_mark.position = spec.seat
+	_seat_mark.rotation.x = -0.06
+	_body.add_child(_seat_mark)
+	_camera = SmoothCamera.new()
+	_camera.target = _seat_mark
 	_camera.near = 0.05
 	_camera.far = 700.0
 	_camera.fov = 78.0
-	_body.add_child(_camera)
-	_chase = Camera3D.new()
-	_chase.top_level = true
+	add_child(_camera)
+	_chase_mark = Node3D.new()
+	_chase_mark.top_level = true
+	add_child(_chase_mark)
+	_chase = SmoothCamera.new()
+	_chase.target = _chase_mark
 	_chase.far = 700.0
 	_chase.fov = 70.0
 	add_child(_chase)
@@ -670,8 +681,10 @@ func _update_camera(dt: float) -> void:
 	var target := global_transform.origin + global_transform.basis * back
 	var look := global_transform.origin + Vector3(0, 1.0, 0)
 	var k := minf(dt * 5.0, 1.0)
-	_chase.global_position = _chase.global_position.lerp(target, k) if dt < 0.5 else target
-	_chase.look_at(look)
+	_chase_mark.global_position = _chase_mark.global_position.lerp(target, k) if dt < 0.5 else target
+	_chase_mark.look_at(look)
+	if dt >= 0.5:
+		_chase.snap()
 
 
 ## Асфальт — трасса, город, площадки АЗС и СТО.

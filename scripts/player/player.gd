@@ -26,7 +26,9 @@ const STEP_HEIGHT := 0.45
 const FOV := 75.0
 const RUN_FOV := 82.0
 
-var camera: Camera3D
+var camera: SmoothCamera
+## Точка глаз: к ней плавно тянется камера (см. SmoothCamera).
+var _eye: Node3D
 var car: Node3D  # машина, в которой сидим; null — пешком
 var crouching := false
 var _head: Node3D
@@ -56,11 +58,17 @@ func _ready() -> void:
 	_head = Node3D.new()
 	_head.position.y = STAND_EYES
 	add_child(_head)
-	camera = Camera3D.new()
+	_eye = Node3D.new()
+	_head.add_child(_eye)
+	# Камера отдельно от тела: положение сглаживается между шагами физики,
+	# поворот головы — сразу, без задержки
+	camera = SmoothCamera.new()
+	camera.target = _eye
+	camera.interpolate_rotation = false
 	camera.near = 0.05
 	camera.far = 700.0
 	camera.fov = FOV
-	_head.add_child(camera)
+	add_child(camera)
 	camera.current = true
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50.0)
@@ -222,6 +230,8 @@ func _try_step(delta: float) -> bool:
 		global_transform = start
 		return false
 	velocity.y = 0.0
+	# Персонажа перенесло на ступеньку разом — камера догонит плавно
+	camera.kick(global_position - start.origin - motion)
 	return true
 
 
@@ -247,11 +257,12 @@ func _update_camera(delta: float, sprinting: bool) -> void:
 		var amp := 0.035 if speed <= WALK + 0.1 else 0.06
 		if crouching:
 			amp *= 0.5
-		bob = Vector3(cos(_bob_time * 0.5) * amp * 0.6, absf(sin(_bob_time)) * amp, 0)
+		# Мягкая волна вверх-вниз (без «отскока» внизу шага) и лёгкое покачивание вбок
+		bob = Vector3(sin(_bob_time * 0.5) * amp * 0.5, (1.0 - cos(_bob_time * 2.0)) * 0.5 * amp, 0)
 	else:
 		_bob_time = 0.0
 	_land_dip = move_toward(_land_dip, 0.0, 0.8 * delta)
-	camera.position = camera.position.lerp(bob - Vector3(0, _land_dip, 0), minf(delta * 12.0, 1.0))
+	_eye.position = _eye.position.lerp(bob - Vector3(0, _land_dip, 0), minf(delta * 10.0, 1.0))
 	camera.fov = lerpf(camera.fov, RUN_FOV if sprinting else FOV, minf(delta * 6.0, 1.0))
 
 
