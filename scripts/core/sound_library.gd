@@ -34,6 +34,7 @@ func _ready() -> void:
 	_streams["splash"] = _make(_splash(), false)
 	_streams["skid"] = _make(_skid(), true)
 	_streams["quest"] = _make(_quest(), false)
+	_streams["moo"] = _make(_moo(), false)
 
 
 func stream(sound: String) -> AudioStreamWAV:
@@ -301,6 +302,22 @@ func _skid() -> PackedFloat32Array:
 		var f := 1100.0 + sin(TAU * 7.0 * t) * 120.0 + sin(TAU * 13.0 * t) * 60.0
 		phase += f / RATE
 		a[i] = sin(TAU * phase) * 0.25 + _rng.randf_range(-0.12, 0.12)
+	return a
+
+
+## «Му-у»: низкий гудящий тон, поднимается и опадает, с хрипотцой.
+func _moo() -> PackedFloat32Array:
+	var a := _buf(1.1)
+	var phase := 0.0
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var f := 110.0 + 55.0 * sin(clampf(t / 1.1, 0.0, 1.0) * PI) - t * 20.0
+		phase += f / RATE
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.2
+		var env := minf(t * 8.0, 1.0) * minf((1.1 - t) * 4.0, 1.0)
+		var v := sin(TAU * phase) * 0.5 + sin(TAU * phase * 2.0) * 0.25 + sin(TAU * phase * 3.0) * 0.12
+		a[i] = (v + lp * 0.15) * env * 0.55
 	return a
 
 

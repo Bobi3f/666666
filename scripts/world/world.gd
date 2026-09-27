@@ -119,6 +119,9 @@ func _ready() -> void:
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
 	add_child(preload("res://scripts/world/traffic.gd").new())
+	var life := StreetLife.new()
+	life.name = "StreetLife"
+	add_child(life)
 	add_child(preload("res://scripts/world/villagers.gd").new())
 	var home := preload("res://scripts/world/home_items.gd").new()
 	home.name = "HomeItems"

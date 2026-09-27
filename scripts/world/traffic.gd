@@ -118,6 +118,16 @@ func _physics_process(delta: float) -> void:
 				if to_stop < 1.0:
 					v.wait = STOP_WAIT
 
+		# Светофор у поворота в город: на жёлтый и красный — стоп перед линией
+		if StreetLife.highway != "green":
+			var line: float = StreetLife.STOP_EAST if dir > 0 else StreetLife.STOP_WEST
+			var to_line: float = (line - x) * dir - v.len * 0.5
+			# На жёлтый — проезжаем, если уже не успеть остановиться
+			var can_stop: bool = StreetLife.highway == "red" or to_line > v.speed * v.speed / 12.0
+			if to_line > -0.5 and to_line < 40.0 and can_stop:
+				# Равномерное торможение (3 м/с²) ровно к линии
+				target = minf(target, sqrt(maxf(to_line - 1.0, 0.0) * 6.0))
+
 		# Препятствие впереди в своей полосе
 		var gap := _gap_ahead(v)
 		var need: float = v.len * 0.5 + 3.0
