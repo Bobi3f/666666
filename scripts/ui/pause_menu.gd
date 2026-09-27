@@ -102,7 +102,9 @@ func _build() -> void:
 	detail_row.add_child(detail)
 	box.add_child(detail_row)
 	box.add_child(HSeparator.new())
-	_button(box, "Выйти из игры", func() -> void: get_tree().quit())
+	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
+	if not OS.has_feature("web"):
+		_button(box, "Выйти из игры", func() -> void: get_tree().quit())
 	var hint := Label.new()
 	hint.text = "F1 — управление"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
