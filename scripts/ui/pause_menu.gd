@@ -81,18 +81,18 @@ func _build() -> void:
 		_close()
 		SaveManager.load_game())
 	_new = _button(box, "Новая игра", _new_game)
-	_save = _button(box, "Сохранить (F5)", func() -> void:
+	_save = _button(box, "Сохранить" if GameManager.touch_mode else "Сохранить (F5)", func() -> void:
 		SaveManager.save_game()
 		_refresh())
-	_load = _button(box, "Загрузить (F9)", func() -> void:
+	_load = _button(box, "Загрузить" if GameManager.touch_mode else "Загрузить (F9)", func() -> void:
 		_close()
 		SaveManager.load_game())
 
 	box.add_child(HSeparator.new())
-	_slider(box, "Чувствительность мыши", 0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
+	_slider(box, "Чувствительность камеры" if GameManager.touch_mode else "Чувствительность мыши", 0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
 	_slider(box, "Громкость", 0.0, 1.0, SettingsManager.volume, SettingsManager.set_volume)
 	var gearbox := CheckButton.new()
-	gearbox.text = "Автоматическая коробка передач (T)"
+	gearbox.text = "Автоматическая коробка передач" if GameManager.touch_mode else "Автоматическая коробка передач (T)"
 	gearbox.button_pressed = SettingsManager.auto_gearbox
 	gearbox.toggled.connect(SettingsManager.set_auto_gearbox)
 	# T в машине тоже переключает — держим галочку в согласии
@@ -116,6 +116,7 @@ func _build() -> void:
 		_button(box, "Выйти из игры", func() -> void: get_tree().quit())
 	var hint := Label.new()
 	hint.text = "F1 — управление"
+	hint.visible = not GameManager.touch_mode
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.modulate = Color(1, 1, 1, 0.5)
 	box.add_child(hint)

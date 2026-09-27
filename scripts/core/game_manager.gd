@@ -15,6 +15,12 @@ var moto: Node3D
 var vehicle: Node3D
 ## Телефон: Android или браузер на телефоне — показываем сенсорное управление,
 ## мышь не захватываем.
+const TOUCH_NAMES := [
+	[", журнал — J, управление — F1", ", журнал — кнопка «Журнал»"],
+	[" (Q)", " (кнопка «Еда»)"],
+	[" — J)", " — «Журнал»)"],
+]
+
 var touch_mode := OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 
 
@@ -36,7 +42,16 @@ func spend(amount: int) -> bool:
 
 
 func notify(text: String) -> void:
-	message.emit(text)
+	message.emit(touch_text(text))
+
+
+## На телефоне клавиш нет: упоминания клавиш заменяем названиями экранных кнопок.
+func touch_text(text: String) -> String:
+	if not touch_mode:
+		return text
+	for pair in TOUCH_NAMES:
+		text = text.replace(pair[0], pair[1])
+	return text
 
 
 func save_state() -> Dictionary:

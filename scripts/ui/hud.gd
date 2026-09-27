@@ -13,6 +13,7 @@ var _prompt: Label
 var _msg: Label
 var _msg_time := 0.0
 var _goal: Label
+var _keys_hint: Label
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _ready() -> void:
 	_goal = _label(Vector2(16, 70), 16)
 	_goal.modulate = Color(1.0, 0.92, 0.6)
 	var hint := _label(Vector2(0, 12), 15)
+	_keys_hint = hint
 	hint.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	hint.offset_left = -230
 	hint.text = "F1 — управление   Esc — меню\nJ — журнал   M — карта\nF5 — сохранить  F9 — загрузить"
@@ -74,7 +76,7 @@ func _label(pos: Vector2, size: int) -> Label:
 
 
 func show_message(text: String) -> void:
-	_msg.text = text
+	_msg.text = GameManager.touch_text(text)
 	_msg_time = 4.0
 
 
@@ -85,12 +87,14 @@ func _process(delta: float) -> void:
 	if Progress.delivery_active:
 		lines.append(Progress.goal_text())
 	lines.append_array(QuestManager.tracker_lines())
-	_goal.text = "\n".join(lines)
+	_goal.text = GameManager.touch_text("\n".join(lines))
+	# Подсказка по клавишам на телефоне не нужна — там кнопки
+	_keys_hint.visible = not GameManager.touch_mode
 	_food_bar.value = NeedsManager.food
 	_energy_bar.value = NeedsManager.energy
 	_food_pct.text = "%d%%" % int(NeedsManager.food)
 	_energy_pct.text = "%d%%" % int(NeedsManager.energy)
-	_snacks.text = "Еда в запасе: %d (Q)" % NeedsManager.snacks
+	_snacks.text = "Еда в запасе: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еда в запасе: %d (Q)" % NeedsManager.snacks
 	var car := GameManager.vehicle as Vehicle
 	var p := GameManager.player as Player
 	if car and car.driver:
