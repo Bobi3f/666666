@@ -98,6 +98,7 @@ func _build() -> void:
 	# T в машине тоже переключает — держим галочку в согласии
 	SettingsManager.changed.connect(func() -> void: gearbox.set_pressed_no_signal(SettingsManager.auto_gearbox))
 	box.add_child(gearbox)
+	gearbox.visible = not GameManager.touch_mode
 	var detail_row := HBoxContainer.new()
 	var detail_label := Label.new()
 	detail_label.text = "Детализация:"

@@ -53,6 +53,10 @@ var _street_lights: Array[Node3D] = []
 var _light_pool_mat: StandardMaterial3D
 ## Двор игрока строится отдельно от общего меша: его перестраивают.
 var _yard_nodes: Array[Node] = []
+## Смещение двери своего дома вдоль фасада — от неё считаем стартовую точку.
+var _home_door_x := 0.0
+var _fishing: FishingGame
+var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
 var _veg := Vegetation.new()
 var _sky_top: Color
@@ -116,6 +120,8 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/journal.gd").new())
 	if GameManager.touch_mode or "--touch" in OS.get_cmdline_user_args():
 		GameManager.touch_mode = true
+		# Кнопок сцепления и передач на экране нет — на телефоне только автомат
+		SettingsManager.auto_gearbox = true
 		add_child(preload("res://scripts/ui/touch_controls.gd").new())
 		# Телефон: экран с высокой плотностью точек — 3D рисуем в 65 %
 		# разрешения, интерфейс остаётся чётким
@@ -339,6 +345,7 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array
 	add_child(hi)
 	nodes.append(hi)
 	if Vector2(pos.x, pos.z) == PLAYER_HOUSE:
+		_home_door_x = hi.entrance_offset
 		var bed := InteractZone.create("E — лечь спать до 7:00", Vector3(1.6, 1.4, 2.6))
 		bed.position = hi.position + Basis(Vector3.UP, yaw) * hi.bed_center() - Vector3(0, 0.5, 0)
 		bed.rotation.y = yaw
@@ -1050,15 +1057,32 @@ func _pond(b: MeshBuilder, c: Vector3) -> void:
 		for z in [-0.55, 0.45]:
 			b.box(m + Vector3(x, -0.3, z), m + Vector3(x + 0.1, 0.3, z + 0.1), Color(0.3, 0.24, 0.16))
 	b.box(Vector3(m.x + 0.8, 0, -40.6), Vector3(-164.0, 0.03, -39.4), Color(0.46, 0.39, 0.28))
-	# Рыбалка — с конца мостков
-	var fishing := InteractZone.create("E — порыбачить час", Vector3(2.4, 2.0, 1.6))
+	# Рыбалка — с конца мостков, поплавок — в паре метров от края
+	_fishing = FishingGame.new()
+	_fishing.name = "FishingGame"
+	add_child(_fishing)
+	_fishing.spot = m + Vector3(-2.4, 0.38, 0)
+	_fishing_water = m + Vector3(-6.2, 0.06, 0.3)
+	_fishing.finished.connect(_fish_result)
+	var fishing := InteractZone.create("", Vector3(2.4, 2.0, 1.6))
 	fishing.position = m + Vector3(-2.4, 0.38, 0)
+	fishing.prompt_fn = func() -> String:
+		match _fishing.state:
+			FishingGame.State.WAIT:
+				return "Поплавок на воде — жди, пока нырнёт"
+			FishingGame.State.BITE:
+				return "КЛЮЁТ! E — подсекай!"
+		return "E — порыбачить: закинуть удочку"
 	fishing.activated.connect(_fish)
 	add_child(fishing)
 
 
-## Час на мостках: клюёт по-разному, ночью — никак.
+## Закинуть удочку или подсечь. Каждый заброс — четверть часа игрового
+## времени. Клюёт по-разному: на рассвете и в пасмурную погоду лучше, ночью — никак.
 func _fish() -> void:
+	if _fishing.active():
+		_fishing.pull()
+		return
 	var h := TimeManager.hour()
 	if h < 4.0 or h >= 22.0:
 		GameManager.notify("Ночью не клюёт. Лучше всего — на рассвете")
@@ -1066,22 +1090,27 @@ func _fish() -> void:
 	if NeedsManager.energy < 10.0:
 		GameManager.notify("Глаза слипаются — уснёшь с удочкой")
 		return
-	SoundLibrary.play("splash", -4.0)
-	TimeManager.advance(60.0)
-	NeedsManager.rest(-4.0)
-	# На рассвете и в пасмурную погоду клюёт лучше
-	var luck := 0.45 + (0.25 if h < 8.0 else 0.0) + (0.15 if WeatherManager.cloud > 0.5 else 0.0)
-	var caught := 0
-	for i in 3:
-		if randf() < luck * (0.8 if i == 0 else 0.35):
-			caught += 1
-	if caught == 0:
-		GameManager.notify("Час просидел — ни поклёвки. %s" % TimeManager.clock_text())
-		return
-	NeedsManager.fish += caught
-	QuestManager.event("fish", caught)
-	SoundLibrary.play("splash", -2.0, 1.3)
-	GameManager.notify("Поймал %d %s! Всего рыбы: %d — сдай в сельмаг" % [caught, "рыбу" if caught == 1 else "рыбы", NeedsManager.fish])
+	TimeManager.advance(15.0)
+	NeedsManager.rest(-1.0)
+	var luck := 0.5 + (0.2 if h < 8.0 else 0.0) + (0.15 if WeatherManager.cloud > 0.5 else 0.0)
+	_fishing.cast(_fishing_water, luck)
+
+
+func _fish_result(result: String) -> void:
+	match result:
+		"fish":
+			NeedsManager.fish += 1
+			QuestManager.event("fish", 1)
+			SoundLibrary.play("splash", -2.0, 1.3)
+			var kinds := ["карась", "окунь", "плотва", "линь"]
+			GameManager.notify("Есть! %s на %d г. Рыбы в ведре: %d — сдай в сельмаг" % [
+				kinds[randi() % kinds.size()].capitalize(), randi_range(150, 600), NeedsManager.fish])
+		"early":
+			GameManager.notify("Рано дёрнул — рыба ушла. Жди, пока поплавок нырнёт")
+		"miss":
+			GameManager.notify("Сорвалась! Подсекай сразу, как поплавок уйдёт под воду")
+		"nobite":
+			GameManager.notify("Не клюёт. Закинь ещё раз")
 
 
 ## Стог сена на лугу с шестом посередине.
@@ -1543,7 +1572,15 @@ func _check_delivery() -> void:
 	if not Progress.delivery_active:
 		return
 	var car := GameManager.car as Vehicle
-	if car and car.driver and car.global_position.distance_to(SHOP_POS + Vector3(-6.0, 0, 0)) < 9.0 and car.speed_kmh() < 5.0:
+	if car == null:
+		return
+	# Тряска: по грунту быстрее 40 км/ч и по траве быстрее 25 — буханки мнутся
+	var kmh := car.speed_kmh()
+	if not car.on_asphalt():
+		var limit := 40.0 if car.surface().roll < 3.0 else 25.0
+		if kmh > limit:
+			Progress.damage_bread((kmh - limit) * 0.02 * get_process_delta_time())
+	if car.driver and car.global_position.distance_to(SHOP_POS + Vector3(-6.0, 0, 0)) < 9.0 and kmh < 5.0:
 		Progress.finish_delivery()
 
 
@@ -1756,8 +1793,11 @@ func _spawn_player_and_car() -> void:
 	var player := Player.new()
 	player.name = "Player"
 	add_child(player)
-	# Внутри своего дома, на кухне у входа, лицом к печи
-	player.global_position = Vector3(PLAYER_HOUSE.x - 1.6, HOUSE_Y + 0.05, PLAYER_HOUSE.y + 2.0)
+	# На дорожке у калитки, лицом к улице: первым делом видно деревню
+	# и свои «Жигули» — хочется сразу пойти и посмотреть
+	player.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 10.0)
+	var to_car := Vector3(PLAYER_HOUSE.x + 4.0, 0, -39.5) - player.global_position
+	player.rotation.y = atan2(-to_car.x, -to_car.z)
 	var car := Vehicle.new()
 	car.kind = "car"
 	car.name = "Car"

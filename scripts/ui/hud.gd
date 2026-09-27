@@ -112,10 +112,20 @@ func _process(delta: float) -> void:
 			int(car.speed_kmh()), int(car.rpm), box, motor,
 			car.spec.title, int(ceilf(car.fuel)), int(car.condition),
 			"T — коробка, V — вид", slide]
+		_car.text = GameManager.touch_text(_car.text)
+		# Слева внизу на телефоне — руль: приборы держим наверху под трекером
+		if GameManager.touch_mode and _car.anchor_top != 0.0:
+			_car.anchor_top = 0.0
+			_car.anchor_bottom = 0.0
+			_car.offset_top = 150
+			_car.offset_bottom = 150
+			_car.add_theme_font_size_override("font_size", 16)
 		_prompt.text = ""
 	else:
 		_car.visible = false
 		_prompt.text = p.current_prompt() if p else ""
+	# На телефоне приборы машины стоят под трекером — сообщения опускаем ниже них
+	_msg.offset_top = 205.0 if GameManager.touch_mode and car and car.driver else 150.0
 	if _msg_time > 0.0:
 		_msg_time -= delta
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)

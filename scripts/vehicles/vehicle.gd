@@ -529,6 +529,8 @@ func _move(dt: float, handbrake: bool) -> void:
 	var hit := absf(before) - absf(speed)
 	if hit > 3.0 and get_slide_collision_count() > 0:
 		SoundLibrary.play_at("crash", global_position, minf(hit, 8.0) - 4.0)
+		if self == GameManager.car:
+			Progress.damage_bread(hit * 2.5)
 		_wear(hit * (2.0 if spec.roof else 3.0))
 		if driver:
 			if spec.two_wheels and hit > 6.0:

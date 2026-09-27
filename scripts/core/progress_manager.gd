@@ -14,6 +14,8 @@ const UPGRADE_TEXT := ["штукатуренный дом под шифером"
 const DELIVERY_PAY := 500
 ## Сколько игровых минут даётся на доставку.
 const DELIVERY_TIME := 90.0
+## Премия, если довёз быстрее, чем за половину срока.
+const DELIVERY_BONUS := 150
 ## Огород: семена, сколько растёт картошка (игровые минуты) и урожай.
 const SEED_COST := 100
 const GROW_TIME := 3.0 * 1440.0
@@ -24,6 +26,8 @@ var house_level := 0
 var delivery_active := false
 var delivery_left := 0.0
 var deliveries_done := 0
+## Целость хлеба в процентах: удары и тряска по бездорожью её снижают.
+var bread := 100.0
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
 var planted_at := 0.0
@@ -48,6 +52,17 @@ func _on_minutes(m: float) -> void:
 		delivery_active = false
 		GameManager.notify("Не успел: хлеб в сельмаге уже не ждут. Заказ сорван")
 		delivery_changed.emit()
+
+
+## Хлеб бьётся: удар машины или тряска по кочкам.
+func damage_bread(amount: float) -> void:
+	if not delivery_active or amount <= 0.0:
+		return
+	var before := bread
+	bread = maxf(bread - amount, 20.0)
+	# Сообщаем о заметных потерях, а не о каждой кочке
+	if int(before / 10.0) != int(bread / 10.0) and amount >= 3.0:
+		GameManager.notify("Хлеб бьётся! Целых буханок: %d%%" % int(ceilf(bread)))
 
 
 ## Минуты от начала игры — чтобы считать, сколько растёт огород.
@@ -112,7 +127,7 @@ func next_cost() -> int:
 
 func goal_text() -> String:
 	if delivery_active:
-		return "Доставка: отвези хлеб на машине в сельмаг «Каменка» — осталось %d мин" % int(delivery_left)
+		return "Доставка: хлеб в сельмаг «Каменка» — осталось %d мин, хлеб целый на %d%%" % [int(delivery_left), int(ceilf(bread))]
 	if max_level():
 		return "Цель выполнена: у тебя лучший дом в Каменке!"
 	return "Цель: накопить %d грн — прораб у калитки построит %s" % [next_cost(), UPGRADE_TEXT[house_level]]
@@ -141,7 +156,8 @@ func start_delivery() -> void:
 		return
 	delivery_active = true
 	delivery_left = DELIVERY_TIME
-	GameManager.notify("Погрузили хлеб. Отвези на машине в сельмаг за %d мин" % int(DELIVERY_TIME))
+	bread = 100.0
+	GameManager.notify("Погрузили хлеб. Вези аккуратно, быстрее чем за %d мин — премия" % int(DELIVERY_TIME / 2.0))
 	delivery_changed.emit()
 
 
@@ -150,15 +166,25 @@ func finish_delivery() -> void:
 		return
 	delivery_active = false
 	deliveries_done += 1
-	GameManager.add_money(DELIVERY_PAY)
+	# Платят за целый хлеб; мятые буханки идут со скидкой
+	var pay := int(round(DELIVERY_PAY * bread / 100.0))
+	var fast := delivery_left >= DELIVERY_TIME / 2.0
+	if fast:
+		pay += DELIVERY_BONUS
+	GameManager.add_money(pay)
 	SoundLibrary.play("cash")
-	GameManager.notify("Хлеб доставлен: +%d грн" % DELIVERY_PAY)
+	var t := "Хлеб доставлен: +%d грн" % pay
+	if fast:
+		t += ", с премией за скорость"
+	if bread < 99.5:
+		t += ". Помято %d%% хлеба — вычли" % int(round(100.0 - bread))
+	GameManager.notify(t)
 	QuestManager.event("delivery")
 	delivery_changed.emit()
 
 
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done,
+	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread,
 		"planted": planted, "planted_at": planted_at}
 
 
@@ -168,6 +194,7 @@ func load_state(d: Dictionary) -> void:
 	delivery_active = bool(d.get("delivery", false))
 	delivery_left = float(d.get("left", 0.0))
 	deliveries_done = int(d.get("done", 0))
+	bread = float(d.get("bread", 100.0))
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))
 	_last_stage = garden_stage()
