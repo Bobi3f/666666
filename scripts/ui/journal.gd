@@ -116,9 +116,9 @@ func _journal_text() -> String:
 		extra.append("писем: %d" % int(QuestManager.items.letters))
 	if not extra.is_empty():
 		t += "  В сумке: %s\n" % ", ".join(extra)
-	for v in [GameManager.car, GameManager.moto]:
+	for v in get_tree().get_nodes_in_group("vehicles"):
 		var veh := v as Vehicle
-		if veh:
+		if veh and veh.owned():
 			t += "  %s: бензин %d / %d л, состояние %d%%\n" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition)]
 	t += "\n" + _stats_text()
 	return t

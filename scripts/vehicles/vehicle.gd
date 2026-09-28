@@ -50,6 +50,45 @@ const SPECS := {
 		"seat": Vector3(0, 1.45, 0.25), "exit": Vector3(-1.0, 0.2, 0.0),
 		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true,
 	},
+	# Машины из автосалона. offroad — насколько лучше держит вне асфальта,
+	# mud — во сколько раз легче катится по грунту, траве и грязи.
+	"niva": {
+		"title": "Нива", "ratios": {-1: -3.5, 0: 0.0, 1: 3.7, 2: 2.2, 3: 1.4, 4: 1.0, 5: 0.82},
+		"final": 4.3, "wheel_r": 0.33, "mass": 1150.0, "idle": 850.0, "redline": 5600.0,
+		"torque": 215.0, "peak_rpm": 3000.0, "inertia": 0.2, "wheelbase": 2.2, "max_steer": 0.62,
+		"tank": 42.0, "fuel_k": 1.2, "grip": 9.5, "drag": 0.45, "brake": 9.0,
+		"shape": Vector3(1.72, 1.32, 3.8), "shape_y": 1.02,
+		"seat": Vector3(-0.36, 1.32, 0.25), "exit": Vector3(-1.6, 0.2, 0.1),
+		"chase": Vector3(0, 2.9, 6.5), "roof": true, "two_wheels": false,
+		"offroad": 1.6, "mud": 0.35, "paint": 3,
+		"wheels": [Vector3(-0.76, 0.33, -1.1), Vector3(0.76, 0.33, -1.1), Vector3(-0.76, 0.33, 1.1), Vector3(0.76, 0.33, 1.1)],
+		"tail": [Vector3(-0.75, 0.87, 1.9), Vector3(0.75, 0.87, 1.9)], "lamps": [Vector3(-0.56, 0.78, -1.92), Vector3(0.56, 0.78, -1.92)],
+	},
+	"volga": {
+		"title": "Волга", "ratios": {-1: -3.5, 0: 0.0, 1: 3.5, 2: 2.26, 3: 1.45, 4: 1.0, 5: 0.8},
+		"final": 4.2, "wheel_r": 0.33, "mass": 1400.0, "idle": 800.0, "redline": 5600.0,
+		"torque": 295.0, "peak_rpm": 3000.0, "inertia": 0.25, "wheelbase": 2.8, "max_steer": 0.55,
+		"tank": 55.0, "fuel_k": 1.4, "grip": 9.8, "drag": 0.36, "brake": 9.5,
+		"shape": Vector3(1.84, 1.12, 4.95), "shape_y": 0.9,
+		"seat": Vector3(-0.38, 1.16, 0.2), "exit": Vector3(-1.7, 0.2, 0.1),
+		"chase": Vector3(0, 2.7, 7.5), "roof": true, "two_wheels": false,
+		"offroad": 0.9, "mud": 1.1, "paint": 5,
+		"wheels": [Vector3(-0.8, 0.33, -1.42), Vector3(0.8, 0.33, -1.42), Vector3(-0.8, 0.33, 1.42), Vector3(0.8, 0.33, 1.42)],
+		"tail": [Vector3(-0.79, 0.68, 2.39), Vector3(0.79, 0.68, 2.39)], "lamps": [Vector3(-0.74, 0.65, -2.4), Vector3(0.74, 0.65, -2.4)],
+	},
+	"truck": {
+		"title": "ГАЗ-53", "ratios": {-1: -6.4, 0: 0.0, 1: 6.5, 2: 3.1, 3: 1.7, 4: 1.0},
+		"final": 6.7, "wheel_r": 0.46, "mass": 3200.0, "idle": 700.0, "redline": 3800.0,
+		"torque": 430.0, "peak_rpm": 2200.0, "inertia": 0.5, "wheelbase": 3.9, "max_steer": 0.5,
+		"tank": 90.0, "fuel_k": 2.2, "grip": 8.5, "drag": 0.8, "brake": 7.0,
+		"shape": Vector3(2.3, 2.0, 6.6), "shape_y": 1.3,
+		"seat": Vector3(-0.475, 1.84, -1.35), "exit": Vector3(-2.0, 0.2, -1.5),
+		"chase": Vector3(0, 4.2, 10.5), "roof": true, "two_wheels": false,
+		"offroad": 1.15, "mud": 0.85, "paint": 3,
+		"wheels": [Vector3(-0.98, 0.46, -2.45), Vector3(0.98, 0.46, -2.45), Vector3(-0.95, 0.46, 1.55), Vector3(0.95, 0.46, 1.55),
+			Vector3(-0.62, 0.46, 1.55), Vector3(0.62, 0.46, 1.55)],
+		"tail": [Vector3(-0.97, 0.9, 3.23), Vector3(0.97, 0.9, 3.23)], "lamps": [Vector3(-0.92, 1.22, -3.02), Vector3(0.92, 1.22, -3.02)],
+	},
 }
 
 ## Краски в СТО: первая — заводская.
@@ -80,6 +119,9 @@ var condition := 100.0
 ## Тюнинг в СТО: всесезонная резина (держит на грунте и в грязи),
 ## форсированный мотор (+20% тяги), цвет кузова.
 var tires := false
+## Цена в автосалоне и короткое описание; 0 — своя с начала игры.
+var price := 0
+var blurb := ""
 var engine_tuned := false
 var paint := 0
 var _paint_mesh: MeshInstance3D
@@ -114,6 +156,8 @@ var _auto_start_cool := 0.0
 
 func _ready() -> void:
 	spec = SPECS[kind]
+	if spec.has("paint") and paint == 0:
+		paint = int(spec.paint)
 	add_to_group("persist")
 	add_to_group("vehicles")
 	fuel = minf(fuel, spec.tank)
@@ -176,7 +220,18 @@ func _ready() -> void:
 	var zone_size := Vector3(4.0, 2.0, 5.5) if not spec.two_wheels else Vector3(2.6, 2.0, 3.0)
 	_zone = InteractZone.create("E — %s: %s" % ["сесть за руль" if spec.roof else "сесть на мотоцикл", spec.title], zone_size)
 	_zone.position.y = -0.2
-	_zone.activated.connect(_on_enter)
+	# Машина из салона: пока не куплена — подсказка с ценой, E — купить
+	_zone.prompt_fn = func() -> String:
+		if not owned():
+			return "E — купить «%s» за %d грн: %s" % [spec.title, price, blurb]
+		return "E — %s: %s" % ["сесть за руль" if spec.roof else "сесть на мотоцикл", spec.title]
+	_zone.activated.connect(func() -> void:
+		if owned():
+			_on_enter()
+		elif GameManager.spend(price):
+			Progress.buy_car(kind)
+			SoundLibrary.play("quest")
+			GameManager.notify("«%s» теперь твоя! Садись и езжай" % spec.title))
 	add_child(_zone)
 	floor_snap_length = 0.4
 	_rng.randomize()
@@ -196,7 +251,7 @@ func _ready() -> void:
 	_rain_snd.stream = SoundLibrary.stream("rain")
 	_rain_snd.volume_db = -6.0
 	add_child(_rain_snd)
-	var lamps := [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)]
+	var lamps: Array = spec.get("lamps", [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)])
 	for p in lamps:
 		var l := SpotLight3D.new()
 		l.position = p
@@ -451,7 +506,10 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 
 	# Покрытие: асфальт, грунт, трава; в дождь грунт раскисает
 	var surf := surface()
-	var rolling: float = 0.012 * mass * 9.8 * (surf.roll as float)
+	var roll: float = surf.roll
+	if roll > 1.01:
+		roll = 1.0 + (roll - 1.0) * float(spec.get("mud", 1.0))
+	var rolling: float = 0.012 * mass * 9.8 * roll
 	var resist: float = rolling * signf(speed) + (spec.drag as float) * speed * absf(speed)
 	speed += (force - resist) / mass * dt
 	if absf(speed) < 0.05 and absf(force) < rolling:
@@ -550,6 +608,9 @@ func _move(dt: float, handbrake: bool) -> void:
 	# Всесезонка: на грунте, траве и в грязи держит заметно лучше
 	if tires:
 		grip *= 1.08 if on_asphalt() else 1.35
+	# Вездеход держит вне асфальта лучше, «Волга» — хуже
+	if not on_asphalt():
+		grip *= float(spec.get("offroad", 1.0))
 	if handbrake and driver and absf(speed) > 3.0 and not spec.two_wheels:
 		grip *= 0.18
 	# Прошлая скорость в мире, разложенная по новому курсу: если машина
@@ -577,7 +638,7 @@ func _move(dt: float, handbrake: bool) -> void:
 	var hit := absf(before) - absf(speed)
 	if hit > 3.0 and get_slide_collision_count() > 0:
 		SoundLibrary.play_at("crash", global_position, minf(hit, 8.0) - 4.0)
-		if self == GameManager.car:
+		if self == GameManager.delivery_vehicle:
 			Progress.damage_bread(hit * 2.5)
 		_wear(hit * (2.0 if spec.roof else 3.0))
 		if driver:
@@ -736,6 +797,10 @@ func speed_kmh() -> float:
 
 # --- Внешний вид ------------------------------------------------------------
 
+func owned() -> bool:
+	return price == 0 or Progress.owns(kind)
+
+
 func paints() -> Array:
 	return MOTO_PAINTS if spec.two_wheels else PAINTS
 
@@ -753,10 +818,17 @@ func _paint_body() -> void:
 	var col: Color = paints()[paint % paints().size()]
 	var glass := MeshBuilder.new()
 	glass.ground_shade = false
-	if spec.two_wheels:
-		VehicleModels.java(b, col)
-	else:
-		VehicleModels.zhiguli(b, col, true, glass)
+	match kind:
+		"moto":
+			VehicleModels.java(b, col)
+		"niva":
+			VehicleModels.niva(b, col, glass)
+		"volga":
+			VehicleModels.volga(b, col, glass)
+		"truck":
+			VehicleModels.gaz53(b, col, glass)
+		_:
+			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
 	# Стёкла — прозрачные, чтобы из салона было видно дорогу
@@ -781,7 +853,7 @@ func bump(strength: float) -> void:
 	_shake = 0.25 + strength * 0.15
 	_shake_k = strength
 	SoundLibrary.play_at("land", global_position, -4.0 + strength * 3.0, 0.8)
-	if self == GameManager.car:
+	if self == GameManager.delivery_vehicle:
 		Progress.damage_bread(strength * 2.5)
 
 
@@ -797,8 +869,8 @@ func _torque() -> float:
 
 func _build_car() -> void:
 	_paint_body()
-	_brake_lights([Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)], Vector3(0.16, 0.12, 0.03))
-	for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+	_brake_lights(spec.get("tail", [Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)]), Vector3(0.16, 0.12, 0.03))
+	for p in spec.get("wheels", [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]):
 		_wheel(p, false)
 
 

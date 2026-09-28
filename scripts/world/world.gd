@@ -89,6 +89,7 @@ func _ready() -> void:
 	_build_town(b, glow)
 	_town_details(b, glow)
 	_build_town_center(b, glow)
+	_build_car_salon(b, glow)
 	_build_shops(b)
 	_build_country_roads(b)
 	_build_forest(b)
@@ -1927,6 +1928,50 @@ func _buy_goods(id: String) -> void:
 	GameManager.notify("Купил %s — привезут домой, будет %s" % [HOME_GOODS[id].title, HOME_GOODS[id].where])
 
 
+# --- Автосалон ----------------------------------------------------------------
+
+## Площадка автосалона у трассы на западе города (x, z, ширина, длина).
+const SALON := Rect2(46, 11, 28, 21)
+## Что продают: вид, цена, чем хороша, где стоит на площадке.
+const SALON_CARS := [
+	["niva", 22000, "вездеход — грязь и лес ей нипочём", Vector3(52, 0.1, 17)],
+	["volga", 36000, "быстрая и мягкая, в такси платят больше", Vector3(60, 0.1, 17)],
+	["truck", 28000, "грузовик — развоз хлеба вдвое дороже", Vector3(68.5, 0.1, 18.5)],
+]
+
+
+func _build_car_salon(b: MeshBuilder, glow: MeshBuilder) -> void:
+	var sq := SALON
+	# Площадка с разметкой мест
+	b.box(Vector3(sq.position.x, 0, sq.position.y), Vector3(sq.end.x, 0.045, sq.end.y), Color(0.36, 0.36, 0.37))
+	for x in [48.0, 56.0, 64.0, 73.0]:
+		b.box(Vector3(x, 0.045, 12.5), Vector3(x + 0.12, 0.05, 23.5), Color(0.9, 0.9, 0.86))
+	# Павильон со стеклянной витриной
+	var c := Vector3(60, 0, 28)
+	b.box(c + Vector3(-12, 0, -3), c + Vector3(12, 4.2, 3.5), Color(0.82, 0.84, 0.86), true)
+	b.box(c + Vector3(-12.3, 4.2, -3.3), c + Vector3(12.3, 4.45, 3.8), Color(0.3, 0.32, 0.35))
+	b.box(c + Vector3(-11, 0.4, -3.05), c + Vector3(11, 3.4, -3.0), Color(0.55, 0.7, 0.8))
+	glow.box(c + Vector3(-10.8, 0.5, -3.07), c + Vector3(10.8, 3.3, -3.06), Color(0.95, 0.95, 1.0))
+	b.box(c + Vector3(-7, 3.5, -3.12), c + Vector3(7, 4.15, -3.05), Color(0.75, 0.12, 0.1))
+	_label("АВТОСАЛОН", c + Vector3(0, 3.82, -3.14), PI, 0.008, Color(1, 1, 1))
+	# Флажки на столбиках вдоль трассы
+	for x in [48.0, 54.0, 60.0, 66.0, 72.0]:
+		b.box(Vector3(x - 0.04, 0, 11.3), Vector3(x + 0.04, 3.0, 11.38), Color(0.6, 0.6, 0.62))
+		b.box(Vector3(x + 0.04, 2.4, 11.3), Vector3(x + 0.7, 2.95, 11.34), [Color(0.85, 0.2, 0.15), Color(0.2, 0.4, 0.8), Color(0.95, 0.8, 0.2)][int(x) % 3])
+
+
+func _spawn_salon_cars() -> void:
+	for entry in SALON_CARS:
+		var v := Vehicle.new()
+		v.kind = entry[0]
+		v.price = entry[1]
+		v.blurb = entry[2]
+		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck"}[entry[0]]
+		add_child(v)
+		v.global_position = entry[3]
+		v.fuel = v.tank() * 0.5
+
+
 # --- Автодром и заезды --------------------------------------------------------
 
 ## Площадка автошколы у трассы (x, z, ширина, длина) и въезд к ней.
@@ -2126,7 +2171,11 @@ func _kolkhoz_work() -> void:
 func _check_delivery() -> void:
 	if not Progress.delivery_active:
 		return
-	var car := GameManager.car as Vehicle
+	var car := GameManager.delivery_vehicle as Vehicle
+	if car == null or not is_instance_valid(car):
+		# После загрузки игры хлеб — в Жигулях
+		car = GameManager.car as Vehicle
+		GameManager.delivery_vehicle = car
 	if car == null:
 		return
 	# Тряска: по грунту быстрее 40 км/ч и по траве быстрее 25 — буханки мнутся
@@ -2197,11 +2246,22 @@ func _build_shops(b: MeshBuilder) -> void:
 
 
 func _take_delivery() -> void:
-	var car := GameManager.car as Vehicle
-	if car == null or car.global_position.distance_to(Vector3(27.5, 0, 28.0)) > 25.0:
+	# Любая своя машина (не мотоцикл) у склада; на грузовике везут вдвое больше
+	var car: Vehicle = null
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var vv := v as Vehicle
+		if vv.owned() and not vv.spec.two_wheels and vv.global_position.distance_to(Vector3(27.5, 0, 28.0)) < 25.0:
+			car = vv
+			if vv == GameManager.vehicle:
+				break
+	if car == null:
 		GameManager.notify("Подгони машину к складу — хлеб грузят в багажник")
 		return
+	GameManager.delivery_vehicle = car
+	Progress.delivery_mult = 2.0 if car.kind == "truck" else 1.0
 	Progress.start_delivery()
+	if car.kind == "truck":
+		GameManager.notify("Полный кузов хлеба на ГАЗ-53 — за развоз заплатят вдвое")
 
 
 func _wants_medicine() -> bool:
@@ -2349,6 +2409,7 @@ func _block_grass() -> void:
 	v.block(st.position.x, st.position.y, st.end.x, st.end.y)
 	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
 	v.block(76, 10, 93.5, 34)
+	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
 	v.block(AUTODROME.position.x - 7, AUTODROME.position.y - 1, AUTODROME.end.x + 1, AUTODROME.end.y + 12)
 	v.block(POND_POS.x + 9, -40.6, -164, -39.4)
 	# Огороды за домами
@@ -2382,5 +2443,6 @@ func _spawn_player_and_car() -> void:
 	moto.name = "Moto"
 	add_child(moto)
 	GameManager.moto = moto
+	_spawn_salon_cars()
 	moto.global_position = Vector3(PLAYER_HOUSE.x - 5.0, 0.1, -41.6)
 	moto.rotation.y = -PI / 2.0

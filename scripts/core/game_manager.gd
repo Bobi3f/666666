@@ -32,6 +32,8 @@ var move_axis := Vector2.ZERO
 var in_game := false
 ## Строка идущего заезда (экзамен, спор) — показывается первой в задании.
 var challenge_line := ""
+## В какой машине сейчас хлеб на развоз (удары и ямы бьют хлеб только в ней).
+var delivery_vehicle: Node = null
 
 var touch_mode := "--touch" in OS.get_cmdline_user_args() or OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 

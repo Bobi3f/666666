@@ -228,3 +228,154 @@ static func moto_wheel(b: MeshBuilder, r: float) -> void:
 		b.box(Vector3(-0.01, -r * 0.78, -0.006), Vector3(0.01, r * 0.78, 0.006), Color(0.85, 0.85, 0.87))
 		b.xf = saved
 	b.box(Vector3(-0.07, -0.06, -0.06), Vector3(0.07, 0.06, 0.06), Color(0.5, 0.5, 0.52))
+
+
+## Салон: торпедо с приборами, руль перед водителем (слева), сиденья.
+## dz — где торпедо по Z, y — уровень пола, hx — полуширина салона.
+static func _cabin(b: MeshBuilder, dz: float, y: float, hx: float, seat_z: float, rear: bool) -> void:
+	var panel := Color(0.24, 0.21, 0.19)
+	var seat := Color(0.3, 0.22, 0.17)
+	var rim := Color(0.12, 0.12, 0.12)
+	b.box(Vector3(-hx, y + 0.3, dz), Vector3(hx, y + 0.42, dz + 0.26), panel)
+	b.box(Vector3(-hx * 0.7, y + 0.4, dz + 0.18), Vector3(-hx * 0.3, y + 0.48, dz + 0.26), Color(0.1, 0.1, 0.1))
+	var wx := -hx * 0.5
+	for p in [[-0.16, 0.36, 0.16, 0.39], [-0.16, 0.57, 0.16, 0.6], [-0.16, 0.36, -0.13, 0.6], [0.13, 0.36, 0.16, 0.6]]:
+		b.box(Vector3(wx + p[0], y + p[1], dz + 0.38), Vector3(wx + p[2], y + p[3], dz + 0.4), rim)
+	b.box(Vector3(wx - 0.01, y + 0.36, dz + 0.26), Vector3(wx + 0.01, y + 0.45, dz + 0.39), rim)
+	for sx in [-hx * 0.5, hx * 0.5]:
+		b.box(Vector3(sx - 0.25, y, seat_z), Vector3(sx + 0.25, y + 0.12, seat_z + 0.45), seat)
+		b.box(Vector3(sx - 0.25, y + 0.12, seat_z + 0.4), Vector3(sx + 0.25, y + 0.62, seat_z + 0.5), seat)
+	if rear:
+		b.box(Vector3(-hx + 0.05, y, seat_z + 0.65), Vector3(hx - 0.05, y + 0.12, seat_z + 0.95), seat)
+		b.box(Vector3(-hx + 0.05, y + 0.12, seat_z + 0.9), Vector3(hx - 0.05, y + 0.52, seat_z + 1.0), seat)
+
+
+## «Нива»: короткая, высокая, трёхдверная; пластиковые расширители арок,
+## багажник на крыше, круглые фары в квадратной решётке.
+static func niva(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> void:
+	var gb := glass_b if glass_b else b
+	var dark := Color(0.08, 0.08, 0.09)
+	var glass := Color(0.35, 0.45, 0.5)
+	var chrome := Color(0.7, 0.7, 0.72)
+	b.box(Vector3(-0.84, 0.4, -1.87), Vector3(0.84, 1.0, 1.87), paint)
+	b.box(Vector3(-0.8, 1.0, -1.87), Vector3(0.8, 1.06, -0.75), paint)
+	b.box(Vector3(-0.86, 0.36, -1.9), Vector3(0.86, 0.5, 1.9), dark)
+	for z in [-1.1, 1.1]:
+		for x in [-0.88, 0.8]:
+			b.box(Vector3(x, 0.5, z - 0.46), Vector3(x + 0.08, 0.8, z + 0.46), dark)
+	# Стойки и крыша, сзади — вертикальная пятая дверь
+	for x in [-0.8, 0.74]:
+		b.box(Vector3(x, 1.0, -0.76), Vector3(x + 0.06, 1.62, -0.66), paint)
+		b.box(Vector3(x, 1.0, 0.3), Vector3(x + 0.06, 1.62, 0.4), paint)
+		b.box(Vector3(x, 1.0, 1.72), Vector3(x + 0.06, 1.62, 1.87), paint)
+		gb.box(Vector3(x + 0.02, 1.06, -0.66), Vector3(x + 0.04, 1.56, 0.3), glass)
+		gb.box(Vector3(x + 0.02, 1.06, 0.4), Vector3(x + 0.04, 1.56, 1.72), glass)
+	b.box(Vector3(-0.82, 1.62, -0.78), Vector3(0.82, 1.68, 1.87), paint)
+	gb.box(Vector3(-0.74, 1.06, -0.76), Vector3(0.74, 1.6, -0.72), glass)
+	gb.box(Vector3(-0.7, 1.08, 1.84), Vector3(0.7, 1.56, 1.88), glass)
+	# Багажник на крыше
+	for x in [-0.72, 0.66]:
+		b.box(Vector3(x, 1.68, -0.6), Vector3(x + 0.06, 1.76, 1.7), dark)
+	for z in [-0.5, 0.3, 1.1]:
+		b.box(Vector3(-0.72, 1.76, z), Vector3(0.72, 1.8, z + 0.06), dark)
+	# Морда: решётка, круглые фары, бампер
+	b.box(Vector3(-0.78, 0.6, -1.89), Vector3(0.78, 0.98, -1.87), dark)
+	for x in [-0.66, 0.46]:
+		b.box(Vector3(x, 0.68, -1.91), Vector3(x + 0.2, 0.88, -1.88), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-0.2, 0.7, -1.9), Vector3(0.2, 0.86, -1.88), chrome)
+	for z in [-1.98, 1.87]:
+		b.box(Vector3(-0.88, 0.36, z), Vector3(0.88, 0.5, z + 0.11), dark)
+	b.box(Vector3(-0.26, 0.42, -2.0), Vector3(0.26, 0.52, -1.99), Color(0.92, 0.92, 0.9))
+	b.box(Vector3(-0.26, 0.55, 1.88), Vector3(0.26, 0.65, 1.89), Color(0.92, 0.92, 0.9))
+	for x in [-0.82, 0.68]:
+		b.box(Vector3(x, 0.8, 1.87), Vector3(x + 0.14, 0.95, 1.89), Color(0.9, 0.2, 0.15))
+	b.box(Vector3(-0.72, 1.58, -0.7), Vector3(0.72, 1.6, 1.8), Color(0.8, 0.78, 0.72))
+	_cabin(b, -0.66, 0.62, 0.72, 0.05, true)
+
+
+## «Волга» ГАЗ-24: длинный седан, много хрома, решётка с вертикальными
+## прутьями, олень на капоте.
+static func volga(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> void:
+	var gb := glass_b if glass_b else b
+	var dark := Color(0.07, 0.07, 0.08)
+	var glass := Color(0.35, 0.45, 0.5)
+	var chrome := Color(0.82, 0.82, 0.84)
+	b.box(Vector3(-0.9, 0.34, -2.36), Vector3(0.9, 0.82, 2.36), paint)
+	b.box(Vector3(-0.86, 0.82, -2.36), Vector3(0.86, 0.9, -0.88), paint)
+	b.box(Vector3(-0.86, 0.82, 1.25), Vector3(0.86, 0.9, 2.36), paint)
+	for x in [-0.905, 0.895]:
+		b.box(Vector3(x, 0.62, -2.3), Vector3(x + 0.01, 0.65, 2.3), chrome)
+	for z in [-1.4, 1.4]:
+		for x in [-0.91, 0.87]:
+			b.box(Vector3(x, 0.32, z - 0.44), Vector3(x + 0.04, 0.62, z + 0.44), dark)
+	for x in [-0.8, 0.74]:
+		b.box(Vector3(x, 0.9, -0.88), Vector3(x + 0.06, 1.4, -0.76), paint)
+		b.box(Vector3(x, 0.9, 0.2), Vector3(x + 0.06, 1.4, 0.3), paint)
+		b.box(Vector3(x, 0.9, 1.12), Vector3(x + 0.06, 1.4, 1.25), paint)
+		gb.box(Vector3(x + 0.02, 0.92, -0.76), Vector3(x + 0.04, 1.36, 0.2), glass)
+		gb.box(Vector3(x + 0.02, 0.92, 0.3), Vector3(x + 0.04, 1.36, 1.12), glass)
+	b.box(Vector3(-0.82, 1.4, -0.88), Vector3(0.82, 1.47, 1.25), paint)
+	gb.box(Vector3(-0.74, 0.92, -0.9), Vector3(0.74, 1.38, -0.86), glass)
+	gb.box(Vector3(-0.74, 0.92, 1.23), Vector3(0.74, 1.38, 1.27), glass)
+	# Решётка с прутьями, фары, бамперы, олень
+	b.box(Vector3(-0.72, 0.5, -2.38), Vector3(0.72, 0.78, -2.36), dark)
+	for i in 13:
+		var x := -0.68 + i * 0.113
+		b.box(Vector3(x, 0.5, -2.39), Vector3(x + 0.03, 0.78, -2.37), chrome)
+	for x in [-0.86, 0.62]:
+		b.box(Vector3(x, 0.54, -2.39), Vector3(x + 0.24, 0.76, -2.36), Color(1.0, 0.97, 0.86))
+	for z in [-2.48, 2.36]:
+		b.box(Vector3(-0.92, 0.3, z), Vector3(0.92, 0.42, z + 0.12), chrome)
+		for x in [-0.5, 0.42]:
+			b.box(Vector3(x, 0.26, z - 0.02), Vector3(x + 0.08, 0.5, z + 0.14), chrome)
+	b.box(Vector3(-0.03, 0.9, -2.28), Vector3(0.03, 1.02, -2.08), chrome)
+	b.box(Vector3(-0.26, 0.4, -2.5), Vector3(0.26, 0.5, -2.49), Color(0.92, 0.92, 0.9))
+	b.box(Vector3(-0.26, 0.5, 2.37), Vector3(0.26, 0.6, 2.38), Color(0.92, 0.92, 0.9))
+	for x in [-0.88, 0.7]:
+		b.box(Vector3(x, 0.6, 2.36), Vector3(x + 0.18, 0.76, 2.38), Color(0.9, 0.2, 0.15))
+	b.box(Vector3(-0.76, 1.38, -0.84), Vector3(0.76, 1.4, 1.2), Color(0.82, 0.8, 0.74))
+	_cabin(b, -0.8, 0.5, 0.76, -0.05, true)
+
+
+## Грузовик ГАЗ-53: длинный капот, кабина, деревянный кузов с бортами.
+static func gaz53(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> void:
+	var gb := glass_b if glass_b else b
+	var dark := Color(0.08, 0.08, 0.09)
+	var glass := Color(0.35, 0.45, 0.5)
+	var wood := Color(0.52, 0.4, 0.26)
+	# Рама
+	b.box(Vector3(-0.5, 0.6, -3.2), Vector3(0.5, 0.8, 3.2), dark)
+	# Капот и крылья
+	b.box(Vector3(-0.72, 0.8, -3.25), Vector3(0.72, 1.55, -2.1), paint)
+	for x in [-1.18, 0.72]:
+		b.box(Vector3(x, 0.95, -3.1), Vector3(x + 0.46, 1.12, -1.95), paint)
+	b.box(Vector3(-0.66, 0.85, -3.27), Vector3(0.66, 1.45, -3.25), dark)
+	for i in 8:
+		b.box(Vector3(-0.62 + i * 0.16, 0.88, -3.28), Vector3(-0.58 + i * 0.16, 1.42, -3.26), Color(0.5, 0.5, 0.5))
+	for x in [-1.05, 0.8]:
+		b.box(Vector3(x, 1.12, -3.0), Vector3(x + 0.25, 1.32, -2.9), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-1.15, 0.55, -3.4), Vector3(1.15, 0.72, -3.25), dark)
+	# Кабина
+	b.box(Vector3(-1.1, 0.8, -2.1), Vector3(1.1, 1.5, -0.9), paint)
+	b.box(Vector3(-1.1, 2.2, -2.15), Vector3(1.1, 2.3, -0.9), paint)
+	b.box(Vector3(-1.1, 1.5, -0.95), Vector3(1.1, 2.2, -0.9), paint)
+	for x in [-1.1, 1.04]:
+		b.box(Vector3(x, 1.5, -2.15), Vector3(x + 0.06, 2.2, -2.05), paint)
+		gb.box(Vector3(x + 0.02, 1.52, -2.05), Vector3(x + 0.04, 2.15, -1.1), glass)
+		b.box(Vector3(x, 1.5, -1.1), Vector3(x + 0.06, 2.2, -0.95), paint)
+	gb.box(Vector3(-1.02, 1.55, -2.17), Vector3(1.02, 2.15, -2.13), glass)
+	b.box(Vector3(-1.1, 1.52, -2.18), Vector3(1.1, 1.55, -2.1), paint)
+	# Кузов: пол и борта
+	b.box(Vector3(-1.15, 1.0, -0.8), Vector3(1.15, 1.1, 3.2), wood)
+	for x in [-1.15, 1.09]:
+		b.box(Vector3(x, 1.1, -0.8), Vector3(x + 0.06, 1.7, 3.2), wood)
+	b.box(Vector3(-1.15, 1.1, -0.8), Vector3(1.15, 1.7, -0.74), wood)
+	b.box(Vector3(-1.15, 1.1, 3.14), Vector3(1.15, 1.7, 3.2), wood)
+	for z in [0.4, 1.6, 2.8]:
+		for x in [-1.17, 1.1]:
+			b.box(Vector3(x, 1.1, z), Vector3(x + 0.07, 1.72, z + 0.08), wood.darkened(0.3))
+	b.box(Vector3(-0.26, 1.2, 3.21), Vector3(0.26, 1.34, 3.22), Color(0.92, 0.92, 0.9))
+	for x in [-1.05, 0.9]:
+		b.box(Vector3(x, 0.85, 3.18), Vector3(x + 0.15, 0.95, 3.22), Color(0.9, 0.2, 0.15))
+	b.box(Vector3(-1.05, 2.15, -2.1), Vector3(1.05, 2.18, -0.95), Color(0.3, 0.32, 0.3))
+	_cabin(b, -2.05, 1.12, 0.95, -1.6, false)

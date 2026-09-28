@@ -91,7 +91,7 @@ func _wait_at(i: int) -> void:
 
 func _car() -> Vehicle:
 	var v := GameManager.vehicle as Vehicle
-	return v if v and v == GameManager.car else null
+	return v if v and not v.spec.two_wheels else null
 
 
 func _process(delta: float) -> void:
@@ -159,6 +159,10 @@ func fast_time() -> float:
 func _pay(car: Vehicle) -> void:
 	var pay := BASE_PAY + int(_dist * PAY_PER_M)
 	var bits: Array[String] = []
+	# На «Волге» ехать приятно — платят больше
+	if car.kind == "volga":
+		pay = int(pay * 1.4)
+		bits.append("на «Волге» — с шиком")
 	var smooth := _cond0 - car.condition < 1.5
 	if _t < fast_time() and smooth:
 		pay += TIP

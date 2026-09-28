@@ -39,6 +39,10 @@ var race_day := 0
 ## Купленное в «Хозтоварах»: tv — телевизор в комнате, dog — пёс с будкой
 ## во дворе, greenhouse — теплица над огородом (картошка растёт быстрее).
 var home_items: Array = []
+## Купленные в автосалоне машины: niva, volga, truck.
+var owned_cars: Array = []
+## Во сколько раз больше платят за этот развоз (грузовик — вдвое).
+var delivery_mult := 1.0
 const GREENHOUSE_SPEED := 1.5
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
@@ -64,6 +68,16 @@ func _on_minutes(m: float) -> void:
 		delivery_active = false
 		GameManager.notify("Не успел: хлеб в сельмаге уже не ждут. Заказ сорван")
 		delivery_changed.emit()
+
+
+func owns(kind: String) -> bool:
+	return owned_cars.has(kind)
+
+
+func buy_car(kind: String) -> void:
+	if not owned_cars.has(kind):
+		owned_cars.append(kind)
+		QuestManager.event("car_bought")
 
 
 func has_item(id: String) -> bool:
@@ -198,7 +212,7 @@ func finish_delivery() -> void:
 	delivery_active = false
 	deliveries_done += 1
 	# Платят за целый хлеб; мятые буханки идут со скидкой
-	var pay := int(round(delivery_pay() * bread / 100.0))
+	var pay := int(round(delivery_pay() * delivery_mult * bread / 100.0))
 	var fast := delivery_left >= DELIVERY_TIME / 2.0
 	if fast:
 		pay += DELIVERY_BONUS
@@ -215,7 +229,7 @@ func finish_delivery() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items,
+	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars,
 		"planted": planted, "planted_at": planted_at}
 
 
@@ -231,6 +245,7 @@ func load_state(d: Dictionary) -> void:
 	license = bool(d.get("license", false))
 	race_day = int(d.get("race_day", 0))
 	home_items = (d.get("home", []) as Array).duplicate()
+	owned_cars = (d.get("cars", []) as Array).duplicate()
 	home_changed.emit()
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))

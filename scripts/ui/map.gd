@@ -113,6 +113,7 @@ func _draw_map() -> void:
 		["Хозтовары", Vector3(84.5, 0, 28), Color(0.55, 0.85, 0.6)],
 		["Мост", Vector3(-110, 0, -86.5), Color(0.8, 0.65, 0.45)],
 		["Такси", Vector3(103, 0, 13), Color(0.95, 0.8, 0.15)],
+		["Автосалон", Vector3(60, 0, 22), Color(0.85, 0.55, 0.95)],
 	]
 	var blink := fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
 	for pl in places:
@@ -130,8 +131,13 @@ func _draw_map() -> void:
 			off = Vector2(-14, -9)
 		_canvas.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
-	# Машина, мотоцикл и игрок
-	for pair in [[GameManager.car, Color(0.85, 0.8, 0.55), 4.0], [GameManager.moto, Color(0.85, 0.2, 0.15), 3.0]]:
+	# Свои машины, мотоцикл и игрок
+	var marks := [[GameManager.car, Color(0.85, 0.8, 0.55), 4.0], [GameManager.moto, Color(0.85, 0.2, 0.15), 3.0]]
+	for n in get_tree().get_nodes_in_group("vehicles"):
+		var sv := n as Vehicle
+		if sv and sv.price > 0 and sv.owned():
+			marks.append([sv, Color(0.85, 0.55, 0.95), 4.0])
+	for pair in marks:
 		var v := pair[0] as Node3D
 		if v:
 			var cp := _p(v.global_position.x, v.global_position.z)
