@@ -66,6 +66,13 @@ func notify(text: String) -> void:
 
 
 ## На телефоне клавиш нет: упоминания клавиш заменяем названиями экранных кнопок.
+## Вибрация телефона: удар, яма, поклёвка. На компьютере ничего не делает,
+## на телефоне — если не выключена в настройках.
+func vibrate(ms: int) -> void:
+	if touch_mode and SettingsManager.vibration:
+		Input.vibrate_handheld(ms)
+
+
 func touch_text(text: String) -> String:
 	if not touch_mode:
 		return text

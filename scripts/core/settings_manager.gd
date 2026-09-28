@@ -21,6 +21,8 @@ var auto_gearbox := true
 var text_scale := 1.0
 ## Телефон под левую руку: джойстик и руль справа, кнопки слева.
 var left_hand := false
+## Вибрация на телефоне при ударах и поклёвке.
+var vibration := true
 ## Ячейка сохранения 1–3.
 var slot := 1
 var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
@@ -62,6 +64,7 @@ func _ready() -> void:
 		detail = clampi(int(cfg.get_value("graphics", "detail", detail)), 0, 2)
 		text_scale = clampf(float(cfg.get_value("ui", "text_scale", 1.0)), 1.0, 1.4)
 		left_hand = bool(cfg.get_value("ui", "left_hand", false))
+		vibration = bool(cfg.get_value("ui", "vibration", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 	_apply()
 
@@ -107,6 +110,12 @@ func set_left_hand(v: bool) -> void:
 	changed.emit()
 
 
+func set_vibration(v: bool) -> void:
+	vibration = v
+	_save()
+	changed.emit()
+
+
 func set_slot(v: int) -> void:
 	slot = clampi(v, 1, 3)
 	_save()
@@ -138,5 +147,6 @@ func _save() -> void:
 	cfg.set_value("graphics", "detail", detail)
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
+	cfg.set_value("ui", "vibration", vibration)
 	cfg.set_value("save", "slot", slot)
 	cfg.save(PATH)

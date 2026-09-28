@@ -260,6 +260,11 @@ func _build_settings(box: VBoxContainer) -> void:
 		lefty.button_pressed = SettingsManager.left_hand
 		lefty.toggled.connect(SettingsManager.set_left_hand)
 		box.add_child(lefty)
+		var vib := CheckButton.new()
+		vib.text = "Вибрация при ударах и поклёвке"
+		vib.button_pressed = SettingsManager.vibration
+		vib.toggled.connect(SettingsManager.set_vibration)
+		box.add_child(vib)
 	# На телефоне кнопок сцепления и передач нет — там всегда автомат
 	if not GameManager.touch_mode:
 		var gearbox := CheckButton.new()
@@ -378,6 +383,7 @@ func _controls_bbcode() -> String:
 	t += "  Жители живут по распорядку: утром у сельмага, вечером на лавочке, ночью спят\n"
 	t += "  Меню: три ячейки сохранения, размер текста — в «Настройках»\n"
 	t += "  Дороги: полевое кольцо мимо колхоза и лесная дорога через мост; ямы трясут\n"
+	t += "  Пост ГАИ на трассе у Каменки (знаки «60»): быстрее 60 км/ч — штраф 200 грн\n"
 	t += "  Светофор у поворота в город: на красный — штраф 100 грн. Утром и вечером\n    через деревенскую улицу идут коровы — подожди\n"
 	t += "  Не забывай есть и спать — иначе обморок и потеря денег\n"
 	if not GameManager.touch_mode:

@@ -106,7 +106,7 @@ func _process(delta: float) -> void:
 				state = State.BITE
 				_t = 0.0
 				SoundLibrary.play_at("splash", _anchor, -6.0, 1.8)
-				Input.vibrate_handheld(120)
+				GameManager.vibrate(180)
 			elif _t >= _wait + 2.5:
 				_end("nobite")
 	elif state == State.BITE:

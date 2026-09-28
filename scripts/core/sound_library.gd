@@ -54,6 +54,7 @@ func _ready() -> void:
 	_streams["step_grass"] = _make(_step_grass(), false)
 	_streams["rooster"] = _make(_rooster(), false)
 	_streams["thunder"] = _make(_thunder(), false)
+	_streams["whistle"] = _make(_whistle(), false)
 	_streams["step_snow"] = _make(_step_snow(), false)
 	_streams["grass"] = _make(_grass(), true)
 	SettingsManager.changed.connect(_apply_music_volume)
@@ -242,6 +243,19 @@ func _step() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.25
 		a[i] = lp * exp(-t * 45.0) * 0.9
+	return a
+
+
+## Свисток инспектора: пронзительная трель с горошиной.
+func _whistle() -> PackedFloat32Array:
+	var a := _buf(0.9)
+	var ph := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var f := 2900.0 + sin(t * TAU * 28.0) * 180.0
+		ph += TAU * f / RATE
+		var env := minf(t * 30.0, 1.0) * minf((0.9 - t) * 12.0, 1.0)
+		a[i] = (sin(ph) * (0.7 + 0.3 * sin(t * TAU * 28.0))) * env * 0.25
 	return a
 
 

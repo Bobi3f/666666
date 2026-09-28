@@ -180,23 +180,39 @@ func _talk_zone(n: Node3D, d: Dictionary, st := {}) -> void:
 	n.add_child(zone)
 	var state := {"i": 0}
 	zone.activated.connect(func() -> void:
+		# Первый разговор за день — с приветствием по времени суток
+		var hi := ""
+		if int(state.get("day", 0)) != TimeManager.day:
+			state["day"] = TimeManager.day
+			hi = _greeting() + " "
 		# Сначала — задания: предложить, принять вещь, поблагодарить
 		var quest_line := QuestManager.talk(d.name)
 		if quest_line != "":
-			GameManager.notify("%s: «%s»" % [d.name, quest_line])
+			GameManager.notify("%s: «%s%s»" % [d.name, hi, quest_line])
 			return
-		# Сперва — про то, что у игрока поменялось
+		# Потом — про то, что у игрока поменялось
 		var news := _news(d, st)
 		if news != "":
-			GameManager.notify("%s: «%s»" % [d.name, news])
+			GameManager.notify("%s: «%s%s»" % [d.name, hi, news])
 			return
 		var lines: Array = d.lines
-		GameManager.notify("%s: «%s»" % [d.name, lines[state.i % lines.size()]])
+		GameManager.notify("%s: «%s%s»" % [d.name, hi, lines[state.i % lines.size()]])
 		state.i += 1)
 	zone.prompt_fn = func() -> String:
 		if _has_quest_for(d.name):
 			return "E — поговорить: %s  (!)" % d.name
 		return "E — поговорить: %s" % d.name
+
+
+static func _greeting() -> String:
+	var h := TimeManager.hour()
+	if h >= 5.0 and h < 11.0:
+		return "Доброе утро!"
+	if h >= 11.0 and h < 17.0:
+		return "Добрый день!"
+	if h >= 17.0 and h < 22.0:
+		return "Добрый вечер!"
+	return "Не спится? Ночь на дворе."
 
 
 ## Есть ли у жителя что сказать по заданию: новая просьба или ждёт отчёта.

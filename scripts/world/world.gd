@@ -180,6 +180,9 @@ func _ready() -> void:
 	taxi.name = "Taxi"
 	add_child(taxi)
 	add_child(preload("res://scripts/world/night_sky.gd").new())
+	var gai := preload("res://scripts/world/gai_post.gd").new()
+	gai.name = "GaiPost"
+	add_child(gai)
 	var birds := preload("res://scripts/world/birds.gd").new()
 	birds.name = "Birds"
 	add_child(birds)

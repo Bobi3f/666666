@@ -164,6 +164,7 @@ var _road_snd: AudioStreamPlayer
 ## Пыль из-под колёс по грунту (зимой — снежная), только у своей машины
 var _dust: CPUParticles3D
 var _dust_mat: StandardMaterial3D
+var _smoke: CPUParticles3D
 var _rng := RandomNumberGenerator.new()
 var _warned_fuel := false
 var _headlights: Array[SpotLight3D] = []
@@ -276,6 +277,24 @@ func _ready() -> void:
 	add_child(_road_snd)
 	_dust = _make_dust()
 	add_child(_dust)
+	# Дым из-под капота у побитой машины
+	if not spec.two_wheels:
+		_smoke = _make_dust()
+		_smoke.emission_box_extents = Vector3(0.3, 0.05, 0.3)
+		var half2: Vector3 = (spec.shape as Vector3) * 0.5
+		_smoke.position = Vector3(0, float(spec.shape_y) + half2.y * 0.6, -half2.z + 0.7)
+		_smoke.direction = Vector3(0, 1, 0)
+		_smoke.gravity = Vector3(0, 1.2, 0)
+		_smoke.amount = 20
+		_smoke.lifetime = 2.5
+		var sm := (_smoke.mesh as QuadMesh).duplicate() as QuadMesh
+		var smat := _dust_mat.duplicate() as StandardMaterial3D
+		smat.albedo_color = Color(0.3, 0.3, 0.32)
+		sm.material = smat
+		_smoke.mesh = sm
+		add_child(_smoke)
+		# _make_dust заменил материал пыли — возвращаем материал настоящей пыли
+		_dust_mat = (_dust.mesh as QuadMesh).material as StandardMaterial3D
 	var lamps: Array = spec.get("lamps", [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)])
 	for p in lamps:
 		var l := SpotLight3D.new()
@@ -689,6 +708,8 @@ func _move(dt: float, handbrake: bool) -> void:
 	var hit := absf(before) - absf(speed)
 	if hit > 3.0 and get_slide_collision_count() > 0:
 		SoundLibrary.play_at("crash", global_position, minf(hit, 8.0) - 4.0)
+		if driver:
+			GameManager.vibrate(int(clampf(hit * 25.0, 60.0, 300.0)))
 		if self == GameManager.delivery_vehicle:
 			Progress.damage_bread(hit * 2.5)
 		_wear(hit * (2.0 if spec.roof else 3.0))
@@ -767,6 +788,7 @@ func _update_sound() -> void:
 		_skid_snd.stop()
 	_update_road_sound()
 	_update_dust()
+	_update_smoke()
 	var want_rain: bool = driver != null and spec.roof and WeatherManager.rain > 0.3 and not WeatherManager.snowing()
 	if want_rain != _rain_snd.playing:
 		if want_rain:
@@ -841,6 +863,16 @@ func _update_dust() -> void:
 		var snowy := WeatherManager.snow > 0.5
 		_dust_mat.albedo_color = Color(0.92, 0.94, 0.98) if snowy else Color(0.62, 0.53, 0.4)
 		_dust.speed_scale = clampf(v / 12.0, 0.6, 1.6)
+
+
+func _update_smoke() -> void:
+	if _smoke == null:
+		return
+	var want := engine_on and condition < 35.0
+	if want != _smoke.emitting:
+		_smoke.emitting = want
+		if want and driver:
+			GameManager.notify("Из-под капота дымит! Машину пора на СТО")
 
 
 func _update_road_sound() -> void:
@@ -996,6 +1028,8 @@ func bump(strength: float) -> void:
 	_shake = 0.25 + strength * 0.15
 	_shake_k = strength
 	SoundLibrary.play_at("land", global_position, -4.0 + strength * 3.0, 0.8)
+	if driver:
+		GameManager.vibrate(int(30.0 + strength * 30.0))
 	if self == GameManager.delivery_vehicle:
 		Progress.damage_bread(strength * 2.5)
 
