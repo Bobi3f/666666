@@ -3,8 +3,9 @@ extends CanvasLayer
 ##
 ## Пешком: слева джойстик (у края — бег), справа палец по экрану
 ## поворачивает камеру, кнопки справа внизу — действие, прыжок, присесть, еда.
-## В машине джойстик прячется: слева руль — «Влево» и «Вправо», справа
-## педали «Газ» и «Тормоз», рядом ручник, выход, вид и сигнал — всё можно
+## В машине — как в Car Parking: слева настоящий руль, его крутят пальцем
+## (отпустил — сам возвращается), в центре руля сигнал. Справа педали газа
+## и тормоза, рычаг D/R — вперёд или назад, ручник, выход и вид — всё можно
 ## жать одновременно разными пальцами. Сверху справа всегда меню, карта, журнал.
 ##
 ## Кнопки и джойстик не управляют игрой напрямую: они «нажимают» те же
@@ -13,6 +14,12 @@ extends CanvasLayer
 
 const STICK_R := 95.0
 const LOOK_SENS := 0.0045
+const WHEEL_R := 112.0
+const HUB_R := 34.0
+## Руль поворачивается на 200° в каждую сторону — как в машине, не рывком
+const WHEEL_MAX := deg_to_rad(200.0)
+## Отпустил руль — возвращается к центру (радиан в секунду)
+const WHEEL_RETURN := 7.0
 
 var _stick_center := Vector2.ZERO
 var _stick_index := -1
@@ -23,6 +30,12 @@ var _buttons: Array[Dictionary] = []  # {"node": TouchScreenButton, "key": ..., 
 var _base: Control
 var _knob: Control
 var _was_driving := false
+var _wheel: Control
+var _wheel_center := Vector2.ZERO
+var _wheel_index := -1
+var _wheel_last := 0.0
+var _wheel_rot := 0.0
+var _horn_index := -1
 
 
 func _ready() -> void:
@@ -36,19 +49,23 @@ func _ready() -> void:
 	root.add_child(_base)
 	_knob = _circle_control(40.0, Color(1, 1, 1, 0.35), Color(1, 1, 1, 0.6))
 	root.add_child(_knob)
+	_wheel = Control.new()
+	_wheel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wheel.size = Vector2(WHEEL_R, WHEEL_R) * 2.0
+	_wheel.draw.connect(_draw_wheel)
+	root.add_child(_wheel)
 	# Кнопки: подпись, клавиша, когда видна (walk / drive / all), угол экрана, место, радиус
 	_add_button("E", KEY_E, "walk", "br", Vector2(-110, -120), 52)
 	_add_button("Прыжок", KEY_SPACE, "walk", "br", Vector2(-230, -70), 44)
 	_add_button("Присесть", KEY_C, "walk", "br", Vector2(-120, -250), 40)
 	_add_button("Еда", KEY_Q, "walk", "br", Vector2(-240, -190), 36)
-	_add_button("Газ", KEY_W, "drive", "br", Vector2(-100, -110), 62)
-	_add_button("Тормоз", KEY_S, "drive", "br", Vector2(-245, -85), 50)
-	_add_button("Ручник", KEY_SPACE, "drive", "br", Vector2(-250, -215), 38)
-	_add_button("Выйти", KEY_E, "drive", "br", Vector2(-120, -255), 36)
-	_add_button("Вид", KEY_V, "drive", "br", Vector2(-360, -60), 32)
-	_add_button("Сигнал", KEY_H, "drive", "br", Vector2(-365, -150), 32)
-	_add_button("Влево", KEY_A, "drive", "bl", Vector2(90, -100), 62)
-	_add_button("Вправо", KEY_D, "drive", "bl", Vector2(240, -100), 62)
+	# Педали — прямоугольные, как в машине: газ узкий и высокий, тормоз шире
+	_add_button("Газ", KEY_W, "drive", "br", Vector2(-72, -118), 0, Vector2(76, 160))
+	_add_button("Тормоз", KEY_S, "drive", "br", Vector2(-190, -92), 0, Vector2(120, 108))
+	_add_button("D", -1, "drive", "br", Vector2(-298, -98), 0, Vector2(62, 104))
+	_add_button("Ручник", KEY_SPACE, "drive", "br", Vector2(-298, -222), 38)
+	_add_button("Вид", KEY_V, "drive", "br", Vector2(-190, -222), 34)
+	_add_button("Выйти", KEY_E, "drive", "br", Vector2(-72, -262), 38)
 	_add_button("Меню", KEY_ESCAPE, "all", "tr", Vector2(-50, 130), 30)
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)
@@ -67,26 +84,40 @@ func _circle_control(r: float, fill: Color, rim: Color) -> Control:
 	return c
 
 
-func _add_button(text: String, key: int, mode: String, anchor: String, offset: Vector2, r: float) -> void:
+## Кнопка: круглая радиусом r или прямоугольная размером box (педаль, рычаг).
+## key −1 — не клавиша, а рычаг D/R.
+func _add_button(text: String, key: int, mode: String, anchor: String, offset: Vector2, r: float, box := Vector2.ZERO) -> void:
 	var b := TouchScreenButton.new()
-	b.texture_normal = _disc_texture(int(r), Color(0.1, 0.1, 0.1, 0.45))
-	b.texture_pressed = _disc_texture(int(r), Color(0.95, 0.7, 0.25, 0.7))
-	var shape := CircleShape2D.new()
-	shape.radius = r
-	b.shape = shape
+	var half := box * 0.5 if box != Vector2.ZERO else Vector2(r, r)
+	if box != Vector2.ZERO:
+		var grooves := text == "Газ" or text == "Тормоз"
+		b.texture_normal = _pedal_texture(box, Color(0.12, 0.12, 0.13, 0.6), grooves)
+		b.texture_pressed = _pedal_texture(box, Color(0.95, 0.7, 0.25, 0.75), grooves)
+		var rect := RectangleShape2D.new()
+		rect.size = box
+		b.shape = rect
+	else:
+		b.texture_normal = _disc_texture(int(r), Color(0.1, 0.1, 0.1, 0.45))
+		b.texture_pressed = _disc_texture(int(r), Color(0.95, 0.7, 0.25, 0.7))
+		var shape := CircleShape2D.new()
+		shape.radius = r
+		b.shape = shape
 	b.shape_centered = true
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.size = Vector2(r, r) * 2.0
-	label.add_theme_font_size_override("font_size", 22 if text.length() <= 3 else 15)
+	label.size = half * 2.0
+	label.add_theme_font_size_override("font_size", 34 if text.length() == 1 else (22 if text.length() <= 3 else 15))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	b.add_child(label)
 	add_child(b)
-	var entry := {"node": b, "text": text, "key": key, "mode": mode, "anchor": anchor, "offset": offset, "r": r, "down": false}
+	var entry := {"node": b, "label": label, "text": text, "key": key, "mode": mode, "anchor": anchor, "offset": offset, "half": half, "down": false}
 	b.pressed.connect(func() -> void:
+		if entry.key < 0:
+			_toggle_reverse()
+			return
 		entry.down = true
 		_key(entry.key, true))
 	b.released.connect(func() -> void:
@@ -94,6 +125,70 @@ func _add_button(text: String, key: int, mode: String, anchor: String, offset: V
 			entry.down = false
 			_key(entry.key, false))
 	_buttons.append(entry)
+
+
+## Рычаг: D — вперёд, R — назад. Переключается сразу, а поедет в другую
+## сторону, когда машина остановится (газ до этого тормозит).
+func _toggle_reverse() -> void:
+	GameManager.pedal_reverse = not GameManager.pedal_reverse
+	SoundLibrary.play("click", -6.0)
+	_update_lever()
+
+
+func _update_lever() -> void:
+	for e in _buttons:
+		if e.key < 0:
+			var l := e.label as Label
+			l.text = "R" if GameManager.pedal_reverse else "D"
+			l.add_theme_color_override("font_color", Color(1.0, 0.45, 0.35) if GameManager.pedal_reverse else Color(0.6, 1.0, 0.6))
+
+
+func _pedal_texture(box: Vector2, color: Color, grooves: bool) -> ImageTexture:
+	var w := int(box.x)
+	var h := int(box.y)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var rad := 12.0
+	for y in h:
+		for x in w:
+			# Скруглённые углы
+			var cx := clampf(x + 0.5, rad, w - rad)
+			var cy := clampf(y + 0.5, rad, h - rad)
+			var d := Vector2(x + 0.5 - cx, y + 0.5 - cy).length()
+			if d > rad:
+				continue
+			var edge := d > rad - 3.0 or x < 3 or y < 3 or x >= w - 3 or y >= h - 3
+			var c := color
+			# Рифлёная резина, как на настоящей педали
+			if grooves and not edge and x > 10 and x < w - 10 and (y % 18) < 5 and y > 10 and y < h - 10:
+				c = Color(color.r * 0.5, color.g * 0.5, color.b * 0.5, color.a + 0.1)
+			img.set_pixel(x, y, Color(1, 1, 1, 0.55) if edge else c)
+	return ImageTexture.create_from_image(img)
+
+
+func _draw_wheel() -> void:
+	var c := Vector2(WHEEL_R, WHEEL_R)
+	var rim := Color(0.08, 0.08, 0.09, 0.8)
+	var held := _wheel_index >= 0
+	# Обод
+	_wheel.draw_arc(c, WHEEL_R - 13.0, 0.0, TAU, 64, rim, 24.0, true)
+	_wheel.draw_arc(c, WHEEL_R - 1.5, 0.0, TAU, 64, Color(1, 1, 1, 0.45), 2.5, true)
+	_wheel.draw_arc(c, WHEEL_R - 25.5, 0.0, TAU, 64, Color(1, 1, 1, 0.25), 2.0, true)
+	# Три спицы, повернутые вместе с рулём
+	for a in [0.0, PI, PI * 0.5]:
+		var dir := Vector2.RIGHT.rotated(a + _wheel_rot)
+		_wheel.draw_line(c + dir * HUB_R, c + dir * (WHEEL_R - 20.0), rim, 16.0, true)
+	# Метка верха руля — видно, насколько повёрнут
+	var top := Vector2.UP.rotated(_wheel_rot)
+	_wheel.draw_line(c + top * (WHEEL_R - 24.0), c + top * (WHEEL_R - 2.0), Color(0.95, 0.7, 0.25, 0.95 if held else 0.7), 8.0, true)
+	# Ступица — сигнал
+	var horn := _horn_index >= 0
+	_wheel.draw_circle(c, HUB_R, Color(0.95, 0.7, 0.25, 0.75) if horn else Color(0.15, 0.15, 0.16, 0.85))
+	_wheel.draw_arc(c, HUB_R - 1.5, 0.0, TAU, 40, Color(1, 1, 1, 0.5), 2.5, true)
+	var font := ThemeDB.fallback_font
+	var txt := "Бип"
+	var ts := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
+	_wheel.draw_string_outline(font, c + Vector2(-ts.x * 0.5, 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.BLACK)
+	_wheel.draw_string(font, c + Vector2(-ts.x * 0.5, 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 
 func _disc_texture(r: int, color: Color) -> ImageTexture:
@@ -113,8 +208,10 @@ func _layout() -> void:
 	_stick_center = Vector2(STICK_R + 50.0, size.y - STICK_R - 50.0)
 	_base.position = _stick_center - Vector2(STICK_R, STICK_R)
 	_set_knob(Vector2.ZERO)
+	_wheel_center = Vector2(WHEEL_R + 34.0, size.y - WHEEL_R - 30.0)
+	_wheel.position = _wheel_center - Vector2(WHEEL_R, WHEEL_R)
 	for e in _buttons:
-		var r: float = e.r
+		var half: Vector2 = e.half
 		var base := Vector2(size.x, 0.0)
 		match e.anchor:
 			"br":
@@ -122,8 +219,8 @@ func _layout() -> void:
 			"bl":
 				base = Vector2(0.0, size.y)
 		var center: Vector2 = base + (e.offset as Vector2)
-		(e.node as TouchScreenButton).position = center - Vector2(r, r)
-		e["rect"] = Rect2(center - Vector2(r, r), Vector2(r, r) * 2.0)
+		(e.node as TouchScreenButton).position = center - half
+		e["rect"] = Rect2(center - half, half * 2.0)
 
 
 func _driving() -> bool:
@@ -134,9 +231,17 @@ func _driving() -> bool:
 func _apply_mode() -> void:
 	var drive := _driving()
 	for e in _buttons:
-		(e.node as TouchScreenButton).visible = e.mode == "all" or (e.mode == "drive") == drive
+		var on: bool = e.mode == "all" or (e.mode == "drive") == drive
+		# Рычаг D/R — только с автоматом, на механике передачи свои
+		if e.key < 0:
+			on = on and SettingsManager.auto_gearbox
+		(e.node as TouchScreenButton).visible = on
 	_base.visible = not drive
 	_knob.visible = not drive
+	_wheel.visible = drive
+	# Сели в машину — рычаг на D
+	GameManager.pedal_reverse = false
+	_update_lever()
 
 
 func button(text: String) -> TouchScreenButton:
@@ -146,7 +251,7 @@ func button(text: String) -> TouchScreenButton:
 	return null
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Сели в машину или вышли — меняем набор кнопок. Всё зажатое
 	# отпускаем, иначе «Газ» останется нажатым уже пешком
 	var drive := _driving()
@@ -160,6 +265,16 @@ func _process(_delta: float) -> void:
 	if visible and not show:
 		_release_all()
 	visible = show
+	GameManager.pedal_mode = drive and show
+	if drive:
+		var lever := button("D")
+		if lever and lever.visible != SettingsManager.auto_gearbox:
+			_apply_mode()
+		# Отпустил руль — плавно возвращается к центру
+		if _wheel_index < 0 and _wheel_rot != 0.0:
+			_wheel_rot = move_toward(_wheel_rot, 0.0, delta * WHEEL_RETURN)
+			GameManager.steer_axis = -_wheel_rot / WHEEL_MAX
+			_wheel.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
@@ -168,8 +283,19 @@ func _input(event: InputEvent) -> void:
 	var touch := event as InputEventScreenTouch
 	if touch:
 		if touch.pressed:
-			# В машине экран вне кнопок ничего не делает: там только руль и педали
-			if _over_button(touch.position) or _driving():
+			if _over_button(touch.position):
+				return
+			# В машине: палец на руле крутит его, в центре — сигнал
+			if _driving():
+				var d := touch.position.distance_to(_wheel_center)
+				if d < HUB_R and _horn_index < 0:
+					_horn_index = touch.index
+					_hold(KEY_H, true)
+					_wheel.queue_redraw()
+				elif d < WHEEL_R + 40.0 and _wheel_index < 0:
+					_wheel_index = touch.index
+					_wheel_last = (touch.position - _wheel_center).angle()
+					_wheel.queue_redraw()
 				return
 			if touch.position.x < get_viewport().get_visible_rect().size.x * 0.4 and _stick_index < 0:
 				_stick_index = touch.index
@@ -177,7 +303,14 @@ func _input(event: InputEvent) -> void:
 			elif _look_index < 0:
 				_look_index = touch.index
 		else:
-			if touch.index == _stick_index:
+			if touch.index == _wheel_index:
+				_wheel_index = -1
+				_wheel.queue_redraw()
+			elif touch.index == _horn_index:
+				_horn_index = -1
+				_hold(KEY_H, false)
+				_wheel.queue_redraw()
+			elif touch.index == _stick_index:
 				_stick_index = -1
 				_update_stick(_stick_center)
 			elif touch.index == _look_index:
@@ -185,7 +318,9 @@ func _input(event: InputEvent) -> void:
 		return
 	var drag := event as InputEventScreenDrag
 	if drag:
-		if drag.index == _stick_index:
+		if drag.index == _wheel_index:
+			_turn_wheel(drag.position)
+		elif drag.index == _stick_index:
 			_update_stick(drag.position)
 		elif drag.index == _look_index:
 			var p := GameManager.player as Player
@@ -193,8 +328,28 @@ func _input(event: InputEvent) -> void:
 				p._look(-drag.relative.x * LOOK_SENS * SettingsManager.mouse_sens, -drag.relative.y * LOOK_SENS * SettingsManager.mouse_sens)
 
 
+## Руль крутится за пальцем: поворот — на сколько палец обошёл центр руля.
+func _turn_wheel(pos: Vector2) -> void:
+	var off := pos - _wheel_center
+	# У самого центра угол скачет — там не крутим
+	if off.length() < 18.0:
+		return
+	var a := off.angle()
+	_wheel_rot = clampf(_wheel_rot + wrapf(a - _wheel_last, -PI, PI), -WHEEL_MAX, WHEEL_MAX)
+	_wheel_last = a
+	# По часовой стрелке — направо
+	GameManager.steer_axis = -_wheel_rot / WHEEL_MAX
+	_wheel.queue_redraw()
+
+
 func _release_all() -> void:
 	GameManager.move_axis = Vector2.ZERO
+	GameManager.steer_axis = 0.0
+	_wheel_index = -1
+	_horn_index = -1
+	_wheel_rot = 0.0
+	if _wheel:
+		_wheel.queue_redraw()
 	_stick_index = -1
 	_look_index = -1
 	_set_knob(Vector2.ZERO)

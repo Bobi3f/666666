@@ -38,6 +38,8 @@ var _dist := 0.0
 var _cond0 := 100.0
 var _away := 0.0
 var _nag := 0.0
+## После высадки новый пассажир садится не сразу — сперва выходит прежний
+var _rest := 0.0
 var _passenger: Node3D
 var _ring: MeshInstance3D
 var _rng := RandomNumberGenerator.new()
@@ -106,6 +108,9 @@ func _process(delta: float) -> void:
 				return
 			var car := _car()
 			if car == null:
+				return
+			if _rest > 0.0:
+				_rest -= delta
 				return
 			# Пассажир поворачивается к подъезжающей машине
 			var to := car.global_position - _passenger.global_position
@@ -179,6 +184,7 @@ func _pay(car: Vehicle) -> void:
 
 func _finish_ride(delivered: bool) -> void:
 	GameManager.challenge_line = ""
+	_rest = 6.0
 	# Следующий ждёт там, куда довёз, на стоянке в городе или где-то ещё
 	var next := 0
 	if delivered and _rng.randf() < 0.6:

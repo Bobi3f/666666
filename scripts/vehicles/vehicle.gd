@@ -417,8 +417,10 @@ func _physics_process(dt: float) -> void:
 	var steer_in := 0.0
 	if drv:
 		steer_in = float(Input.is_physical_key_pressed(KEY_A)) - float(Input.is_physical_key_pressed(KEY_D))
+		if absf(GameManager.steer_axis) > 0.01:
+			steer_in = GameManager.steer_axis
 	if SettingsManager.auto_gearbox:
-		var io := _auto_inputs(dt, w, s)
+		var io := _pedal_inputs(dt, w, s) if drv and GameManager.pedal_mode else _auto_inputs(dt, w, s)
 		_update(dt, io.x, io.y > 0.5, handbrake, false, steer_in)
 	else:
 		var pedal := drv and Input.is_physical_key_pressed(KEY_SHIFT)
@@ -457,6 +459,27 @@ func _auto_inputs(dt: float, w: bool, s: bool) -> Vector2:
 	else:
 		_rev_timer = 0.0
 	return Vector2(1.0 if w else 0.0, 1.0 if s else 0.0)
+
+
+## Педали телефона: газ — в сторону, выбранную рычагом D/R, тормоз —
+## всегда тормоз. Катимся не туда — газ тормозит, пока не встанем.
+func _pedal_inputs(dt: float, gas: bool, brake: bool) -> Vector2:
+	_auto_start_cool = maxf(_auto_start_cool - dt, 0.0)
+	if not engine_on:
+		if gas and _auto_start_cool <= 0.0:
+			_auto_start_cool = 2.0
+			if _try_start() and gear == 0:
+				gear = 1
+		return Vector2(0.0, 1.0 if brake else 0.0)
+	var want := -1 if GameManager.pedal_reverse and (spec.ratios[-1] as float) != 0.0 else 1
+	if (want == -1) != (gear == -1) or gear == 0:
+		if absf(speed) < 0.5:
+			gear = want
+		else:
+			return Vector2(0.0, 1.0 if gas or brake else 0.0)
+	# Назад больше ~20 км/ч не разгоняемся
+	var g := gas and (want == 1 or speed > -5.5)
+	return Vector2(1.0 if g else 0.0, 1.0 if brake else 0.0)
 
 
 ## Один шаг симуляции. Вынесено отдельно, чтобы гонять в тестах без клавиатуры.
