@@ -58,7 +58,8 @@ func _on_minutes(_m: float) -> void:
 			SoundLibrary.play("cash", -6.0)
 			GameManager.notify("Доход с твоего дела за день: +%d грн" % sum)
 		paid_day = day
-	if errand_day != day and TimeManager.hour() >= 7.0:
+	# В первый день и так много нового — поручения со второго
+	if errand_day != day and day >= 2 and TimeManager.hour() >= 7.0:
 		_new_errand(day)
 
 
@@ -108,7 +109,7 @@ func tracker_line() -> String:
 	var n := "" if count == 1 else " — %d / %d" % [mini(int(progress), count), count]
 	if e[2] == "drive_m":
 		n = " — %d / %d м" % [int(progress), count]
-	return "◆ Поручение (%s): %s%s" % [e[0], e[1], n]
+	return "» Поручение (%s): %s%s" % [e[0], e[1], n]
 
 
 func owns(id: String) -> bool:
