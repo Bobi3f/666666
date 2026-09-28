@@ -77,6 +77,7 @@ func _ready() -> void:
 	_setup_environment()
 
 	var b := MeshBuilder.new()
+	b.chunk_size = 100.0
 	var glow := MeshBuilder.new()
 	glow.ground_shade = false
 	_build_ground(b)
@@ -99,7 +100,7 @@ func _ready() -> void:
 	# один раз, при перестройке дома они стоят на тех же местах
 	_build_player_yard()
 
-	var world_mesh := b.build_mesh()
+	var world_mesh := b.build_chunked()
 	world_mesh.name = "WorldMesh"
 	add_child(world_mesh)
 	var body := b.build_body()
@@ -169,10 +170,35 @@ func _ready() -> void:
 	# Интерфейс под высоту экрана: на телефоне около 600 точек по высоте, как
 	# на мониторе (иначе на плотном экране надписи крошечные), плюс размер
 	# текста из настроек
+	_limit_view_ranges.call_deferred()
 	_fit_ui()
 	get_window().size_changed.connect(_fit_ui)
 	SettingsManager.changed.connect(_fit_ui)
 	GameManager.notify("Утро в Каменке. Задание — слева вверху, журнал — J, управление — F1")
+
+
+## Мелочь издалека не рисуем: надписи, куры, конусы, прилавки, детали машин.
+## Дальность — по размеру предмета: чем мельче, тем раньше пропадает.
+## Каждый такой предмет — отдельный вызов отрисовки, а вдали его не видно.
+func _limit_view_ranges() -> void:
+	var skip := ["WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh"]
+	var stack: Array[Node] = []
+	for c in get_children():
+		if not skip.has(String(c.name)) and not (c.get_script() and c.get_script().resource_path.ends_with("night_sky.gd")):
+			stack.append(c)
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		var gi := n as GeometryInstance3D
+		if gi == null or gi.visibility_range_end > 0.0 or gi is MultiMeshInstance3D:
+			continue
+		var size := 2.0
+		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh:
+			size = (gi as MeshInstance3D).mesh.get_aabb().size.length()
+		gi.visibility_range_end = clampf(size * 30.0, 55.0, 220.0)
+		gi.visibility_range_end_margin = 5.0
+		gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 
 
 func _fit_ui() -> void:
@@ -238,7 +264,9 @@ func _update_daylight() -> void:
 	_sun.light_energy = lerpf(0.0, 1.15, day) * (1.0 - cloud * 0.65)
 	var grey := Color(0.52, 0.54, 0.56)
 	_sky.sky_top_color = _sky_top.lerp(grey, cloud * 0.8)
-	_sky.sky_horizon_color = _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8)
+	# На рассвете и закате край неба теплеет
+	var dusk := clampf(1.0 - absf(absf(h - 13.0) - 6.6) / 1.4, 0.0, 1.0) * (1.0 - cloud * 0.7)
+	_sky.sky_horizon_color = _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8).lerp(Color(0.98, 0.62, 0.4), dusk * 0.75)
 	# Утром над полями стелется дымка: гуще всего на рассвете, к 9 уходит
 	var mist := clampf(1.0 - absf(h - 6.2) / 2.6, 0.0, 1.0) * (1.0 - WeatherManager.rain)
 	if WeatherManager.season() == 1:

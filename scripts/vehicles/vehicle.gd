@@ -593,6 +593,9 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 				QuestManager.event("manual_m", d)
 	for wn in _wheels:
 		wn.rotation.x -= speed / wheel_r * dt * float(wn.get_meta("k", 1.0))
+		# Передние колёса поворачивают вместе с рулём
+		if wn.position.z < 0.0 and not spec.two_wheels:
+			wn.rotation.y = _steer
 	_update_sound()
 	_update_lights()
 
@@ -824,17 +827,7 @@ func _update_camera(dt: float) -> void:
 
 ## Асфальт — трасса, город, площадки АЗС и СТО.
 func on_asphalt() -> bool:
-	var p := global_position
-	if absf(p.z) < 4.2:
-		return true
-	if p.x > -120.0 and p.x < -78.0 and p.z > 0.0 and p.z < 21.0:
-		return true
-	# Автодром и въезд к нему
-	if p.x > -2.0 and p.x < 20.0 and p.z > -75.0 and p.z < -18.0:
-		return true
-	if p.x > 6.0 and p.x < 12.0 and p.z > -18.0 and p.z < 0.0:
-		return true
-	return p.x > 38.0 and p.z > 0.0
+	return Roads.on_asphalt(global_position.x, global_position.z)
 
 
 func headlights_on() -> bool:
@@ -1011,6 +1004,9 @@ func _process(_delta: float) -> void:
 	# От первого лица мотоциклиста не рисуем — камера у него в голове
 	if _rider:
 		_rider.visible = driver != null and chase_view
+	var inside := driver != null and not chase_view
+	for g in _gauge_holders:
+		g.visible = inside
 	if driver != null and not _needles.is_empty():
 		var top: float = {"moto": 140.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
@@ -1045,6 +1041,8 @@ func _gauge_spots() -> Array:
 
 
 var _needles: Array[Node3D] = []
+## Циферблаты рисуем, только когда сидишь в салоне — снаружи их не видно
+var _gauge_holders: Array[Node3D] = []
 static var _dial_tex: ImageTexture
 
 
@@ -1069,7 +1067,9 @@ func _build_gauges() -> void:
 		var holder := Node3D.new()
 		holder.position = s[0]
 		holder.rotation.x = s[2]
+		holder.visible = false
 		_body.add_child(holder)
+		_gauge_holders.append(holder)
 		var face := MeshInstance3D.new()
 		var q := QuadMesh.new()
 		q.size = Vector2(r, r) * 2.0

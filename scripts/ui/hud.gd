@@ -51,6 +51,12 @@ func _ready() -> void:
 	_msg.offset_top = 150
 	_goal = _label(Vector2(16, 70), 16)
 	_goal.modulate = Color(1.0, 0.92, 0.6)
+	# Длинные строки заданий переносятся, а не уходят под кнопки справа
+	_goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Всплывающая сумма у денег: +500 зелёным, −45 красным
+	_money_pop = _label(Vector2(0, 30), 18)
+	_money_pop.visible = false
+	_last_money = GameManager.money
 	var hint := _label(Vector2(0, 12), 15)
 	_keys_hint = hint
 	hint.visible = not GameManager.touch_mode
@@ -65,6 +71,35 @@ func _ready() -> void:
 	dot.position -= Vector2(2, 2)
 	add_child(dot)
 	GameManager.message.connect(show_message)
+
+
+var _money_pop: Label
+var _last_money := 0
+var _pop_t := 0.0
+
+
+func _update_money_pop(delta: float) -> void:
+	var m := GameManager.money
+	if m != _last_money:
+		var d := m - _last_money
+		_last_money = m
+		# Пока пишем подряд (заправка по литру) — копим одну сумму
+		var prev := int(_money_pop.get_meta("sum", 0)) if _pop_t > 0.0 else 0
+		var sum := prev + d
+		_money_pop.set_meta("sum", sum)
+		_money_pop.text = ("+%d" % sum) if sum > 0 else ("−%d" % -sum)
+		_money_pop.add_theme_color_override("font_color", Color(0.55, 1.0, 0.5) if sum > 0 else Color(1.0, 0.5, 0.4))
+		var font := _top.get_theme_font("font")
+		var clock_w := font.get_string_size(TimeManager.clock_text() + "     ", HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+		_money_pop.position = Vector2(16.0 + clock_w, 34.0)
+		_money_pop.visible = sum != 0
+		_pop_t = 1.6
+	if _pop_t > 0.0:
+		_pop_t -= delta
+		_money_pop.modulate.a = clampf(_pop_t, 0.0, 1.0)
+		_money_pop.position.y = 34.0 + (1.6 - _pop_t) * 6.0
+		if _pop_t <= 0.0:
+			_money_pop.visible = false
 
 
 func _label(pos: Vector2, size: int) -> Label:
@@ -95,6 +130,10 @@ func _process(delta: float) -> void:
 	if daily != "":
 		lines.append(daily)
 	_goal.text = GameManager.touch_text("\n".join(lines))
+	var vw := get_viewport().get_visible_rect().size.x
+	_goal.size.x = vw - (140.0 if GameManager.touch_mode else 270.0)
+	_goal.size.y = 0.0
+	_update_money_pop(delta)
 	# Подсказка по клавишам на телефоне не нужна — там кнопки
 	_keys_hint.visible = not GameManager.touch_mode
 	_food_bar.value = NeedsManager.food
@@ -121,19 +160,24 @@ func _process(delta: float) -> void:
 			car.spec.title, int(ceilf(car.fuel)), int(car.condition),
 			"T — коробка, V — вид", slide]
 		_car.text = GameManager.touch_text(_car.text)
-		# Слева внизу на телефоне — руль: приборы держим наверху под трекером
-		if GameManager.touch_mode and _car.anchor_top != 0.0:
-			_car.anchor_top = 0.0
-			_car.anchor_bottom = 0.0
-			_car.offset_top = 150
-			_car.offset_bottom = 150
-			_car.add_theme_font_size_override("font_size", 16)
+		# Слева внизу на телефоне — руль: приборы держим наверху, сразу под трекером
+		if GameManager.touch_mode:
+			if _car.anchor_top != 0.0:
+				_car.anchor_top = 0.0
+				_car.anchor_bottom = 0.0
+				_car.add_theme_font_size_override("font_size", 16)
+			var below := _goal.position.y + _goal.get_combined_minimum_size().y + 6.0
+			_car.offset_top = below
+			_car.offset_bottom = below
 		_prompt.text = ""
 	else:
 		_car.visible = false
 		_prompt.text = p.current_prompt() if p else ""
 	# На телефоне приборы машины стоят под трекером — сообщения опускаем ниже них
-	_msg.offset_top = 205.0 if GameManager.touch_mode and car and car.driver else 150.0
+	var msg_y := 150.0
+	if GameManager.touch_mode and car and car.driver:
+		msg_y = _car.offset_top + 50.0
+	_msg.offset_top = maxf(msg_y, _goal.position.y + _goal.get_combined_minimum_size().y + 8.0)
 	if _msg_time > 0.0:
 		_msg_time -= delta
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)

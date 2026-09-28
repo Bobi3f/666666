@@ -46,3 +46,16 @@ static func tree_ok(x: float, z: float) -> bool:
 
 static func all_rects() -> Array:
 	return FIELD + FOREST
+
+
+## Асфальт: трасса, заправка и СТО, автодром с въездом, город.
+static func on_asphalt(x: float, z: float) -> bool:
+	if absf(z) < 4.2:
+		return true
+	if x > -120.0 and x < -78.0 and z > 0.0 and z < 21.0:
+		return true
+	if x > -2.0 and x < 20.0 and z > -75.0 and z < -18.0:
+		return true
+	if x > 6.0 and x < 12.0 and z > -18.0 and z < 0.0:
+		return true
+	return x > 38.0 and z > 0.0

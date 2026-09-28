@@ -245,7 +245,13 @@ func _footsteps(delta: float) -> void:
 	var step_len := 0.9 if v > WALK + 0.5 else 0.7
 	if _stride >= step_len:
 		_stride = 0.0
-		SoundLibrary.play("step", -14.0 if crouching else -8.0, randf_range(0.8, 1.2))
+		# По асфальту — чётко, по траве — мягко, зимой — снег скрипит
+		var snd := "step"
+		if WeatherManager.snow > 0.5 and global_position.y < 0.3:
+			snd = "step_snow"
+		elif not Roads.on_asphalt(global_position.x, global_position.z) and global_position.y < 0.1:
+			snd = "step_grass"
+		SoundLibrary.play(snd, -14.0 if crouching else -8.0, randf_range(0.8, 1.2))
 
 
 ## Покачивание при ходьбе, просадка при приземлении, шире обзор на бегу.

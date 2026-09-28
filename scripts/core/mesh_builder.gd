@@ -11,6 +11,12 @@ var xf := Transform3D.IDENTITY
 var ground_shade := true
 
 var _st := SurfaceTool.new()
+## Нарезка на куски по chunk_size метров (0 — одним куском). Невидимые куски
+## не рисуются, а фонарь или лампа перерисовывают только соседние куски,
+## а не весь мир — на телефоне ночью это главное.
+var chunk_size := 0.0
+var _chunks := {}  # Vector2i → SurfaceTool
+var _cur: SurfaceTool
 var _boxes: Array = []  # [Transform3D, Vector3 size]
 var _count := 0
 
@@ -29,6 +35,20 @@ const FACE_TINT := [0.93, 0.9, 1.0, 0.86, 1.06, 0.7]
 
 func _init() -> void:
 	_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_cur = _st
+
+
+## Куда класть треугольники с центром в p (уже в мировых координатах).
+func _pick(p: Vector3) -> void:
+	if chunk_size <= 0.0:
+		return
+	var key := Vector2i(floori(p.x / chunk_size), floori(p.z / chunk_size))
+	var st: SurfaceTool = _chunks.get(key)
+	if st == null:
+		st = SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_chunks[key] = st
+	_cur = st
 
 
 func triangle_count() -> int:
@@ -82,6 +102,7 @@ func quad_vc(pts: Array, cols: Array[Color]) -> void:
 
 func tri(a: Vector3, b: Vector3, c: Vector3, color: Color, two_sided := false) -> void:
 	var n := (b - a).cross(c - a).normalized()
+	_pick(xf * ((a + b + c) / 3.0))
 	_emit(a, n, color)
 	_emit(c, n, color)
 	_emit(b, n, color)
@@ -99,15 +120,31 @@ func add_collider(mn: Vector3, mx: Vector3) -> void:
 
 func _quad_raw(pts: Array, cols: Array, n: Vector3) -> void:
 	# В Godot лицевая сторона — по часовой стрелке, поэтому порядок 0-2-1, 0-3-2
+	if chunk_size > 0.0:
+		_pick(xf * ((pts[0] + pts[2]) * 0.5))
 	for i in [0, 2, 1, 0, 3, 2]:
 		_emit(pts[i], n, cols[i])
 	_count += 2
 
 
 func _emit(p: Vector3, n: Vector3, color: Color) -> void:
-	_st.set_color(color)
-	_st.set_normal((xf.basis * n).normalized())
-	_st.add_vertex(xf * p)
+	_cur.set_color(color)
+	_cur.set_normal((xf.basis * n).normalized())
+	_cur.add_vertex(xf * p)
+
+
+## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size.
+func build_chunked() -> Node3D:
+	var root := Node3D.new()
+	var mat := world_material()
+	for key in _chunks:
+		var mesh: ArrayMesh = (_chunks[key] as SurfaceTool).commit()
+		mesh.surface_set_material(0, mat)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.name = "Chunk_%d_%d" % [key.x, key.y]
+		root.add_child(mi)
+	return root
 
 
 ## Готовый узел с мешем. unshaded — для светящихся окон.

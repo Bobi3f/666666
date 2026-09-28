@@ -51,6 +51,8 @@ func _ready() -> void:
 	_streams["quest"] = _make(_quest(), false)
 	_streams["moo"] = _make(_moo(), false)
 	_streams["gravel"] = _make(_gravel(), true)
+	_streams["step_grass"] = _make(_step_grass(), false)
+	_streams["step_snow"] = _make(_step_snow(), false)
 	_streams["grass"] = _make(_grass(), true)
 	SettingsManager.changed.connect(_apply_music_volume)
 
@@ -238,6 +240,32 @@ func _step() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.25
 		a[i] = lp * exp(-t * 45.0) * 0.9
+	return a
+
+
+## Шаг по траве: мягкий шелест подлиннее, без стука.
+func _step_grass() -> PackedFloat32Array:
+	var a := _buf(0.16)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.5
+		lp2 += (lp - lp2) * 0.2
+		a[i] = (lp - lp2) * minf(t * 60.0, 1.0) * exp(-t * 22.0) * 0.8
+	return a
+
+
+## Шаг по снегу: скрип — частые мелкие щелчки.
+func _step_snow() -> PackedFloat32Array:
+	var a := _buf(0.2)
+	var c := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		if _rng.randf() < 0.02:
+			c = _rng.randf_range(-1.0, 1.0)
+		c *= 0.85
+		a[i] = c * minf(t * 40.0, 1.0) * exp(-t * 14.0) * 0.7
 	return a
 
 

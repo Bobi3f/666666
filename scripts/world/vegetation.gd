@@ -13,8 +13,9 @@ extends Node3D
 enum TreeKind { SPRUCE, APPLE, BIRCH, BUSH }
 
 const CHUNK := 25.0
-## Деревья режем крупнее: их мало, но без нарезки тени рисуют весь лес.
-const TREE_CHUNK := 50.0
+## Деревья — кусками 100×100 м: вызовов отрисовки вчетверо меньше, чем при 50 м,
+## а тени всё равно не рисуют весь лес сразу.
+const TREE_CHUNK := 100.0
 const GRASS_RANGE := 75.0
 
 const GRASS_SHADER := """
