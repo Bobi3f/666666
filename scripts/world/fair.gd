@@ -15,9 +15,9 @@ const TICKETS_PER_DAY := 5
 
 ## [id, вывеска, центр прилавка, цвет навеса]
 const STALLS := [
-	["fish", "РЫБА", Vector3(106.8, 0, 16.5), Color(0.2, 0.45, 0.75)],
-	["pies", "ПИРОЖКИ", Vector3(106.8, 0, 21.0), Color(0.85, 0.35, 0.2)],
-	["lottery", "ЛОТЕРЕЯ", Vector3(106.8, 0, 25.5), Color(0.55, 0.3, 0.7)],
+	["fish", "РЫБА", Vector3(109.0, 0, 16.5), Color(0.2, 0.45, 0.75)],
+	["pies", "ПИРОЖКИ", Vector3(109.0, 0, 21.0), Color(0.85, 0.35, 0.2)],
+	["lottery", "ЛОТЕРЕЯ", Vector3(109.0, 0, 25.5), Color(0.55, 0.3, 0.7)],
 ]
 
 var _stalls: Node3D
@@ -79,8 +79,8 @@ func _ready() -> void:
 	for k in 24:
 		var z := 14.5 + k * 0.55
 		var col: Color = [Color(0.9, 0.2, 0.2), Color(0.95, 0.8, 0.2), Color(0.2, 0.5, 0.85)][k % 3]
-		b.tri(Vector3(105.9, 2.9, z), Vector3(105.9, 2.9, z + 0.4), Vector3(105.9, 2.5, z + 0.2), col)
-	b.box(Vector3(105.87, 2.9, 14.4), Vector3(105.93, 2.93, 27.8), Color(0.3, 0.3, 0.3))
+		b.tri(Vector3(108.1, 2.9, z), Vector3(108.1, 2.9, z + 0.4), Vector3(108.1, 2.5, z + 0.2), col)
+	b.box(Vector3(108.07, 2.9, 14.4), Vector3(108.13, 2.93, 27.8), Color(0.3, 0.3, 0.3))
 	_stalls.add_child(b.build_mesh())
 	_stalls.add_child(people.build_mesh())
 	_update()

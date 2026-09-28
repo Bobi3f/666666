@@ -47,6 +47,11 @@ const GREENHOUSE_SPEED := 1.5
 ## Посажена ли картошка и когда (минуты от начала игры).
 var planted := false
 var planted_at := 0.0
+## Полив: в какой день полита и сколько дней поливали (дождь тоже поливает).
+## Каждый политый день — +1 картошка к урожаю, до трёх.
+var watered_day := 0
+var watered_days := 0
+const WATER_MAX := 3
 var _last_stage := 0
 
 
@@ -56,6 +61,10 @@ func _ready() -> void:
 
 func _on_minutes(m: float) -> void:
 	var st := garden_stage()
+	# Дождь поливает огород сам
+	if (st == 1 or st == 2) and WeatherManager.rain > 0.5 and not WeatherManager.snowing() and watered_day != TimeManager.day:
+		watered_day = TimeManager.day
+		watered_days += 1
 	if st != _last_stage:
 		_last_stage = st
 		if st == 3:
@@ -130,9 +139,15 @@ func garden_prompt() -> String:
 		0:
 			return "E — посадить картошку (семена %d грн)" % SEED_COST
 		3:
-			return "E — выкопать картошку (%d в запас еды)" % HARVEST
+			return "E — выкопать картошку (%d в запас еды)" % harvest_size()
 	var left := int(ceilf((planted_at + grow_time() - now()) / 60.0))
-	return "Картошка растёт, копать через %d ч" % left
+	if watered_day != TimeManager.day:
+		return "E — полить картошку из колодца (урожай больше) · копать через %d ч" % left
+	return "Картошка полита. Копать через %d ч" % left
+
+
+func harvest_size() -> int:
+	return HARVEST + mini(watered_days, WATER_MAX)
 
 
 func use_garden() -> void:
@@ -148,15 +163,32 @@ func use_garden() -> void:
 			NeedsManager.rest(-8.0)
 			planted = true
 			planted_at = now()
+			watered_days = 0
+			watered_day = 0
 			GameManager.notify("Посадил картошку. Через трое суток — копать")
 		3:
 			TimeManager.advance(90.0)
 			NeedsManager.rest(-10.0)
-			NeedsManager.snacks += HARVEST
+			var got := harvest_size()
+			NeedsManager.snacks += got
 			planted = false
-			GameManager.notify("Выкопал картошку: +%d в запас еды (Q)" % HARVEST)
+			GameManager.notify("Выкопал картошку: +%d в запас еды (Q)%s" % [got, " — полив не зря!" if got > HARVEST else ""])
+			watered_days = 0
 		_:
-			GameManager.notify(garden_prompt())
+			if watered_day == TimeManager.day:
+				GameManager.notify(garden_prompt())
+				return
+			var h := TimeManager.hour()
+			if h < 5.0 or h > 22.0:
+				GameManager.notify("В темноте не полить. Приходи утром")
+				return
+			TimeManager.advance(20.0)
+			NeedsManager.rest(-3.0)
+			watered_day = TimeManager.day
+			watered_days += 1
+			SoundLibrary.play("splash", -6.0)
+			GameManager.notify("Полил картошку. Урожай будет: %d" % harvest_size())
+			garden_changed.emit()
 			return
 	_last_stage = garden_stage()
 	garden_changed.emit()
@@ -230,7 +262,7 @@ func finish_delivery() -> void:
 
 func save_state() -> Dictionary:
 	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars,
-		"planted": planted, "planted_at": planted_at}
+		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days}
 
 
 func load_state(d: Dictionary) -> void:
@@ -249,6 +281,8 @@ func load_state(d: Dictionary) -> void:
 	home_changed.emit()
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))
+	watered_day = int(d.get("w_day", 0))
+	watered_days = int(d.get("w_days", 0))
 	_last_stage = garden_stage()
 	garden_changed.emit()
 	if old != house_level:

@@ -71,6 +71,7 @@ func _ready() -> void:
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)
 	get_viewport().size_changed.connect(_layout)
+	SettingsManager.changed.connect(_layout)
 	_layout()
 	_apply_mode()
 
@@ -206,20 +207,30 @@ func _disc_texture(r: int, color: Color) -> ImageTexture:
 
 func _layout() -> void:
 	var size := get_viewport().get_visible_rect().size
+	# Под левую руку всё нижнее зеркально: джойстик и руль справа
+	var lefty := SettingsManager.left_hand
 	_stick_center = Vector2(STICK_R + 50.0, size.y - STICK_R - 50.0)
+	_wheel_center = Vector2(WHEEL_R + 34.0, size.y - WHEEL_R - 30.0)
+	if lefty:
+		_stick_center.x = size.x - _stick_center.x
+		_wheel_center.x = size.x - _wheel_center.x
 	_base.position = _stick_center - Vector2(STICK_R, STICK_R)
 	_set_knob(Vector2.ZERO)
-	_wheel_center = Vector2(WHEEL_R + 34.0, size.y - WHEEL_R - 30.0)
 	_wheel.position = _wheel_center - Vector2(WHEEL_R, WHEEL_R)
 	for e in _buttons:
 		var half: Vector2 = e.half
 		var base := Vector2(size.x, 0.0)
-		match e.anchor:
+		var off: Vector2 = e.offset
+		var anchor: String = e.anchor
+		if lefty and anchor != "tr":
+			anchor = "bl" if anchor == "br" else "br"
+			off.x = -off.x
+		match anchor:
 			"br":
 				base = size
 			"bl":
 				base = Vector2(0.0, size.y)
-		var center: Vector2 = base + (e.offset as Vector2)
+		var center: Vector2 = base + off
 		(e.node as TouchScreenButton).position = center - half
 		e["rect"] = Rect2(center - half, half * 2.0)
 
@@ -298,7 +309,9 @@ func _input(event: InputEvent) -> void:
 					_wheel_last = (touch.position - _wheel_center).angle()
 					_wheel.queue_redraw()
 				return
-			if touch.position.x < get_viewport().get_visible_rect().size.x * 0.4 and _stick_index < 0:
+			var w := get_viewport().get_visible_rect().size.x
+			var stick_side := touch.position.x > w * 0.6 if SettingsManager.left_hand else touch.position.x < w * 0.4
+			if stick_side and _stick_index < 0:
 				_stick_index = touch.index
 				_update_stick(touch.position)
 			elif _look_index < 0:

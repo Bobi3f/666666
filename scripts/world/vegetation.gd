@@ -22,6 +22,8 @@ shader_type spatial;
 render_mode cull_disabled, specular_disabled;
 
 uniform float sway = 0.07;
+uniform float snow = 0.0;
+uniform float autumn = 0.0;
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -32,7 +34,12 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	vec3 c = COLOR.rgb;
+	float green = clamp((c.g - max(c.r, c.b)) * 6.0, 0.0, 1.0);
+	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
+	// Зимой трава под снегом, торчат только кончики
+	c = mix(c, vec3(0.88, 0.9, 0.94), snow * 0.85);
+	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	// Освещаем как землю, с обеих сторон травинки: иначе изнанка
 	// считается смотрящей вниз и выходит чёрной
@@ -44,6 +51,8 @@ var _trees := {TreeKind.SPRUCE: [], TreeKind.APPLE: [], TreeKind.BIRCH: [], Tree
 var _blocked: Array[Rect2] = []
 var _rng := RandomNumberGenerator.new()
 var _grass_mat: ShaderMaterial
+## Материал травы — один на всё; сезоны меняют его параметры.
+static var grass_material: ShaderMaterial
 ## Сколько чего посажено — для отчёта в консоли и тестов.
 var counts := {}
 
@@ -120,6 +129,7 @@ func _build_ground_cover() -> void:
 	sh.code = GRASS_SHADER
 	_grass_mat = ShaderMaterial.new()
 	_grass_mat.shader = sh
+	grass_material = _grass_mat
 	var tuft := _tuft_mesh(0.34, 5, Color(0.26, 0.42, 0.16), Color(0.5, 0.66, 0.28))
 	var tall := _tuft_mesh(0.7, 7, Color(0.3, 0.42, 0.18), Color(0.58, 0.64, 0.3))
 	var wheat := _tuft_mesh(0.95, 6, Color(0.55, 0.47, 0.22), Color(0.92, 0.8, 0.42), true)

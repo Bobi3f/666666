@@ -1,7 +1,8 @@
 extends Control
 ## Приборы за рулём: круглый спидометр со стрелкой и шкалой, внутри —
 ## дуга тахометра (краснеет у отсечки), по центру — скорость цифрами,
-## внизу — передача и бензин. Жигули — шкала до 160, Ява — до 140.
+## внизу — передача и бензин. Жигули — шкала до 160, Ява — до 140,
+## ГАЗ-53 — до 120, трактор — до 40.
 ##
 ## На компьютере стоит справа внизу, на телефоне — внизу посередине,
 ## между рулём и педалями.
@@ -25,7 +26,7 @@ func _vehicle() -> Vehicle:
 
 
 func _max_speed(v: Vehicle) -> float:
-	return 140.0 if v.spec.two_wheels else 160.0
+	return {"moto": 140.0, "truck": 120.0, "tractor": 40.0}.get(v.kind, 160.0)
 
 
 func _process(delta: float) -> void:
@@ -39,7 +40,10 @@ func _process(delta: float) -> void:
 	var vs := get_viewport_rect().size
 	if GameManager.touch_mode:
 		# Между рулём (слева до ~300) и педалями (справа от ~600 до края)
-		position = Vector2((310.0 + vs.x - 400.0) * 0.5 - size.x * 0.5, vs.y - size.y - 6.0)
+		var mid := (310.0 + vs.x - 400.0) * 0.5
+		if SettingsManager.left_hand:
+			mid = vs.x - mid
+		position = Vector2(mid - size.x * 0.5, vs.y - size.y - 6.0)
 	else:
 		position = Vector2(vs.x - size.x - 18.0, vs.y - size.y - 18.0)
 	_shown = lerpf(_shown, v.speed_kmh(), minf(delta * 8.0, 1.0))

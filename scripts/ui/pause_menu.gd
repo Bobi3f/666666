@@ -136,11 +136,35 @@ func _theme() -> Theme:
 	return t
 
 
+const ISSUES_URL := "https://github.com/Bobi3f/666666/issues/new"
+
+var _slot_buttons: Array[Button] = []
+
+
 func _build_main(box: VBoxContainer) -> void:
 	_resume = _button(box, "Продолжить", _close, true)
 	_continue = _button(box, "Продолжить с сохранения", func() -> void:
 		_close()
 		SaveManager.load_game(), true)
+	# Три ячейки сохранения: можно вести несколько игр
+	var slots := HBoxContainer.new()
+	slots.add_theme_constant_override("separation", 6)
+	box.add_child(slots)
+	var sg := ButtonGroup.new()
+	for i in range(1, 4):
+		var sb := Button.new()
+		sb.toggle_mode = true
+		sb.button_group = sg
+		sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sb.custom_minimum_size = Vector2(0, _btn_h())
+		sb.add_theme_font_size_override("font_size", 14)
+		sb.button_pressed = SettingsManager.slot == i
+		sb.pressed.connect(func() -> void:
+			SoundLibrary.play("click", -6.0)
+			SettingsManager.set_slot(i)
+			_refresh())
+		slots.add_child(sb)
+		_slot_buttons.append(sb)
 	_save = _button(box, "Сохранить" if GameManager.touch_mode else "Сохранить (F5)", func() -> void:
 		SaveManager.save_game()
 		_refresh())
@@ -159,11 +183,21 @@ func _build_main(box: VBoxContainer) -> void:
 	for b in [_button(row, "Настройки", func() -> void: _show("settings")),
 			_button(row, "Управление", func() -> void: _show("controls"))]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(box, "Сообщить об ошибке", _report_bug)
 	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
 	if not OS.has_feature("web"):
 		_button(box, "Выйти из игры", func() -> void:
 			SaveManager.autosave()
 			get_tree().quit())
+
+
+## Страница «новая проблема» на GitHub: заголовок и сведения об игре уже
+## заполнены, остаётся описать, что случилось.
+func _report_bug() -> void:
+	var info := "Что случилось:\n\n\nКак повторить:\n\n\n---\nУстройство: %s%s, экран %s\nДень %d, %s, детализация %d" % [
+		OS.get_name(), " (телефон)" if GameManager.touch_mode else "",
+		str(get_viewport().get_visible_rect().size), TimeManager.day, TimeManager.clock_text(), SettingsManager.detail]
+	OS.shell_open("%s?title=%s&body=%s" % [ISSUES_URL, "Ошибка в игре".uri_encode(), info.uri_encode()])
 
 
 func _build_settings(box: VBoxContainer) -> void:
@@ -199,6 +233,33 @@ func _build_settings(box: VBoxContainer) -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(380, 0)
 	box.add_child(hint)
+	# Размер текста и кнопок
+	var ts_label := Label.new()
+	ts_label.text = "Размер текста"
+	box.add_child(ts_label)
+	var ts := HBoxContainer.new()
+	ts.add_theme_constant_override("separation", 6)
+	box.add_child(ts)
+	var tg := ButtonGroup.new()
+	for i in 3:
+		var v: float = [1.0, 1.2, 1.4][i]
+		var b := Button.new()
+		b.text = ["Обычный", "Крупнее", "Крупный"][i]
+		b.toggle_mode = true
+		b.button_group = tg
+		b.button_pressed = absf(SettingsManager.text_scale - v) < 0.01
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, _btn_h())
+		b.pressed.connect(func() -> void:
+			SoundLibrary.play("click", -6.0)
+			SettingsManager.set_text_scale(v))
+		ts.add_child(b)
+	if GameManager.touch_mode:
+		var lefty := CheckButton.new()
+		lefty.text = "Под левую руку: джойстик и руль справа"
+		lefty.button_pressed = SettingsManager.left_hand
+		lefty.toggled.connect(SettingsManager.set_left_hand)
+		box.add_child(lefty)
 	# На телефоне кнопок сцепления и передач нет — там всегда автомат
 	if not GameManager.touch_mode:
 		var gearbox := CheckButton.new()
@@ -311,6 +372,11 @@ func _controls_bbcode() -> String:
 	t += "  Каждое утро звонят с поручением (◆ в задании) — выполни до полуночи\n"
 	t += "  Воскресенье (каждый 7-й день) — ярмарка на площади: рыба вдвое дороже, лотерея\n"
 	t += "  Своё дело: ларёк у склада и СТО продаются — каждое утро приносят доход\n"
+	t += "  Колхоз: трактор МТЗ-80 у сарая, щит «ПАХОТА» — 6 борозд на поле, +700 грн\n"
+	t += "  Огород: поливай картошку каждый день (дождь польёт сам) — урожай больше\n"
+	t += "  Неделя — сезон: лето, осень, зима (снег, скользко), весна\n"
+	t += "  Жители живут по распорядку: утром у сельмага, вечером на лавочке, ночью спят\n"
+	t += "  Меню: три ячейки сохранения, размер текста — в «Настройках»\n"
 	t += "  Дороги: полевое кольцо мимо колхоза и лесная дорога через мост; ямы трясут\n"
 	t += "  Светофор у поворота в город: на красный — штраф 100 грн. Утром и вечером\n    через деревенскую улицу идут коровы — подожди\n"
 	t += "  Не забывай есть и спать — иначе обморок и потеря денег\n"
@@ -397,6 +463,9 @@ func _fit_height() -> void:
 
 func _refresh() -> void:
 	var has := SaveManager.has_save()
+	for i in _slot_buttons.size():
+		_slot_buttons[i].text = "%d: %s" % [i + 1, SaveManager.slot_info(i + 1)]
+		_slot_buttons[i].set_pressed_no_signal(SettingsManager.slot == i + 1)
 	_resume.text = "Начать" if _main_mode and not has else "Продолжить"
 	_continue.visible = _main_mode and has
 	_resume.visible = not (_main_mode and has)

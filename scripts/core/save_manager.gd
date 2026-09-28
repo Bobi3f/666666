@@ -10,7 +10,14 @@ extends Node
 ## Сохраняется всё, что лежит в группе "persist" и умеет save_state/load_state,
 ## плюс синглтоны с деньгами, временем, потребностями, погодой и целями.
 
-const PATH := "user://save.json"
+## Три ячейки: первая — прежний файл, чтобы старые сохранения не пропали.
+static func path_for(slot: int) -> String:
+	return "user://save.json" if slot <= 1 else "user://save%d.json" % slot
+
+
+var PATH: String:
+	get:
+		return path_for(SettingsManager.slot)
 ## Автосохранение раз в столько секунд настоящей игры (не паузы).
 const AUTOSAVE_EVERY := 150.0
 
@@ -80,6 +87,20 @@ func save_game(quiet := false) -> bool:
 
 func has_save() -> bool:
 	return FileAccess.file_exists(PATH)
+
+
+## Что лежит в ячейке — для кнопок меню: «день 5, 3200 грн» или «пусто».
+func slot_info(slot: int) -> String:
+	var p := path_for(slot)
+	if not FileAccess.file_exists(p):
+		return "пусто"
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(p))
+	if not parsed is Dictionary:
+		return "повреждено"
+	var d: Dictionary = parsed
+	var day := int(d.get("TimeManager", {}).get("day", 1))
+	var money := int(d.get("GameManager", {}).get("money", 0))
+	return "день %d, %d грн" % [day, money]
 
 
 func load_game() -> bool:

@@ -17,8 +17,38 @@ var auto_gearbox := true
 ## Детализация: 0 — низкая (без травы и теней), 1 — средняя, 2 — высокая.
 ## В браузере по умолчанию средняя: WebGL медленнее настольной графики.
 ## На телефоне — низкая: трава и тени для мобильной графики слишком тяжелы.
+## Размер текста и кнопок: 1 — обычный, 1.2 — крупнее, 1.4 — крупный.
+var text_scale := 1.0
+## Телефон под левую руку: джойстик и руль справа, кнопки слева.
+var left_hand := false
+## Ячейка сохранения 1–3.
+var slot := 1
 var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
 	else (1 if OS.has_feature("web") else 2)
+
+
+## Слабый телефон: если игра долго идёт медленно, детализация снижается
+## сама (раз в полминуты, не ниже низкой); на низкой — ещё и 3D в половину
+## разрешения. В тестах (--no-menu) не трогаем.
+var _slow := 0.0
+var _auto := not ("--no-menu" in OS.get_cmdline_user_args())
+
+
+func _process(delta: float) -> void:
+	if not _auto or not GameManager.in_game or get_tree().paused:
+		_slow = 0.0
+		return
+	var fps := Engine.get_frames_per_second()
+	_slow = _slow + delta if fps > 0 and fps < 24 else maxf(_slow - delta * 2.0, 0.0)
+	if _slow < 15.0:
+		return
+	_slow = -15.0
+	if detail > 0:
+		set_detail(detail - 1)
+		GameManager.notify("Игра шла медленно — детализация снижена до «%s». Вернуть — в «Настройках»" % ["низкая", "средняя"][detail])
+	elif get_viewport().scaling_3d_scale > 0.5:
+		get_viewport().scaling_3d_scale = 0.5
+		GameManager.notify("Игра шла медленно — картинка чуть проще, зато плавнее")
 
 
 func _ready() -> void:
@@ -30,6 +60,9 @@ func _ready() -> void:
 		music = clampf(float(cfg.get_value("audio", "music", 0.5)), 0.0, 1.0)
 		auto_gearbox = bool(cfg.get_value("driving", "auto_gearbox", true))
 		detail = clampi(int(cfg.get_value("graphics", "detail", detail)), 0, 2)
+		text_scale = clampf(float(cfg.get_value("ui", "text_scale", 1.0)), 1.0, 1.4)
+		left_hand = bool(cfg.get_value("ui", "left_hand", false))
+		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 	_apply()
 
 
@@ -62,6 +95,24 @@ func set_detail(v: int) -> void:
 	changed.emit()
 
 
+func set_text_scale(v: float) -> void:
+	text_scale = clampf(v, 1.0, 1.4)
+	_save()
+	changed.emit()
+
+
+func set_left_hand(v: bool) -> void:
+	left_hand = v
+	_save()
+	changed.emit()
+
+
+func set_slot(v: int) -> void:
+	slot = clampi(v, 1, 3)
+	_save()
+	changed.emit()
+
+
 ## Дальность травы по детализации, метры (0 — травы нет).
 func grass_range() -> float:
 	return [0.0, 40.0, 75.0][detail]
@@ -85,4 +136,7 @@ func _save() -> void:
 	cfg.set_value("audio", "music", music)
 	cfg.set_value("driving", "auto_gearbox", auto_gearbox)
 	cfg.set_value("graphics", "detail", detail)
+	cfg.set_value("ui", "text_scale", text_scale)
+	cfg.set_value("ui", "left_hand", left_hand)
+	cfg.set_value("save", "slot", slot)
 	cfg.save(PATH)

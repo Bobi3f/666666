@@ -5,6 +5,7 @@ extends Node3D
 var _crickets: AudioStreamPlayer
 var _rain_snd: AudioStreamPlayer
 var _rain: CPUParticles3D
+var _snow: CPUParticles3D
 var _bird_timer := 3.0
 var _rng := RandomNumberGenerator.new()
 
@@ -23,6 +24,33 @@ func _ready() -> void:
 	_rain_snd.play()
 	_rain = _make_rain()
 	add_child(_rain)
+	_snow = _make_snow()
+	add_child(_snow)
+
+
+## Снегопад: крупные хлопья медленно кружат вокруг камеры.
+func _make_snow() -> CPUParticles3D:
+	var r := CPUParticles3D.new()
+	r.amount = 900
+	r.lifetime = 5.0
+	r.local_coords = false
+	r.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	r.emission_box_extents = Vector3(16, 0.5, 16)
+	r.direction = Vector3(0.2, -1, 0.1)
+	r.spread = 25.0
+	r.gravity = Vector3(0, -0.6, 0)
+	r.initial_velocity_min = 1.2
+	r.initial_velocity_max = 2.0
+	var flake := QuadMesh.new()
+	flake.size = Vector2(0.07, 0.07)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.95, 0.96, 1.0)
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	flake.material = mat
+	r.mesh = flake
+	r.emitting = false
+	return r
 
 
 func _make_rain() -> CPUParticles3D:
@@ -63,12 +91,15 @@ func _process(delta: float) -> void:
 	var in_car: bool = car != null and car.spec.roof
 
 	# Дождь: капли над головой, шум — снаружи (в машине стучит по крыше сама машина)
+	var snowing := WeatherManager.snowing()
 	_rain.global_position = cam.global_position + Vector3(0, 9, 0)
-	_rain.emitting = rain > 0.25
-	_fade(_rain_snd, -4.0 if rain > 0.1 and not in_car else -80.0, rain, delta)
+	_rain.emitting = rain > 0.25 and not snowing
+	_snow.global_position = cam.global_position + Vector3(0, 7, 0)
+	_snow.emitting = rain > 0.25 and snowing
+	_fade(_rain_snd, -4.0 if rain > 0.1 and not in_car and not snowing else -80.0, rain, delta)
 
 	# Сверчки — ночью и без дождя
-	_fade(_crickets, -10.0 if night and rain < 0.3 else -80.0, 1.0, delta)
+	_fade(_crickets, -10.0 if night and rain < 0.3 and WeatherManager.season() != 2 else -80.0, 1.0, delta)
 
 	# Птицы — днём, в хорошую погоду, где-нибудь неподалёку
 	if not night and rain < 0.3 and not in_car:

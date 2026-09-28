@@ -89,6 +89,21 @@ const SPECS := {
 			Vector3(-0.62, 0.46, 1.55), Vector3(0.62, 0.46, 1.55)],
 		"tail": [Vector3(-0.97, 0.9, 3.23), Vector3(0.97, 0.9, 3.23)], "lamps": [Vector3(-0.92, 1.22, -3.02), Vector3(0.92, 1.22, -3.02)],
 	},
+	# Колхозный трактор: медленный, тянет по пашне как по асфальту.
+	# Колёса — [где, радиус, ширина]: задние огромные, передние маленькие.
+	"tractor": {
+		"title": "МТЗ-80", "ratios": {-1: -9.0, 0: 0.0, 1: 9.0, 2: 5.5, 3: 3.4, 4: 2.2},
+		"final": 8.0, "wheel_r": 0.72, "mass": 3400.0, "idle": 700.0, "redline": 2300.0,
+		"torque": 560.0, "peak_rpm": 1500.0, "inertia": 0.6, "wheelbase": 2.4, "max_steer": 0.62,
+		"tank": 130.0, "fuel_k": 1.8, "grip": 10.0, "drag": 1.2, "brake": 6.0,
+		"shape": Vector3(1.9, 2.4, 4.4), "shape_y": 1.35,
+		"seat": Vector3(0, 2.3, 0.62), "exit": Vector3(-1.9, 0.2, 0.6),
+		"chase": Vector3(0, 4.6, 8.5), "roof": true, "two_wheels": false,
+		"offroad": 1.6, "mud": 0.25, "paint": 2,
+		"wheels": [[Vector3(-0.92, 0.72, 0.9), 0.72, 0.42], [Vector3(0.92, 0.72, 0.9), 0.72, 0.42],
+			[Vector3(-0.78, 0.42, -1.4), 0.42, 0.22], [Vector3(0.78, 0.42, -1.4), 0.42, 0.22]],
+		"tail": [Vector3(-0.7, 1.4, 1.67), Vector3(0.7, 1.4, 1.67)], "lamps": [Vector3(-0.29, 1.31, -2.13), Vector3(0.29, 1.31, -2.13)],
+	},
 }
 
 ## Краски в СТО: первая — заводская.
@@ -144,6 +159,8 @@ var _wheels: Array[Node3D] = []
 var _engine_snd: AudioStreamPlayer3D
 var _skid_snd: AudioStreamPlayer3D
 var _rain_snd: AudioStreamPlayer
+## Шины по гравию или траве — слышно, по чему едешь
+var _road_snd: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 var _warned_fuel := false
 var _headlights: Array[SpotLight3D] = []
@@ -187,6 +204,7 @@ func _ready() -> void:
 		_build_moto()
 	else:
 		_build_car()
+	_build_gauges()
 	# Камеры отдельно от машины: сглаживаются между шагами физики, иначе
 	# на телефоне и в браузере картинка при езде подёргивается
 	_seat_mark = Node3D.new()
@@ -251,6 +269,8 @@ func _ready() -> void:
 	_rain_snd.stream = SoundLibrary.stream("rain")
 	_rain_snd.volume_db = -6.0
 	add_child(_rain_snd)
+	_road_snd = AudioStreamPlayer.new()
+	add_child(_road_snd)
 	var lamps: Array = spec.get("lamps", [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)])
 	for p in lamps:
 		var l := SpotLight3D.new()
@@ -572,7 +592,7 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 			if not auto:
 				QuestManager.event("manual_m", d)
 	for wn in _wheels:
-		wn.rotation.x -= speed / wheel_r * dt
+		wn.rotation.x -= speed / wheel_r * dt * float(wn.get_meta("k", 1.0))
 	_update_sound()
 	_update_lights()
 
@@ -682,6 +702,13 @@ func _move(dt: float, handbrake: bool) -> void:
 
 ## Покрытие под колёсами: сопротивление качению и сцепление шин.
 func surface() -> Dictionary:
+	var s := _surface()
+	# Зимой снег и лёд — держит хуже везде
+	s.grip = float(s.grip) * WeatherManager.ice_factor()
+	return s
+
+
+func _surface() -> Dictionary:
 	if on_asphalt():
 		return {"roll": 1.0, "grip": 1.0 - WeatherManager.rain * 0.15}
 	var mud := WeatherManager.mud_factor()
@@ -730,12 +757,36 @@ func _update_sound() -> void:
 		_skid_snd.volume_db = linear_to_db(clampf((skid - 2.5) / 5.0, 0.05, 1.0)) - 2.0
 	elif _skid_snd.playing:
 		_skid_snd.stop()
-	var want_rain: bool = driver != null and spec.roof and WeatherManager.rain > 0.3
+	_update_road_sound()
+	var want_rain: bool = driver != null and spec.roof and WeatherManager.rain > 0.3 and not WeatherManager.snowing()
 	if want_rain != _rain_snd.playing:
 		if want_rain:
 			_rain_snd.play()
 		else:
 			_rain_snd.stop()
+
+
+func _update_road_sound() -> void:
+	var v := absf(speed)
+	var kind := ""
+	if driver != null and v > 1.0 and not on_asphalt():
+		var p := global_position
+		var dirt: bool = Roads.on_gravel(p.x, p.z) or Roads.on_forest_road(p.x, p.z) or float(_surface().roll) < 3.0
+		kind = "gravel" if dirt else "grass"
+		# Зимой под колёсами снег — скрипит, как гравий, только тише
+		if WeatherManager.snow > 0.5:
+			kind = "gravel"
+	if kind == "":
+		if _road_snd.playing:
+			_road_snd.stop()
+		return
+	var s := SoundLibrary.stream(kind)
+	if _road_snd.stream != s:
+		_road_snd.stream = s
+	if not _road_snd.playing:
+		_road_snd.play()
+	_road_snd.pitch_scale = clampf(0.75 + v / 25.0, 0.75, 1.6)
+	_road_snd.volume_db = linear_to_db(clampf(v / 14.0, 0.05, 1.0)) - (4.0 if spec.roof else 0.0)
 
 
 ## Фары: сами — в темноте, тумане и дождь; L — в любое время.
@@ -850,6 +901,8 @@ func _paint_body() -> void:
 			VehicleModels.volga(b, col, glass)
 		"truck":
 			VehicleModels.gaz53(b, col, glass)
+		"tractor":
+			VehicleModels.tractor(b, col, glass)
 		_:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
@@ -894,7 +947,10 @@ func _build_car() -> void:
 	_paint_body()
 	_brake_lights(spec.get("tail", [Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)]), Vector3(0.16, 0.12, 0.03))
 	for p in spec.get("wheels", [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]):
-		_wheel(p, false)
+		if p is Array:
+			_wheel(p[0], false, p[1], p[2])
+		else:
+			_wheel(p, false)
 
 
 func _build_moto() -> void:
@@ -918,14 +974,18 @@ func _build_moto() -> void:
 	_body.add_child(_rider)
 
 
-func _wheel(p: Vector3, moto: bool) -> void:
+func _wheel(p: Vector3, moto: bool, r := 0.0, w := 0.2) -> void:
 	var wb := MeshBuilder.new()
 	wb.ground_shade = false
+	if r <= 0.0:
+		r = spec.wheel_r
 	if moto:
-		VehicleModels.moto_wheel(wb, spec.wheel_r)
+		VehicleModels.moto_wheel(wb, r)
 	else:
-		VehicleModels.car_wheel(wb, spec.wheel_r, 0.2)
+		VehicleModels.car_wheel(wb, r, w)
 	var n := Node3D.new()
+	# Маленькие колёса крутятся быстрее
+	n.set_meta("k", float(spec.wheel_r) / r)
 	n.position = p
 	n.add_child(wb.build_mesh())
 	_body.add_child(n)
@@ -951,6 +1011,118 @@ func _process(_delta: float) -> void:
 	# От первого лица мотоциклиста не рисуем — камера у него в голове
 	if _rider:
 		_rider.visible = driver != null and chase_view
+	if driver != null and not _needles.is_empty():
+		var top: float = {"moto": 140.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
+		var k_rpm := clampf(rpm / float(spec.redline) * 0.85, 0.0, 1.0)
+		for i in _needles.size():
+			var k := k_speed if i == 0 else k_rpm
+			var target := deg_to_rad(135.0 - 270.0 * k)
+			(_needles[i] as Node3D).rotation.z = lerp_angle((_needles[i] as Node3D).rotation.z, target, minf(_delta * 12.0, 1.0))
+
+
+# --- Приборы на торпедо -------------------------------------------------------
+
+## Где стоят круглые приборы в салоне: [центр, радиус, наклон назад]. Первый —
+## спидометр, второй — тахометр. У мотоцикла один спидометр на фаре.
+func _gauge_spots() -> Array:
+	match kind:
+		"car":
+			return [[Vector3(-0.41, 1.04, -0.327), 0.03, 0.0], [Vector3(-0.28, 1.04, -0.327), 0.03, 0.0]]
+		"moto":
+			return [[Vector3(0.0, 1.122, -0.89), 0.042, -1.1]]
+		"tractor":
+			return [[Vector3(-0.15, 1.72, -0.148), 0.045, 0.0], [Vector3(0.15, 1.72, -0.148), 0.045, 0.0]]
+	# Машины из салона: торпедо по _cabin(dz, y, hx)
+	var cab: Array = {"niva": [-0.66, 0.62, 0.72], "volga": [-0.8, 0.5, 0.76], "truck": [-2.05, 1.12, 0.95]}.get(kind, [])
+	if cab.is_empty():
+		return []
+	var dz: float = cab[0]
+	var y: float = cab[1]
+	var hx: float = cab[2]
+	var r := hx * 0.075
+	return [[Vector3(-hx * 0.6, y + 0.44, dz + 0.262), r, 0.0], [Vector3(-hx * 0.4, y + 0.44, dz + 0.262), r, 0.0]]
+
+
+var _needles: Array[Node3D] = []
+static var _dial_tex: ImageTexture
+
+
+func _build_gauges() -> void:
+	var spots := _gauge_spots()
+	if spots.is_empty():
+		return
+	var face_mat := StandardMaterial3D.new()
+	face_mat.albedo_texture = _dial_texture()
+	face_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	# Подсветка приборов: видно и ночью
+	face_mat.emission_enabled = true
+	face_mat.emission_texture = face_mat.albedo_texture
+	face_mat.emission_energy_multiplier = 0.35
+	var needle_mat := StandardMaterial3D.new()
+	needle_mat.albedo_color = Color(1.0, 0.45, 0.15)
+	needle_mat.emission_enabled = true
+	needle_mat.emission = Color(1.0, 0.45, 0.15)
+	needle_mat.emission_energy_multiplier = 0.6
+	for s in spots:
+		var r: float = s[1]
+		var holder := Node3D.new()
+		holder.position = s[0]
+		holder.rotation.x = s[2]
+		_body.add_child(holder)
+		var face := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(r, r) * 2.0
+		face.mesh = q
+		face.material_override = face_mat
+		face.position.z = 0.001
+		face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(face)
+		var pivot := Node3D.new()
+		pivot.position.z = 0.003
+		holder.add_child(pivot)
+		var needle := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(r * 0.08, r * 0.85, 0.001)
+		needle.mesh = bm
+		needle.position.y = r * 0.36
+		needle.material_override = needle_mat
+		needle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pivot.add_child(needle)
+		pivot.rotation.z = deg_to_rad(135.0)
+		_needles.append(pivot)
+
+
+## Циферблат: тёмный круг, белые риски через 30°, красная зона в конце.
+static func _dial_texture() -> ImageTexture:
+	if _dial_tex:
+		return _dial_tex
+	var n := 64
+	var img := Image.create(n, n, true, Image.FORMAT_RGBA8)
+	var c := Vector2(n, n) * 0.5
+	for y in n:
+		for x in n:
+			var d := Vector2(x + 0.5, y + 0.5) - c
+			var r := d.length() / (n * 0.5)
+			if r > 1.0:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+				continue
+			var col := Color(0.08, 0.08, 0.09)
+			if r > 0.92:
+				col = Color(0.6, 0.6, 0.62)
+			elif r > 0.72:
+				# Угол от «12 часов» по часовой: шкала от −135° до +135°
+				var ang := rad_to_deg(atan2(d.x, -d.y))
+				if absf(ang) <= 136.0:
+					var tick := fposmod(ang + 135.0, 30.0)
+					if tick < 3.0 or tick > 27.0:
+						col = Color(0.95, 0.95, 0.9)
+					elif ang > 95.0 and r > 0.8:
+						col = Color(0.75, 0.15, 0.1)
+			img.set_pixel(x, y, col)
+	img.generate_mipmaps()
+	_dial_tex = ImageTexture.create_from_image(img)
+	return _dial_tex
 
 
 # --- Сохранение -------------------------------------------------------------

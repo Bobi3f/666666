@@ -25,6 +25,8 @@ var time_limit := 60.0
 var park_center := Vector3.ZERO
 var park_size := Vector2.ZERO
 var only_car := false
+## Только эта машина (kind), например трактор на пахоте; "" — любая.
+var only_kind := ""
 ## Насколько близко нужно проехать к точке: на гонке шире, на экзамене — точно.
 var point_radius := 3.0
 
@@ -135,6 +137,8 @@ func _vehicle() -> Vehicle:
 	var v := GameManager.vehicle as Vehicle
 	if v and only_car and v.spec.two_wheels:
 		return null
+	if v and only_kind != "" and v.kind != only_kind:
+		return null
 	return v
 
 
@@ -150,7 +154,10 @@ func _process(delta: float) -> void:
 	_start_ring.rotate_y(-delta)
 	var v := _vehicle()
 	if state == State.ARMED:
-		GameManager.challenge_line = "%s: въезжай на старт — жёлтый круг%s" % [title, "" if not only_car else " (на Жигулях)"]
+		var on := " (на Жигулях)" if only_car else ""
+		if only_kind != "":
+			on = " (на тракторе)"
+		GameManager.challenge_line = "%s: въезжай на старт — жёлтый круг%s" % [title, on]
 		if v and _flat(v.global_position, start_pos) < 3.5:
 			state = State.RUNNING
 			t = 0.0

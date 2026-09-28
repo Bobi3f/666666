@@ -119,24 +119,80 @@ func build_mesh(unshaded := false) -> MeshInstance3D:
 
 ## Только меш с материалом, без узла — для MultiMesh.
 func build_array_mesh(unshaded := false) -> ArrayMesh:
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.92
+	var mat: Material
 	if unshaded:
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var um := StandardMaterial3D.new()
+		um.vertex_color_use_as_albedo = true
+		um.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat = um
 	else:
-		# Фактура: мелкое зерно и пятна поверх цвета вершин, наложенные
-		# по трём осям — доски, штукатурка, асфальт и трава перестают быть
-		# ровной заливкой. Геометрии и вызовов отрисовки не добавляет.
-		mat.albedo_texture = grain()
-		mat.uv1_triplanar = true
-		mat.uv1_scale = Vector3(0.9, 0.9, 0.9)
-		mat.albedo_color = Color(1.08, 1.08, 1.08)
+		mat = world_material()
 	if _count == 0:
 		return null
 	var mesh := _st.commit()
 	mesh.surface_set_material(0, mat)
 	return mesh
+
+
+## Общий материал всего мира: цвет вершин, зерно по трём осям (доски,
+## штукатурка, асфальт и трава перестают быть ровной заливкой) и сезоны —
+## осенью зелень желтеет, зимой земля и скаты крыш под снегом.
+const WORLD_SHADER := """
+shader_type spatial;
+
+uniform sampler2D grain : source_color, filter_linear_mipmap, repeat_enable;
+uniform float snow = 0.0;
+uniform float autumn = 0.0;
+uniform float spring = 0.0;
+
+varying vec3 wpos;
+varying vec3 wnrm;
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+void fragment() {
+	vec3 w = abs(wnrm);
+	w /= (w.x + w.y + w.z);
+	vec3 p = wpos * 0.9;
+	float g = texture(grain, p.zy).r * w.x + texture(grain, p.xz).r * w.y + texture(grain, p.xy).r * w.z;
+	vec3 c = COLOR.rgb;
+	// Насколько цвет «зелёный» — трава, листва, ботва
+	float green = clamp((c.g - max(c.r, c.b)) * 6.0, 0.0, 1.0);
+	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
+	c = mix(c, c * vec3(1.0, 1.12, 0.95), spring * green);
+	// Снег: на земле (низко и ровно) и на скатах крыш
+	float flat_up = smoothstep(0.55, 0.85, wnrm.y);
+	float ground = flat_up * (1.0 - smoothstep(0.1, 0.2, wpos.y)) * mix(0.6, 1.0, green);
+	float roof = smoothstep(0.25, 0.45, wnrm.y) * (1.0 - smoothstep(0.9, 0.97, wnrm.y)) * smoothstep(2.0, 2.6, wpos.y);
+	float s = snow * max(ground, roof);
+	c = mix(c, vec3(0.9, 0.92, 0.96), s * (0.8 + 0.2 * g));
+	ALBEDO = c * g * 1.08;
+	ROUGHNESS = 0.92;
+}
+"""
+
+static var _world_mat: ShaderMaterial
+
+
+static func world_material() -> ShaderMaterial:
+	if _world_mat == null:
+		var sh := Shader.new()
+		sh.code = WORLD_SHADER
+		_world_mat = ShaderMaterial.new()
+		_world_mat.shader = sh
+		_world_mat.set_shader_parameter("grain", grain())
+	return _world_mat
+
+
+## Сезон для всего мира: снег, осень, весна — от 0 до 1.
+static func set_season(snow: float, autumn: float, spring: float) -> void:
+	var m := world_material()
+	m.set_shader_parameter("snow", snow)
+	m.set_shader_parameter("autumn", autumn)
+	m.set_shader_parameter("spring", spring)
 
 
 static var _grain: ImageTexture

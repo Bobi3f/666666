@@ -127,6 +127,10 @@ func _ready() -> void:
 	var taxi := TaxiJob.new()
 	taxi.name = "Taxi"
 	add_child(taxi)
+	add_child(preload("res://scripts/world/night_sky.gd").new())
+	var plough := preload("res://scripts/world/tractor_job.gd").new()
+	plough.name = "TractorJob"
+	add_child(plough)
 	var radio := preload("res://scripts/world/radio.gd").new()
 	radio.name = "Radio"
 	add_child(radio)
@@ -162,14 +166,21 @@ func _ready() -> void:
 		# Телефон: экран с высокой плотностью точек — 3D рисуем в 65 %
 		# разрешения, интерфейс остаётся чётким
 		get_viewport().scaling_3d_scale = 0.65
-		# Интерфейс под высоту экрана: около 600 точек по высоте, как на мониторе,
-		# иначе на плотном экране телефона надписи и кнопки крошечные
-		var win := get_window()
-		var fit := func() -> void:
-			win.content_scale_factor = maxf(1.0, win.size.y / 600.0)
-		fit.call()
-		win.size_changed.connect(fit)
+	# Интерфейс под высоту экрана: на телефоне около 600 точек по высоте, как
+	# на мониторе (иначе на плотном экране надписи крошечные), плюс размер
+	# текста из настроек
+	_fit_ui()
+	get_window().size_changed.connect(_fit_ui)
+	SettingsManager.changed.connect(_fit_ui)
 	GameManager.notify("Утро в Каменке. Задание — слева вверху, журнал — J, управление — F1")
+
+
+func _fit_ui() -> void:
+	var win := get_window()
+	var base := maxf(1.0, win.size.y / 600.0) if GameManager.touch_mode else 1.0
+	var k := base * SettingsManager.text_scale
+	if absf(win.content_scale_factor - k) > 0.001:
+		win.content_scale_factor = k
 
 
 func _process(_delta: float) -> void:
@@ -228,7 +239,11 @@ func _update_daylight() -> void:
 	var grey := Color(0.52, 0.54, 0.56)
 	_sky.sky_top_color = _sky_top.lerp(grey, cloud * 0.8)
 	_sky.sky_horizon_color = _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8)
-	_env.fog_density = 0.0025 + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03
+	# Утром над полями стелется дымка: гуще всего на рассвете, к 9 уходит
+	var mist := clampf(1.0 - absf(h - 6.2) / 2.6, 0.0, 1.0) * (1.0 - WeatherManager.rain)
+	if WeatherManager.season() == 1:
+		mist *= 1.6
+	_env.fog_density = 0.0025 + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03 + mist * 0.009
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
 	_sun.visible = day > 0.01
 	_env.background_energy_multiplier = lerpf(0.06, 1.0, day)
@@ -2259,7 +2274,7 @@ func _take_delivery() -> void:
 	var car: Vehicle = null
 	for v in get_tree().get_nodes_in_group("vehicles"):
 		var vv := v as Vehicle
-		if vv.owned() and not vv.spec.two_wheels and vv.global_position.distance_to(Vector3(27.5, 0, 28.0)) < 25.0:
+		if vv.owned() and not vv.spec.two_wheels and vv.kind != "tractor" and vv.global_position.distance_to(Vector3(27.5, 0, 28.0)) < 25.0:
 			car = vv
 			if vv == GameManager.vehicle:
 				break

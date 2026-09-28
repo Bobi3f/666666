@@ -50,6 +50,8 @@ func _ready() -> void:
 	_streams["skid"] = _make(_skid(), true)
 	_streams["quest"] = _make(_quest(), false)
 	_streams["moo"] = _make(_moo(), false)
+	_streams["gravel"] = _make(_gravel(), true)
+	_streams["grass"] = _make(_grass(), true)
 	SettingsManager.changed.connect(_apply_music_volume)
 
 
@@ -394,6 +396,42 @@ func _rain() -> PackedFloat32Array:
 		var k := float(i) / fade
 		a[i] = a[i] * k + a[a.size() - fade + i] * (1.0 - k)
 	return a
+
+
+## Шины по гравию: частые щелчки камешков поверх глухого шума.
+func _gravel() -> PackedFloat32Array:
+	var a := _buf(1.2)
+	var lp := 0.0
+	var click := 0.0
+	for i in a.size():
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.08
+		if _rng.randf() < 0.006:
+			click = _rng.randf_range(0.3, 0.8) * (1.0 if _rng.randf() < 0.5 else -1.0)
+		click *= 0.93
+		a[i] = lp * 0.5 + click * _rng.randf_range(0.6, 1.0)
+	_loop_fade(a)
+	return a
+
+
+## Шины по траве: мягкий шелест, чуть волнами.
+func _grass() -> PackedFloat32Array:
+	var a := _buf(1.5)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.25
+		lp2 += (lp - lp2) * 0.3
+		a[i] = (lp - lp2) * 0.9 * (0.75 + 0.25 * sin(t * TAU * 2.0))
+	_loop_fade(a)
+	return a
+
+
+func _loop_fade(a: PackedFloat32Array) -> void:
+	var fade := 400
+	for i in fade:
+		var k := float(i) / fade
+		a[i] = a[i] * k + a[a.size() - fade + i] * (1.0 - k)
 
 
 func _horn() -> PackedFloat32Array:

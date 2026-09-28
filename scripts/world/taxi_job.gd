@@ -93,7 +93,8 @@ func _wait_at(i: int) -> void:
 
 func _car() -> Vehicle:
 	var v := GameManager.vehicle as Vehicle
-	return v if v and not v.spec.two_wheels else null
+	# На мотоцикле и тракторе пассажиров не возят
+	return v if v and not v.spec.two_wheels and v.kind != "tractor" else null
 
 
 func _process(delta: float) -> void:
