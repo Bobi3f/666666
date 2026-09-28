@@ -122,6 +122,10 @@ func _ready() -> void:
 	var life := StreetLife.new()
 	life.name = "StreetLife"
 	add_child(life)
+	SoundLibrary.start_music()
+	var taxi := TaxiJob.new()
+	taxi.name = "Taxi"
+	add_child(taxi)
 	add_child(preload("res://scripts/world/villagers.gd").new())
 	var home := preload("res://scripts/world/home_items.gd").new()
 	home.name = "HomeItems"
@@ -1836,6 +1840,14 @@ func _build_town_center(b: MeshBuilder, glow: MeshBuilder) -> void:
 	b.box(Vector3(c.x + 3.05, 0, sq.position.y + 0.1), Vector3(c.x + 3.2, 2.9, sq.position.y + 0.25), Color(0.3, 0.3, 0.32))
 	b.box(Vector3(c.x - 3.2, 2.35, sq.position.y + 0.05), Vector3(c.x + 3.2, 2.9, sq.position.y + 0.12), Color(0.2, 0.3, 0.55))
 
+	# Стоянка такси у главной улицы: столбик с шашечками
+	var ts := Vector3(103.2, 0, 13.2)
+	b.box(ts + Vector3(-0.05, 0, -0.05), ts + Vector3(0.05, 2.6, 0.05), Color(0.35, 0.35, 0.37), true)
+	b.box(ts + Vector3(-0.5, 2.0, -0.04), ts + Vector3(0.5, 2.6, 0.04), Color(0.95, 0.8, 0.15))
+	for k in 5:
+		b.box(ts + Vector3(-0.5 + k * 0.2, 2.0, -0.05), ts + Vector3(-0.4 + k * 0.2, 2.1, 0.05), Color(0.1, 0.1, 0.1))
+	_label("ТАКСИ", ts + Vector3(0, 2.36, -0.06), PI, 0.004, Color(0.1, 0.1, 0.1))
+	_label("ТАКСИ", ts + Vector3(0, 2.36, 0.06), 0.0, 0.004, Color(0.1, 0.1, 0.1))
 	# Кафе «Встреча» и «Хозтовары» — через улицу, входом к ней
 	_town_shop(b, glow, Vector3(84.5, 0, 16.5), "КАФЕ «ВСТРЕЧА»", Color(0.85, 0.75, 0.55), Color(0.7, 0.2, 0.15))
 	_town_shop(b, glow, Vector3(84.5, 0, 28.0), "ХОЗТОВАРЫ", Color(0.72, 0.78, 0.7), Color(0.2, 0.45, 0.3))

@@ -170,6 +170,7 @@ func _build_settings(box: VBoxContainer) -> void:
 	_slider(box, "Чувствительность камеры" if GameManager.touch_mode else "Чувствительность мыши",
 		0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
 	_slider(box, "Громкость", 0.0, 1.0, SettingsManager.volume, SettingsManager.set_volume)
+	_slider(box, "Музыка", 0.0, 1.0, SettingsManager.music, SettingsManager.set_music)
 	var detail_label := Label.new()
 	detail_label.text = "Детализация"
 	box.add_child(detail_label)
@@ -305,6 +306,7 @@ func _controls_bbcode() -> String:
 	t += "  Колька у съезда из деревни: спор на 200 — доехать до города за 20 с\n"
 	t += "  СТО у трассы: ремонт и тюнинг — резина, мотор, покраска\n"
 	t += "  Город: кафе «Встреча» — горячий обед, «Хозтовары» — телевизор, щенок, теплица\n"
+	t += "  Такси (с правами): подъедь на Жигулях к пассажиру у кольца и остановись —\n    отвези, куда скажет; быстро и мягко — чаевые\n"
 	t += "  Дороги: полевое кольцо мимо колхоза и лесная дорога через мост; ямы трясут\n"
 	t += "  Светофор у поворота в город: на красный — штраф 100 грн. Утром и вечером\n    через деревенскую улицу идут коровы — подожди\n"
 	t += "  Не забывай есть и спать — иначе обморок и потеря денег\n"

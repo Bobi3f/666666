@@ -10,6 +10,8 @@ const PATH := "user://settings.cfg"
 var mouse_sens := 1.0
 ## Громкость 0–1.
 var volume := 0.8
+## Громкость фоновой музыки отдельно от звуков.
+var music := 0.5
 ## Автоматическая коробка передач (T в машине переключает).
 var auto_gearbox := true
 ## Детализация: 0 — низкая (без травы и теней), 1 — средняя, 2 — высокая.
@@ -25,6 +27,7 @@ func _ready() -> void:
 	if cfg.load(PATH) == OK:
 		mouse_sens = clampf(float(cfg.get_value("input", "mouse_sens", 1.0)), 0.2, 3.0)
 		volume = clampf(float(cfg.get_value("audio", "volume", 0.8)), 0.0, 1.0)
+		music = clampf(float(cfg.get_value("audio", "music", 0.5)), 0.0, 1.0)
 		auto_gearbox = bool(cfg.get_value("driving", "auto_gearbox", true))
 		detail = clampi(int(cfg.get_value("graphics", "detail", detail)), 0, 2)
 	_apply()
@@ -33,6 +36,12 @@ func _ready() -> void:
 func set_mouse_sens(v: float) -> void:
 	mouse_sens = clampf(v, 0.2, 3.0)
 	_save()
+
+
+func set_music(v: float) -> void:
+	music = clampf(v, 0.0, 1.0)
+	_save()
+	changed.emit()
 
 
 func set_volume(v: float) -> void:
@@ -73,6 +82,7 @@ func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("input", "mouse_sens", mouse_sens)
 	cfg.set_value("audio", "volume", volume)
+	cfg.set_value("audio", "music", music)
 	cfg.set_value("driving", "auto_gearbox", auto_gearbox)
 	cfg.set_value("graphics", "detail", detail)
 	cfg.save(PATH)

@@ -112,6 +112,7 @@ func _draw_map() -> void:
 		["Кафе", Vector3(84.5, 0, 16.5), Color(0.95, 0.6, 0.45)],
 		["Хозтовары", Vector3(84.5, 0, 28), Color(0.55, 0.85, 0.6)],
 		["Мост", Vector3(-110, 0, -86.5), Color(0.8, 0.65, 0.45)],
+		["Такси", Vector3(103, 0, 13), Color(0.95, 0.8, 0.15)],
 	]
 	var blink := fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
 	for pl in places:

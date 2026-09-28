@@ -10,6 +10,19 @@ const RATE := 22050
 var _streams := {}
 var _rng := RandomNumberGenerator.new()
 
+# --- Фоновая музыка ---------------------------------------------------------
+## Мелодия собирается понемногу в фоне (несколько миллисекунд за кадр),
+## чтобы игра не подвисала на старте, особенно в браузере и на телефоне.
+const MUSIC_RATE := 16000
+const MUSIC_BPM := 96.0
+var music_player: AudioStreamPlayer
+var _music_events: Array = []  # [начало, длина, частота, тип, громкость]
+var _music_i := 0
+var _music_buf := PackedFloat32Array()
+var _music_wanted := false
+var _music_bytes := PackedByteArray()
+var _enc_i := 0
+
 
 func _ready() -> void:
 	_rng.seed = 7
@@ -35,6 +48,121 @@ func _ready() -> void:
 	_streams["skid"] = _make(_skid(), true)
 	_streams["quest"] = _make(_quest(), false)
 	_streams["moo"] = _make(_moo(), false)
+	SettingsManager.changed.connect(_apply_music_volume)
+
+
+## Включить фоновую музыку: соберётся за пару секунд и заиграет петлёй.
+func start_music() -> void:
+	if _music_wanted:
+		return
+	_music_wanted = true
+	_plan_music()
+
+
+func music_ready() -> bool:
+	return music_player != null
+
+
+func _process(_delta: float) -> void:
+	if not _music_wanted or music_player != null:
+		return
+	var t0 := Time.get_ticks_usec()
+	while _music_i < _music_events.size() and Time.get_ticks_usec() - t0 < 4000:
+		_render_event(_music_events[_music_i])
+		_music_i += 1
+	if _music_i < _music_events.size():
+		return
+	# Перевод в 16 бит — тоже частями
+	if _music_bytes.size() != _music_buf.size() * 2:
+		_music_bytes.resize(_music_buf.size() * 2)
+	while _enc_i < _music_buf.size() and Time.get_ticks_usec() - t0 < 4000:
+		var end := mini(_enc_i + 4000, _music_buf.size())
+		for i in range(_enc_i, end):
+			_music_bytes.encode_s16(i * 2, int(clampf(_music_buf[i], -1.0, 1.0) * 32000.0))
+		_enc_i = end
+	if _enc_i >= _music_buf.size():
+		var s := AudioStreamWAV.new()
+		s.format = AudioStreamWAV.FORMAT_16_BITS
+		s.mix_rate = MUSIC_RATE
+		s.stereo = false
+		s.data = _music_bytes
+		s.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		s.loop_begin = 0
+		s.loop_end = _music_buf.size()
+		music_player = AudioStreamPlayer.new()
+		music_player.stream = s
+		add_child(music_player)
+		_apply_music_volume()
+		music_player.play()
+
+
+func _apply_music_volume() -> void:
+	if music_player:
+		var v := SettingsManager.music
+		music_player.volume_db = linear_to_db(maxf(v, 0.001) * 0.45)
+		music_player.stream_paused = v < 0.01
+
+
+func _midi(n: int) -> float:
+	return 440.0 * pow(2.0, (n - 69) / 12.0)
+
+
+## Восемь тактов: Am – F – C – G – Am – F – G – E. Мягкие аккорды,
+## бас на первую и третью долю, сверху — перебор, как у гитары у костра.
+func _plan_music() -> void:
+	var beat := 60.0 / MUSIC_BPM
+	var bar := beat * 4.0
+	var chords := [[45, [0, 3, 7]], [41, [0, 4, 7]], [48, [0, 4, 7]], [43, [0, 4, 7]],
+		[45, [0, 3, 7]], [41, [0, 4, 7]], [43, [0, 4, 7]], [40, [0, 4, 7]]]
+	var total := bar * chords.size()
+	_music_buf.resize(int(total * MUSIC_RATE))
+	_music_buf.fill(0.0)
+	# Мелодия по тактам: ступени от корня аккорда (−1 — пауза), восьмыми
+	var tunes := [
+		[12, -1, 15, 19, 17, 15, 12, -1], [12, 16, 19, -1, 17, 16, 12, -1],
+		[12, -1, 14, 16, 19, 16, 14, 12], [11, 14, 19, -1, 17, 14, 11, -1],
+		[19, 17, 15, -1, 12, 15, 17, 19], [16, -1, 19, 21, 19, 16, 12, -1],
+		[14, 17, 19, -1, 23, 19, 17, 14], [16, -1, 20, 23, -1, 20, 16, -1],
+	]
+	for i in chords.size():
+		var root: int = chords[i][0]
+		var t0 := i * bar
+		for step in chords[i][1]:
+			_music_events.append([t0, bar * 1.15, _midi(root + 12 + int(step)), "pad", 0.05])
+		_music_events.append([t0, beat * 1.8, _midi(root), "bass", 0.2])
+		_music_events.append([t0 + beat * 2.0, beat * 1.8, _midi(root + 7), "bass", 0.16])
+		# Перебор: аккордовые ноты по восьмым, тихо
+		for k in 8:
+			var st: int = chords[i][1][k % 3]
+			_music_events.append([t0 + k * beat * 0.5, beat * 1.2, _midi(root + 12 + st), "pluck", 0.06])
+		var tune: Array = tunes[i]
+		for k in 8:
+			if int(tune[k]) >= 0:
+				_music_events.append([t0 + k * beat * 0.5, beat * 1.4, _midi(root + 12 + int(tune[k])), "pluck", 0.13])
+
+
+func _render_event(e: Array) -> void:
+	var start := int(float(e[0]) * MUSIC_RATE)
+	var n := int(float(e[1]) * MUSIC_RATE)
+	var f: float = e[2]
+	var kind: String = e[3]
+	var vol: float = e[4]
+	var size := _music_buf.size()
+	var w := TAU * f / MUSIC_RATE
+	for j in n:
+		var t := float(j) / MUSIC_RATE
+		var v := 0.0
+		match kind:
+			"pad":
+				var env := minf(t / 0.35, 1.0) * minf((float(e[1]) - t) / 0.5, 1.0)
+				v = (sin(w * j) + 0.25 * sin(2.0 * w * j + sin(t * 5.0) * 0.3)) * env
+			"bass":
+				v = (sin(w * j) + 0.4 * sin(2.0 * w * j)) * exp(-t * 3.0) * minf(t * 60.0, 1.0)
+			"pluck":
+				v = (sin(w * j) + 0.5 * sin(2.0 * w * j) + 0.2 * sin(3.0 * w * j)) * exp(-t * 4.5) * minf(t * 200.0, 1.0)
+		# Петля: хвост уходит в начало
+		var idx := (start + j) % size
+		_music_buf[idx] += v * vol
 
 
 func stream(sound: String) -> AudioStreamWAV:
@@ -69,14 +197,14 @@ func play_at(sound: String, pos: Vector3, volume_db := 0.0, pitch := 1.0) -> voi
 
 # --- Сборка звука -----------------------------------------------------------
 
-func _make(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:
+func _make(samples: PackedFloat32Array, loop: bool, rate := RATE) -> AudioStreamWAV:
 	var bytes := PackedByteArray()
 	bytes.resize(samples.size() * 2)
 	for i in samples.size():
 		bytes.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32000.0))
 	var s := AudioStreamWAV.new()
 	s.format = AudioStreamWAV.FORMAT_16_BITS
-	s.mix_rate = RATE
+	s.mix_rate = rate
 	s.stereo = false
 	s.data = bytes
 	if loop:
