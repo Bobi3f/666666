@@ -12,6 +12,11 @@ var _car: Label
 var _prompt: Label
 var _msg: Label
 var _msg_time := 0.0
+## Сообщения, пришедшие почти одновременно, показываем по очереди: каждое —
+## хотя бы пару секунд, иначе второе стирает первое, не дав прочитать.
+var _queue: Array[String] = []
+const MSG_TIME := 4.0
+const MSG_MIN := 2.2
 var _goal: Label
 var _keys_hint: Label
 
@@ -113,8 +118,17 @@ func _label(pos: Vector2, size: int) -> Label:
 
 
 func show_message(text: String) -> void:
-	_msg.text = GameManager.touch_text(text)
-	_msg_time = 4.0
+	var t := GameManager.touch_text(text)
+	if t == _msg.text or _queue.has(t):
+		return
+	# Текущее висит меньше MSG_MIN — новое ждёт своей очереди
+	if _msg_time > MSG_TIME - MSG_MIN and _msg.text != "":
+		if _queue.size() >= 4:
+			_queue.pop_front()
+		_queue.append(t)
+		return
+	_msg.text = t
+	_msg_time = MSG_TIME
 
 
 func _process(delta: float) -> void:
@@ -178,6 +192,9 @@ func _process(delta: float) -> void:
 	if GameManager.touch_mode and car and car.driver:
 		msg_y = _car.offset_top + 50.0
 	_msg.offset_top = maxf(msg_y, _goal.position.y + _goal.get_combined_minimum_size().y + 8.0)
+	if not _queue.is_empty() and _msg_time <= MSG_TIME - MSG_MIN:
+		_msg.text = _queue.pop_front()
+		_msg_time = MSG_TIME
 	if _msg_time > 0.0:
 		_msg_time -= delta
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)
