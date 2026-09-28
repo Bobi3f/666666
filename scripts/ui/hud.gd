@@ -91,6 +91,9 @@ func _process(delta: float) -> void:
 	if Progress.delivery_active:
 		lines.append(Progress.goal_text())
 	lines.append_array(QuestManager.tracker_lines())
+	var daily := Daily.tracker_line()
+	if daily != "":
+		lines.append(daily)
 	_goal.text = GameManager.touch_text("\n".join(lines))
 	# Подсказка по клавишам на телефоне не нужна — там кнопки
 	_keys_hint.visible = not GameManager.touch_mode

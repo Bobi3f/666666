@@ -3,7 +3,13 @@ extends Node3D
 ##
 ## С жителями можно поговорить (E) — каждый раз следующая фраза, в них
 ## подсказки: где заработать, где заправиться, как добраться до города.
-## Один житель ходит по улице туда-обратно. Собаки лают, если подойти
+## А когда у игрока что-то меняется (новый дом, права, своя машина, своё
+## дело) — сперва скажут про это, у каждого своё.
+##
+## У каждого распорядок дня: утром в сельмаг, днём по делам, вечером на
+## лавочку, ночью спят дома (их не видно). Ходят по улице пешком; если
+## игрок далеко — просто оказываются на месте.
+## Почтальонка ходит по улице туда-обратно. Собаки лают, если подойти
 ## к чужому двору, куры бродят и кудахчут.
 
 ## Дворы как в world.gd: [x, z, поворот, есть ли будка]. Двор игрока (-125, -56)
@@ -14,30 +20,77 @@ const DOG_YARDS := [
 ]
 const CHICKEN_YARDS := [[-150.0, -56.0, 0.0], [-125.0, -24.0, PI], [-75.0, -24.0, PI], [-100.0, -24.0, PI]]
 
+## Середина деревенской улицы: по ней жители ходят от места к месту.
+const LANE_Z := -40.0
+const WALK_SPEED := 1.3
+## Места: где стоять или сидеть и как пройти к улице (через точки via).
+## "home" — дома, не видно.
+const SPOTS := {
+	"bench_galya": {"pos": Vector3(-102.5, 0, -36.45), "yaw": 0.0, "sit": true},
+	"bench_mikh": {"pos": Vector3(-101.3, 0, -36.45), "yaw": 0.0, "sit": true},
+	"bench_lyuda": {"pos": Vector3(-77.2, 0, -36.45), "yaw": 0.0, "sit": true},
+	"shop_galya": {"pos": Vector3(-53.5, 0, -26.3), "yaw": -PI / 2.0, "via": [Vector3(-57.0, 0, -30.0)]},
+	"shop_lyuda": {"pos": Vector3(-53.5, 0, -28.0), "yaw": -PI / 2.0, "via": [Vector3(-57.0, 0, -30.0)]},
+	"shop_mikh": {"pos": Vector3(-51.5, 0, -19.0), "yaw": PI / 2.0, "via": [Vector3(-55.0, 0, -20.0), Vector3(-57.0, 0, -30.0)]},
+	"shop_petr": {"pos": Vector3(-54.0, 0, -31.2), "yaw": -PI / 2.0, "via": [Vector3(-57.0, 0, -31.2)]},
+	"pond": {"pos": Vector3(-172.0, 0, -43.0), "yaw": PI / 2.0},
+	"kolkhoz": {"pos": Vector3(-39.5, 0, -40.5), "yaw": PI},
+	"stop": {"pos": Vector3(-68.0, 0, -8.0), "yaw": PI, "via": [Vector3(-59.0, 0, -8.0), Vector3(-59.0, 0, -30.0)]},
+	"sto": {"pos": Vector3(-82.0, 0, 12.3), "yaw": 0.0, "far": true},
+}
+
+## Что говорят, когда у игрока что-то поменялось. Свои реплики — в "react"
+## у жителя, остальное — общее. Порядок — от самого важного.
+const REACT_ORDER := ["sto", "house2", "house1", "biz", "car", "license", "broken", "rich"]
+const REACT_COMMON := {
+	"house2": "Дом-то какой отгрохал! Кирпич, черепица — хозяин!",
+	"house1": "Новый дом у тебя — любо-дорого! Избу не узнать.",
+	"biz": "Говорят, ты теперь при своём деле? Уважаю.",
+	"car": "Видали тебя на новой машине! Разбогател, гляжу.",
+	"license": "Права получил? Молодец, теперь по-людски ездишь.",
+	"broken": "Машину-то почини — гремит на всю деревню!",
+	"rich": "Денег, говорят, куры не клюют. Не зазнавайся!",
+}
+
 const PEOPLE := [
 	{"name": "Баба Галя", "pos": Vector3(-102.0, 0, -36.45), "yaw": 0.0, "sit": true, "woman": true,
+		"plan": [[0, "home"], [6, "bench_galya"], [9, "shop_galya"], [11, "bench_galya"], [21, "home"]],
+		"react": {"house1": "Ой, сынок, дом-то какой! Мать бы порадовалась.",
+			"car": "На машине новой? Прокатишь старуху до города?"},
 		"shirt": Color(0.45, 0.25, 0.35), "hat": Color(0.85, 0.3, 0.3),
 		"lines": ["Здравствуй, сынок! В сельмаге хлеб дешевле, чем в городском ларьке.",
 			"В колхозе «Заря» сено грузят — платят четыреста за смену. Только не в дождь.",
 			"Дом бы тебе новый... Прораб у твоей калитки за двенадцать тысяч возьмётся.",
 			"Ночью фонари горят, а раньше тут темень была — хоть глаз выколи."]},
 	{"name": "Дед Михалыч", "pos": Vector3(-51.5, 0, -19.0), "yaw": PI / 2.0, "sit": false,
+		"plan": [[0, "home"], [6, "shop_mikh"], [12, "pond"], [16, "bench_mikh"], [21, "home"]],
+		"react": {"broken": "Гремит твоя машина, как мой трактор в сорок девятом. К Ваське езжай!",
+			"license": "С правами, значит? В наше время права давали тому, кто трактор заведёт."},
 		"shirt": Color(0.3, 0.35, 0.3), "hat": Color(0.25, 0.25, 0.28),
 		"lines": ["Жигули твои без бензина не поедут. Заправка у трассы, напротив деревни.",
 			"В дождь по грунтовке не гоняй — засядешь по самые пороги.",
 			"Со склада в городе хлеб к нам возят. Есть машина — бери заказ, пятьсот платят.",
 			"Скрежещешь коробкой? Сцепление выжимай, а то на СТО всё и оставишь."]},
 	{"name": "Бригадир Петрович", "pos": Vector3(-39.5, 0, -40.5), "yaw": PI, "sit": false,
+		"plan": [[0, "home"], [6, "kolkhoz"], [19, "shop_petr"], [22, "home"]],
+		"react": {"biz": "Своё дело открыл? Только колхоз не забывай!",
+			"house2": "Кирпичный дом! Небось и колхозная премия там кирпичиком легла."},
 		"shirt": Color(0.25, 0.3, 0.45), "hat": Color(0.2, 0.2, 0.22),
 		"lines": ["Работа есть — с семи до семи. Жми E у ворот сарая.",
 			"Вилы в руки — и три часа на сене. Устанешь, зато четыреста в кармане.",
 			"Выспись сначала. Сонный на скирде — это не работник."]},
 	{"name": "Тётя Люда", "pos": Vector3(-68.0, 0, -8.0), "yaw": PI, "sit": false, "woman": true,
+		"plan": [[0, "home"], [7, "stop"], [12, "shop_lyuda"], [15, "bench_lyuda"], [21, "home"]],
+		"react": {"car": "Может, и меня в поликлинику свозишь на своей новой?"},
 		"shirt": Color(0.55, 0.45, 0.25), "hat": Color(0.9, 0.9, 0.85),
 		"lines": ["Автобус в город ходит с шести утра до десяти вечера. Пятнадцать гривен.",
 			"В городе у склада остановка — оттуда обратно так же уедешь.",
 			"Жду вот, в поликлинику надо..."]},
 	{"name": "Механик Васёк", "pos": Vector3(-82.0, 0, 12.3), "yaw": 0.0, "sit": false,
+		"plan": [[0, "home"], [8, "sto"], [20, "home"]],
+		"react": {"sto": "Так ты теперь хозяин СТО? Ну, начальник, работаем!",
+			"car": "Новую взял? Пригоняй, посмотрим, что у неё под капотом.",
+			"broken": "Приезжай, подлатаю. По старой дружбе — без очереди."},
 		"shirt": Color(0.2, 0.25, 0.4), "hat": Color(0.8, 0.4, 0.1),
 		"lines": ["Загоняй машину в бокс — посмотрю. Двадцать пять гривен за процент износа.",
 			"Заглохнет сама на ходу — значит, изношена. Не тяни, приезжай.",
@@ -57,11 +110,21 @@ var _letter_gates: Array = []
 func _ready() -> void:
 	_rng.seed = 55
 	for d in PEOPLE:
-		var n := _person(d.shirt, d.hat, d.sit, d.get("woman", false))
+		var n := _person(d.shirt, d.hat, false, d.get("woman", false))
+		# Второй вид — сидя на лавочке
+		var sit_b := MeshBuilder.new()
+		sit_b.ground_shade = false
+		person_model(sit_b, d.shirt, d.hat, true, d.get("woman", false))
+		var sit_mesh := sit_b.build_mesh()
+		sit_mesh.visible = false
+		n.add_child(sit_mesh)
 		n.position = d.pos
 		n.rotation.y = d.yaw
 		add_child(n)
-		_talk_zone(n, d)
+		var st := {"node": n, "stand": n.get_child(0), "sit": sit_mesh, "data": d, "slot": "", "path": [], "said": {}}
+		_people.append(st)
+		_talk_zone(n, d, st)
+		_place(st, _slot_for(d), true)
 	# Почтальонка ходит по улице
 	var walker_data := {"name": "Почтальонка Оля", "shirt": Color(0.2, 0.35, 0.65), "hat": Color(0.2, 0.35, 0.65),
 		"lines": ["Писем вам нет, только квитанция за свет.", "Вся Каменка на мне — от пруда до трассы, два раза в день.",
@@ -110,7 +173,7 @@ func _ready() -> void:
 		_dogs.append({"node": dog, "cool": 0.0})
 
 
-func _talk_zone(n: Node3D, d: Dictionary) -> void:
+func _talk_zone(n: Node3D, d: Dictionary, st := {}) -> void:
 	var zone := InteractZone.create("E — поговорить: %s" % d.name, Vector3(2.2, 2.0, 2.2))
 	zone.position = Vector3(0, 0, -0.9)
 	n.add_child(zone)
@@ -120,6 +183,11 @@ func _talk_zone(n: Node3D, d: Dictionary) -> void:
 		var quest_line := QuestManager.talk(d.name)
 		if quest_line != "":
 			GameManager.notify("%s: «%s»" % [d.name, quest_line])
+			return
+		# Сперва — про то, что у игрока поменялось
+		var news := _news(d, st)
+		if news != "":
+			GameManager.notify("%s: «%s»" % [d.name, news])
 			return
 		var lines: Array = d.lines
 		GameManager.notify("%s: «%s»" % [d.name, lines[state.i % lines.size()]])
@@ -146,11 +214,137 @@ func _has_quest_for(npc: String) -> bool:
 	return false
 
 
+## Что сказать про перемены у игрока, "" — нечего. Каждое — один раз.
+func _news(d: Dictionary, st: Dictionary) -> String:
+	if st.is_empty():
+		return ""
+	var react: Dictionary = d.get("react", {})
+	for key in REACT_ORDER:
+		if st.said.has(key) or not _news_true(key):
+			continue
+		if key == "sto" and not react.has(key):
+			continue
+		st.said[key] = true
+		return react.get(key, REACT_COMMON.get(key, ""))
+	return ""
+
+
+func _news_true(key: String) -> bool:
+	match key:
+		"sto":
+			return Daily.owns("sto")
+		"house2":
+			return Progress.house_level >= 2
+		"house1":
+			return Progress.house_level >= 1
+		"biz":
+			return not Daily.owned.is_empty()
+		"car":
+			return not Progress.owned_cars.is_empty()
+		"license":
+			return Progress.license
+		"broken":
+			var car := GameManager.car as Vehicle
+			return car != null and car.condition < 40.0
+		"rich":
+			return GameManager.money >= 20000
+	return false
+
+
+# --- Распорядок дня -----------------------------------------------------------
+
+func _slot_for(d: Dictionary) -> String:
+	var h := TimeManager.hour()
+	var slot := "home"
+	for p in d.plan:
+		if h >= float(p[0]):
+			slot = p[1]
+	return slot
+
+
+## Поставить жителя на место сразу (instant) или проложить путь по улице.
+func _place(st: Dictionary, slot: String, instant: bool) -> void:
+	var n: Node3D = st.node
+	var from: String = st.slot
+	st.slot = slot
+	st.path = []
+	if slot == "home":
+		n.visible = not instant and n.visible
+		return
+	var spot: Dictionary = SPOTS[slot]
+	var far := bool(spot.get("far", false)) or from == "" or from == "home" or bool(SPOTS.get(from, {}).get("far", false))
+	if instant or far:
+		_set_at(st, spot)
+		return
+	# Путь: от места к улице, по улице, от улицы к месту
+	var path: Array = []
+	var from_via: Array = SPOTS[from].get("via", [])
+	for v in from_via:
+		path.append(v)
+	var a: Vector3 = path.back() if not path.is_empty() else n.position
+	path.append(Vector3(a.x, 0, LANE_Z))
+	var to_via: Array = spot.get("via", []).duplicate()
+	to_via.reverse()
+	var b: Vector3 = to_via[0] if not to_via.is_empty() else spot.pos
+	path.append(Vector3(b.x, 0, LANE_Z))
+	path.append_array(to_via)
+	path.append(spot.pos)
+	st.path = path
+	_pose(st, false)
+
+
+func _set_at(st: Dictionary, spot: Dictionary) -> void:
+	var n: Node3D = st.node
+	n.visible = true
+	n.position = spot.pos
+	n.rotation.y = spot.yaw
+	_pose(st, bool(spot.get("sit", false)))
+
+
+func _pose(st: Dictionary, sit: bool) -> void:
+	(st.stand as Node3D).visible = not sit
+	(st.stand as Node3D).position.y = 0.0
+	(st.sit as Node3D).visible = sit
+
+
+func _update_people(delta: float, ppos: Vector3) -> void:
+	for st in _people:
+		var n: Node3D = st.node
+		var want := _slot_for(st.data)
+		if want != st.slot:
+			# Игрок далеко — не тратим время на прогулку
+			var near := ppos.distance_to(n.position) < 45.0
+			if want != "home":
+				near = near or ppos.distance_to(SPOTS[want].pos) < 45.0
+			_place(st, want, not near)
+		if st.slot == "home" and n.visible and ppos.distance_to(n.position) > 30.0:
+			n.visible = false
+		var path: Array = st.path
+		if path.is_empty():
+			continue
+		# Уступает дорогу игроку
+		if ppos.distance_to(n.position) < 1.6:
+			continue
+		var to: Vector3 = path[0] - n.position
+		to.y = 0.0
+		var step := WALK_SPEED * delta
+		if to.length() <= step:
+			n.position = path[0]
+			path.pop_front()
+			if path.is_empty():
+				_set_at(st, SPOTS[st.slot])
+			continue
+		n.position += to.normalized() * step
+		n.rotation.y = atan2(-to.x, -to.z)
+		(st.stand as Node3D).position.y = absf(sin(Time.get_ticks_msec() * 0.008)) * 0.04
+
+
 func _process(delta: float) -> void:
 	_walk(delta)
 	_update_letters()
 	var p := GameManager.player as Node3D
 	var ppos := p.global_position if p else Vector3(1e6, 0, 0)
+	_update_people(delta, ppos)
 	for c in _chickens:
 		_chicken_step(c, delta, ppos)
 	for d in _dogs:

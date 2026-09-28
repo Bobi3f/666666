@@ -40,6 +40,7 @@ func _process(delta: float) -> void:
 		return
 	_press(KEY_M, Input.is_joy_button_pressed(pad, JOY_BUTTON_BACK))
 	_press(KEY_J, Input.is_joy_button_pressed(pad, JOY_BUTTON_DPAD_UP))
+	_press(KEY_B, driving and Input.is_joy_button_pressed(pad, JOY_BUTTON_DPAD_RIGHT))
 	_press(KEY_E, Input.is_joy_button_pressed(pad, JOY_BUTTON_X))
 	_press(KEY_SPACE, Input.is_joy_button_pressed(pad, JOY_BUTTON_A))
 	_press(KEY_V if driving else KEY_C, Input.is_joy_button_pressed(pad, JOY_BUTTON_B))

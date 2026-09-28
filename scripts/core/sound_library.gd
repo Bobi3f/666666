@@ -22,6 +22,8 @@ var _music_buf := PackedFloat32Array()
 var _music_wanted := false
 var _music_bytes := PackedByteArray()
 var _enc_i := 0
+## Играет радио в машине — фоновая музыка притихает.
+var _ducked := false
 
 
 func _ready() -> void:
@@ -98,9 +100,15 @@ func _process(_delta: float) -> void:
 
 func _apply_music_volume() -> void:
 	if music_player:
-		var v := SettingsManager.music
+		var v := SettingsManager.music * (0.0 if _ducked else 1.0)
 		music_player.volume_db = linear_to_db(maxf(v, 0.001) * 0.45)
 		music_player.stream_paused = v < 0.01
+
+
+func duck_music(on: bool) -> void:
+	if on != _ducked:
+		_ducked = on
+		_apply_music_volume()
 
 
 func _midi(n: int) -> float:

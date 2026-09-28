@@ -66,6 +66,7 @@ func _ready() -> void:
 	_add_button("Ручник", KEY_SPACE, "drive", "br", Vector2(-298, -222), 38)
 	_add_button("Вид", KEY_V, "drive", "br", Vector2(-190, -222), 34)
 	_add_button("Выйти", KEY_E, "drive", "br", Vector2(-72, -262), 38)
+	_add_button("Радио", KEY_B, "drive", "br", Vector2(-298, -318), 32)
 	_add_button("Меню", KEY_ESCAPE, "all", "tr", Vector2(-50, 130), 30)
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)

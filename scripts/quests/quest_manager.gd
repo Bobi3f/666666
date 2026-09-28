@@ -13,6 +13,8 @@ extends Node
 signal changed
 signal completed(id: String)
 signal victory
+## Любое событие игры — для ежедневных поручений.
+signal fired(name: String, amount: float)
 
 const MAIN := ["m_morning", "m_money", "m_wheels", "m_neighbours", "m_house", "m_master"]
 
@@ -88,6 +90,7 @@ func reset() -> void:
 # --- События ---------------------------------------------------------------
 
 func event(name: String, amount: float = 1.0) -> void:
+	fired.emit(name, amount)
 	match name:
 		"earned":
 			stats.earned += int(amount)

@@ -127,6 +127,15 @@ func _ready() -> void:
 	var taxi := TaxiJob.new()
 	taxi.name = "Taxi"
 	add_child(taxi)
+	var radio := preload("res://scripts/world/radio.gd").new()
+	radio.name = "Radio"
+	add_child(radio)
+	var fair := preload("res://scripts/world/fair.gd").new()
+	fair.name = "Fair"
+	add_child(fair)
+	var biz := preload("res://scripts/world/business_spots.gd").new()
+	biz.name = "Business"
+	add_child(biz)
 	add_child(preload("res://scripts/world/villagers.gd").new())
 	var home := preload("res://scripts/world/home_items.gd").new()
 	home.name = "HomeItems"

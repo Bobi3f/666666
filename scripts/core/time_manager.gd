@@ -40,9 +40,17 @@ func skip_to(target_hour: float) -> float:
 	return passed
 
 
+const WEEKDAYS := ["вс", "пн", "вт", "ср", "чт", "пт", "сб"]
+
+
+## Первый день — понедельник, каждый седьмой — воскресенье (ярмарка).
+func weekday() -> String:
+	return WEEKDAYS[day % 7]
+
+
 func clock_text() -> String:
 	var m := int(minutes)
-	return "День %d, %02d:%02d" % [day, m / 60, m % 60]
+	return "День %d (%s), %02d:%02d" % [day, weekday(), m / 60, m % 60]
 
 
 func save_state() -> Dictionary:

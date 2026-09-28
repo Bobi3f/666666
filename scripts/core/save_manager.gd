@@ -14,7 +14,7 @@ const PATH := "user://save.json"
 ## Автосохранение раз в столько секунд настоящей игры (не паузы).
 const AUTOSAVE_EVERY := 150.0
 
-var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager"]
+var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager", "Daily"]
 var _since_save := 0.0
 
 
@@ -92,8 +92,8 @@ func load_game() -> bool:
 		return false
 	var data: Dictionary = parsed
 	for n in _singletons:
-		if data.has(n):
-			get_node("/root/" + n).load_state(data[n])
+		# В старых сохранениях новых разделов нет — начинаем их с нуля
+		get_node("/root/" + n).load_state(data.get(n, {}))
 	for node in get_tree().get_nodes_in_group("persist"):
 		var key := str(node.get_path())
 		if data.has(key):
