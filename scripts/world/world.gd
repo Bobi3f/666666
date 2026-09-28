@@ -180,6 +180,9 @@ func _ready() -> void:
 	taxi.name = "Taxi"
 	add_child(taxi)
 	add_child(preload("res://scripts/world/night_sky.gd").new())
+	var shrooms := preload("res://scripts/world/mushrooms.gd").new()
+	shrooms.name = "Mushrooms"
+	add_child(shrooms)
 	var gai := preload("res://scripts/world/gai_post.gd").new()
 	gai.name = "GaiPost"
 	add_child(gai)
@@ -1244,12 +1247,25 @@ func _fish() -> void:
 func _fish_result(result: String) -> void:
 	match result:
 		"fish":
-			NeedsManager.fish += 1
-			QuestManager.event("fish", 1)
 			SoundLibrary.play("splash", -2.0, 1.3)
-			var kinds := ["карась", "окунь", "плотва", "линь"]
-			GameManager.notify("Есть! %s на %d г. Рыбы в ведре: %d — сдай в сельмаг" % [
-				kinds[randi() % kinds.size()].capitalize(), randi_range(150, 600), NeedsManager.fish])
+			# Изредка — трофей: щука за две, сом за четыре обычных рыбы
+			var r := randf()
+			if r < 0.02:
+				NeedsManager.fish += 4
+				QuestManager.event("fish", 1)
+				QuestManager.event("trophy")
+				GameManager.notify("Вот это да — СОМ на %.1f кг! Как четыре рыбы. В ведре: %d" % [randf_range(6.0, 12.0), NeedsManager.fish])
+			elif r < 0.1:
+				NeedsManager.fish += 2
+				QuestManager.event("fish", 1)
+				QuestManager.event("trophy")
+				GameManager.notify("Щука на %.1f кг! Как две рыбы. В ведре: %d" % [randf_range(1.5, 3.5), NeedsManager.fish])
+			else:
+				NeedsManager.fish += 1
+				QuestManager.event("fish", 1)
+				var kinds := ["карась", "окунь", "плотва", "линь"]
+				GameManager.notify("Есть! %s на %d г. Рыбы в ведре: %d — сдай в сельмаг" % [
+					kinds[randi() % kinds.size()].capitalize(), randi_range(150, 600), NeedsManager.fish])
 		"early":
 			GameManager.notify("Рано дёрнул — рыба ушла. Жди, пока поплавок нырнёт")
 		"miss":
