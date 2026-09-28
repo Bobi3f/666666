@@ -9,6 +9,9 @@ extends RefCounted
 var xf := Transform3D.IDENTITY
 ## Затемнять низ коробок: предмет «стоит» на земле, а не парит.
 var ground_shade := true
+## Метка части тела в альфе цвета вершин: по ней шейдер ходьбы качает
+## ноги и руки (1 — туловище, 0.9/0.8 — ноги, 0.7/0.6 — руки).
+var alpha := 1.0
 
 var _st := SurfaceTool.new()
 ## Нарезка на куски по chunk_size метров (0 — одним куском). Невидимые куски
@@ -72,7 +75,7 @@ func box(mn: Vector3, mx: Vector3, color: Color, collide := false) -> void:
 			var k := tint
 			if ground_shade:
 				k *= lerpf(0.72, 1.0, clampf(p.y / 1.2, 0.0, 1.0))
-			cols.append(Color(color.r * k, color.g * k, color.b * k))
+			cols.append(Color(color.r * k, color.g * k, color.b * k, alpha))
 		_quad_raw(pts, cols, n)
 	if collide:
 		_boxes.append([xf * Transform3D(Basis.IDENTITY, c), mx - mn])

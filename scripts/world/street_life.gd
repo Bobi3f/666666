@@ -165,7 +165,7 @@ func _build_walkers() -> void:
 		var b := MeshBuilder.new()
 		b.ground_shade = false
 		Villagers.person_model(b, shirts[i % shirts.size()], Color(0.2, 0.18, 0.15), false, i % 3 == 1)
-		var body := b.build_mesh()
+		var body := Villagers.walking_mesh(b)
 		n.add_child(body)
 		add_child(n)
 		var pts: Array = routes[i]
@@ -190,7 +190,7 @@ func _update_walkers(delta: float) -> void:
 			if d < 5.0:
 				go = false
 				var tv := v.global_position - n.global_position
-				n.rotation.y = lerp_angle(n.rotation.y, atan2(tv.x, tv.z), delta * 6.0)
+				n.rotation.y = lerp_angle(n.rotation.y, atan2(-tv.x, -tv.z), delta * 6.0)
 				if d < 1.6:
 					# Отпрыгнул в сторону
 					var away := n.global_position - v.global_position
@@ -205,12 +205,14 @@ func _update_walkers(delta: float) -> void:
 			else:
 				var step: Vector3 = to.normalized() * float(w.speed) * delta
 				n.global_position += step
-				n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), delta * 8.0)
-				w.phase = float(w.phase) + delta * 7.0
-		# Шаг: чуть подпрыгивает и покачивается
-		var body: Node3D = w.body
-		body.position.y = absf(sin(float(w.phase))) * 0.05 if go else 0.0
-		body.rotation.z = sin(float(w.phase)) * 0.04 if go else 0.0
+				# Модель смотрит в −Z: разворачиваем носом по ходу
+				n.rotation.y = lerp_angle(n.rotation.y, atan2(-to.x, -to.z), delta * 8.0)
+				w.phase = float(w.phase) + float(w.speed) * delta * 4.2
+		# Шаг: ноги и руки ходят, тело чуть подпрыгивает
+		var body: MeshInstance3D = w.body
+		body.position.y = absf(sin(float(w.phase))) * 0.03 if go else 0.0
+		body.rotation.z = sin(float(w.phase)) * 0.02 if go else 0.0
+		Villagers.set_walk(body, float(w.phase), 1.0 if go else 0.0)
 
 
 # --- Коровы ----------------------------------------------------------------------

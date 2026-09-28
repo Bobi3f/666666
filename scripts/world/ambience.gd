@@ -7,6 +7,11 @@ var _rain_snd: AudioStreamPlayer
 var _rain: CPUParticles3D
 var _snow: CPUParticles3D
 var _bird_timer := 3.0
+## Петух поёт на рассвете, раз в полчаса игрового времени
+var _rooster_min := 0.0
+## Гроза: следующая молния через столько секунд, гром — с задержкой
+var _bolt_in := 5.0
+var _thunder_in := -1.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -101,6 +106,25 @@ func _process(delta: float) -> void:
 	# Сверчки — ночью и без дождя
 	_fade(_crickets, -10.0 if night and rain < 0.3 and WeatherManager.season() != 2 else -80.0, 1.0, delta)
 
+	# Гроза: вспышка, через пару секунд — гром (чем дальше, тем тише и позже)
+	WeatherManager.flash = maxf(WeatherManager.flash - delta * 5.0, 0.0)
+	if WeatherManager.kind == WeatherManager.Kind.STORM and not WeatherManager.snowing() and rain > 0.5:
+		_bolt_in -= delta
+		if _bolt_in <= 0.0:
+			_bolt_in = _rng.randf_range(7.0, 22.0)
+			WeatherManager.flash = 1.0
+			_thunder_in = _rng.randf_range(0.4, 3.0)
+	if _thunder_in >= 0.0:
+		_thunder_in -= delta
+		if _thunder_in < 0.0:
+			SoundLibrary.play("thunder", -2.0 - _rng.randf() * 6.0, _rng.randf_range(0.8, 1.1))
+	# Петух на рассвете, если ты в деревне
+	var cp := cam.global_position
+	if h > 4.8 and h < 7.2 and cp.x > -190.0 and cp.x < -30.0 and cp.z > -80.0 and cp.z < 0.0:
+		var now := TimeManager.day * 1440.0 + TimeManager.minutes
+		if now - _rooster_min > 30.0:
+			_rooster_min = now
+			SoundLibrary.play_at("rooster", Vector3(-150.0 + _rng.randf() * 75.0, 1.5, -20.0 - _rng.randf() * 40.0), 2.0, _rng.randf_range(0.95, 1.08))
 	# Птицы — днём, в хорошую погоду, где-нибудь неподалёку
 	if not night and rain < 0.3 and not in_car:
 		_bird_timer -= delta

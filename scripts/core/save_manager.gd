@@ -21,7 +21,7 @@ var PATH: String:
 ## Автосохранение раз в столько секунд настоящей игры (не паузы).
 const AUTOSAVE_EVERY := 150.0
 
-var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager", "Daily"]
+var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager", "Daily", "Achievements"]
 var _since_save := 0.0
 
 

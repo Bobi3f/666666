@@ -100,6 +100,7 @@ const PEOPLE := [
 var _people: Array[Dictionary] = []
 var _walker: Node3D
 var _walk_dir := 1.0
+var _walker_phase := 0.0
 var _chickens: Array[Dictionary] = []
 var _dogs: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
@@ -304,6 +305,7 @@ func _set_at(st: Dictionary, spot: Dictionary) -> void:
 func _pose(st: Dictionary, sit: bool) -> void:
 	(st.stand as Node3D).visible = not sit
 	(st.stand as Node3D).position.y = 0.0
+	set_walk(st.stand, 0.0, 0.0)
 	(st.sit as Node3D).visible = sit
 
 
@@ -336,7 +338,9 @@ func _update_people(delta: float, ppos: Vector3) -> void:
 			continue
 		n.position += to.normalized() * step
 		n.rotation.y = atan2(-to.x, -to.z)
-		(st.stand as Node3D).position.y = absf(sin(Time.get_ticks_msec() * 0.008)) * 0.04
+		st["phase"] = float(st.get("phase", 0.0)) + step * 4.2
+		(st.stand as Node3D).position.y = absf(sin(float(st.phase))) * 0.03
+		set_walk(st.stand, st.phase, 1.0)
 
 
 func _process(delta: float) -> void:
@@ -359,10 +363,14 @@ func _process(delta: float) -> void:
 func _walk(delta: float) -> void:
 	# Уступает дорогу игроку и машине
 	var p := GameManager.player as Node3D
+	var mesh := _walker.get_child(0) as MeshInstance3D
 	if p and p.visible and p.global_position.distance_to(_walker.position) < 2.5:
+		set_walk(mesh, 0.0, 0.0)
+		mesh.position.y = 0.0
 		return
 	for car in get_tree().get_nodes_in_group("vehicles"):
 		if (car as Node3D).global_position.distance_to(_walker.position + Vector3(_walk_dir * 2.0, 0, 0)) < 3.5:
+			set_walk(mesh, 0.0, 0.0)
 			return
 	_walker.position.x += _walk_dir * 1.2 * delta
 	if _walker.position.x > -66.0:
@@ -370,8 +378,10 @@ func _walk(delta: float) -> void:
 	elif _walker.position.x < -160.0:
 		_walk_dir = 1.0
 	_walker.rotation.y = -PI / 2.0 if _walk_dir > 0.0 else PI / 2.0
-	# Покачивание при ходьбе
-	_walker.get_child(0).position.y = absf(sin(Time.get_ticks_msec() * 0.008)) * 0.04
+	# Шаг: ноги и руки, чуть покачивается
+	_walker_phase += 1.2 * delta * 4.2
+	mesh.position.y = absf(sin(_walker_phase)) * 0.03
+	set_walk(mesh, _walker_phase, 1.0)
 
 
 func _chicken_step(c: Dictionary, delta: float, ppos: Vector3) -> void:
@@ -402,7 +412,7 @@ func _person(shirt: Color, hat: Color, sit: bool, woman := false) -> Node3D:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
 	person_model(b, shirt, hat, sit, woman)
-	root.add_child(b.build_mesh())
+	root.add_child(b.build_mesh() if sit else walking_mesh(b))
 	var body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
@@ -436,12 +446,16 @@ static func person_model(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, wo
 		b.box(Vector3(-0.26, 0.35, -0.16), Vector3(0.26, 0.88, 0.16), shirt.darkened(0.25))
 		b.box(Vector3(-0.2, 0.4, -0.17), Vector3(0.2, 0.85, -0.16), Color(0.92, 0.9, 0.84))
 		for x in [-0.15, 0.04]:
+			b.alpha = 0.9 if x < 0.0 else 0.8
 			b.box(Vector3(x, 0.06, -0.05), Vector3(x + 0.11, 0.36, 0.06), Color(0.75, 0.7, 0.62))
 			b.box(Vector3(x - 0.01, 0.0, -0.1), Vector3(x + 0.12, 0.07, 0.07), shoe)
+		b.alpha = 1.0
 	else:
 		for x in [-0.19, 0.03]:
+			b.alpha = 0.9 if x < 0.0 else 0.8
 			b.box(Vector3(x, 0.07, -0.09), Vector3(x + 0.16, 0.85, 0.09), pants)
 			b.box(Vector3(x - 0.005, 0.0, -0.15), Vector3(x + 0.165, 0.08, 0.1), shoe)
+		b.alpha = 1.0
 		b.box(Vector3(-0.23, base - 0.04, -0.13), Vector3(0.23, base + 0.02, 0.13), Color(0.25, 0.18, 0.12))
 		b.box(Vector3(-0.03, base - 0.035, -0.135), Vector3(0.03, base + 0.015, -0.13), Color(0.75, 0.7, 0.5))
 	# Туловище, воротник, пуговицы
@@ -458,8 +472,10 @@ static func person_model(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, wo
 			b.box(Vector3(x0, base + 0.22, -0.32), Vector3(x0 + 0.1, base + 0.32, -0.02), shirt)
 			b.box(Vector3(x0 + 0.01, base + 0.2, -0.42), Vector3(x0 + 0.09, base + 0.3, -0.32), skin)
 		else:
+			b.alpha = 0.7 if side < 0.0 else 0.6
 			b.box(Vector3(x0, base + 0.08, -0.07), Vector3(x0 + 0.1, base + 0.58, 0.07), shirt)
 			b.box(Vector3(x0 + 0.005, base - 0.02, -0.06), Vector3(x0 + 0.095, base + 0.1, 0.06), skin)
+			b.alpha = 1.0
 	# Шея и голова
 	b.box(Vector3(-0.05, base + 0.6, -0.05), Vector3(0.05, base + 0.66, 0.05), skin)
 	var h := base + 0.66
@@ -483,6 +499,65 @@ static func person_model(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, wo
 		b.box(Vector3(-0.115, h + 0.14, 0.02), Vector3(0.115, h + 0.24, 0.105), hair)
 		b.box(Vector3(-0.125, h + 0.22, -0.12), Vector3(0.125, h + 0.3, 0.11), hat)
 		b.box(Vector3(-0.1, h + 0.22, -0.2), Vector3(0.1, h + 0.24, -0.12), hat.darkened(0.2))
+
+
+# --- Ходьба: ноги и руки качает шейдер ---------------------------------------
+
+const WALK_SHADER := """
+shader_type spatial;
+
+uniform float phase = 0.0;
+uniform float amount = 0.0;
+
+// Поворот точки p вокруг оси X, проходящей на высоте pivot_y
+vec3 swing(vec3 p, float pivot_y, float a) {
+	float dy = p.y - pivot_y;
+	float c = cos(a);
+	float s = sin(a);
+	return vec3(p.x, pivot_y + dy * c - p.z * s, dy * s + p.z * c);
+}
+
+void vertex() {
+	float tag = COLOR.a;
+	float a = sin(phase) * 0.5 * amount;
+	if (tag < 0.95 && tag > 0.85) {
+		VERTEX = swing(VERTEX, 0.85, a);
+	} else if (tag < 0.85 && tag > 0.75) {
+		VERTEX = swing(VERTEX, 0.85, -a);
+	} else if (tag < 0.75 && tag > 0.65) {
+		VERTEX = swing(VERTEX, 1.4, -a * 0.8);
+	} else if (tag < 0.65 && tag > 0.55) {
+		VERTEX = swing(VERTEX, 1.4, a * 0.8);
+	}
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb * 1.05;
+	ROUGHNESS = 0.9;
+}
+"""
+
+static var _walk_shader: Shader
+
+
+## Меш человека с шейдером ходьбы — у каждого свой материал, свой шаг.
+static func walking_mesh(b: MeshBuilder) -> MeshInstance3D:
+	if _walk_shader == null:
+		_walk_shader = Shader.new()
+		_walk_shader.code = WALK_SHADER
+	var mi := b.build_mesh()
+	var mat := ShaderMaterial.new()
+	mat.shader = _walk_shader
+	mi.material_override = mat
+	return mi
+
+
+## Шаг: фаза растёт с пройденным путём, amount 0 — стоит, 1 — идёт.
+static func set_walk(mi: MeshInstance3D, phase: float, amount: float) -> void:
+	var mat := mi.material_override as ShaderMaterial
+	if mat:
+		mat.set_shader_parameter("phase", phase)
+		mat.set_shader_parameter("amount", amount)
 
 
 func _chicken_mesh() -> Node3D:

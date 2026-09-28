@@ -161,6 +161,9 @@ var _skid_snd: AudioStreamPlayer3D
 var _rain_snd: AudioStreamPlayer
 ## Шины по гравию или траве — слышно, по чему едешь
 var _road_snd: AudioStreamPlayer
+## Пыль из-под колёс по грунту (зимой — снежная), только у своей машины
+var _dust: CPUParticles3D
+var _dust_mat: StandardMaterial3D
 var _rng := RandomNumberGenerator.new()
 var _warned_fuel := false
 var _headlights: Array[SpotLight3D] = []
@@ -271,6 +274,8 @@ func _ready() -> void:
 	add_child(_rain_snd)
 	_road_snd = AudioStreamPlayer.new()
 	add_child(_road_snd)
+	_dust = _make_dust()
+	add_child(_dust)
 	var lamps: Array = spec.get("lamps", [Vector3(-0.55, 0.68, -2.1), Vector3(0.55, 0.68, -2.1)] if spec.roof else [Vector3(0, 1.0, -0.95)])
 	for p in lamps:
 		var l := SpotLight3D.new()
@@ -761,12 +766,81 @@ func _update_sound() -> void:
 	elif _skid_snd.playing:
 		_skid_snd.stop()
 	_update_road_sound()
+	_update_dust()
 	var want_rain: bool = driver != null and spec.roof and WeatherManager.rain > 0.3 and not WeatherManager.snowing()
 	if want_rain != _rain_snd.playing:
 		if want_rain:
 			_rain_snd.play()
 		else:
 			_rain_snd.stop()
+
+
+func _make_dust() -> CPUParticles3D:
+	var d := CPUParticles3D.new()
+	d.amount = 48
+	d.lifetime = 1.8
+	d.local_coords = false
+	d.emitting = false
+	d.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	var half: Vector3 = (spec.shape as Vector3) * 0.5
+	d.emission_box_extents = Vector3(half.x * 0.8, 0.1, 0.2)
+	d.position = Vector3(0, 0.25, half.z)
+	d.direction = Vector3(0, 0.6, 1)
+	d.spread = 25.0
+	d.gravity = Vector3(0, 0.4, 0)
+	d.initial_velocity_min = 0.8
+	d.initial_velocity_max = 2.0
+	d.damping_min = 1.0
+	d.damping_max = 2.0
+	d.scale_amount_min = 1.0
+	d.scale_amount_max = 2.2
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.4))
+	curve.add_point(Vector2(1, 1.6))
+	d.scale_amount_curve = curve
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 0.75))
+	ramp.set_color(1, Color(1, 1, 1, 0.0))
+	d.color_ramp = ramp
+	var q := QuadMesh.new()
+	q.size = Vector2(1.3, 1.3)
+	_dust_mat = StandardMaterial3D.new()
+	_dust_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_dust_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_dust_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	_dust_mat.vertex_color_use_as_albedo = true
+	_dust_mat.albedo_texture = _puff_texture()
+	q.material = _dust_mat
+	d.mesh = q
+	return d
+
+
+static var _puff: ImageTexture
+
+
+static func _puff_texture() -> ImageTexture:
+	if _puff:
+		return _puff
+	var n := 32
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var r := Vector2(x - n * 0.5 + 0.5, y - n * 0.5 + 0.5).length() / (n * 0.5)
+			var a := clampf(1.0 - r, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a * a))
+	_puff = ImageTexture.create_from_image(img)
+	return _puff
+
+
+func _update_dust() -> void:
+	var v := absf(speed)
+	var want := driver != null and v > 4.0 and not on_asphalt() and WeatherManager.wetness < 0.4 and WeatherManager.rain < 0.3
+	if want != _dust.emitting:
+		_dust.emitting = want
+	if want:
+		var snowy := WeatherManager.snow > 0.5
+		_dust_mat.albedo_color = Color(0.92, 0.94, 0.98) if snowy else Color(0.62, 0.53, 0.4)
+		_dust.speed_scale = clampf(v / 12.0, 0.6, 1.6)
 
 
 func _update_road_sound() -> void:

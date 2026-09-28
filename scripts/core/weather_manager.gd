@@ -8,9 +8,9 @@ extends Node
 
 signal changed(kind: int)
 
-enum Kind { CLEAR, CLOUDY, FOG, RAIN }
+enum Kind { CLEAR, CLOUDY, FOG, RAIN, STORM }
 
-const NAMES := ["ясно", "пасмурно", "туман", "дождь"]
+const NAMES := ["ясно", "пасмурно", "туман", "дождь", "гроза"]
 const SEASONS := ["лето", "осень", "зима", "весна"]
 const SEASON_DAYS := 7
 
@@ -40,18 +40,18 @@ func _on_minutes(m: float) -> void:
 	if _minutes_left <= 0.0:
 		_pick_next()
 	var k := clampf(m / 20.0, 0.0, 1.0)
-	rain = lerpf(rain, 1.0 if kind == Kind.RAIN else 0.0, k)
+	rain = lerpf(rain, 1.0 if wet() else 0.0, k)
 	cloud = lerpf(cloud, 1.0 if kind != Kind.CLEAR else 0.0, k)
 	fog = lerpf(fog, 1.0 if kind == Kind.FOG else 0.0, k)
 	var winter := season() == 2
-	if kind == Kind.RAIN and not winter:
+	if wet() and not winter:
 		wetness = minf(wetness + m / 40.0, 1.0)
 	else:
 		# Зимой грязь замерзает
 		wetness = maxf(wetness - m / (60.0 if winter else 300.0), 0.0)
 	# Снег ложится за полдня (в снегопад — быстрее), тает за сутки
 	if winter:
-		snow = minf(snow + m / (120.0 if kind == Kind.RAIN else 600.0), 1.0)
+		snow = minf(snow + m / (120.0 if wet() else 600.0), 1.0)
 	else:
 		snow = maxf(snow - m / 1440.0, 0.0)
 	var s := season()
@@ -95,15 +95,27 @@ func _pick_next() -> void:
 		next = Kind.CLOUDY
 	if r > 0.72:
 		next = Kind.RAIN
+	# Летом и весной дождь иногда с грозой
+	if r > 0.72 and r < 0.78 and (season() == 0 or season() == 3):
+		next = Kind.STORM
 	if r > 0.9:
 		next = Kind.FOG
 	set_kind(next, _rng.randf_range(120.0, 360.0))
 
 
+## Идёт дождь (или гроза) — мокро, грязь, в колхозе не работают.
+func wet() -> bool:
+	return kind == Kind.RAIN or kind == Kind.STORM
+
+
+## Вспышка молнии: 1 — сверкнуло, гаснет за доли секунды.
+var flash := 0.0
+
+
 ## Название для экрана: зимой вместо дождя — снег.
 func weather_word() -> String:
-	if kind == Kind.RAIN and snowing():
-		return "снег"
+	if wet() and snowing():
+		return "метель" if kind == Kind.STORM else "снег"
 	return NAMES[kind]
 
 
@@ -113,7 +125,9 @@ func set_kind(k: int, minutes := 240.0) -> void:
 	_minutes_left = minutes
 	if was != k:
 		changed.emit(k)
-		if k == Kind.RAIN:
+		if k == Kind.STORM and not snowing():
+			GameManager.notify("Гроза! Лучше переждать под крышей — и на машине осторожнее")
+		elif k == Kind.RAIN or k == Kind.STORM:
 			if snowing():
 				GameManager.notify("Пошёл снег. Дороги скользкие — на машине тормози заранее")
 			else:
@@ -137,7 +151,7 @@ func load_state(d: Dictionary) -> void:
 	kind = int(d.get("kind", Kind.CLEAR))
 	_minutes_left = float(d.get("left", 240.0))
 	wetness = float(d.get("wet", 0.0))
-	rain = 1.0 if kind == Kind.RAIN else 0.0
+	rain = 1.0 if wet() else 0.0
 	cloud = 1.0 if kind != Kind.CLEAR else 0.0
 	fog = 1.0 if kind == Kind.FOG else 0.0
 	snow = float(d.get("snow", 0.0))

@@ -496,6 +496,7 @@ func _new_game() -> void:
 	Progress.tutorial_done = false
 	QuestManager.reset()
 	Daily.load_state({})
+	Achievements.load_state({})
 	get_tree().paused = false
 	if not GameManager.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

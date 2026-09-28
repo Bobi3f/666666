@@ -52,6 +52,8 @@ func _ready() -> void:
 	_streams["moo"] = _make(_moo(), false)
 	_streams["gravel"] = _make(_gravel(), true)
 	_streams["step_grass"] = _make(_step_grass(), false)
+	_streams["rooster"] = _make(_rooster(), false)
+	_streams["thunder"] = _make(_thunder(), false)
 	_streams["step_snow"] = _make(_step_snow(), false)
 	_streams["grass"] = _make(_grass(), true)
 	SettingsManager.changed.connect(_apply_music_volume)
@@ -240,6 +242,43 @@ func _step() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.25
 		a[i] = lp * exp(-t * 45.0) * 0.9
+	return a
+
+
+## Гром: треск и долгий низкий раскат.
+func _thunder() -> PackedFloat32Array:
+	var a := _buf(3.5)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.02
+		lp2 += (lp - lp2) * 0.05
+		var crack := _rng.randf_range(-1.0, 1.0) * exp(-t * 14.0) * 0.5
+		# Раскат перекатывается волнами
+		var roll := (0.6 + 0.4 * sin(t * 5.0 + sin(t * 1.7) * 2.0)) * exp(-t * 0.9)
+		a[i] = clampf(lp2 * 9.0 * roll + crack, -1.0, 1.0) * 0.9
+	return a
+
+
+## Петух: «ку-ка-ре-ку» — четыре слога, последний длинный и вверх-вниз.
+func _rooster() -> PackedFloat32Array:
+	var a := _buf(1.5)
+	# [начало, длина, частота от, частота до]
+	var syl := [[0.0, 0.14, 620.0, 700.0], [0.18, 0.14, 700.0, 760.0], [0.36, 0.16, 760.0, 900.0], [0.56, 0.8, 900.0, 640.0]]
+	var ph := 0.0
+	for s in syl:
+		var start := int(float(s[0]) * RATE)
+		var n := int(float(s[1]) * RATE)
+		for j in n:
+			var k := float(j) / n
+			var f := lerpf(s[2], s[3], k if s[1] < 0.5 else sin(k * PI * 0.5))
+			ph += TAU * f / RATE
+			var env := minf(k * 12.0, 1.0) * minf((1.0 - k) * 8.0, 1.0)
+			# Хрипловато: нечётные гармоники и немного шума
+			var v := sin(ph) + 0.45 * sin(3.0 * ph) + 0.25 * sin(5.0 * ph) + _rng.randf_range(-0.12, 0.12)
+			if start + j < a.size():
+				a[start + j] = v * env * 0.28
 	return a
 
 

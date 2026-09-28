@@ -120,6 +120,7 @@ func _journal_text() -> String:
 		var veh := v as Vehicle
 		if veh and veh.owned() and veh.kind != "tractor":
 			t += "  %s: бензин %d / %d л, состояние %d%%\n" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition)]
+	t += "\n" + _achievements_text()
 	t += "\n" + _stats_text()
 	return t
 
@@ -134,6 +135,19 @@ func _quest_line(id: String) -> String:
 			var giver := " (%s)" % def.giver if def.has("giver") else ""
 			return "  [b]» %s[/b]%s\n      %s\n" % [def.title, giver, QuestManager.step_text(id)]
 	return "  [color=#777777]· %s[/color]\n" % def.title
+
+
+func _achievements_text() -> String:
+	var t := "[b][color=#f0d890]ДОСТИЖЕНИЯ — %d из %d[/color][/b]\n" % [Achievements.got.size(), Achievements.LIST.size()]
+	for id in Achievements.LIST:
+		var a: Array = Achievements.LIST[id]
+		if Achievements.got.has(id):
+			t += "  [color=#7fbf6a]+ %s[/color] — %s\n" % [a[0], a[1]]
+		else:
+			var k := Achievements.progress(id)
+			var pct := "" if k <= 0.0 else "  (%d%%)" % int(k * 100.0)
+			t += "  [color=#8a8a8a]· %s — %s%s[/color]\n" % [a[0], a[1], pct]
+	return t
 
 
 func _stats_text() -> String:

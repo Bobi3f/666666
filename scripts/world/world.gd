@@ -50,6 +50,47 @@ var _vrng := RandomNumberGenerator.new()
 var _drng := RandomNumberGenerator.new()
 ## Лампы фонарей и пятна света под ними: видны только в темноте.
 var _street_lights: Array[Node3D] = []
+## Вода пруда и ручья — отдельным мешем со своим шейдером: рябь и небо в воде
+var _water_b := MeshBuilder.new()
+var _water_mat: ShaderMaterial
+
+const WATER_SHADER := """
+shader_type spatial;
+render_mode specular_schlick_ggx;
+
+uniform vec3 deep = vec3(0.1, 0.2, 0.24);
+uniform vec3 sky = vec3(0.62, 0.74, 0.85);
+// Ручей течёт вдоль Z: рябь сносит течением
+uniform float flow = 0.6;
+// Зимой вода подо льдом
+uniform float ice = 0.0;
+
+varying vec3 wpos;
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
+float wave(vec2 p) {
+	float t = TIME;
+	return sin(p.x * 1.9 + t * 1.3) * 0.5 + sin(p.y * 2.3 - t * 1.1 + flow * t) * 0.5
+		+ sin((p.x + p.y) * 4.1 + t * 2.3) * 0.22 + sin((p.x - p.y) * 6.7 - t * 3.1) * 0.12;
+}
+
+void fragment() {
+	vec2 p = wpos.xz;
+	float e = 0.08;
+	float dx = wave(p + vec2(e, 0.0)) - wave(p - vec2(e, 0.0));
+	float dz = wave(p + vec2(0.0, e)) - wave(p - vec2(0.0, e));
+	vec3 nw = normalize(vec3(-dx * 0.18 * (1.0 - ice), 1.0, -dz * 0.18 * (1.0 - ice)));
+	NORMAL = normalize((VIEW_MATRIX * vec4(nw, 0.0)).xyz);
+	float f = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);
+	ALBEDO = mix(deep, sky, clamp(f * 1.3 + 0.12, 0.0, 1.0));
+	ALBEDO = mix(ALBEDO, vec3(0.72, 0.8, 0.86), ice * 0.85);
+	ROUGHNESS = mix(0.06, 0.35, ice);
+	SPECULAR = 0.9;
+}
+"""
 var _light_pool_mat: StandardMaterial3D
 ## Двор игрока строится отдельно от общего меша: его перестраивают.
 var _yard_nodes: Array[Node] = []
@@ -110,6 +151,16 @@ func _ready() -> void:
 	_veg.build()
 	add_child(_veg)
 	print("Растительность: ", _veg.counts)
+	# Вода — со своим шейдером
+	var sh := Shader.new()
+	sh.code = WATER_SHADER
+	_water_mat = ShaderMaterial.new()
+	_water_mat.shader = sh
+	var water_mesh := _water_b.build_mesh()
+	water_mesh.name = "Water"
+	water_mesh.material_override = _water_mat
+	water_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(water_mesh)
 	var glow_mesh := glow.build_mesh(true)
 	glow_mesh.name = "WindowGlow"
 	_glow_mat = glow_mesh.mesh.surface_get_material(0) if glow_mesh.mesh else null
@@ -129,6 +180,9 @@ func _ready() -> void:
 	taxi.name = "Taxi"
 	add_child(taxi)
 	add_child(preload("res://scripts/world/night_sky.gd").new())
+	var birds := preload("res://scripts/world/birds.gd").new()
+	birds.name = "Birds"
+	add_child(birds)
 	var plough := preload("res://scripts/world/tractor_job.gd").new()
 	plough.name = "TractorJob"
 	add_child(plough)
@@ -181,7 +235,7 @@ func _ready() -> void:
 ## Дальность — по размеру предмета: чем мельче, тем раньше пропадает.
 ## Каждый такой предмет — отдельный вызов отрисовки, а вдали его не видно.
 func _limit_view_ranges() -> void:
-	var skip := ["WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh"]
+	var skip := ["WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh", "Water", "Birds"]
 	var stack: Array[Node] = []
 	for c in get_children():
 		if not skip.has(String(c.name)) and not (c.get_script() and c.get_script().resource_path.ends_with("night_sky.gd")):
@@ -274,9 +328,17 @@ func _update_daylight() -> void:
 	_env.fog_density = 0.0025 + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03 + mist * 0.009
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
 	_sun.visible = day > 0.01
-	_env.background_energy_multiplier = lerpf(0.06, 1.0, day)
-	_env.ambient_light_energy = lerpf(0.12, 1.0, day)
+	# Молния на мгновение заливает всё холодным светом
+	var fl := WeatherManager.flash
+	_env.background_energy_multiplier = lerpf(0.06, 1.0, day) + fl * 1.5
+	_env.ambient_light_energy = lerpf(0.12, 1.0, day) + fl * 2.0
 	_env.fog_light_color = Color(0.05, 0.06, 0.1).lerp(Color(0.7, 0.78, 0.88).lerp(Color(0.5, 0.52, 0.55), cloud * 0.8), day)
+	# В воде — небо: днём голубое, на закате тёплое, ночью тёмное
+	if _water_mat:
+		var sky_col := _sky.sky_horizon_color.lerp(_sky.sky_top_color, 0.35) * lerpf(0.08, 1.0, day)
+		_water_mat.set_shader_parameter("sky", Vector3(sky_col.r, sky_col.g, sky_col.b))
+		_water_mat.set_shader_parameter("deep", Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day))
+		_water_mat.set_shader_parameter("ice", clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0))
 	if _glow_mat:
 		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 	# Фонари зажигаются в сумерках
@@ -1122,7 +1184,7 @@ func _pond(b: MeshBuilder, c: Vector3) -> void:
 		var p0: Vector3 = pts[i]
 		var p1: Vector3 = pts[(i + 1) % segs]
 		b.tri(c + Vector3(0, 0.02, 0), c + p1 * 1.15 + Vector3(0, 0.02, 0), c + p0 * 1.15 + Vector3(0, 0.02, 0), Color(0.36, 0.3, 0.2))
-		b.tri(c + Vector3(0, 0.035, 0), c + p1 + Vector3(0, 0.035, 0), c + p0 + Vector3(0, 0.035, 0), Color(0.2, 0.32, 0.36))
+		_water_b.tri(c + Vector3(0, 0.035, 0), c + p1 + Vector3(0, 0.035, 0), c + p0 + Vector3(0, 0.035, 0), Color(0.2, 0.32, 0.36))
 	# Камыш по берегу
 	for i in 40:
 		var p: Vector3 = pts[_vrng.randi() % segs] * _vrng.randf_range(0.95, 1.12)
@@ -1714,7 +1776,7 @@ func _build_stream(b: MeshBuilder) -> void:
 	var water := Color(0.22, 0.36, 0.42)
 	var bank := Color(0.36, 0.3, 0.2)
 	b.box(Vector3(s.position.x - 0.8, 0, s.position.y), Vector3(s.end.x + 0.8, 0.02, s.end.y + 0.8), bank)
-	b.box(Vector3(s.position.x, 0.02, s.position.y), Vector3(s.end.x, 0.03, s.end.y), water)
+	_water_b.box(Vector3(s.position.x, 0.02, s.position.y), Vector3(s.end.x, 0.03, s.end.y), water)
 	# Берега — невидимые стенки: в речку не въехать, только по мосту
 	var br := Roads.BRIDGE
 	for x in [s.position.x - 0.3, s.end.x]:
@@ -2208,7 +2270,7 @@ func _kolkhoz_work() -> void:
 	if NeedsManager.energy < 25.0:
 		GameManager.notify("Сил нет вилы держать. Выспись")
 		return
-	if WeatherManager.kind == WeatherManager.Kind.RAIN:
+	if WeatherManager.wet():
 		GameManager.notify("Сено в дождь не грузят — приходи, как распогодится")
 		return
 	TimeManager.advance(180.0)

@@ -30,6 +30,7 @@ WeatherManager="*res://scripts/core/weather_manager.gd"
 Progress="*res://scripts/core/progress_manager.gd"
 QuestManager="*res://scripts/quests/quest_manager.gd"
 Daily="*res://scripts/core/daily_manager.gd"
+Achievements="*res://scripts/core/achievements.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
 ControlsHelp="*res://scripts/ui/controls_help.gd"
 

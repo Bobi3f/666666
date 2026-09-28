@@ -97,6 +97,7 @@ func _on_event(name: String, amount: float) -> void:
 		GameManager.add_money(int(e[4]))
 		SoundLibrary.play("quest")
 		GameManager.notify("Поручение выполнено — %s благодарит: +%d грн" % [e[0], e[4]])
+		QuestManager.event("errand")
 	changed.emit()
 
 

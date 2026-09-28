@@ -174,6 +174,7 @@ func _use(id: String) -> void:
 			var win := 2000 if r < 0.03 else (500 if r < 0.15 else (100 if r < 0.4 else 0))
 			if win > 0:
 				GameManager.add_money(win)
+				QuestManager.event("lottery_win", win)
 				SoundLibrary.play("quest")
 				GameManager.notify("Билет выиграл %d грн!" % win)
 			else:
