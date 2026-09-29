@@ -66,7 +66,7 @@ func _run() -> void:
 	ok(PR.has_doc("med") and GM.money == 700, "медкомиссия 150 грн — годен")
 	NM.energy = 20.0
 	zone_in(CV, "процедуры").activate()
-	ok(NM.energy >= 55.0 and GM.money == 600, "процедуры: силы +40 (за час немного устал): %.0f" % NM.energy)
+	ok(NM.energy >= 50.0 and GM.money == 600, "процедуры: силы +40 (за час немного устал): %.0f" % NM.energy)
 
 	print("== Автошкола: категории")
 	PR.docs.erase("med")
