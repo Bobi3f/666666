@@ -94,9 +94,9 @@ func _run() -> void:
 
 	print("== Сюжет 2: Первые деньги")
 	TM.minutes = 8 * 60.0; NM.energy = 100.0; NM.food = 90.0
-	zone_with("колхоз").activate()
+	W.kolkhoz_job.simulate_all()
 	TM.minutes = 12 * 60.0; NM.energy = 100.0
-	zone_with("колхоз").activate()
+	W.kolkhoz_job.simulate_all()
 	ok(state("m_money") == 2 and state("m_wheels") == 1, "две смены в колхозе (800) — «На колёсах»")
 
 	print("== Сюжет 3: На колёсах")
@@ -142,9 +142,9 @@ func _run() -> void:
 	# Петрович: две смены
 	talk("Бригадир Петрович")
 	TM.minutes = 8 * 60.0; NM.energy = 100.0
-	zone_with("колхоз").activate()
+	W.kolkhoz_job.simulate_all()
 	TM.minutes = 12 * 60.0; NM.energy = 100.0
-	zone_with("колхоз").activate()
+	W.kolkhoz_job.simulate_all()
 	ok(QM.quests.s_petrovich.step == 1, "две смены — вернуться к Петровичу")
 	ok(zone_with("Петрович  (!)") != null, "у Петровича «(!)» в подсказке")
 	talk("Бригадир Петрович")

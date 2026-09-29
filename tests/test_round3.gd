@@ -200,7 +200,7 @@ func _run() -> void:
 	ok(PR.house_level == 1 and house and house.wealth == 1, "перестройка дома")
 	ok(zone_with("посадить картошку") != null, "огород на месте после перестройки")
 	GM.money = 0; NM.energy = 90.0
-	zone_with("колхоз").activate()
+	W.kolkhoz_job.simulate_all()
 	ok(GM.money == 400, "колхоз платит")
 	C.global_position = Vector3(27, 0.1, 22); await frames(2)
 	zone_with("развоз").activate()

@@ -84,7 +84,10 @@ func _run() -> void:
 	ok(GM.move_axis == Vector2.ZERO and Vector2(P.velocity.x, P.velocity.z).length() < 0.5, "отпустил стик — стоит")
 	var yaw: float = P.rotation.y
 	jaxis(JOY_AXIS_RIGHT_X, 1.0)
-	await pf(20)
+	# Поворот идёт по времени, а не по кадрам — держим стик полсекунды
+	var t_end := Time.get_ticks_msec() + 500
+	while Time.get_ticks_msec() < t_end:
+		await process_frame
 	jaxis(JOY_AXIS_RIGHT_X, 0.0)
 	ok(absf(P.rotation.y - yaw) > 0.2, "правый стик — камера: %.2f рад" % (P.rotation.y - yaw))
 	P.global_position = Vector3(-121, 0.2, -37.6)

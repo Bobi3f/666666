@@ -209,6 +209,7 @@ func _ready() -> void:
 	var fair := preload("res://scripts/world/fair.gd").new()
 	fair.name = "Fair"
 	add_child(fair)
+	_build_clubs()
 	var biz := preload("res://scripts/world/business_spots.gd").new()
 	biz.name = "Business"
 	add_child(biz)
@@ -2653,6 +2654,8 @@ func _block_grass() -> void:
 	var st := Roads.STREAM.grow(1.5)
 	v.block(st.position.x, st.position.y, st.end.x, st.end.y)
 	v.block(Police.STATION.x - 13.5, Police.STATION.z - 6.5, Police.STATION.x + 7.5, Police.STATION.z + 6.5)
+	v.block(CLUB_VILLAGE.x - 8.5, CLUB_VILLAGE.z - 6, CLUB_VILLAGE.x + 8.5, -5.5)
+	v.block(CLUB_TOWN.x - 29, 100, CLUB_TOWN.x + 26, CLUB_TOWN.z + 7.5)
 	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
 	v.block(76, 10, 93.5, 34)
 	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
@@ -2662,6 +2665,43 @@ func _block_grass() -> void:
 	for x in VILLAGE_X:
 		v.block(x - 10.5, ROW_A_Z - 14, x + 10.5, ROW_A_Z - 9.5)
 		v.block(x - 10.5, ROW_B_Z + 9.5, x + 10.5, ROW_B_Z + 14)
+
+
+# --- Клубы ------------------------------------------------------------------
+
+## Сельский клуб у съезда с трассы и городская дискотека за пятиэтажками.
+const CLUB_VILLAGE := Vector3(-24.0, 0, -20.0)
+const CLUB_TOWN := Vector3(125.0, 0, 118.0)
+
+
+func _build_clubs() -> void:
+	var v := Club.new()
+	v.name = "ClubVillage"
+	v.title = "КЛУБ «КАМЕНКА»"
+	v.center = CLUB_VILLAGE
+	v.size = Vector2(16, 11)
+	v.wall_color = Color(0.86, 0.8, 0.62)
+	v.accent = Color(0.65, 0.18, 0.18)
+	v.open_hour = 20.0
+	v.close_hour = 1.0
+	v.days = ["пт", "сб"]
+	v.fee = 20
+	v.plaza = Rect2(-3.0, 5.5, 6.0, 8.5)
+	add_child(v)
+	var t := Club.new()
+	t.name = "ClubTown"
+	t.title = "«МЕТЕЛИЦА»"
+	t.center = CLUB_TOWN
+	t.yaw = PI
+	t.size = Vector2(20, 14)
+	t.wall_color = Color(0.3, 0.32, 0.4)
+	t.accent = Color(0.85, 0.2, 0.65)
+	t.open_hour = 21.0
+	t.close_hour = 3.0
+	t.fee = 50
+	t.prize = 150
+	t.plaza = Rect2(-25.0, 7.0, 54.0, 10.0)
+	add_child(t)
 
 
 # --- Игрок и машина ---------------------------------------------------------

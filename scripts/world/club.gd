@@ -28,6 +28,8 @@ var close_hour := 1.0
 var days: Array = []
 var fee := 20
 var prize := 0
+## Площадка перед входом (в координатах клуба, вход — в +Z)
+var plaza := Rect2()
 
 var dancing := false
 var _beat_t := 0.0
@@ -42,6 +44,8 @@ var _dancers: Array[MeshInstance3D] = []
 var _dj: MeshInstance3D
 var _music: AudioStreamPlayer3D
 var _light: OmniLight3D
+var _porch: OmniLight3D
+var _front: MeshInstance3D
 var _door_block: CollisionShape3D
 var _t := 0.0
 var _xf := Transform3D.IDENTITY
@@ -119,6 +123,8 @@ func _build() -> void:
 	b.box(bar + Vector3(-0.6, 1.1, -2.6), bar + Vector3(0.6, 1.16, 2.6), Color(0.5, 0.35, 0.25))
 	for k in 5:
 		b.box(bar + Vector3(0.7, 1.4, -2.0 + k * 0.9), bar + Vector3(0.85, 1.75, -1.8 + k * 0.9), [Color(0.3, 0.6, 0.3), Color(0.7, 0.5, 0.2), Color(0.5, 0.2, 0.2)][k % 3])
+	if plaza.size != Vector2.ZERO:
+		b.box(Vector3(plaza.position.x, 0, plaza.position.y), Vector3(plaza.end.x, 0.045, plaza.end.y), Color(0.34, 0.34, 0.35))
 	add_child(b.build_mesh())
 	add_child(b.build_body())
 	# Вывески: над входом и на крыше
@@ -183,10 +189,34 @@ func _build() -> void:
 	# Цветной свет над танцполом — только когда дискотека и игрок рядом
 	_light = OmniLight3D.new()
 	_light.omni_range = maxf(size.x, size.y) * 0.7
-	_light.light_energy = 1.6
+	_light.light_energy = 1.0
 	_light.position = _p(Vector3(0, h - 1.2, 0.8))
 	_light.visible = false
 	add_child(_light)
+	# Снаружи: окна светятся цветом танцпола, фонарь над входом
+	var fw := MeshBuilder.new()
+	fw.ground_shade = false
+	for s in [-1.0, 1.0]:
+		for k in 2:
+			var x0: float = s * (2.2 + k * 2.4)
+			fw.box(Vector3(x0 - 0.8, 1.2, hz + 0.01), Vector3(x0 + 0.8, 2.4, hz + 0.04), Color.WHITE)
+	_front = fw.build_mesh(true)
+	_front.transform = _xf
+	_front.material_override = _tiles[1]
+	add_child(_front)
+	var lamp := MeshBuilder.new()
+	lamp.ground_shade = false
+	lamp.box(Vector3(-0.3, 2.45, hz + 1.2), Vector3(0.3, 2.58, hz + 1.5), Color(1.0, 0.92, 0.7))
+	var lamp_mi := lamp.build_mesh(true)
+	lamp_mi.transform = _xf
+	add_child(lamp_mi)
+	_porch = OmniLight3D.new()
+	_porch.omni_range = 7.0
+	_porch.light_energy = 1.2
+	_porch.light_color = Color(1.0, 0.85, 0.6)
+	_porch.position = _p(Vector3(0, 2.3, hz + 1.8))
+	_porch.visible = false
+	add_child(_porch)
 	# Диджей и танцующие
 	var shirts := [Color(0.8, 0.2, 0.3), Color(0.2, 0.4, 0.8), Color(0.9, 0.8, 0.2), Color(0.3, 0.7, 0.4),
 		Color(0.7, 0.3, 0.8), Color(0.95, 0.95, 0.95), Color(0.2, 0.2, 0.25)]
@@ -332,6 +362,8 @@ func _process(delta: float) -> void:
 	var near := p != null and p.global_position.distance_to(center) < 70.0
 	var live := open and near
 	_light.visible = live
+	_porch.visible = live
+	_front.visible = open
 	_dj.visible = open
 	for d in _dancers:
 		d.visible = open
