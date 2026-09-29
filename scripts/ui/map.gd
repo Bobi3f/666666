@@ -10,7 +10,7 @@ extends CanvasLayer
 ## покрупнее, а в углу показывается кусок вокруг игрока — почти даром.
 
 const SIZE := 560.0
-const WORLD := 1400.0
+const WORLD := Region.HALF * 2.0
 ## Окрестности на большой карте: столько метров по стороне.
 const LOCAL_M := 420.0
 
@@ -21,7 +21,7 @@ var _t: Control
 var _size := SIZE
 ## Мини-карта: сколько метров видно по стороне и размер текстуры карты
 const MINI_M := 160.0
-const TEX := 2048.0
+const TEX := 2560.0
 var _mini: Control
 var _tex_vp: SubViewport
 ## Какой кусок мира сейчас рисуем (X, Z мира) и что открыто: 0 — ничего,
@@ -233,7 +233,7 @@ func _compass(font: Font) -> void:
 ## Масштаб: полоска на 100 метров (на карте района — на 500) в левом нижнем углу.
 func _scale_bar(font: Font) -> void:
 	var a := Vector2(14, _size - 30)
-	var meters := 100.0 if _view.size.x < 800.0 else 500.0
+	var meters := 100.0 if _view.size.x < 800.0 else 1000.0
 	var bar := _m(meters)
 	_t.draw_rect(Rect2(a, Vector2(bar, 5)), Color(0.12, 0.1, 0.08))
 	_t.draw_rect(Rect2(a + Vector2(bar * 0.5, 1), Vector2(bar * 0.5 - 1, 3)), Color(1, 1, 1))
@@ -287,9 +287,9 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, v.name, (v.c as Vector2) + Vector2(0, -52.0 if whole else -44.0), big)
 		if whole:
 			_label_at(font, "р. Быстрая", Vector2(385, -200), 13, true)
-			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-20, 48), 12, true)
-			_label_at(font, "Тёмный лес", Vector2(-570, -560), 13, true)
-			_label_at(font, "Дубрава", Vector2(-25, 590), 13, true)
+			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-120, 12), 12, true)
+			_label_at(font, "Тёмный лес", Vector2(-1000, -1050), 13, true)
+			_label_at(font, "Дубрава", Vector2(0, 1000), 13, true)
 		else:
 			_label_at(font, "Сосновый бор", Vector2(-120, -150), 14, true)
 			_label_at(font, "Дубрава", Vector2(-135, 120), 14, true)

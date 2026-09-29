@@ -1,7 +1,7 @@
 class_name Region
 extends Node3D
 ## Район вокруг Каменки: ещё четыре села с жителями, река Быстрая с мостами,
-## грунтовки между сёлами, леса, поля и озеро. Край мира — ±700 м.
+## грунтовки между сёлами, леса, поля и озеро. Край мира — ±1200 м.
 ##
 ## Земля, берега, дороги и деревья — в общем меше мира (world.gd). Дома,
 ## заборы и камыш — в своём меше кусками по 100 м с дальностью видимости:
@@ -11,14 +11,14 @@ extends Node3D
 ## карта рисует район, лес не растёт на дорогах.
 
 const Villagers := preload("res://scripts/world/villagers.gd")
-const HALF := 700.0
+const HALF := 1200.0
 ## Сёла дальше этого не рисуются (куски меша домов).
 const VIEW := 450.0
 const RIVER_HALF := 8.0
 ## Опорные точки реки с севера на юг; между ними — плавная кривая.
-const RIVER := [Vector2(330, -700), Vector2(300, -550), Vector2(350, -420), Vector2(320, -300),
+const RIVER := [Vector2(380, -1200), Vector2(340, -950), Vector2(330, -700), Vector2(300, -550), Vector2(350, -420), Vector2(320, -300),
 	Vector2(280, -150), Vector2(310, 0), Vector2(360, 150), Vector2(330, 300), Vector2(290, 450),
-	Vector2(320, 700)]
+	Vector2(320, 700), Vector2(370, 950), Vector2(340, 1200)]
 const ROAD_HALF := 3.0
 
 ## Сёла: центр улицы (улица вдоль X, 110 м), с какого конца въезд,
@@ -26,7 +26,7 @@ const ROAD_HALF := 3.0
 const VILLAGES := [
 	{"name": "Озерцово", "c": Vector2(-460, -300), "entry": 1, "lines": [
 		"За селом озеро — караси с ладонь. Мостки есть, бери удочку.",
-		"Автобус районный раз в четыре часа к нам заходит, в Каменку — хоть каждый час.",
+		"Районный автобус раз в восемь часов к нам заходит, в Каменку — хоть каждый час.",
 		"Раньше тут клуб был, кино крутили. Теперь телевизор у каждого.",
 	]},
 	{"name": "Первомай", "c": Vector2(475, -350), "entry": -1, "lines": [
@@ -44,6 +44,26 @@ const VILLAGES := [
 		"Колхоз наш развалился, теперь кто во что горазд: кто пчёлы, кто картошка.",
 		"Внук в городе на СТО работает, говорит — деньги хорошие.",
 	]},
+	{"name": "Сосновка", "c": Vector2(-850, -750), "entry": 1, "lines": [
+		"Сосновка — самый край района. Дальше только лес да болота.",
+		"Из Озерцово к нам дорога через бор — в дождь не суйся.",
+		"Летом черники столько, что вёдрами носим.",
+	]},
+	{"name": "Красный Яр", "c": Vector2(850, -800), "entry": -1, "lines": [
+		"Красный Яр — за Первомаем, через лес. Глина у нас красная, отсюда и имя.",
+		"Раньше кирпичный завод был, теперь развалины одни.",
+		"Автобус районный к нам редко, но доходит.",
+	]},
+	{"name": "Берёзовка", "c": Vector2(-900, 750), "entry": 1, "lines": [
+		"Берёзовка — тишина, воздух. Городские на лето дачи снимают.",
+		"Из Тошиков к нам одна дорога, зимой её не чистят.",
+		"Пасека у деда Степана — мёд лучший в районе.",
+	]},
+	{"name": "Лужки", "c": Vector2(850, 900), "entry": -1, "lines": [
+		"Лужки — луга заливные, весной Быстрая разливается до самого села.",
+		"Коров у нас больше, чем людей. Молоко в город возим.",
+		"Из Заречья к нам на «Жигулях» доедешь, если сухо.",
+	]},
 ]
 ## Дороги (грунт): ломаные от трассы или полевой дороги к сёлам. Улицы
 ## сёл добавляются к ним сами.
@@ -53,17 +73,28 @@ const ROADS := [
 	[Vector2(-300, 4.5), Vector2(-300, 160), Vector2(-360, 300), Vector2(-375, 380)],
 	[Vector2(430, 4.5), Vector2(430, 160), Vector2(435, 300)],
 	[Vector2(560, -4.5), Vector2(560, -200), Vector2(530, -350)],
+	[Vector2(-518, -300), Vector2(-700, -450), Vector2(-770, -650), Vector2(-795, -750)],
+	[Vector2(533, -350), Vector2(700, -500), Vector2(760, -700), Vector2(795, -800)],
+	[Vector2(-488, 380), Vector2(-650, 500), Vector2(-800, 650), Vector2(-845, 750)],
+	[Vector2(548, 300), Vector2(700, 550), Vector2(770, 800), Vector2(795, 900)],
 ]
 const FORESTS := [
 	Rect2(-700, -700, 260, 300), Rect2(-330, -650, 250, 300), Rect2(520, -680, 180, 260),
 	Rect2(-700, 120, 220, 200), Rect2(-200, 450, 350, 250), Rect2(560, 420, 140, 280),
 	Rect2(80, -650, 180, 180), Rect2(-260, 205, 200, 160),
+	Rect2(-1200, -1200, 400, 350), Rect2(-600, -1200, 500, 300), Rect2(400, -1200, 500, 250),
+	Rect2(1000, -600, 200, 500), Rect2(-1200, -300, 250, 500), Rect2(-1200, 950, 500, 250),
+	Rect2(-300, 850, 600, 350), Rect2(1000, 300, 200, 500), Rect2(450, 1050, 450, 150),
 ]
 const FIELDS := [
 	[Rect2(-520, -270, 100, 40), Color(0.78, 0.68, 0.33)],
 	[Rect2(420, -420, 110, 40), Color(0.4, 0.3, 0.2)],
 	[Rect2(-490, 412, 110, 43), Color(0.36, 0.55, 0.2)],
 	[Rect2(440, 222, 110, 44), Color(0.78, 0.68, 0.33)],
+	[Rect2(-910, -718, 110, 40), Color(0.36, 0.55, 0.2)],
+	[Rect2(795, -872, 110, 40), Color(0.78, 0.68, 0.33)],
+	[Rect2(-960, 782, 110, 40), Color(0.4, 0.3, 0.2)],
+	[Rect2(795, 828, 110, 40), Color(0.36, 0.55, 0.2)],
 ]
 const LAKE := Vector2(-560, -380)
 const LAKE_R := Vector2(30, 20)
@@ -200,11 +231,16 @@ static func houses() -> Array:
 
 # --- Постройка ----------------------------------------------------------------
 
-## Строит район: b — общий меш мира (земля, дороги), glow — окна.
-func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
+## Строит район: glow — окна (общий меш мира). Земля, дороги и река —
+## в своём меше крупными кусками по 300 м: вдаль видно всё, а вызовов
+## отрисовки на телефоне мало. Дома, заборы и тени деревьев — в меше с
+## дальностью видимости.
+func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 	_world = world
 	_rng.seed = 7001
 	_d.chunk_size = 100.0
+	var b := MeshBuilder.new()
+	b.chunk_size = 300.0
 	_ground(b)
 	_highway(b)
 	_find_bridges()
@@ -217,8 +253,17 @@ func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) ->
 		veg.block(r.position.x, r.position.y, r.end.x, r.end.y)
 	for i in VILLAGES.size():
 		_village(i, b, glow, veg)
-	_forests(b)
+	_forests(_d)
 	_district_bus()
+	var ground := b.build_chunked()
+	ground.name = "RegionGround"
+	for c in ground.get_children():
+		# Дальность задана — общая настройка мелочи (world.gd) её не урежет
+		(c as GeometryInstance3D).visibility_range_end = HALF * 4.0
+	add_child(ground)
+	var ground_body := b.build_body()
+	ground_body.name = "RegionGroundCollision"
+	add_child(ground_body)
 	var mesh := _d.build_chunked()
 	mesh.name = "RegionMesh"
 	for c in mesh.get_children():
@@ -710,7 +755,7 @@ func _villager(i: int, p: Vector3) -> void:
 func _forests(b: MeshBuilder) -> void:
 	for area in FORESTS:
 		var r: Rect2 = area
-		var count := int(r.get_area() / 220.0)
+		var count := int(r.get_area() / 280.0)
 		for i in count:
 			var x := r.position.x + _rng.randf() * r.size.x
 			var z := r.position.y + _rng.randf() * r.size.y

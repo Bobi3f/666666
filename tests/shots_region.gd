@@ -34,7 +34,7 @@ func _run() -> void:
 		if absf((b[0] as Vector2).y) > 50.0: br = b[0]
 	await view("03_bridge_wood", Vector3(br.x - 22, 5, br.y + 16), Vector3(br.x, 0, br.y))
 	await view("04_lake", Vector3(Region.LAKE.x + 55, 8, Region.LAKE.y + 20), Vector3(Region.LAKE.x, 0, Region.LAKE.y))
-	var v3: Vector2 = Region.VILLAGES[3].c
+	var v3: Vector2 = Region.VILLAGES[5].c
 	await view("05_zarechye", Vector3(v3.x - 90, 25, v3.y - 60), Vector3(v3.x, 0, v3.y))
 	await view("06_air", Vector3(-150, 120, 150), Vector3(-380, 0, 300))
 	# Карта района и мини-карта у села

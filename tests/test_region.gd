@@ -61,7 +61,7 @@ func _run() -> void:
 	var tr = child("traffic.gd")
 	print("== Район")
 	var R = W.get_node("Region")
-	ok(R != null and Region.VILLAGES.size() == 4, "четыре соседних села")
+	ok(R != null and Region.VILLAGES.size() == 8, "восемь соседних сёл")
 	ok(R._bridges.size() == 2, "мосты через реку: %d" % R._bridges.size())
 	ok(tr.WORLD_X > 600.0, "попутки ездят по всей трассе района")
 	var veg = W.get_node("Vegetation")
@@ -119,11 +119,11 @@ func _run() -> void:
 	ok(float(sf.roll) < 3.0, "на грунтовке катится как по дороге: %.1f" % float(sf.roll))
 
 	print("== Край района")
-	C.global_position = Vector3(640, 0.3, 2.0); C.rotation = Vector3(0, -PI / 2.0, 0)
+	C.global_position = Vector3(Region.HALF - 60.0, 0.3, 2.0); C.rotation = Vector3(0, -PI / 2.0, 0)
 	C.speed = 0.0
 	await frames(5)
-	await route(C, [Vector3(760, 0, 2)], 60.0, 6.0)
-	ok(C.global_position.x < 700.5, "за край района не уехать: x=%.1f" % C.global_position.x)
+	await route(C, [Vector3(Region.HALF + 60.0, 0, 2)], 60.0, 6.0)
+	ok(C.global_position.x < Region.HALF + 0.5, "за край района не уехать: x=%.1f" % C.global_position.x)
 	C.speed = 0.0
 	C.exit_car()
 	await frames(3)
@@ -174,7 +174,7 @@ func _run() -> void:
 	var st: Dictionary = R.save_state()
 	R.visited.clear()
 	R.load_state(st)
-	ok(R.visited.size() == 4, "посещённые сёла сохраняются")
+	ok(R.visited.size() == 8, "посещённые сёла сохраняются")
 	R.load_state({})
 	ok(R.visited.is_empty(), "старое сохранение — без сёл")
 	print("== Карта")
