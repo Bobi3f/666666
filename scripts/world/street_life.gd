@@ -244,12 +244,20 @@ func _build_cows() -> void:
 		for hx in [-0.3, 0.2]:
 			b.box(Vector3(hx, 1.33, 0.95), Vector3(hx + 0.1, 1.45, 1.02), Color(0.9, 0.88, 0.8))
 		for p in [Vector2(-0.3, -0.8), Vector2(0.18, -0.8), Vector2(-0.3, 0.6), Vector2(0.18, 0.6)]:
+			# Ноги по диагонали — шагают парами
+			b.alpha = 0.9 if (p.x < 0.0) == (p.y > 0.0) else 0.8
 			b.box(Vector3(p.x, 0, p.y), Vector3(p.x + 0.12, 0.66, p.y + 0.14), white.darkened(0.1))
+		b.alpha = 1.0
 		b.box(Vector3(-0.1, 0.55, -0.1), Vector3(0.1, 0.66, 0.2), Color(0.9, 0.7, 0.7))
+		b.alpha = 0.5
 		b.box(Vector3(-0.03, 0.9, -1.2), Vector3(0.03, 1.3, -0.95), white.darkened(0.2))
-		body.add_child(b.build_mesh())
+		b.alpha = 1.0
+		var cow_mesh := Villagers.animal_mesh(b, 0.66, 1.3, -0.95, 2.0)
+		# Хвостом от мух машет всегда, чуть-чуть
+		(cow_mesh.material_override as ShaderMaterial).set_shader_parameter("wag", 0.35)
+		body.add_child(cow_mesh)
 		add_child(body)
-		_cows.append({"body": body, "offset": spots[i], "s": 0.0})
+		_cows.append({"body": body, "offset": spots[i], "s": 0.0, "mesh": cow_mesh, "phase": i * 1.3})
 	_place_cows_for_hour(TimeManager.hour())
 
 
@@ -313,9 +321,12 @@ func _update_cows(delta: float) -> void:
 	for c in _cows:
 		var goal := _goal(c, _cows_going)
 		var left: float = (goal - float(c.s)) * _cows_going
-		if left > 0.05:
+		var walking := left > 0.05
+		if walking:
 			moving = true
 			_move_cow(c, minf(0.9 * delta, left) * _cows_going, _cows_going)
+			c.phase = float(c.phase) + 0.9 * delta * 3.0
+		Villagers.set_walk(c.mesh, c.phase, 1.0 if walking else 0.0)
 	_moo_cool -= delta
 	if moving and _moo_cool <= 0.0:
 		_moo_cool = randf_range(6.0, 12.0)

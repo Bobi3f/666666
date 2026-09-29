@@ -39,6 +39,20 @@ var _buf := PackedFloat32Array()
 var _bytes := PackedByteArray()
 var _enc_i := 0
 var _rng := RandomNumberGenerator.new()
+## Пока радио играет, раз в полторы минуты — короткая сводка между песнями
+var _news_in := 20.0
+var _news_i := 0
+
+const NEWS := [
+	"В Каменке рекордный урожай картошки — не забывайте поливать огороды!",
+	"Автосалон у въезда в город: «Нива», «Волга» и ГАЗ-53 ждут хозяев.",
+	"Бригадир колхоза «Заря» ищет трактористов на пахоту.",
+	"ГАИ напоминает: у Каменки — не быстрее шестидесяти!",
+	"Рыбаки говорят: на пруду снова видели щуку.",
+	"Грибники, осенью в лесу грибов вдвое больше. Мухоморы не брать!",
+	"Склад в городе набирает грузчиков — платят сразу.",
+	"Такси у площади Мира: водители с правами, подходите!",
+]
 
 
 func _ready() -> void:
@@ -73,6 +87,24 @@ func toggle() -> void:
 	_sync()
 
 
+## Сводка: погода, ярмарка, сезон или местная новость.
+func _news() -> String:
+	_news_i += 1
+	match _news_i % 4:
+		0:
+			return "Синоптики: сейчас %s. %s" % [WeatherManager.name_text(),
+				"Возможна гроза — берегитесь молний!" if WeatherManager.season() == 0 else "Одевайтесь по погоде!"]
+		1:
+			if TimeManager.day % 7 == 6:
+				return "Завтра воскресенье — ярмарка на площади Мира с восьми до четырёх!"
+			if TimeManager.day % 7 == 0:
+				return "Сегодня ярмарка на площади Мира: рыба дороже, лотерея, пирожки!"
+			var left := WeatherManager.SEASON_DAYS - (TimeManager.day - 1) % WeatherManager.SEASON_DAYS
+			var next: String = WeatherManager.SEASONS[(WeatherManager.season() + 1) % 4]
+			return "До смены сезона — %d дн. Скоро %s!" % [left, next]
+	return NEWS[_rng.randi() % NEWS.size()]
+
+
 func playing() -> bool:
 	return _player.playing
 
@@ -83,6 +115,11 @@ func _process(_delta: float) -> void:
 	_player.stream_paused = get_tree().paused
 	if not get_tree().paused:
 		_sync()
+		if _player.playing:
+			_news_in -= _delta
+			if _news_in <= 0.0:
+				_news_in = 90.0
+				GameManager.notify("%s: «%s»" % [STATIONS[station].name, _news()])
 
 
 ## Играть нужную станцию, если сидим в машине, иначе молчать.

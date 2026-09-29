@@ -370,6 +370,12 @@ func _process(delta: float) -> void:
 	for d in _dogs:
 		d.cool = maxf(d.cool - delta, 0.0)
 		var dog: Node3D = d.node
+		# Хвостом виляет, когда рядом человек
+		var near := p != null and p.visible and dog.global_position.distance_to(ppos) < 9.0
+		var mat := (dog.get_child(0) as MeshInstance3D).material_override as ShaderMaterial
+		var w := move_toward(float(d.get("wag", 0.0)), 0.6 if near else 0.12, delta)
+		d["wag"] = w
+		mat.set_shader_parameter("wag", w)
 		if p and p.visible and d.cool <= 0.0 and dog.global_position.distance_to(ppos) < 7.0:
 			d.cool = _rng.randf_range(3.0, 6.0)
 			SoundLibrary.play_at("bark", dog.global_position, 0.0, _rng.randf_range(0.9, 1.1))
@@ -555,6 +561,58 @@ void fragment() {
 
 static var _walk_shader: Shader
 
+## Четвероногие: ноги по диагонали (0.9 и 0.8 в альфе), хвост (0.5) виляет
+## вокруг вертикали у корня. hip — высота «плеч», откуда качаются ноги.
+const ANIMAL_SHADER := """
+shader_type spatial;
+
+uniform float phase = 0.0;
+uniform float amount = 0.0;
+uniform float hip = 0.6;
+uniform vec2 tail_root = vec2(0.5, -1.0);
+uniform float wag = 0.0;
+uniform float wag_speed = 3.0;
+
+void vertex() {
+	float tag = COLOR.a;
+	float a = sin(phase) * 0.45 * amount;
+	if (tag < 0.95 && tag > 0.85) {
+		float dy = VERTEX.y - hip;
+		VERTEX = vec3(VERTEX.x, hip + dy * cos(a), VERTEX.z + dy * sin(a));
+	} else if (tag < 0.85 && tag > 0.75) {
+		float dy = VERTEX.y - hip;
+		VERTEX = vec3(VERTEX.x, hip + dy * cos(-a), VERTEX.z + dy * sin(-a));
+	} else if (tag < 0.55 && tag > 0.45) {
+		float w = sin(TIME * wag_speed) * wag;
+		float dx = VERTEX.x;
+		float dz = VERTEX.z - tail_root.y;
+		VERTEX.x = dx * cos(w) - dz * sin(w);
+		VERTEX.z = tail_root.y + dx * sin(w) + dz * cos(w);
+	}
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb * 1.05;
+	ROUGHNESS = 0.9;
+}
+"""
+
+static var _animal_shader: Shader
+
+
+static func animal_mesh(b: MeshBuilder, hip: float, tail_y: float, tail_z: float, wag_speed := 3.0) -> MeshInstance3D:
+	if _animal_shader == null:
+		_animal_shader = Shader.new()
+		_animal_shader.code = ANIMAL_SHADER
+	var mi := b.build_mesh()
+	var mat := ShaderMaterial.new()
+	mat.shader = _animal_shader
+	mat.set_shader_parameter("hip", hip)
+	mat.set_shader_parameter("tail_root", Vector2(tail_y, tail_z))
+	mat.set_shader_parameter("wag_speed", wag_speed)
+	mi.material_override = mat
+	return mi
+
 
 ## Меш человека с шейдером ходьбы — у каждого свой материал, свой шаг.
 static func walking_mesh(b: MeshBuilder) -> MeshInstance3D:
@@ -605,9 +663,13 @@ func _dog_mesh() -> Node3D:
 	b.box(Vector3(0.06, 0.7, -0.45), Vector3(0.12, 0.8, -0.38), fur.darkened(0.3))
 	for x in [-0.13, 0.07]:
 		for z in [-0.3, 0.2]:
+			# По диагонали: левая передняя с правой задней
+			b.alpha = 0.9 if (x < 0.0) == (z < 0.0) else 0.8
 			b.box(Vector3(x, 0.0, z), Vector3(x + 0.06, 0.26, z + 0.07), fur.darkened(0.1))
+	b.alpha = 0.5
 	b.box(Vector3(-0.02, 0.45, 0.3), Vector3(0.02, 0.5, 0.5), fur)
-	root.add_child(b.build_mesh())
+	b.alpha = 1.0
+	root.add_child(animal_mesh(b, 0.26, 0.47, 0.3, 11.0))
 	return root
 
 
