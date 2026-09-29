@@ -90,6 +90,25 @@ func _run() -> void:
 	var got: int = await route(C, [Vector3(300, 0, 2), Vector3(330, 0, 2), Vector3(380, 0, 2)], 50.0, 25.0)
 	ok(got == 3 and C.global_position.x > 370.0, "переехал реку по мосту: x=%d" % int(C.global_position.x))
 
+	print("== Камера за машиной закреплена")
+	var was_chase: bool = C.chase_view
+	C.chase_view = true
+	C._update_camera(1.0)
+	var want: float = (C.spec.chase as Vector3).length()
+	var worst := 0.0
+	C.rotation.y = -PI / 2.0
+	for i in 150:
+		key(KEY_W, C.speed_kmh() < 80.0)
+		await physics_frame
+		if i > 20:
+			worst = maxf(worst, absf(C._chase_mark.global_position.distance_to(C.global_position) - want))
+	key(KEY_W, false)
+	ok(C.speed_kmh() > 50.0 and worst < 0.3, "на %d км/ч камера не отстаёт: отклонение %.2f м" % [int(C.speed_kmh()), worst])
+	C.bump(1.5)
+	await physics_frame
+	ok(C._camera.v_offset == 0.0 and C._chase.v_offset == 0.0, "на яме камера не трясётся")
+	C.chase_view = was_chase
+
 	print("== Берег не пускает в реку")
 	var rv := Region.river()
 	var zr := 120.0

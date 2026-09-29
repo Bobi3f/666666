@@ -140,8 +140,8 @@ var blurb := ""
 var engine_tuned := false
 var paint := 0
 var _paint_mesh: MeshInstance3D
+## Сколько ещё секунд машину «трясёт» после ямы (камера при этом не дёргается)
 var _shake := 0.0
-var _shake_k := 0.0
 var braking := false
 
 var _steer := 0.0
@@ -152,6 +152,9 @@ var _camera: SmoothCamera
 var _seat_mark: Node3D
 var _chase_mark: Node3D
 var _chase: SmoothCamera
+var _chase_yaw := 0.0
+var _chase_y := 0.0
+var _chase_ready := false
 var _body: Node3D  # всё, что наклоняется (мотоцикл в повороте)
 var _rider: Node3D
 var _zone: InteractZone
@@ -911,22 +914,29 @@ func _update_lights() -> void:
 		_brake_mat.albedo_color = Color(1.0, 0.1, 0.05) if on else (Color(0.55, 0.05, 0.03) if lit else Color(0.3, 0.04, 0.03))
 
 
+## Камера закреплена за машиной, как в Car Parking: стоит всегда на одном
+## расстоянии сзади и не отстаёт на скорости. Плавно, без рывков, она только
+## поворачивается следом за машиной и сглаживает мелкие ступеньки по высоте
+## (бордюр, край асфальта). На ямах не трясётся — яму чувствует вибрация.
 func _update_camera(dt: float) -> void:
-	# Тряска на яме — камера подпрыгивает и быстро успокаивается
-	if _shake > 0.0:
-		_shake = maxf(_shake - dt, 0.0)
-		var off := sin(_shake * 70.0) * 0.06 * _shake_k * (_shake / 0.4)
-		_camera.v_offset = off
-		if _chase:
-			_chase.v_offset = off
+	_shake = maxf(_shake - dt, 0.0)
 	if not chase_view or _chase == null:
 		return
 	var back: Vector3 = spec.chase
-	var target := global_transform.origin + global_transform.basis * back
-	var look := global_transform.origin + Vector3(0, 1.0, 0)
-	var k := minf(dt * 5.0, 1.0)
-	_chase_mark.global_position = _chase_mark.global_position.lerp(target, k) if dt < 0.5 else target
-	_chase_mark.look_at(look)
+	var yaw := rotation.y
+	var y := global_position.y
+	if dt >= 0.5 or not _chase_ready:
+		_chase_yaw = yaw
+		_chase_y = y
+		_chase_ready = true
+	else:
+		# Поворот — чуть мягче машины: на повороте видно, куда едешь
+		_chase_yaw = lerp_angle(_chase_yaw, yaw, minf(dt * 8.0, 1.0))
+		_chase_y = lerpf(_chase_y, y, minf(dt * 6.0, 1.0))
+	var origin := Vector3(global_position.x, _chase_y, global_position.z)
+	var turn := Basis(Vector3.UP, _chase_yaw)
+	_chase_mark.global_position = origin + turn * back
+	_chase_mark.look_at(origin + Vector3(0, 1.0, 0))
 	if dt >= 0.5:
 		_chase.snap()
 
@@ -1026,7 +1036,6 @@ func bump(strength: float) -> void:
 	speed *= 1.0 - 0.05 * strength
 	_wear(strength * 0.6)
 	_shake = 0.25 + strength * 0.15
-	_shake_k = strength
 	SoundLibrary.play_at("land", global_position, -4.0 + strength * 3.0, 0.8)
 	if driver:
 		GameManager.vibrate(int(30.0 + strength * 30.0))
