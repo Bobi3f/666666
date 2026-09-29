@@ -3,12 +3,23 @@ extends CanvasLayer
 ## Стрелка — игрок, квадрат — машина. Во время развоза горит сельмаг.
 ##
 ## Места берутся из констант world.gd, чтобы карта не расходилась с миром.
+##
+## Мини-карта в углу экрана: та же карта один раз рисуется в текстуру
+## покрупнее, а в углу показывается кусок вокруг игрока — почти даром.
 
 const SIZE := 560.0
 const WORLD := 400.0
 
 var _canvas: Control
 var _world: Node
+## Куда сейчас рисуем и в каком размере: большая карта или текстура мини-карты
+var _t: Control
+var _size := SIZE
+## Мини-карта: сколько метров видно по стороне и размер текстуры карты
+const MINI_M := 160.0
+const TEX := 1400.0
+var _mini: Control
+var _tex_vp: SubViewport
 
 
 func _ready() -> void:
@@ -23,6 +34,29 @@ func _ready() -> void:
 	_canvas.draw.connect(_draw_map)
 	_canvas.visible = false
 	add_child(_canvas)
+	_build_minimap.call_deferred()
+
+
+func _build_minimap() -> void:
+	# Текстура: вся карта без подписей, рисуется один раз
+	_tex_vp = SubViewport.new()
+	_tex_vp.size = Vector2i(int(TEX), int(TEX))
+	_tex_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_tex_vp.disable_3d = true
+	var painter := Control.new()
+	painter.size = Vector2(TEX, TEX)
+	painter.draw.connect(func() -> void:
+		_t = painter
+		_size = TEX
+		_draw_static(false)
+		_t = _canvas
+		_size = SIZE)
+	_tex_vp.add_child(painter)
+	add_child(_tex_vp)
+	_mini = Control.new()
+	_mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mini.draw.connect(_draw_mini)
+	add_child(_mini)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -36,22 +70,89 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if _canvas.visible:
 		_canvas.queue_redraw()
+	if _mini:
+		var show := SettingsManager.minimap and not _canvas.visible and not get_tree().paused and GameManager.in_game
+		_mini.visible = show
+		if show:
+			var vs := _mini.get_viewport_rect().size
+			var side := 118.0 if GameManager.touch_mode else 160.0
+			_mini.size = Vector2(side, side)
+			# На телефоне справа сверху — столбик кнопок: встаём левее него
+			_mini.position = Vector2(vs.x - side - (100.0 if GameManager.touch_mode else 16.0), 92.0 if GameManager.touch_mode else 84.0)
+			_mini.queue_redraw()
+
+
+## Мини-карта: кусок большой карты вокруг игрока, север сверху, игрок — стрелка.
+func _draw_mini() -> void:
+	var side := _mini.size.x
+	var pos := _player_pos()
+	var k := TEX / WORLD
+	var half := MINI_M * 0.5 * k
+	var c := Vector2((pos.x + WORLD * 0.5) * k, (pos.z + WORLD * 0.5) * k)
+	c = c.clamp(Vector2(half, half), Vector2(TEX - half, TEX - half))
+	var src := Rect2(c - Vector2(half, half), Vector2(half, half) * 2.0)
+	_mini.draw_rect(Rect2(Vector2(-3, -3), Vector2(side + 6, side + 6)), Color(0, 0, 0, 0.6))
+	_mini.draw_texture_rect_region(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(side, side)), src, Color(1, 1, 1, 0.9))
+	var to_mini := func(x: float, z: float) -> Vector2:
+		return (Vector2((x + WORLD * 0.5) * k, (z + WORLD * 0.5) * k) - src.position) * (side / src.size.x)
+	# Свои машины
+	for n in get_tree().get_nodes_in_group("vehicles"):
+		var v := n as Vehicle
+		if v and v.owned() and v.kind != "tractor" and v != GameManager.vehicle:
+			var mp: Vector2 = to_mini.call(v.global_position.x, v.global_position.z)
+			if Rect2(Vector2.ZERO, Vector2(side, side)).has_point(mp):
+				_mini.draw_rect(Rect2(mp - Vector2(3, 3), Vector2(6, 6)), Color(0.95, 0.9, 0.6))
+	# Игрок
+	var at: Vector2 = to_mini.call(pos.x, pos.z)
+	var yaw := _player_yaw()
+	var fwd := Vector2(-sin(yaw), -cos(yaw))
+	var sd := Vector2(fwd.y, -fwd.x)
+	_mini.draw_colored_polygon(PackedVector2Array([at + fwd * 9.0, at - fwd * 5.0 + sd * 5.0, at - fwd * 5.0 - sd * 5.0]), Color(1, 0.2, 0.2))
+	_mini.draw_rect(Rect2(Vector2.ZERO, Vector2(side, side)), Color(1, 1, 1, 0.5), false, 1.5)
+	var font := ThemeDB.fallback_font
+	_mini.draw_string_outline(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
+	_mini.draw_string(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+
+
+func _player_pos() -> Vector3:
+	var car := GameManager.vehicle as Node3D
+	if car:
+		return car.global_position
+	var who := GameManager.player as Node3D
+	return who.global_position if who else Vector3.ZERO
+
+
+func _player_yaw() -> float:
+	var car := GameManager.vehicle as Node3D
+	if car:
+		return car.rotation.y
+	var who := GameManager.player as Node3D
+	return who.rotation.y if who else 0.0
 
 
 ## Мировые X/Z → точка на карте (север, -Z, — вверху).
 func _p(x: float, z: float) -> Vector2:
-	return Vector2((x + WORLD * 0.5) / WORLD * SIZE, (z + WORLD * 0.5) / WORLD * SIZE)
+	return Vector2((x + WORLD * 0.5) / WORLD * _size, (z + WORLD * 0.5) / WORLD * _size)
 
 
 func _rect(x0: float, z0: float, x1: float, z1: float, c: Color) -> void:
 	var a := _p(x0, z0)
 	var b := _p(x1, z1)
-	_canvas.draw_rect(Rect2(a, b - a), c)
+	_t.draw_rect(Rect2(a, b - a), c)
 
 
 func _draw_map() -> void:
+	_t = _canvas
+	_size = SIZE
 	var font := ThemeDB.fallback_font
 	_canvas.draw_rect(Rect2(Vector2(-8, -8), Vector2(SIZE + 16, SIZE + 16)), Color(0, 0, 0, 0.75))
+	_draw_static(true)
+	_draw_dynamic(font)
+
+
+## Всё неподвижное: земля, дороги, дома, места. labels — подписи мест.
+func _draw_static(labels: bool) -> void:
+	var font := ThemeDB.fallback_font
 	_rect(-200, -200, 200, 200, Color(0.36, 0.5, 0.26))
 	# Лес и поля
 	_rect(-200, -195, -20, -80, Color(0.18, 0.33, 0.18))
@@ -69,7 +170,7 @@ func _draw_map() -> void:
 	_rect(40, 55, 190, 61, road)
 	# Пруд
 	var pond: Vector3 = _world.POND_POS
-	_canvas.draw_circle(_p(pond.x, pond.z), 10.0 / WORLD * SIZE * 1.1, Color(0.25, 0.45, 0.6))
+	_t.draw_circle(_p(pond.x, pond.z), 10.0 / WORLD * _size * 1.1, Color(0.25, 0.45, 0.6))
 	# Дома села
 	for x in _world.VILLAGE_X:
 		for z in [_world.ROW_A_Z, _world.ROW_B_Z]:
@@ -122,18 +223,22 @@ func _draw_map() -> void:
 	for pl in places:
 		var v: Vector3 = pl[1]
 		var at := _p(v.x, v.z)
-		var r := 5.0
-		if pl[0] == "Сельмаг" and Progress.delivery_active and blink:
+		var r := 5.0 if labels else 9.0
+		if labels and pl[0] == "Сельмаг" and Progress.delivery_active and blink:
 			r = 9.0
-		_canvas.draw_circle(at, r, pl[2])
+		_t.draw_circle(at, r, pl[2])
+		if not labels:
+			continue
 		# Подписи соседних мест разводим: ларёк — слева, АЗС — сверху
 		var off := Vector2(8, 5)
 		if pl[0] == "Ларёк":
 			off = Vector2(-48, 5)
 		elif pl[0] == "АЗС":
 			off = Vector2(-14, -9)
-		_canvas.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		_t.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
+
+func _draw_dynamic(font: Font) -> void:
 	# Свои машины, мотоцикл и игрок
 	var marks := [[GameManager.car, Color(0.85, 0.8, 0.55), 4.0], [GameManager.moto, Color(0.85, 0.2, 0.15), 3.0]]
 	for n in get_tree().get_nodes_in_group("vehicles"):
@@ -146,16 +251,8 @@ func _draw_map() -> void:
 			var cp := _p(v.global_position.x, v.global_position.z)
 			var r: float = pair[2]
 			_canvas.draw_rect(Rect2(cp - Vector2(r, r), Vector2(r, r) * 2.0), pair[1])
-	var who := GameManager.player as Node3D
-	var yaw := 0.0
-	var pos := Vector3.ZERO
-	var car := GameManager.vehicle as Node3D
-	if car:
-		pos = car.global_position
-		yaw = car.rotation.y
-	elif who:
-		pos = who.global_position
-		yaw = who.rotation.y
+	var pos := _player_pos()
+	var yaw := _player_yaw()
 	var at := _p(pos.x, pos.z)
 	# Вперёд — это -Z мира, на карте — вверх; поворот yaw против часовой
 	var fwd := Vector2(-sin(yaw), -cos(yaw))

@@ -254,6 +254,11 @@ func _build_settings(box: VBoxContainer) -> void:
 			SoundLibrary.play("click", -6.0)
 			SettingsManager.set_text_scale(v))
 		ts.add_child(b)
+	var mm := CheckButton.new()
+	mm.text = "Мини-карта в углу экрана"
+	mm.button_pressed = SettingsManager.minimap
+	mm.toggled.connect(SettingsManager.set_minimap)
+	box.add_child(mm)
 	if GameManager.touch_mode:
 		var lefty := CheckButton.new()
 		lefty.text = "Под левую руку: джойстик и руль справа"

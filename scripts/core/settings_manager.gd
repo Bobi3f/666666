@@ -23,6 +23,8 @@ var text_scale := 1.0
 var left_hand := false
 ## Вибрация на телефоне при ударах и поклёвке.
 var vibration := true
+## Мини-карта в углу экрана.
+var minimap := true
 ## Ячейка сохранения 1–3.
 var slot := 1
 var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
@@ -65,6 +67,7 @@ func _ready() -> void:
 		text_scale = clampf(float(cfg.get_value("ui", "text_scale", 1.0)), 1.0, 1.4)
 		left_hand = bool(cfg.get_value("ui", "left_hand", false))
 		vibration = bool(cfg.get_value("ui", "vibration", true))
+		minimap = bool(cfg.get_value("ui", "minimap", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 	_apply()
 
@@ -110,6 +113,12 @@ func set_left_hand(v: bool) -> void:
 	changed.emit()
 
 
+func set_minimap(v: bool) -> void:
+	minimap = v
+	_save()
+	changed.emit()
+
+
 func set_vibration(v: bool) -> void:
 	vibration = v
 	_save()
@@ -148,5 +157,6 @@ func _save() -> void:
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)
+	cfg.set_value("ui", "minimap", minimap)
 	cfg.set_value("save", "slot", slot)
 	cfg.save(PATH)

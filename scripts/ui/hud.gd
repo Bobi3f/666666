@@ -145,7 +145,11 @@ func _process(delta: float) -> void:
 		lines.append(daily)
 	_goal.text = GameManager.touch_text("\n".join(lines))
 	var vw := get_viewport().get_visible_rect().size.x
-	_goal.size.x = vw - (140.0 if GameManager.touch_mode else 270.0)
+	# Справа — кнопки (телефон) и мини-карта: строки заданий их не заходят
+	var right := 140.0 if GameManager.touch_mode else 270.0
+	if SettingsManager.minimap and GameManager.touch_mode:
+		right = 240.0
+	_goal.size.x = vw - right
 	_goal.size.y = 0.0
 	_update_money_pop(delta)
 	# Подсказка по клавишам на телефоне не нужна — там кнопки
