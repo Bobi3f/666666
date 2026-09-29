@@ -75,7 +75,11 @@ func _process(_delta: float) -> void:
 		_mini.visible = show
 		if show:
 			var vs := _mini.get_viewport_rect().size
-			var side := 118.0 if GameManager.touch_mode else 160.0
+			var side := 160.0
+			if GameManager.touch_mode:
+				# Ниже — кнопки действий (верхняя — «Присесть», на 290 от низа):
+				# на низком экране мини-карта меньше, чтобы на них не заходить
+				side = clampf(vs.y - 290.0 - 6.0 - 92.0, 80.0, 118.0)
 			_mini.size = Vector2(side, side)
 			# На телефоне справа сверху — столбик кнопок: встаём левее него
 			_mini.position = Vector2(vs.x - side - (100.0 if GameManager.touch_mode else 16.0), 92.0 if GameManager.touch_mode else 84.0)
