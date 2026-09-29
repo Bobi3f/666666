@@ -168,7 +168,7 @@ func _draw_mini() -> void:
 	# Свои машины
 	for n in get_tree().get_nodes_in_group("vehicles"):
 		var v := n as Vehicle
-		if v and v.owned() and v.kind != "tractor" and v != GameManager.vehicle:
+		if v and v.owned() and not v.school and v.kind != "tractor" and v != GameManager.vehicle:
 			var mp: Vector2 = to_mini.call(v.global_position.x, v.global_position.z)
 			if Rect2(Vector2.ZERO, Vector2(side, side)).has_point(mp):
 				_mini.draw_rect(Rect2(mp - Vector2(3, 3), Vector2(6, 6)), Color(0.95, 0.9, 0.6))
@@ -488,6 +488,8 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["ГАИ", Vector3(-100, 0, -9.2), Color(0.3, 0.45, 0.9)],
 		["Сберкасса", Vector3(137.8, 0, 21), Color(0.3, 0.8, 0.5)],
 		["Милиция", Police.STATION + Vector3(-8, 0, 0), Color(0.2, 0.35, 0.8)],
+		["Сельсовет", Civic.COUNCIL + Vector3(0, 0, 5), Color(0.8, 0.3, 0.25)],
+		["Больница", Civic.HOSPITAL + Vector3(0, 0, 6), Color(0.95, 0.95, 0.95)],
 		["Клуб", _world.CLUB_VILLAGE + Vector3(0, 0, 6), Color(0.85, 0.3, 0.8)],
 		["Дискотека", _world.CLUB_TOWN + Vector3(0, 0, -8), Color(0.85, 0.3, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],

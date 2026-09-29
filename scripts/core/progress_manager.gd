@@ -34,6 +34,17 @@ var tutorial_done := false
 ## Права получены на автодроме: развоз хлеба платит больше.
 var license := false
 const LICENSE_BONUS := 150
+## Документы из сельсовета и больницы: passport — паспорт, propiska —
+## справка о прописке, work_book — трудовая книжка, med — медсправка водителя.
+var docs: Array = []
+## Открытые категории прав, кроме B (B — это license): A — мотоцикл,
+## C — грузовик, D — автобус.
+var categories: Array = []
+const DOC_NAMES := {"passport": "паспорт", "propiska": "справка о прописке",
+	"work_book": "трудовая книжка", "med": "медсправка водителя"}
+## Какую категорию прав требует машина: мотоцикл — A, легковые — B,
+## грузовик — C, автобус — D; трактору права не спрашивают.
+const KIND_CATEGORY := {"moto": "A", "car": "B", "niva": "B", "volga": "B", "truck": "C", "bus": "D"}
 ## В какой день уже был заезд с Колькой (раз в день).
 var race_day := 0
 ## Купленное в «Хозтоварах»: tv — телевизор в комнате, dog — пёс с будкой
@@ -260,8 +271,37 @@ func finish_delivery() -> void:
 	delivery_changed.emit()
 
 
+func has_doc(id: String) -> bool:
+	return docs.has(id)
+
+
+func add_doc(id: String) -> void:
+	if not docs.has(id):
+		docs.append(id)
+
+
+func has_category(c: String) -> bool:
+	return license if c == "B" else categories.has(c)
+
+
+func add_category(c: String) -> void:
+	if c == "B":
+		license = true
+	elif not categories.has(c):
+		categories.append(c)
+
+
+## Категории строкой для журнала и инспектора: «A, B, C».
+func categories_text() -> String:
+	var out: Array = []
+	for c in ["A", "B", "C", "D"]:
+		if has_category(c):
+			out.append(c)
+	return ", ".join(out) if not out.is_empty() else "нет"
+
+
 func save_state() -> Dictionary:
-	return {"house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days}
 
 
@@ -275,6 +315,8 @@ func load_state(d: Dictionary) -> void:
 	# В старых сохранениях ключа нет — там игрок уже освоился
 	tutorial_done = bool(d.get("tutorial", true))
 	license = bool(d.get("license", false))
+	docs = (d.get("docs", []) as Array).duplicate()
+	categories = (d.get("cats", []) as Array).duplicate()
 	race_day = int(d.get("race_day", 0))
 	home_items = (d.get("home", []) as Array).duplicate()
 	owned_cars = (d.get("cars", []) as Array).duplicate()

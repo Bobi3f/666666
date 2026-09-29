@@ -136,6 +136,8 @@ func _run() -> void:
 	C.exit_car(); await frames(3)
 
 	print("== Экзамен на права")
+	var PRD = root.get_node("Progress")
+	PRD.add_doc("passport"); PRD.add_doc("med")
 	GM.money = 1000
 	P.global_position = Vector3(-1.8, 0.2, -16.5)
 	await frames(5)

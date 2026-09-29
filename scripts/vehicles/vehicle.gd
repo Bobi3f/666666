@@ -89,6 +89,19 @@ const SPECS := {
 			Vector3(-0.62, 0.46, 1.55), Vector3(0.62, 0.46, 1.55)],
 		"tail": [Vector3(-0.97, 0.9, 3.23), Vector3(0.97, 0.9, 3.23)], "lamps": [Vector3(-0.92, 1.22, -3.02), Vector3(0.92, 1.22, -3.02)],
 	},
+	# Учебный ПАЗ автошколы: длинный и тяжёлый, поворачивает широко.
+	"bus": {
+		"title": "ПАЗ-672", "ratios": {-1: -6.2, 0: 0.0, 1: 6.4, 2: 3.4, 3: 1.8, 4: 1.0},
+		"final": 6.8, "wheel_r": 0.5, "mass": 5200.0, "idle": 650.0, "redline": 3600.0,
+		"torque": 520.0, "peak_rpm": 2200.0, "inertia": 0.55, "wheelbase": 5.3, "max_steer": 0.52,
+		"tank": 110.0, "fuel_k": 2.6, "grip": 8.0, "drag": 1.0, "brake": 6.5,
+		"shape": Vector3(2.5, 2.8, 9.0), "shape_y": 1.75,
+		"seat": Vector3(-0.75, 2.0, -3.7), "exit": Vector3(-2.2, 0.2, -3.6),
+		"chase": Vector3(0, 5.0, 13.0), "roof": true, "two_wheels": false,
+		"offroad": 1.0, "mud": 1.0, "paint": 3,
+		"wheels": [Vector3(-1.12, 0.5, -2.8), Vector3(1.12, 0.5, -2.8), Vector3(-1.12, 0.5, 2.5), Vector3(1.12, 0.5, 2.5)],
+		"tail": [Vector3(-1.0, 0.8, 4.55), Vector3(1.0, 0.8, 4.55)], "lamps": [Vector3(-0.95, 0.8, -4.55), Vector3(0.85, 0.8, -4.55)],
+	},
 	# Колхозный трактор: медленный, тянет по пашне как по асфальту.
 	# Колёса — [где, радиус, ширина]: задние огромные, передние маленькие.
 	"tractor": {
@@ -136,6 +149,9 @@ var condition := 100.0
 var tires := false
 ## Цена в автосалоне и короткое описание; 0 — своя с начала игры.
 var price := 0
+## Учебная машина автошколы: сесть можно, только пока allowed() — на экзамене.
+var school := false
+var allowed: Callable
 var blurb := ""
 var engine_tuned := false
 var paint := 0
@@ -247,10 +263,14 @@ func _ready() -> void:
 	_zone.position.y = -0.2
 	# Машина из салона: пока не куплена — подсказка с ценой, E — купить
 	_zone.prompt_fn = func() -> String:
+		if school and not (allowed.is_valid() and allowed.call()):
+			return "Учебный «%s» автошколы — только на экзамене" % spec.title
 		if not owned():
 			return "E — купить «%s» за %d грн: %s" % [spec.title, price, blurb]
 		return "E — %s: %s" % ["сесть за руль" if spec.roof else "сесть на мотоцикл", spec.title]
 	_zone.activated.connect(func() -> void:
+		if school and not (allowed.is_valid() and allowed.call()):
+			return
 		if owned():
 			_on_enter()
 		elif GameManager.spend(price):
@@ -1010,6 +1030,8 @@ func _paint_body() -> void:
 			VehicleModels.volga(b, col, glass)
 		"truck":
 			VehicleModels.gaz53(b, col, glass)
+		"bus":
+			VehicleModels.bus(b, col, Vector3(2.5, 3.0, 9.0))
 		"tractor":
 			VehicleModels.tractor(b, col, glass)
 		_:

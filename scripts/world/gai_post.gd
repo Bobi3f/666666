@@ -154,8 +154,10 @@ func _check_stop(v: Vehicle, delta: float) -> void:
 
 
 func _inspect(v: Vehicle) -> void:
-	if not Progress.license:
-		_fine(FINE_NO_LICENSE, "Инспектор: «Права? Нету? Штраф %d грн — и в автошколу!»" % FINE_NO_LICENSE)
+	var need: String = Progress.KIND_CATEGORY.get(v.kind, "") if v else ""
+	if need != "" and not Progress.has_category(need):
+		var had := "Права? Нету?" if Progress.categories_text() == "нет" else "Категории %s нет!" % need
+		_fine(FINE_NO_LICENSE, "Инспектор: «%s Штраф %d грн — и в автошколу!»" % [had, FINE_NO_LICENSE])
 		return
 	if v and v.condition < 30.0:
 		_fine(FINE_BROKEN, "Инспектор: «Машина еле живая — штраф %d грн, почини на СТО»" % FINE_BROKEN)

@@ -191,6 +191,12 @@ func _ready() -> void:
 	var shrooms := preload("res://scripts/world/mushrooms.gd").new()
 	shrooms.name = "Mushrooms"
 	add_child(shrooms)
+	var civic := Civic.new()
+	civic.name = "Civic"
+	add_child(civic)
+	var school := AutoSchool.new()
+	school.name = "AutoSchool"
+	add_child(school)
 	var police := Police.new()
 	police.name = "Police"
 	add_child(police)
@@ -2238,10 +2244,15 @@ func _exam_prompt() -> String:
 		return "Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»" % EXAM_PRICE if not _exam.active() else ""
 	if _exam.active():
 		return "Инструктор: «Садись в Жигули и заезжай на старт — жёлтый круг»"
+	if not Progress.has_doc("passport") or not Progress.has_doc("med"):
+		return "Инструктор: «На права нужны паспорт (сельсовет) и медсправка (больница)»"
 	return "E — сдать на права: змейка, разворот, стоянка (%d грн)" % EXAM_PRICE
 
 
 func _exam_start() -> void:
+	# Пересдавать для тренировки можно и так, а в первый раз — с документами
+	if not Progress.license and (not Progress.has_doc("passport") or not Progress.has_doc("med")):
+		return
 	if _exam.active() or not GameManager.spend(EXAM_PRICE):
 		return
 	_exam.arm()
@@ -2656,6 +2667,8 @@ func _block_grass() -> void:
 	v.block(Police.STATION.x - 13.5, Police.STATION.z - 6.5, Police.STATION.x + 7.5, Police.STATION.z + 6.5)
 	v.block(CLUB_VILLAGE.x - 8.5, CLUB_VILLAGE.z - 6, CLUB_VILLAGE.x + 8.5, -5.5)
 	v.block(CLUB_TOWN.x - 29, 100, CLUB_TOWN.x + 26, CLUB_TOWN.z + 7.5)
+	v.block(Civic.COUNCIL.x - 5.5, Civic.COUNCIL.z - 4, Civic.COUNCIL.x + 5.5, Civic.COUNCIL.z + 5.5)
+	v.block(Civic.HOSPITAL.x - 9.7, Civic.HOSPITAL.z - 5.3, Civic.HOSPITAL.x + 9.7, Civic.HOSPITAL.z + 12)
 	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
 	v.block(76, 10, 93.5, 34)
 	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
