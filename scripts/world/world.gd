@@ -298,6 +298,19 @@ func _setup_environment() -> void:
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	_env.fog_enabled = true
 	_env.fog_density = 0.0025
+	# Дымка подсвечена солнцем, если смотреть в его сторону
+	_env.fog_sun_scatter = 0.25
+	# Лёгкое свечение ярких мест: окна ночью, фары, блики на воде
+	_env.glow_enabled = true
+	_env.glow_intensity = 0.35
+	_env.glow_strength = 0.9
+	_env.glow_bloom = 0.04
+	_env.glow_hdr_threshold = 1.1
+	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	# Цвет чуть насыщеннее и контрастнее — не так блекло
+	_env.adjustment_enabled = true
+	_env.adjustment_contrast = 1.06
+	_env.adjustment_saturation = 1.04
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	add_child(we)
@@ -313,6 +326,9 @@ func _setup_environment() -> void:
 ## Детализация: на высокой — тени в два каскада, на средней — один
 ## (дешевле вдвое), на низкой — без теней.
 func _apply_detail() -> void:
+	# На низкой детализации — без свечения и рисунка поверхностей
+	_env.glow_enabled = SettingsManager.detail >= 1
+	_sun.shadow_blur = 1.5
 	var r := SettingsManager.shadow_range()
 	_sun.shadow_enabled = r > 0.0
 	_sun.directional_shadow_max_distance = maxf(r, 1.0)
@@ -353,6 +369,7 @@ func _update_daylight() -> void:
 		_water_mat.set_shader_parameter("sky", Vector3(sky_col.r, sky_col.g, sky_col.b))
 		_water_mat.set_shader_parameter("deep", Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day))
 		_water_mat.set_shader_parameter("ice", clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0))
+	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.detail >= 1 else 0.0)
 	if _glow_mat:
 		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 	# Фонари зажигаются в сумерках
@@ -477,6 +494,7 @@ func _build_player_yard() -> void:
 	_yard_nodes.append_array(_build_yard(yb, Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y), 0.0, level))
 	var mesh := yb.build_mesh()
 	mesh.name = "PlayerYardMesh"
+	mesh.material_override = MeshBuilder.detail_material()
 	add_child(mesh)
 	_yard_nodes.append(mesh)
 	var body := yb.build_body()
