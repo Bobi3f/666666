@@ -60,7 +60,8 @@ func _ready() -> void:
 	_add_button("Прыжок", KEY_SPACE, "walk", "br", Vector2(-230, -70), 44)
 	_add_button("Присесть", KEY_C, "walk", "br", Vector2(-120, -250), 40)
 	_add_button("Еда", KEY_Q, "walk", "br", Vector2(-240, -190), 36)
-	_add_button("Вид", KEY_V, "walk", "br", Vector2(-340, -95), 30)
+	# Вверху справа, над мини-картой: внизу место занято обучением и кнопками
+	_add_button("Вид", KEY_V, "walk", "tr", Vector2(-200, 48), 28)
 	# Педали — прямоугольные, как в машине: газ узкий и высокий, тормоз шире
 	_add_button("Газ", KEY_W, "drive", "br", Vector2(-72, -118), 0, Vector2(76, 160))
 	_add_button("Тормоз", KEY_S, "drive", "br", Vector2(-190, -92), 0, Vector2(120, 108))
