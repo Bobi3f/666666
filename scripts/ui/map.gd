@@ -487,6 +487,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Пахота", Vector3(70, 0, -80), Color(0.6, 0.45, 0.3)],
 		["ГАИ", Vector3(-100, 0, -9.2), Color(0.3, 0.45, 0.9)],
 		["Сберкасса", Vector3(137.8, 0, 21), Color(0.3, 0.8, 0.5)],
+		["Милиция", Police.STATION + Vector3(-8, 0, 0), Color(0.2, 0.35, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]

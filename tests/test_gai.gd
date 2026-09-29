@@ -25,6 +25,7 @@ func _run() -> void:
 	var tr = child("traffic.gd"); if tr: tr.queue_free()
 	TM.minutes = 12 * 60.0
 	var gai = W.get_node("GaiPost")
+	gai.check_chance = 0.0
 	var C = W.get_node("Car")
 	print("== ГАИ")
 	C.global_position = Vector3(-100, 0.1, 2.0); C.rotation.y = -PI / 2.0

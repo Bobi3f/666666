@@ -191,6 +191,9 @@ func _ready() -> void:
 	var shrooms := preload("res://scripts/world/mushrooms.gd").new()
 	shrooms.name = "Mushrooms"
 	add_child(shrooms)
+	var police := Police.new()
+	police.name = "Police"
+	add_child(police)
 	var gai := preload("res://scripts/world/gai_post.gd").new()
 	gai.name = "GaiPost"
 	add_child(gai)
@@ -2649,6 +2652,7 @@ func _block_grass() -> void:
 		v.block(rr.position.x, rr.position.y, rr.end.x, rr.end.y)
 	var st := Roads.STREAM.grow(1.5)
 	v.block(st.position.x, st.position.y, st.end.x, st.end.y)
+	v.block(Police.STATION.x - 13.5, Police.STATION.z - 6.5, Police.STATION.x + 7.5, Police.STATION.z + 6.5)
 	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
 	v.block(76, 10, 93.5, 34)
 	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
