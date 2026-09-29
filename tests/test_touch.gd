@@ -75,6 +75,18 @@ func _run() -> void:
 	await process_frame
 	touch(1, Vector2(800, 300), false)
 	ok(absf(P.rotation.y - yaw) > 0.2, "палец справа — поворот камеры: %.2f рад" % (P.rotation.y - yaw))
+	# Экран пополам: левее середины — ходьба, правее — камера
+	var sx: float = tc.split_x()
+	var vh: float = tc.get_viewport().get_visible_rect().size.y
+	ok(tc._split_hint.visible and tc._split_left > 0.0, "в начале игры подписаны половины: ходить | камера")
+	touch(5, Vector2(sx - 30, vh * 0.35), true); await process_frame; await process_frame
+	ok(tc._stick_index == 5 and tc._stick_center.x < sx, "чуть левее середины — джойстик ходьбы: центр %.0f" % tc._stick_center.x)
+	touch(5, Vector2(sx - 30, vh * 0.35), false); await process_frame; await process_frame
+	touch(6, Vector2(sx + 30, vh * 0.35), true); await process_frame; await process_frame
+	ok(tc._look_index == 6 and tc._stick_index < 0, "чуть правее середины — камера")
+	touch(6, Vector2(sx + 30, vh * 0.35), false); await process_frame; await process_frame
+	tc._split_left = 0.0
+	await process_frame
 	# Кнопка E у машины
 	P.global_position = Vector3(-121, 0.2, -37.6)
 	await frames(15)

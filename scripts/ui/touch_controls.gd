@@ -1,9 +1,11 @@
 extends CanvasLayer
 ## Сенсорное управление для телефонов (Android и браузер на телефоне).
 ##
-## Пешком: слева джойстик — плавающий, появляется там, куда поставил палец
-## (у края — бег); справа палец по экрану поворачивает камеру, кнопки справа
-## внизу — действие, прыжок, присесть, еда, вид (со спины / из глаз).
+## Пешком экран делится пополам: левая половина — ходьба (плавающий
+## джойстик появляется там, куда поставил палец, у края — бег), правая —
+## камера (веди пальцем — смотришь по сторонам). Кнопки справа внизу —
+## действие, прыжок, присесть, еда, вид (со спины / из глаз). Первые секунды
+## игры на экране подписаны обе половины. Под левую руку — наоборот.
 ## В машине — как в Car Parking: слева настоящий руль, его крутят пальцем
 ## (отпустил — сам возвращается), в центре руля сигнал. Справа педали газа
 ## и тормоза, рычаг D/R — вперёд или назад, ручник, выход и вид — всё можно
@@ -37,6 +39,10 @@ var _wheel_index := -1
 var _wheel_last := 0.0
 var _wheel_rot := 0.0
 var _horn_index := -1
+## Подсказка «ходить | камера» в начале игры: сколько секунд ещё видна
+const SPLIT_HINT_S := 10.0
+var _split_hint: Control
+var _split_left := SPLIT_HINT_S
 
 
 func _ready() -> void:
@@ -55,6 +61,11 @@ func _ready() -> void:
 	_wheel.size = Vector2(WHEEL_R, WHEEL_R) * 2.0
 	_wheel.draw.connect(_draw_wheel)
 	root.add_child(_wheel)
+	_split_hint = Control.new()
+	_split_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_split_hint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_split_hint.draw.connect(_draw_split_hint)
+	root.add_child(_split_hint)
 	# Кнопки: подпись, клавиша, когда видна (walk / drive / all), угол экрана, место, радиус
 	_add_button("E", KEY_E, "walk", "br", Vector2(-110, -120), 52)
 	_add_button("Прыжок", KEY_SPACE, "walk", "br", Vector2(-230, -70), 44)
@@ -239,6 +250,39 @@ func _layout() -> void:
 		e["rect"] = Rect2(center - half, half * 2.0)
 
 
+## Где кончается половина для ходьбы (по X): ровно середина экрана.
+func split_x() -> float:
+	return get_viewport().get_visible_rect().size.x * 0.5
+
+
+## На левой ли (для ходьбы) половине касание — с учётом левой руки.
+func walk_side(pos: Vector2) -> bool:
+	return pos.x > split_x() if SettingsManager.left_hand else pos.x < split_x()
+
+
+## Подсказка: тонкая черта посередине и подписи половин внизу.
+func _draw_split_hint() -> void:
+	var a := clampf(_split_left / 2.0, 0.0, 1.0)
+	if a <= 0.0:
+		return
+	var vs := _split_hint.get_viewport_rect().size
+	var x := split_x()
+	var y := 110.0
+	while y < vs.y - 30.0:
+		_split_hint.draw_line(Vector2(x, y), Vector2(x, y + 14.0), Color(1, 1, 1, 0.35 * a), 2.0)
+		y += 26.0
+	var font := ThemeDB.fallback_font
+	var walk := "ХОДИТЬ — веди пальцем"
+	var look := "КАМЕРА — веди пальцем"
+	var lx := x * 0.5 if not SettingsManager.left_hand else x * 1.5
+	var rx := x * 1.5 if not SettingsManager.left_hand else x * 0.5
+	for t in [[walk, lx], [look, rx]]:
+		var w := font.get_string_size(t[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+		var at := Vector2(float(t[1]) - w * 0.5, vs.y * 0.42)
+		_split_hint.draw_string_outline(font, at, t[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, 0.6 * a))
+		_split_hint.draw_string(font, at, t[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1, 0.9 * a))
+
+
 func _driving() -> bool:
 	return GameManager.vehicle != null
 
@@ -255,6 +299,7 @@ func _apply_mode() -> void:
 	_base.visible = not drive
 	_knob.visible = not drive
 	_wheel.visible = drive
+	_split_hint.visible = not drive
 	# Сели в машину — рычаг на D
 	GameManager.pedal_reverse = false
 	_update_lever()
@@ -282,6 +327,9 @@ func _process(delta: float) -> void:
 		_release_all()
 	visible = show
 	GameManager.pedal_mode = drive and show
+	if _split_left > 0.0 and show and not drive:
+		_split_left -= delta
+		_split_hint.queue_redraw()
 	if drive:
 		var lever := button("D")
 		if lever and lever.visible != SettingsManager.auto_gearbox:
@@ -313,18 +361,20 @@ func _input(event: InputEvent) -> void:
 					_wheel_last = (touch.position - _wheel_center).angle()
 					_wheel.queue_redraw()
 				return
-			var w := get_viewport().get_visible_rect().size.x
-			var stick_side := touch.position.x > w * 0.6 if SettingsManager.left_hand else touch.position.x < w * 0.4
-			if stick_side and _stick_index < 0:
+			# Левая половина — ходьба, правая — камера (под левую руку наоборот)
+			if walk_side(touch.position) and _stick_index < 0:
 				_stick_index = touch.index
-				# Плавающий джойстик: центр там, где коснулся пальцем
+				# Плавающий джойстик: центр там, где коснулся пальцем, но не
+				# за серединой экрана — там уже половина камеры
 				var vs := get_viewport().get_visible_rect().size
 				var m := STICK_R + 12.0
-				_stick_center = Vector2(clampf(touch.position.x, m, vs.x - m), clampf(touch.position.y, m + 80.0, vs.y - m))
+				var x0 := split_x() + m if SettingsManager.left_hand else m
+				var x1 := vs.x - m if SettingsManager.left_hand else split_x() - m
+				_stick_center = Vector2(clampf(touch.position.x, x0, maxf(x0, x1)), clampf(touch.position.y, m + 80.0, vs.y - m))
 				_base.position = _stick_center - Vector2(STICK_R, STICK_R)
 				_base.modulate.a = 1.0
 				_update_stick(touch.position)
-			elif _look_index < 0:
+			elif not walk_side(touch.position) and _look_index < 0:
 				_look_index = touch.index
 		else:
 			if touch.index == _wheel_index:
