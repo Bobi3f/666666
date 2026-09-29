@@ -43,7 +43,7 @@ func _ready() -> void:
 		var l := Label3D.new()
 		l.text = "%s\n%s" % [cat[0], cat[1]]
 		l.font_size = 96
-		l.pixel_size = 0.004
+		l.pixel_size = 0.0028
 		l.outline_size = 0
 		l.position = c + Vector3(-1.6 + i * 1.6, 1.75, 0.06)
 		add_child(l)
