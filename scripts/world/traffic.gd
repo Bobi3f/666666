@@ -10,7 +10,7 @@ extends Node3D
 const CRUISE := 15.0  # м/с, около 55 км/ч
 const BUS_CRUISE := 11.0
 const LANE_Z := 2.0
-const WORLD_X := 196.0
+const WORLD_X := 690.0
 ## Остановки автобуса по полосам: -X — северная (Каменка), +X — южная (город)
 const STOPS := {-1: -68.5, 1: 32.0}
 const STOP_WAIT := 8.0
@@ -24,8 +24,8 @@ func _ready() -> void:
 	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3), Color(0.45, 0.45, 0.47), Color(0.85, 0.7, 0.3)]
 	var i := 0
 	for dir in [1, -1]:
-		for k in 3:
-			_spawn(dir, -150.0 + k * 130.0 + dir * 20.0, colors[i % colors.size()], false)
+		for k in 6:
+			_spawn(dir, -600.0 + k * 230.0 + dir * 40.0, colors[i % colors.size()], false)
 			i += 1
 	_spawn(-1, 120.0, Color(0.95, 0.75, 0.2), true)
 

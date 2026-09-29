@@ -56,6 +56,10 @@ var _grass_mat: ShaderMaterial
 static var grass_material: ShaderMaterial
 ## Сколько чего посажено — для отчёта в консоли и тестов.
 var counts := {}
+## Где растёт трава: Каменка и сёла района (дальше — только земля).
+var areas: Array[Rect2] = [Rect2(-200, -200, 400, 400)]
+## Дальше этого деревья не рисуются: на телефоне весь район — лишнее.
+const TREE_RANGE := 420.0
 
 
 func add_tree(kind: int, xf: Transform3D) -> void:
@@ -106,6 +110,8 @@ func build() -> void:
 			var mi := MultiMeshInstance3D.new()
 			mi.multimesh = mm
 			mi.name = "Trees_%d_%d_%d" % [kind, key.x, key.y]
+			mi.visibility_range_end = TREE_RANGE
+			mi.visibility_range_end_margin = 30.0
 			add_child(mi)
 	_build_ground_cover()
 	SettingsManager.changed.connect(apply_detail)
@@ -138,65 +144,68 @@ func _build_ground_cover() -> void:
 	var stone := _stone_mesh()
 	var wheat_rect := Rect2(26.0, -184.0, 73.0, 73.0)
 	var plough_rect := Rect2(25.0, -100.0, 165.0, 70.0)
-	var cells := int(400.0 / CHUNK)
 	var total := {"grass": 0, "flowers": 0, "wheat": 0, "stones": 0}
-	for cx in cells:
-		for cz in cells:
-			var x0 := -200.0 + cx * CHUNK
-			var z0 := -200.0 + cz * CHUNK
-			var cell := Rect2(x0, z0, CHUNK, CHUNK)
-			# Проверяем только те запреты, что задевают этот кусок
-			var local: Array[Rect2] = []
-			for r in _blocked:
-				if r.intersects(cell):
-					local.append(r)
-			var grass := PackedFloat32Array()
-			var tall_l := PackedFloat32Array()
-			var flowers := PackedFloat32Array()
-			var wheat_l := PackedFloat32Array()
-			var stones := PackedFloat32Array()
-			# Около 1.1 пучка на квадратный метр, пшеница — 5
-			var tries := int(CHUNK * CHUNK * 1.1)
-			if cell.intersects(wheat_rect):
-				tries = int(CHUNK * CHUNK * 5.0)
-			for i in tries:
-				var x := x0 + _rng.randf() * CHUNK
-				var z := z0 + _rng.randf() * CHUNK
-				var pt := Vector2(x, z)
-				if wheat_rect.has_point(pt):
-					_push(wheat_l, x, 0.0, z, _rng.randf_range(0.85, 1.2))
-					continue
-				if plough_rect.has_point(pt):
-					continue
-				var blocked := false
-				for r in local:
-					if r.has_point(pt):
-						blocked = true
-						break
-				if blocked:
-					# На дорогах и площадках — только редкие камешки
-					if _rng.randf() < 0.012:
-						_push(stones, x, 0.03, z, _rng.randf_range(0.5, 1.3))
-					continue
-				if wheat_l.size() == 0 and tries > CHUNK * CHUNK * 2.0 and _rng.randf() < 0.78:
-					# Кусок с полем — на лугу вокруг сажаем реже, чтобы не было втрое гуще
-					continue
-				var r := _rng.randf()
-				if r < 0.03:
-					_push(flowers, x, 0.0, z, _rng.randf_range(0.8, 1.2))
-				elif r < 0.11:
-					_push(tall_l, x, 0.0, z, _rng.randf_range(0.7, 1.3))
-				else:
-					_push(grass, x, 0.0, z, _rng.randf_range(0.7, 1.35))
-			_chunk(tuft, grass, "grass")
-			_chunk(tall, tall_l, "tall")
-			_chunk(flower, flowers, "flowers")
-			_chunk(wheat, wheat_l, "wheat")
-			_chunk(stone, stones, "stones", false)
-			total.grass += (grass.size() + tall_l.size()) / 12
-			total.flowers += flowers.size() / 12
-			total.wheat += wheat_l.size() / 12
-			total.stones += stones.size() / 12
+	var cells_list: Array[Vector2] = []
+	for area in areas:
+		for cx in int(ceilf(area.size.x / CHUNK)):
+			for cz in int(ceilf(area.size.y / CHUNK)):
+				cells_list.append(area.position + Vector2(cx, cz) * CHUNK)
+	for cell_pos in cells_list:
+		var x0 := cell_pos.x
+		var z0 := cell_pos.y
+		var cell := Rect2(x0, z0, CHUNK, CHUNK)
+		# Проверяем только те запреты, что задевают этот кусок
+		var local: Array[Rect2] = []
+		for r in _blocked:
+			if r.intersects(cell):
+				local.append(r)
+		var grass := PackedFloat32Array()
+		var tall_l := PackedFloat32Array()
+		var flowers := PackedFloat32Array()
+		var wheat_l := PackedFloat32Array()
+		var stones := PackedFloat32Array()
+		# Около 1.1 пучка на квадратный метр, пшеница — 5
+		var tries := int(CHUNK * CHUNK * 1.1)
+		if cell.intersects(wheat_rect):
+			tries = int(CHUNK * CHUNK * 5.0)
+		for i in tries:
+			var x := x0 + _rng.randf() * CHUNK
+			var z := z0 + _rng.randf() * CHUNK
+			var pt := Vector2(x, z)
+			if wheat_rect.has_point(pt):
+				_push(wheat_l, x, 0.0, z, _rng.randf_range(0.85, 1.2))
+				continue
+			if plough_rect.has_point(pt):
+				continue
+			var blocked := false
+			for r in local:
+				if r.has_point(pt):
+					blocked = true
+					break
+			if blocked:
+				# На дорогах и площадках — только редкие камешки
+				if _rng.randf() < 0.012:
+					_push(stones, x, 0.03, z, _rng.randf_range(0.5, 1.3))
+				continue
+			if wheat_l.size() == 0 and tries > CHUNK * CHUNK * 2.0 and _rng.randf() < 0.78:
+				# Кусок с полем — на лугу вокруг сажаем реже, чтобы не было втрое гуще
+				continue
+			var r := _rng.randf()
+			if r < 0.03:
+				_push(flowers, x, 0.0, z, _rng.randf_range(0.8, 1.2))
+			elif r < 0.11:
+				_push(tall_l, x, 0.0, z, _rng.randf_range(0.7, 1.3))
+			else:
+				_push(grass, x, 0.0, z, _rng.randf_range(0.7, 1.35))
+		_chunk(tuft, grass, "grass")
+		_chunk(tall, tall_l, "tall")
+		_chunk(flower, flowers, "flowers")
+		_chunk(wheat, wheat_l, "wheat")
+		_chunk(stone, stones, "stones", false)
+		total.grass += (grass.size() + tall_l.size()) / 12
+		total.flowers += flowers.size() / 12
+		total.wheat += wheat_l.size() / 12
+		total.stones += stones.size() / 12
 	counts.merge(total)
 
 

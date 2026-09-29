@@ -1,14 +1,18 @@
 extends CanvasLayer
-## Карта по M: дороги, лес, поля, село, город и важные места.
+## Карта по M: дороги, лес, поля, сёла, город и важные места.
 ## Стрелка — игрок, квадрат — машина. Во время развоза горит сельмаг.
+## M первый раз — окрестности (около 400 м вокруг), второй — весь район,
+## третий — закрыть.
 ##
-## Места берутся из констант world.gd, чтобы карта не расходилась с миром.
+## Места берутся из констант world.gd и region.gd, чтобы карта не расходилась с миром.
 ##
 ## Мини-карта в углу экрана: та же карта один раз рисуется в текстуру
 ## покрупнее, а в углу показывается кусок вокруг игрока — почти даром.
 
 const SIZE := 560.0
-const WORLD := 400.0
+const WORLD := 1400.0
+## Окрестности на большой карте: столько метров по стороне.
+const LOCAL_M := 420.0
 
 var _canvas: Control
 var _world: Node
@@ -17,9 +21,13 @@ var _t: Control
 var _size := SIZE
 ## Мини-карта: сколько метров видно по стороне и размер текстуры карты
 const MINI_M := 160.0
-const TEX := 1400.0
+const TEX := 2048.0
 var _mini: Control
 var _tex_vp: SubViewport
+## Какой кусок мира сейчас рисуем (X, Z мира) и что открыто: 0 — ничего,
+## 1 — окрестности, 2 — весь район.
+var _view := Rect2(-WORLD * 0.5, -WORLD * 0.5, WORLD, WORLD)
+var mode := 0
 
 
 func _ready() -> void:
@@ -31,6 +39,7 @@ func _ready() -> void:
 	_canvas.size = Vector2(SIZE, SIZE)
 	_canvas.position = -Vector2(SIZE, SIZE) * 0.5
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_canvas.clip_contents = true
 	_canvas.draw.connect(_draw_map)
 	_canvas.visible = false
 	add_child(_canvas)
@@ -48,6 +57,7 @@ func _build_minimap() -> void:
 	painter.draw.connect(func() -> void:
 		_t = painter
 		_size = TEX
+		_view = Rect2(-WORLD * 0.5, -WORLD * 0.5, WORLD, WORLD)
 		_draw_static(false)
 		_t = _canvas
 		_size = SIZE)
@@ -62,8 +72,13 @@ func _build_minimap() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key and key.pressed and not key.echo and key.physical_keycode == KEY_M:
-		_canvas.visible = not _canvas.visible
-		if _canvas.visible:
+		# Закрыта — окрестности, окрестности — весь район, район — закрыть.
+		# Если карту закрыли в обход (меню), следующее M снова открывает окрестности
+		if not _canvas.visible:
+			mode = 0
+		mode = (mode + 1) % 3
+		_canvas.visible = mode > 0
+		if mode == 1:
 			QuestManager.event("map")
 
 
@@ -116,6 +131,12 @@ func _draw_mini() -> void:
 	var font := ThemeDB.fallback_font
 	_mini.draw_string_outline(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
 	_mini.draw_string(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	# В селе — его название под мини-картой
+	var here := Region.village_at(pos.x, pos.z)
+	if here != "":
+		var w := font.get_string_size(here, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		_mini.draw_string_outline(font, Vector2((side - w) * 0.5, side + 15), here, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
+		_mini.draw_string(font, Vector2((side - w) * 0.5, side + 15), here, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
 
 func _player_pos() -> Vector3:
@@ -136,7 +157,7 @@ func _player_yaw() -> float:
 
 ## Мировые X/Z → точка на карте (север, -Z, — вверху).
 func _p(x: float, z: float) -> Vector2:
-	return Vector2((x + WORLD * 0.5) / WORLD * _size, (z + WORLD * 0.5) / WORLD * _size)
+	return (Vector2(x, z) - _view.position) / _view.size.x * _size
 
 
 const PAPER := Color(0.91, 0.87, 0.77)
@@ -152,7 +173,7 @@ const HOUSE := Color(0.5, 0.42, 0.36)
 
 ## Метры мира → точки карты.
 func _m(meters: float) -> float:
-	return meters / WORLD * _size
+	return meters / _view.size.x * _size
 
 
 ## Линия толщиной в метрах (не тоньше полутора точек), с круглыми концами.
@@ -209,13 +230,14 @@ func _compass(font: Font) -> void:
 	_t.draw_string(font, c + Vector2(-5, -20), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
 
 
-## Масштаб: полоска на 100 метров в левом нижнем углу.
+## Масштаб: полоска на 100 метров (на карте района — на 500) в левом нижнем углу.
 func _scale_bar(font: Font) -> void:
 	var a := Vector2(14, _size - 30)
-	var len := _m(100.0)
-	_t.draw_rect(Rect2(a, Vector2(len, 5)), Color(0.12, 0.1, 0.08))
-	_t.draw_rect(Rect2(a + Vector2(len * 0.5, 1), Vector2(len * 0.5 - 1, 3)), Color(1, 1, 1))
-	_t.draw_string(font, a + Vector2(len + 6, 7), "100 м", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
+	var meters := 100.0 if _view.size.x < 800.0 else 500.0
+	var bar := _m(meters)
+	_t.draw_rect(Rect2(a, Vector2(bar, 5)), Color(0.12, 0.1, 0.08))
+	_t.draw_rect(Rect2(a + Vector2(bar * 0.5, 1), Vector2(bar * 0.5 - 1, 3)), Color(1, 1, 1))
+	_t.draw_string(font, a + Vector2(bar + 6, 7), "%d м" % int(meters), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
 
 
 func _rect(x0: float, z0: float, x1: float, z1: float, c: Color) -> void:
@@ -227,11 +249,19 @@ func _rect(x0: float, z0: float, x1: float, z1: float, c: Color) -> void:
 func _draw_map() -> void:
 	_t = _canvas
 	_size = SIZE
+	if mode == 2:
+		_view = Rect2(-WORLD * 0.5, -WORLD * 0.5, WORLD, WORLD)
+	else:
+		# Окрестности вокруг игрока, не заходя за край района
+		var pos := _player_pos()
+		var half := LOCAL_M * 0.5
+		var c := Vector2(clampf(pos.x, -WORLD * 0.5 + half, WORLD * 0.5 - half), clampf(pos.z, -WORLD * 0.5 + half, WORLD * 0.5 - half))
+		_view = Rect2(c - Vector2(half, half), Vector2(LOCAL_M, LOCAL_M))
 	var font := ThemeDB.fallback_font
-	_canvas.draw_rect(Rect2(Vector2(-10, -10), Vector2(SIZE + 20, SIZE + 20)), Color(0.35, 0.3, 0.24))
-	_canvas.draw_rect(Rect2(Vector2(-6, -6), Vector2(SIZE + 12, SIZE + 12)), Color(0.96, 0.93, 0.85))
+	_canvas.draw_rect(Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)), PAPER)
 	_draw_static(true)
 	_draw_dynamic(font)
+	_canvas.draw_rect(Rect2(Vector2(1.5, 1.5), Vector2(SIZE - 3, SIZE - 3)), Color(0.35, 0.3, 0.24), false, 3.0)
 
 
 ## Всё неподвижное — в стиле бумажного атласа района: светлая бумага,
@@ -242,24 +272,39 @@ func _draw_static(labels: bool) -> void:
 	# Большая карта берёт местность из уже нарисованной текстуры мини-карты —
 	# тысяча кругов лесов не перерисовывается каждый кадр
 	if labels and _tex_vp:
-		_t.draw_texture_rect(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(_size, _size)), false)
+		var k := TEX / WORLD
+		var src := Rect2((_view.position + Vector2(WORLD, WORLD) * 0.5) * k, _view.size * k)
+		_t.draw_texture_rect_region(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(_size, _size)), src)
 	else:
 		_draw_terrain()
+	var whole := _view.size.x > 800.0
 	if labels:
-		# Крупные подписи: село, город, лес, поля — как на районной карте
-		_label_at(font, "Каменка", Vector2(-140, -70), 20)
-		_label_at(font, "Город", Vector2(120, 104), 20)
-		_label_at(font, "Сосновый бор", Vector2(-120, -150), 14, true)
-		_label_at(font, "Дубрава", Vector2(-135, 120), 14, true)
-		_label_at(font, "колхоз «Заря»", Vector2(62, -150), 13, true)
-		_label_at(font, "речка Каменка", Vector2(-100, -175), 12, true)
+		# Крупные подписи: сёла, город, леса, река — как на районной карте
+		var big := 16 if whole else 20
+		_label_at(font, "Каменка", Vector2(-110, -60) if whole else Vector2(-140, -70), big)
+		_label_at(font, "Город", Vector2(120, 104), big)
+		for v in Region.VILLAGES:
+			_label_at(font, v.name, (v.c as Vector2) + Vector2(0, -52.0 if whole else -44.0), big)
+		if whole:
+			_label_at(font, "р. Быстрая", Vector2(385, -200), 13, true)
+			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-20, 48), 12, true)
+			_label_at(font, "Тёмный лес", Vector2(-570, -560), 13, true)
+			_label_at(font, "Дубрава", Vector2(-25, 590), 13, true)
+		else:
+			_label_at(font, "Сосновый бор", Vector2(-120, -150), 14, true)
+			_label_at(font, "Дубрава", Vector2(-135, 120), 14, true)
+			_label_at(font, "колхоз «Заря»", Vector2(62, -150), 13, true)
+			_label_at(font, "речка Каменка", Vector2(-100, -175), 12, true)
+			_label_at(font, "р. Быстрая", Vector2(348, -30), 13, true)
+			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(0, 34), 12, true)
 		_compass(font)
 		_scale_bar(font)
 	_draw_places(labels, font)
 
 
 func _draw_terrain() -> void:
-	_rect(-200, -200, 200, 200, PAPER)
+	_rect(-WORLD * 0.5, -WORLD * 0.5, WORLD * 0.5, WORLD * 0.5, PAPER)
+	_draw_region()
 	# Поля — чуть темнее бумаги, пашня — коричневатая
 	_blob(Rect2(25, -185, 75, 75), Color(0.88, 0.83, 0.66), 11)
 	_blob(Rect2(110, -185, 80, 75), Color(0.83, 0.86, 0.7), 12)
@@ -323,6 +368,44 @@ func _draw_terrain() -> void:
 	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.72, 0.7, 0.66))
 
 
+## Район вокруг Каменки: поля, леса, озеро, река с мостами, грунтовки, сёла.
+func _draw_region() -> void:
+	for f in Region.FIELDS:
+		var fr: Rect2 = f[0]
+		_blob(fr, Color(0.88, 0.83, 0.66) if (f[1] as Color).r > 0.7 else Color(0.84, 0.8, 0.68), 20 + int(fr.position.x))
+	var seed := 30
+	for r in Region.FORESTS:
+		_blob(r, FOREST_COL, seed, FOREST_EDGE)
+		seed += 1
+	var lake := PackedVector2Array()
+	for i in 29:
+		var a := TAU * i / 28.0
+		lake.append(_p(Region.LAKE.x + cos(a) * Region.LAKE_R.x, Region.LAKE.y + sin(a) * Region.LAKE_R.y))
+	_t.draw_colored_polygon(lake, WATER)
+	_t.draw_polyline(lake, WATER_EDGE, 2.0, true)
+	var river := PackedVector2Array()
+	for q in Region.river():
+		river.append(_p(q.x, q.y))
+	_line(river, Region.RIVER_HALF * 2.0 + 4.0, WATER_EDGE)
+	_line(river, Region.RIVER_HALF * 2.0, WATER)
+	for v in Region.VILLAGES:
+		var c: Vector2 = v.c
+		_blob(Rect2(c.x - 62, c.y - 32, 124, 64), Color(0.93, 0.88, 0.76), int(c.x))
+	# Грунтовки, трасса за Каменкой; мосты — светлыми полосками поперёк реки
+	var segs := Region.segments()
+	for s in segs:
+		_line(PackedVector2Array([_p(s[0].x, s[0].y), _p(s[1].x, s[1].y)]), 7.5, ROAD_EDGE)
+	for side in [[-WORLD * 0.5, -200.0], [200.0, WORLD * 0.5]]:
+		_line(PackedVector2Array([_p(side[0], 0), _p(side[1], 0)]), 10.5, ROAD_EDGE)
+	for s in segs:
+		_line(PackedVector2Array([_p(s[0].x, s[0].y), _p(s[1].x, s[1].y)]), 5.0, ROAD)
+	for side in [[-WORLD * 0.5, -200.0], [200.0, WORLD * 0.5]]:
+		_line(PackedVector2Array([_p(side[0], 0), _p(side[1], 0)]), 8.0, ROAD_MAIN)
+	for h in Region.houses():
+		var c: Vector2 = h[0]
+		_rect(c.x - 4.0, c.y - 3.0, c.x + 4.0, c.y + 3.0, HOUSE)
+
+
 func _draw_places(labels: bool, font: Font) -> void:
 	var pond: Vector3 = _world.POND_POS
 	var shop: Vector3 = _world.SHOP_POS
@@ -348,11 +431,21 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Пахота", Vector3(70, 0, -80), Color(0.6, 0.45, 0.3)],
 		["ГАИ", Vector3(-100, 0, -9.2), Color(0.3, 0.45, 0.9)],
 		["Сберкасса", Vector3(137.8, 0, 21), Color(0.3, 0.8, 0.5)],
+		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
+		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
+	for i in Region.VILLAGES.size():
+		places.append(["Магазин", Region.shop_pos(i), Color(0.95, 0.35, 0.3)])
+		places.append(["Автобус", Region.stop_pos(i), Color(1.0, 0.9, 0.3)])
+	# На карте всего района — только дом и магазины сёл, иначе значки слипаются
+	if labels and _view.size.x > 800.0:
+		places = places.filter(func(pl: Array) -> bool: return pl[0] == "Дом" or pl[0] == "Магазин")
 	var blink := fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
 	for pl in places:
 		var v: Vector3 = pl[1]
 		var at := _p(v.x, v.z)
+		if labels and not Rect2(Vector2(-20, -20), Vector2(_size + 40, _size + 40)).has_point(at):
+			continue
 		var r := 6.0 if labels else 10.0
 		if labels and pl[0] == "Сельмаг" and Progress.delivery_active and blink:
 			r = 10.0
@@ -360,14 +453,20 @@ func _draw_places(labels: bool, font: Font) -> void:
 		_t.draw_circle(at, r + 1.5, Color(0.25, 0.22, 0.2))
 		_t.draw_circle(at, r, Color(0.98, 0.97, 0.94))
 		_t.draw_circle(at, r * 0.55, pl[2])
-		if not labels:
+		if not labels or _view.size.x > 800.0:
 			continue
-		# Подписи соседних мест разводим: ларёк — слева, АЗС — сверху
+		# Подписи соседних мест разводим: ларёк — слева, АЗС — сверху,
+		# районный автобус — под обычным
 		var off := Vector2(8, 5)
 		if pl[0] == "Ларёк":
 			off = Vector2(-48, 5)
 		elif pl[0] == "АЗС":
 			off = Vector2(-14, -9)
+		elif pl[0] == "Районный":
+			off = Vector2(-60, 16)
+		elif pl[0] == "Автобус" and absf(v.x) > 200.0:
+			# В сёлах остановка рядом с магазином — подпись ниже
+			off = Vector2(8, 18)
 		_t.draw_string_outline(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.9))
 		_t.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
 
@@ -392,7 +491,8 @@ func _draw_dynamic(font: Font) -> void:
 	var fwd := Vector2(-sin(yaw), -cos(yaw))
 	var side := Vector2(fwd.y, -fwd.x)
 	_canvas.draw_colored_polygon(PackedVector2Array([at + fwd * 11.0, at - fwd * 6.0 + side * 6.0, at - fwd * 6.0 - side * 6.0]), Color(1, 0.2, 0.2))
-	if not GameManager.touch_mode:
-		var hint := "M — закрыть карту"
-		var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		_canvas.draw_string(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.3, 0.26, 0.22))
+	var key := "Карта" if GameManager.touch_mode else "M"
+	var hint := ("%s — весь район" if mode != 2 else "%s — закрыть карту") % key
+	var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_canvas.draw_string_outline(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.8))
+	_canvas.draw_string(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.3, 0.26, 0.22))

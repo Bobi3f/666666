@@ -184,8 +184,11 @@ func _run() -> void:
 	ok(not map._canvas.visible, "карта скрыта")
 	key(KEY_M, true); await frames(2); key(KEY_M, false); await frames(3)
 	ok(map._canvas.visible, "M открывает карту")
+	ok(map.mode == 1, "сначала — окрестности")
 	key(KEY_M, true); await frames(2); key(KEY_M, false); await frames(2)
-	ok(not map._canvas.visible, "M закрывает")
+	ok(map._canvas.visible and map.mode == 2 and map._view.size.x > 1000.0, "второе M — весь район")
+	key(KEY_M, true); await frames(2); key(KEY_M, false); await frames(2)
+	ok(not map._canvas.visible, "третье M закрывает")
 
 	print("== Повтор прошлых проверок")
 	NM.energy = 100.0; NM.food = 100.0

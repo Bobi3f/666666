@@ -153,7 +153,7 @@ func _run() -> void:
 	await frames(10)
 	# Трава против асфальта
 	var res := []
-	for spot in [Vector3(-150, 0.1, 2.0), Vector3(-10, 0.1, -100)]:
+	for spot in [Vector3(-150, 0.1, 2.0), Vector3(40, 0.1, -105)]:  # луг между пшеницей и пашней
 		place(C, spot, -PI / 2.0)
 		C.gear = 1
 		key(KEY_W, true)

@@ -1,6 +1,7 @@
 extends Node3D
 ## Мир 400×400 м: деревня из 8 дворов трёх уровней достатка с сельмагом,
 ## фонарями, прудом и огородами, город из панелек, магистраль, ЛЭП, лес и поля.
+## Вокруг — район 1400×1400 м (region.gd): ещё четыре села, река, озеро, леса.
 ##
 ## Вся неподвижная геометрия копится в один меш (MeshBuilder) — мир рисуется
 ## за один вызов отрисовки. Светящиеся окна — второй меш: днём тусклые,
@@ -85,7 +86,8 @@ void fragment() {
 	vec3 nw = normalize(vec3(-dx * 0.18 * (1.0 - ice), 1.0, -dz * 0.18 * (1.0 - ice)));
 	NORMAL = normalize((VIEW_MATRIX * vec4(nw, 0.0)).xyz);
 	float f = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);
-	ALBEDO = mix(deep, sky, clamp(f * 1.3 + 0.12, 0.0, 1.0));
+	// Издалека вода блестит небом, но не белеет, как лёд
+	ALBEDO = mix(deep, sky, clamp(f * 1.3 + 0.12, 0.0, 0.72));
 	ALBEDO = mix(ALBEDO, vec3(0.72, 0.8, 0.86), ice * 0.85);
 	ROUGHNESS = mix(0.06, 0.35, ice);
 	SPECULAR = 0.9;
@@ -108,6 +110,8 @@ var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
 var _veg := Vegetation.new()
 var _sky_top: Color
+## Район вокруг Каменки: сёла, река, дороги (region.gd).
+var region: Region
 var _sky_horizon: Color
 
 
@@ -140,6 +144,10 @@ func _ready() -> void:
 	# Двор игрока — до сборки растительности: его яблоня и кусты регистрируются
 	# один раз, при перестройке дома они стоят на тех же местах
 	_build_player_yard()
+	region = Region.new()
+	region.name = "Region"
+	add_child(region)
+	region.build(self, b, glow, _veg)
 
 	var world_mesh := b.build_chunked()
 	world_mesh.name = "WorldMesh"
@@ -389,10 +397,11 @@ func _build_ground(b: MeshBuilder) -> void:
 			var pts := [Vector3(x0, 0, z0 + cell), Vector3(x0 + cell, 0, z0 + cell), Vector3(x0 + cell, 0, z0), Vector3(x0, 0, z0)]
 			var cols: Array[Color] = [cols_at[Vector2i(i, j + 1)], cols_at[Vector2i(i + 1, j + 1)], cols_at[Vector2i(i + 1, j)], cols_at[Vector2i(i, j)]]
 			b.quad_vc(pts, cols)
-	b.add_collider(Vector3(-200, -1, -200), Vector3(200, 0, 200))
-	# Невидимые стены по краю мира
-	for side in [[Vector3(-201, 0, -200), Vector3(-200, 5, 200)], [Vector3(200, 0, -200), Vector3(201, 5, 200)],
-			[Vector3(-200, 0, -201), Vector3(200, 5, -200)], [Vector3(-200, 0, 200), Vector3(200, 5, 201)]]:
+	var e := Region.HALF
+	b.add_collider(Vector3(-e, -1, -e), Vector3(e, 0, e))
+	# Невидимые стены по краю района
+	for side in [[Vector3(-e - 1, 0, -e), Vector3(-e, 5, e)], [Vector3(e, 0, -e), Vector3(e + 1, 5, e)],
+			[Vector3(-e, 0, -e - 1), Vector3(e, 5, -e)], [Vector3(-e, 0, e), Vector3(e, 5, e + 1)]]:
 		b.add_collider(side[0], side[1])
 	# Поля на северо-востоке: пшеница, зелень, пашня с бороздами
 	b.box(Vector3(25, 0, -185), Vector3(100, 0.03, -110), Color(0.78, 0.68, 0.33))
@@ -1221,8 +1230,17 @@ func _pond(b: MeshBuilder, c: Vector3) -> void:
 			FishingGame.State.BITE:
 				return "КЛЮЁТ! E — подсекай!"
 		return "E — порыбачить: закинуть удочку"
-	fishing.activated.connect(_fish)
+	var pond_water := _fishing_water
+	fishing.activated.connect(func() -> void: fish_at(fishing.position, pond_water))
 	add_child(fishing)
+
+
+## Рыбалка с этого места: пруд в Каменке или озеро у Озерцово.
+func fish_at(spot: Vector3, water: Vector3) -> void:
+	if not _fishing.active():
+		_fishing.spot = spot
+		_fishing_water = water
+	_fish()
 
 
 ## Закинуть удочку или подсечь. Каждый заброс — четверть часа игрового

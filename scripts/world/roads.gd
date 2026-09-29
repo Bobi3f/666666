@@ -36,7 +36,7 @@ static func on_gravel(x: float, z: float) -> bool:
 
 
 static func on_forest_road(x: float, z: float) -> bool:
-	return _in(FOREST, x, z)
+	return _in(FOREST, x, z) or Region.on_road(x, z)
 
 
 ## Можно ли здесь сажать дерево: не на дорогах и не в речке.
@@ -58,4 +58,4 @@ static func on_asphalt(x: float, z: float) -> bool:
 		return true
 	if x > 6.0 and x < 12.0 and z > -18.0 and z < 0.0:
 		return true
-	return x > 38.0 and z > 0.0
+	return x > 38.0 and x < 200.0 and z > 0.0 and z < 200.0
