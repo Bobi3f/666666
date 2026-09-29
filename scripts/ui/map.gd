@@ -6,8 +6,9 @@ extends CanvasLayer
 ##
 ## Места берутся из констант world.gd и region.gd, чтобы карта не расходилась с миром.
 ##
-## Мини-карта в углу экрана: та же карта один раз рисуется в текстуру
-## покрупнее, а в углу показывается кусок вокруг игрока — почти даром.
+## Две текстуры карты рисуются заранее: весь район целиком (для карты района)
+## и подробно 800 м вокруг игрока (мини-карта и окрестности). Вторая
+## перерисовывается, только когда игрок отъехал от её середины.
 
 const SIZE := 560.0
 const WORLD := Region.HALF * 2.0
@@ -21,9 +22,15 @@ var _t: Control
 var _size := SIZE
 ## Мини-карта: сколько метров видно по стороне и размер текстуры карты
 const MINI_M := 160.0
-const TEX := 2560.0
+const TEX := 2048.0
+## Подробная текстура окрестностей: сторона в метрах и в точках
+const NEAR_M := 800.0
+const NEAR_TEX := 1024.0
 var _mini: Control
 var _tex_vp: SubViewport
+var _near_vp: SubViewport
+var _near_painter: Control
+var _near_c := Vector2(INF, INF)
 ## Какой кусок мира сейчас рисуем (X, Z мира) и что открыто: 0 — ничего,
 ## 1 — окрестности, 2 — весь район.
 var _view := Rect2(-WORLD * 0.5, -WORLD * 0.5, WORLD, WORLD)
@@ -63,6 +70,22 @@ func _build_minimap() -> void:
 		_size = SIZE)
 	_tex_vp.add_child(painter)
 	add_child(_tex_vp)
+	_near_vp = SubViewport.new()
+	_near_vp.size = Vector2i(int(NEAR_TEX), int(NEAR_TEX))
+	_near_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_near_vp.disable_3d = true
+	_near_painter = Control.new()
+	_near_painter.size = Vector2(NEAR_TEX, NEAR_TEX)
+	_near_painter.draw.connect(func() -> void:
+		_t = _near_painter
+		_size = NEAR_TEX
+		_view = _near_rect()
+		_draw_static(false)
+		_t = _canvas
+		_size = SIZE)
+	_near_vp.add_child(_near_painter)
+	add_child(_near_vp)
+	_recenter(_player_pos2())
 	_mini = Control.new()
 	_mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mini.draw.connect(_draw_mini)
@@ -82,7 +105,34 @@ func _unhandled_input(event: InputEvent) -> void:
 			QuestManager.event("map")
 
 
+## Где сейчас подробная текстура (X, Z мира).
+func _near_rect() -> Rect2:
+	return Rect2(_near_c - Vector2(NEAR_M, NEAR_M) * 0.5, Vector2(NEAR_M, NEAR_M))
+
+
+## Перерисовать подробную текстуру вокруг точки (не заходя за край района).
+func _recenter(p: Vector2) -> void:
+	var h := WORLD * 0.5 - NEAR_M * 0.5
+	var want := Vector2(clampf(snappedf(p.x, 50.0), -h, h), clampf(snappedf(p.y, 50.0), -h, h))
+	# У края района середина упирается в край — лишний раз не перерисовываем
+	if want == _near_c:
+		return
+	_near_c = want
+	_near_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_near_painter.queue_redraw()
+
+
+func _player_pos2() -> Vector2:
+	var p := _player_pos()
+	return Vector2(p.x, p.z)
+
+
 func _process(_delta: float) -> void:
+	# Отъехал от середины подробной текстуры — перерисовать её вокруг себя
+	if _near_vp:
+		var d := _player_pos2() - _near_c
+		if maxf(absf(d.x), absf(d.y)) > NEAR_M * 0.5 - LOCAL_M * 0.5 - 10.0:
+			_recenter(_player_pos2())
 	if _canvas.visible:
 		_canvas.queue_redraw()
 	if _mini:
@@ -105,15 +155,16 @@ func _process(_delta: float) -> void:
 func _draw_mini() -> void:
 	var side := _mini.size.x
 	var pos := _player_pos()
-	var k := TEX / WORLD
+	var k := NEAR_TEX / NEAR_M
+	var o := _near_rect().position
 	var half := MINI_M * 0.5 * k
-	var c := Vector2((pos.x + WORLD * 0.5) * k, (pos.z + WORLD * 0.5) * k)
-	c = c.clamp(Vector2(half, half), Vector2(TEX - half, TEX - half))
+	var c := (Vector2(pos.x, pos.z) - o) * k
+	c = c.clamp(Vector2(half, half), Vector2(NEAR_TEX - half, NEAR_TEX - half))
 	var src := Rect2(c - Vector2(half, half), Vector2(half, half) * 2.0)
 	_mini.draw_rect(Rect2(Vector2(-3, -3), Vector2(side + 6, side + 6)), Color(0, 0, 0, 0.6))
-	_mini.draw_texture_rect_region(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(side, side)), src, Color(1, 1, 1, 0.9))
+	_mini.draw_texture_rect_region(_near_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(side, side)), src, Color(1, 1, 1, 0.9))
 	var to_mini := func(x: float, z: float) -> Vector2:
-		return (Vector2((x + WORLD * 0.5) * k, (z + WORLD * 0.5) * k) - src.position) * (side / src.size.x)
+		return ((Vector2(x, z) - o) * k - src.position) * (side / src.size.x)
 	# Свои машины
 	for n in get_tree().get_nodes_in_group("vehicles"):
 		var v := n as Vehicle
@@ -271,7 +322,12 @@ func _draw_static(labels: bool) -> void:
 	var font := ThemeDB.fallback_font
 	# Большая карта берёт местность из уже нарисованной текстуры мини-карты —
 	# тысяча кругов лесов не перерисовывается каждый кадр
-	if labels and _tex_vp:
+	if labels and _tex_vp and _near_rect().encloses(_view):
+		# Окрестности — из подробной текстуры
+		var kn := NEAR_TEX / NEAR_M
+		var src_n := Rect2((_view.position - _near_rect().position) * kn, _view.size * kn)
+		_t.draw_texture_rect_region(_near_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(_size, _size)), src_n)
+	elif labels and _tex_vp:
 		var k := TEX / WORLD
 		var src := Rect2((_view.position + Vector2(WORLD, WORLD) * 0.5) * k, _view.size * k)
 		_t.draw_texture_rect_region(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(_size, _size)), src)
@@ -287,7 +343,7 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, v.name, (v.c as Vector2) + Vector2(0, -52.0 if whole else -44.0), big)
 		if whole:
 			_label_at(font, "р. Быстрая", Vector2(385, -200), 13, true)
-			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-120, 12), 12, true)
+			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-330, 30), 12, true)
 			_label_at(font, "Тёмный лес", Vector2(-1000, -1050), 13, true)
 			_label_at(font, "Дубрава", Vector2(0, 1000), 13, true)
 		else:

@@ -61,7 +61,7 @@ func _run() -> void:
 	var tr = child("traffic.gd")
 	print("== Район")
 	var R = W.get_node("Region")
-	ok(R != null and Region.VILLAGES.size() == 8, "восемь соседних сёл")
+	ok(R != null and Region.VILLAGES.size() == 12, "двенадцать сёл района")
 	ok(R._bridges.size() == 2, "мосты через реку: %d" % R._bridges.size())
 	ok(tr.WORLD_X > 600.0, "попутки ездят по всей трассе района")
 	var veg = W.get_node("Vegetation")
@@ -174,7 +174,7 @@ func _run() -> void:
 	var st: Dictionary = R.save_state()
 	R.visited.clear()
 	R.load_state(st)
-	ok(R.visited.size() == 8, "посещённые сёла сохраняются")
+	ok(R.visited.size() == 12, "посещённые сёла сохраняются")
 	R.load_state({})
 	ok(R.visited.is_empty(), "старое сохранение — без сёл")
 	print("== Карта")
@@ -185,6 +185,11 @@ func _run() -> void:
 	map.mode = 1
 	await process_frame; await process_frame
 	ok(map._view.size.x == map.LOCAL_M and map._view.has_point(Vector2(P.global_position.x, P.global_position.z)), "окрестности вокруг игрока")
+	ok(map._near_rect().encloses(map._view), "окрестности — из подробной текстуры")
+	var vfar: Vector2 = Region.VILLAGES[11].c
+	P.global_position = Vector3(vfar.x, 0.1, vfar.y)
+	await process_frame; await process_frame
+	ok(map._near_rect().has_point(vfar), "уехал далеко — подробная карта перерисована вокруг: %s" % str(map._near_c))
 	map._canvas.visible = false
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)

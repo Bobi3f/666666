@@ -24,8 +24,8 @@ func _ready() -> void:
 	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3), Color(0.45, 0.45, 0.47), Color(0.85, 0.7, 0.3)]
 	var i := 0
 	for dir in [1, -1]:
-		for k in 8:
-			_spawn(dir, -1050.0 + k * 290.0 + dir * 40.0, colors[i % colors.size()], false)
+		for k in 12:
+			_spawn(dir, -1850.0 + k * 320.0 + dir * 40.0, colors[i % colors.size()], false)
 			i += 1
 	_spawn(-1, 120.0, Color(0.95, 0.75, 0.2), true)
 
