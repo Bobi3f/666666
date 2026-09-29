@@ -25,6 +25,8 @@ var left_hand := false
 var vibration := true
 ## Мини-карта в углу экрана.
 var minimap := true
+## Пешком — вид от третьего лица (персонаж виден со спины).
+var third_person := true
 ## Ячейка сохранения 1–3.
 var slot := 1
 var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
@@ -68,6 +70,7 @@ func _ready() -> void:
 		left_hand = bool(cfg.get_value("ui", "left_hand", false))
 		vibration = bool(cfg.get_value("ui", "vibration", true))
 		minimap = bool(cfg.get_value("ui", "minimap", true))
+		third_person = bool(cfg.get_value("ui", "third_person", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 	_apply()
 
@@ -109,6 +112,12 @@ func set_text_scale(v: float) -> void:
 
 func set_left_hand(v: bool) -> void:
 	left_hand = v
+	_save()
+	changed.emit()
+
+
+func set_third_person(v: bool) -> void:
+	third_person = v
 	_save()
 	changed.emit()
 
@@ -158,5 +167,6 @@ func _save() -> void:
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)
 	cfg.set_value("ui", "minimap", minimap)
+	cfg.set_value("ui", "third_person", third_person)
 	cfg.set_value("save", "slot", slot)
 	cfg.save(PATH)

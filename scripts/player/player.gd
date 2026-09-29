@@ -1,7 +1,14 @@
 class_name Player
 extends CharacterBody3D
-## Персонаж от первого лица: ходьба с разгоном, бег, прыжок, приседание,
-## подъём на ступеньки, покачивание камеры, действие по E, еда по Q.
+
+const Villagers := preload("res://scripts/world/villagers.gd")
+## Персонаж: ходьба с разгоном, бег, прыжок, приседание, подъём на
+## ступеньки, действие по E, еда по Q.
+##
+## Два вида (V или кнопка «Вид»): от третьего лица — камера за спиной на
+## «штанге», которая упирается в стены и не пролезает сквозь них; персонаж
+## виден целиком, поворачивается туда, куда идёт, шагает ногами и руками.
+## От первого лица — камера в голове с покачиванием при ходьбе.
 
 const WALK := 4.0
 const RUN := 7.0
@@ -25,6 +32,9 @@ const CROUCH_EYES := 0.98
 const STEP_HEIGHT := 0.45
 const FOV := 75.0
 const RUN_FOV := 82.0
+## Камера от третьего лица: насколько сзади и чуть над плечом
+const TP_DISTANCE := 3.4
+const TP_HEIGHT := 0.25
 
 var camera: SmoothCamera
 ## Точка глаз: к ней плавно тянется камера (см. SmoothCamera).
@@ -43,6 +53,12 @@ var _land_dip := 0.0
 var _fall_speed := 0.0
 ## Пройдено с последнего шага — для звука шагов
 var _stride := 0.0
+## Штанга камеры (третье лицо) и тело персонажа, видимое со стороны
+var _arm: SpringArm3D
+var _arm_tip: Node3D
+var _body: Node3D
+var _body_mesh: MeshInstance3D
+var _walk_phase := 0.0
 
 
 func _ready() -> void:
@@ -58,8 +74,30 @@ func _ready() -> void:
 	_head = Node3D.new()
 	_head.position.y = STAND_EYES
 	add_child(_head)
+	# Штанга: камера от третьего лица отъезжает назад, пока не упрётся в стену.
+	# Глаза — на её конце (от первого лица длина штанги ноль)
+	_arm = SpringArm3D.new()
+	var ball := SphereShape3D.new()
+	ball.radius = 0.22
+	_arm.shape = ball
+	_arm.margin = 0.1
+	_arm.add_excluded_object(get_rid())
+	_head.add_child(_arm)
+	_arm_tip = Node3D.new()
+	_arm.add_child(_arm_tip)
 	_eye = Node3D.new()
-	_head.add_child(_eye)
+	_arm_tip.add_child(_eye)
+	# Тело — видно от третьего лица
+	_body = Node3D.new()
+	_body.top_level = false
+	add_child(_body)
+	var bb := MeshBuilder.new()
+	bb.ground_shade = false
+	Villagers.person_model(bb, Color(0.2, 0.33, 0.25), Color(0.25, 0.22, 0.2), false, false)
+	_body_mesh = Villagers.walking_mesh(bb)
+	_body.add_child(_body_mesh)
+	SettingsManager.changed.connect(_apply_view)
+	_apply_view()
 	# Камера отдельно от тела: положение сглаживается между шагами физики,
 	# поворот головы — сразу, без задержки
 	camera = SmoothCamera.new()
@@ -93,6 +131,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_C:
 				if car == null:
 					_crouch_toggled = not _crouch_toggled
+			KEY_V:
+				if car == null:
+					toggle_view()
 	if car != null:
 		return
 	# На телефоне касания эмулируют мышь — камеру крутит сенсорное управление
@@ -104,7 +145,29 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _look(yaw: float, pitch: float) -> void:
 	rotate_y(yaw)
-	_head.rotation.x = clampf(_head.rotation.x + pitch, -1.45, 1.45)
+	# Со спины камера не лезет под землю и не смотрит строго вниз
+	var lo := -1.1 if SettingsManager.third_person else -1.45
+	var hi := 0.9 if SettingsManager.third_person else 1.45
+	_head.rotation.x = clampf(_head.rotation.x + pitch, lo, hi)
+	# Тело стоит на месте, пока не пошли: при повороте камеры его не крутим
+	if SettingsManager.third_person:
+		_body.rotate_y(-yaw)
+
+
+## Вид от первого или третьего лица — из настроек.
+func _apply_view() -> void:
+	var tp := SettingsManager.third_person
+	_arm.spring_length = TP_DISTANCE if tp else 0.0
+	_arm.position = Vector3(0, TP_HEIGHT, 0) if tp else Vector3.ZERO
+	_body.visible = tp
+	_head.rotation.x = clampf(_head.rotation.x, -1.1 if tp else -1.45, 0.9 if tp else 1.45)
+	if camera:
+		camera.snap()
+
+
+func toggle_view() -> void:
+	SettingsManager.set_third_person(not SettingsManager.third_person)
+	GameManager.notify("Вид: %s" % ("от третьего лица" if SettingsManager.third_person else "от первого лица"))
 
 
 func _physics_process(delta: float) -> void:
@@ -161,6 +224,7 @@ func _physics_process(delta: float) -> void:
 			SoundLibrary.play("land", -6.0 + minf(_fall_speed, 8.0), randf_range(0.9, 1.1))
 		_fall_speed = 0.0
 	_update_camera(delta, running and flat.length() > WALK)
+	_update_body(delta, flat)
 	_footsteps(delta)
 
 	# Упал за край мира — вернуть на дорогу
@@ -254,11 +318,32 @@ func _footsteps(delta: float) -> void:
 		SoundLibrary.play(snd, -14.0 if crouching else -8.0, randf_range(0.8, 1.2))
 
 
+## Тело от третьего лица: поворачивается туда, куда идём, шагает, приседает.
+func _update_body(delta: float, flat: Vector2) -> void:
+	if not _body.visible:
+		return
+	# В тесноте (изба, у стены) камере некуда отъехать — тело прячем,
+	# чтобы голова не закрывала обзор: получается вид из глаз
+	_body_mesh.visible = _arm.get_hit_length() > 1.1
+	var speed := flat.length()
+	if speed > 0.3:
+		var want := atan2(-flat.x, -flat.y)
+		_body.global_rotation.y = lerp_angle(_body.global_rotation.y, want, minf(delta * 12.0, 1.0))
+		_walk_phase += speed * delta * 3.3
+	var on_floor := is_on_floor()
+	var amount := clampf(speed / WALK, 0.0, 1.3) if on_floor else 0.35
+	Villagers.set_walk(_body_mesh, _walk_phase, amount)
+	# Подпрыгивает на шаге, присев — ниже
+	_body_mesh.position.y = absf(sin(_walk_phase)) * 0.04 * minf(amount, 1.0) if on_floor else 0.0
+	var sy := 0.68 if crouching else 1.0
+	_body.scale = _body.scale.lerp(Vector3(1.0, sy, 1.0), minf(delta * 10.0, 1.0))
+
+
 ## Покачивание при ходьбе, просадка при приземлении, шире обзор на бегу.
 func _update_camera(delta: float, sprinting: bool) -> void:
 	var speed := Vector2(velocity.x, velocity.z).length()
 	var bob := Vector3.ZERO
-	if is_on_floor() and speed > 0.5:
+	if is_on_floor() and speed > 0.5 and not SettingsManager.third_person:
 		_bob_time += delta * speed * 1.9
 		var amp := 0.035 if speed <= WALK + 0.1 else 0.06
 		if crouching:

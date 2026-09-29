@@ -1,8 +1,9 @@
 extends CanvasLayer
 ## Сенсорное управление для телефонов (Android и браузер на телефоне).
 ##
-## Пешком: слева джойстик (у края — бег), справа палец по экрану
-## поворачивает камеру, кнопки справа внизу — действие, прыжок, присесть, еда.
+## Пешком: слева джойстик — плавающий, появляется там, куда поставил палец
+## (у края — бег); справа палец по экрану поворачивает камеру, кнопки справа
+## внизу — действие, прыжок, присесть, еда, вид (со спины / из глаз).
 ## В машине — как в Car Parking: слева настоящий руль, его крутят пальцем
 ## (отпустил — сам возвращается), в центре руля сигнал. Справа педали газа
 ## и тормоза, рычаг D/R — вперёд или назад, ручник, выход и вид — всё можно
@@ -59,6 +60,7 @@ func _ready() -> void:
 	_add_button("Прыжок", KEY_SPACE, "walk", "br", Vector2(-230, -70), 44)
 	_add_button("Присесть", KEY_C, "walk", "br", Vector2(-120, -250), 40)
 	_add_button("Еда", KEY_Q, "walk", "br", Vector2(-240, -190), 36)
+	_add_button("Вид", KEY_V, "walk", "br", Vector2(-340, -95), 30)
 	# Педали — прямоугольные, как в машине: газ узкий и высокий, тормоз шире
 	_add_button("Газ", KEY_W, "drive", "br", Vector2(-72, -118), 0, Vector2(76, 160))
 	_add_button("Тормоз", KEY_S, "drive", "br", Vector2(-190, -92), 0, Vector2(120, 108))
@@ -215,6 +217,7 @@ func _layout() -> void:
 		_stick_center.x = size.x - _stick_center.x
 		_wheel_center.x = size.x - _wheel_center.x
 	_base.position = _stick_center - Vector2(STICK_R, STICK_R)
+	_base.modulate.a = 0.55
 	_set_knob(Vector2.ZERO)
 	_wheel.position = _wheel_center - Vector2(WHEEL_R, WHEEL_R)
 	for e in _buttons:
@@ -313,6 +316,12 @@ func _input(event: InputEvent) -> void:
 			var stick_side := touch.position.x > w * 0.6 if SettingsManager.left_hand else touch.position.x < w * 0.4
 			if stick_side and _stick_index < 0:
 				_stick_index = touch.index
+				# Плавающий джойстик: центр там, где коснулся пальцем
+				var vs := get_viewport().get_visible_rect().size
+				var m := STICK_R + 12.0
+				_stick_center = Vector2(clampf(touch.position.x, m, vs.x - m), clampf(touch.position.y, m + 80.0, vs.y - m))
+				_base.position = _stick_center - Vector2(STICK_R, STICK_R)
+				_base.modulate.a = 1.0
 				_update_stick(touch.position)
 			elif _look_index < 0:
 				_look_index = touch.index
@@ -327,6 +336,8 @@ func _input(event: InputEvent) -> void:
 			elif touch.index == _stick_index:
 				_stick_index = -1
 				_update_stick(_stick_center)
+				# Отпустил — джойстик возвращается на место и бледнеет
+				_layout()
 			elif touch.index == _look_index:
 				_look_index = -1
 		return
