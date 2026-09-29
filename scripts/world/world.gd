@@ -2293,29 +2293,66 @@ func _kolkhoz_barn(b: MeshBuilder) -> void:
 	b.box(Vector3(-57.0, 0, -42.2), Vector3(c.x - 1.0, 0.03, -40.8), Color(0.46, 0.39, 0.28))
 	b.box(c + Vector3(-2.6, 3.28, 4.03), c + Vector3(2.6, 3.72, 4.08), Color(0.75, 0.2, 0.15))
 	_label("КОЛХОЗ «ЗАРЯ»", c + Vector3(0, 3.5, 4.1), 0.0, 0.004, Color(1, 0.95, 0.8))
-	var zone := InteractZone.create("E — колхоз: грузить сено, 3 часа, +400 грн", Vector3(6.0, 2.2, 3.0))
+	_hay_cart(b, CART_POS)
+	kolkhoz_job = CarryJob.new()
+	kolkhoz_job.name = "KolkhozJob"
+	kolkhoz_job.title = "Колхоз, сено"
+	kolkhoz_job.item_name = "тюк сена"
+	kolkhoz_job.pickup = HAY_PICK
+	kolkhoz_job.pile_at = HAY_PICK + Vector3(0, 0, 0.6)
+	kolkhoz_job.drop = CART_POS + Vector3(0, 0, -3.0)
+	kolkhoz_job.stack_at = CART_POS + Vector3(0, 0.78, 0)
+	kolkhoz_job.stack_yaw = PI / 2.0
+	kolkhoz_job.per_row = 3
+	kolkhoz_job.total = 8
+	kolkhoz_job.pay_each = 50
+	kolkhoz_job.minutes_each = 22.0
+	kolkhoz_job.energy_each = 2.2
+	kolkhoz_job.item_size = Vector3(0.9, 0.45, 0.5)
+	kolkhoz_job.item_color = Color(0.78, 0.68, 0.38)
+	kolkhoz_job.event_name = "kolkhoz"
+	kolkhoz_job.can_start = func() -> String:
+		var h := TimeManager.hour()
+		if h < 7.0 or h > 19.0:
+			return "Бригадир ушёл домой. Работа в колхозе с 7:00 до 19:00"
+		if NeedsManager.energy < 25.0:
+			return "Сил нет вилы держать. Выспись"
+		if WeatherManager.wet():
+			return "Сено в дождь не грузят — приходи, как распогодится"
+		return ""
+	add_child(kolkhoz_job)
+	kolkhoz_job.setup()
+	var zone := InteractZone.create("", Vector3(6.0, 2.2, 3.0))
 	zone.position = c + Vector3(0, 0, 5.5)
-	zone.activated.connect(_kolkhoz_work)
+	zone.prompt_fn = kolkhoz_job.start_prompt
+	zone.activated.connect(kolkhoz_job.start)
 	add_child(zone)
 
 
-func _kolkhoz_work() -> void:
-	var h := TimeManager.hour()
-	if h < 7.0 or h > 19.0:
-		GameManager.notify("Бригадир ушёл домой. Работа в колхозе с 7:00 до 19:00")
-		return
-	if NeedsManager.energy < 25.0:
-		GameManager.notify("Сил нет вилы держать. Выспись")
-		return
-	if WeatherManager.wet():
-		GameManager.notify("Сено в дождь не грузят — приходи, как распогодится")
-		return
-	TimeManager.advance(180.0)
-	NeedsManager.rest(-18.0)
-	GameManager.add_money(400)
-	SoundLibrary.play("cash")
-	GameManager.notify("Отработал в колхозе: +400 грн. %s" % TimeManager.clock_text())
-	QuestManager.event("kolkhoz")
+## Телега у сарая с запада: сюда носят сено из стога.
+const CART_POS := Vector3(-45.5, 0, -48.0)
+## Где берут тюки — у стога за сараем.
+const HAY_PICK := Vector3(-42.0, 0, -58.8)
+var kolkhoz_job: CarryJob
+var warehouse_job: CarryJob
+
+
+func _hay_cart(b: MeshBuilder, c: Vector3) -> void:
+	var wood := Color(0.5, 0.38, 0.25)
+	b.box(c + Vector3(-0.85, 0.62, -1.6), c + Vector3(0.85, 0.72, 1.6), wood, true)
+	for sx in [-1.0, 1.0]:
+		b.box(c + Vector3(sx * 0.85 - 0.05, 0.72, -1.6), c + Vector3(sx * 0.85 + 0.05, 1.1, 1.6), wood.darkened(0.15))
+		for sz in [-1.0, 1.0]:
+			# Колёса — деревянные, со спицами-досками
+			b.box(c + Vector3(sx * 1.0 - 0.06, 0, sz * 1.0 - 0.38), c + Vector3(sx * 1.0 + 0.06, 0.76, sz * 1.0 + 0.38), Color(0.3, 0.22, 0.15))
+			b.box(c + Vector3(sx * 1.0 - 0.07, 0.3, sz * 1.0 - 0.08), c + Vector3(sx * 1.0 + 0.07, 0.46, sz * 1.0 + 0.08), Color(0.2, 0.2, 0.2))
+	for sz in [-1.0, 1.0]:
+		b.box(c + Vector3(-0.85, 0.72, sz * 1.6 - 0.05), c + Vector3(0.85, 1.0, sz * 1.6 + 0.05), wood.darkened(0.15))
+	# Оглобли вперёд, к сараю
+	for sx in [-0.35, 0.35]:
+		b.box(c + Vector3(sx - 0.04, 0.6, 1.6), c + Vector3(sx + 0.04, 0.68, 3.4), wood.darkened(0.3))
+	_veg.block(c.x - 1.5, c.z - 3.8, c.x + 1.5, c.z + 3.6)
+	_veg.block(HAY_PICK.x - 2.5, HAY_PICK.z - 1.0, HAY_PICK.x + 2.5, HAY_PICK.z + 2.0)
 
 
 ## Развоз: хлеб грузится на складе, сдаётся у сельмага — только на машине.
@@ -2382,9 +2419,36 @@ func _build_shops(b: MeshBuilder) -> void:
 	b.box(s + Vector3(-3.0, 4.3, -7.08), s + Vector3(3.0, 5.0, -7.0), Color(0.9, 0.85, 0.3))
 	for i in 6:
 		b.box(s + Vector3(4.0 + (i % 3) * 1.3, (i / 3) * 1.0, -9.5), s + Vector3(5.1 + (i % 3) * 1.3, 0.95 + (i / 3) * 1.0, -8.4), Color(0.6, 0.45, 0.3), true)
-	var job := InteractZone.create("E — поработать грузчиком: 4 часа, +600 грн", Vector3(5.0, 2.0, 3.0))
-	job.position = s + Vector3(0, 0, -8.5)
-	job.activated.connect(_work)
+	_cargo_truck(b, TRUCK_POS)
+	warehouse_job = CarryJob.new()
+	warehouse_job.name = "WarehouseJob"
+	warehouse_job.title = "Склад, грузчик"
+	warehouse_job.item_name = "мешок"
+	warehouse_job.pickup = s + Vector3(0, 0, -9.6)
+	warehouse_job.pile_at = s + Vector3(0, 0, -8.2)
+	warehouse_job.drop = TRUCK_POS + Vector3(4.4, 0, 0)
+	warehouse_job.stack_at = TRUCK_POS + Vector3(1.0, 1.12, 0)
+	warehouse_job.per_row = 5
+	warehouse_job.total = 10
+	warehouse_job.pay_each = 60
+	warehouse_job.minutes_each = 24.0
+	warehouse_job.energy_each = 2.0
+	warehouse_job.item_size = Vector3(0.8, 0.3, 0.5)
+	warehouse_job.item_color = Color(0.86, 0.82, 0.68)
+	warehouse_job.event_name = "shift"
+	warehouse_job.can_start = func() -> String:
+		var h := TimeManager.hour()
+		if h < 6.0 or h > 20.0:
+			return "Склад закрыт. Работа с 6:00 до 20:00"
+		if NeedsManager.energy < 25.0:
+			return "Слишком устал, чтобы таскать мешки. Выспись"
+		return ""
+	add_child(warehouse_job)
+	warehouse_job.setup()
+	var job := InteractZone.create("", Vector3(5.0, 2.0, 1.6))
+	job.position = s + Vector3(0, 0, -11.2)
+	job.prompt_fn = warehouse_job.start_prompt
+	job.activated.connect(warehouse_job.start)
 	add_child(job)
 	var bread := InteractZone.create("", Vector3(4.0, 2.0, 3.0))
 	bread.position = s + Vector3(-7.5, 0, -8.5)
@@ -2394,6 +2458,30 @@ func _build_shops(b: MeshBuilder) -> void:
 		return "E — развоз: хлеб в сельмаг на машине, +%d грн" % Progress.delivery_pay()
 	bread.activated.connect(_take_delivery)
 	add_child(bread)
+
+
+## Грузовик у склада: в кузов носят мешки.
+const TRUCK_POS := Vector3(13.4, 0, 21.0)
+
+
+func _cargo_truck(b: MeshBuilder, c: Vector3) -> void:
+	var blue := Color(0.25, 0.38, 0.55)
+	var dark := Color(0.12, 0.12, 0.13)
+	# Кабина спереди (к -X), кузов сзади с откинутым бортом
+	b.box(c + Vector3(-4.0, 0.55, -1.15), c + Vector3(-1.7, 2.5, 1.15), blue, true)
+	b.box(c + Vector3(-4.02, 1.55, -0.95), c + Vector3(-3.98, 2.3, 0.95), Color(0.5, 0.6, 0.7))
+	b.box(c + Vector3(-1.6, 0.55, -1.2), c + Vector3(3.5, 1.1, 1.2), Color(0.3, 0.3, 0.3), true)
+	var plank := Color(0.45, 0.4, 0.3)
+	for sz in [-1.0, 1.0]:
+		b.box(c + Vector3(-1.6, 1.1, sz * 1.2 - 0.05), c + Vector3(3.5, 1.7, sz * 1.2 + 0.05), plank, true)
+	b.box(c + Vector3(-1.6, 1.1, -1.2), c + Vector3(-1.5, 1.7, 1.2), plank)
+	b.box(c + Vector3(3.5, 0.5, -1.2), c + Vector3(3.6, 1.1, 1.2), plank.darkened(0.2))
+	for x in [-3.0, 0.3, 2.4]:
+		for sz in [-1.0, 1.0]:
+			b.box(c + Vector3(x - 0.45, 0, sz * 1.05 - 0.15), c + Vector3(x + 0.45, 0.9, sz * 1.05 + 0.15), dark)
+	b.box(c + Vector3(-4.05, 0.7, -0.9), c + Vector3(-3.98, 0.95, -0.55), Color(0.95, 0.9, 0.7))
+	b.box(c + Vector3(-4.05, 0.7, 0.55), c + Vector3(-3.98, 0.95, 0.9), Color(0.95, 0.9, 0.7))
+	_veg.block(c.x - 4.5, c.z - 1.6, c.x + 5.8, c.z + 1.6)
 
 
 func _take_delivery() -> void:
@@ -2434,21 +2522,6 @@ func _buy_food() -> void:
 	if GameManager.spend(45):
 		NeedsManager.snacks += 1
 		GameManager.notify("Купил батон и кефир. Съесть — Q")
-
-
-func _work() -> void:
-	var h := TimeManager.hour()
-	if h < 6.0 or h > 20.0:
-		GameManager.notify("Склад закрыт. Работа с 6:00 до 20:00")
-		return
-	if NeedsManager.energy < 25.0:
-		GameManager.notify("Слишком устал, чтобы таскать мешки. Выспись")
-		return
-	TimeManager.advance(240.0)
-	NeedsManager.rest(-20.0)
-	GameManager.add_money(600)
-	GameManager.notify("Отработал смену: +600 грн. %s" % TimeManager.clock_text())
-	QuestManager.event("shift")
 
 
 ## Обморок от голода или усталости: просыпаешься дома через 8 часов,

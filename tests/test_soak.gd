@@ -39,9 +39,9 @@ func _run() -> void:
 		if NM.snacks > 0: NM.eat_snack()
 		for i in mini(3, MS._spots.size()): MS._pick(i)
 		NM.energy = 100.0
-		W._work()
+		W.warehouse_job.simulate_all()
 		await frames(10)
-		W._kolkhoz_work()
+		W.kolkhoz_job.simulate_all()
 		await frames(10)
 		# Днём погуляли по деревне, посмотрели жизнь
 		P.global_position = Vector3(-100, 0.2, -40)
