@@ -43,6 +43,55 @@ func _ready() -> void:
 		add_child(zone)
 	Daily.changed.connect(_update)
 	_update()
+	_build_bank()
+
+
+## Сберкасса на площади Мира: будка с окошком, вклад под 1% в день.
+const BANK := Vector3(137.8, 0, 21.0)
+
+
+func _build_bank() -> void:
+	var c := BANK
+	var b := MeshBuilder.new()
+	b.box(c + Vector3(-1.2, 0, -1.6), c + Vector3(1.2, 2.6, 1.6), Color(0.85, 0.87, 0.9), true)
+	b.box(c + Vector3(-1.21, 2.0, -1.61), c + Vector3(1.21, 2.6, 1.61), Color(0.15, 0.45, 0.3))
+	b.box(c + Vector3(-1.4, 2.6, -1.8), c + Vector3(1.4, 2.72, 1.8), Color(0.3, 0.3, 0.32))
+	# Окошко и прилавок, дверь
+	b.box(c + Vector3(-1.23, 1.0, -0.9), c + Vector3(-1.2, 1.7, 0.2), Color(0.4, 0.5, 0.55))
+	b.box(c + Vector3(-1.5, 0.95, -1.0), c + Vector3(-1.2, 1.0, 0.3), Color(0.5, 0.4, 0.3))
+	b.box(c + Vector3(-1.23, 0, 0.6), c + Vector3(-1.2, 1.9, 1.3), Color(0.35, 0.25, 0.18))
+	add_child(b.build_mesh())
+	var l := Label3D.new()
+	l.text = "СБЕРКАССА"
+	l.font_size = 72
+	l.pixel_size = 0.005
+	l.outline_size = 8
+	l.modulate = Color(1, 1, 1)
+	l.position = c + Vector3(-1.23, 2.3, 0)
+	l.rotation.y = -PI / 2.0
+	add_child(l)
+	var put := InteractZone.create("", Vector3(1.8, 2.2, 1.4))
+	put.position = c + Vector3(-2.2, 0, -0.6)
+	put.prompt_fn = func() -> String:
+		if GameManager.money <= 300:
+			return "Сберкасса: вклад %d грн, +1%% в день. Положить нечего — 300 грн оставь на жизнь" % Daily.deposit
+		return "E — положить на вклад %d грн (+1%% в день; 300 грн оставить на жизнь)" % (GameManager.money - 300)
+	put.activated.connect(func() -> void:
+		var sum := Daily.put_money()
+		if sum > 0:
+			SoundLibrary.play("cash")
+			GameManager.notify("Положил %d грн. На вкладе: %d грн — каждое утро +1%%" % [sum, Daily.deposit]))
+	add_child(put)
+	var take := InteractZone.create("", Vector3(1.8, 2.2, 1.2))
+	take.position = c + Vector3(-2.2, 0, 0.9)
+	take.prompt_fn = func() -> String:
+		return "E — снять вклад: %d грн" % Daily.deposit if Daily.deposit > 0 else "Сберкасса: вклада нет"
+	take.activated.connect(func() -> void:
+		var sum := Daily.take_money()
+		if sum > 0:
+			SoundLibrary.play("cash")
+			GameManager.notify("Снял со вклада %d грн" % sum))
+	add_child(take)
 
 
 func _prompt(id: String) -> String:

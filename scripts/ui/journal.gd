@@ -109,6 +109,8 @@ func _journal_text() -> String:
 		t += "[color=#9a9a9a]  Ещё %d — поговори с жителями, у кого «(!)» над подсказкой[/color]\n" % unknown
 	t += "\n[b][color=#f0d890]ВЕЩИ[/color][/b]\n"
 	t += "  Деньги: %d грн   Еда в запасе: %d   Рыба: %d\n" % [GameManager.money, NeedsManager.snacks, NeedsManager.fish]
+	if Daily.deposit > 0:
+		t += "  На вкладе в сберкассе: %d грн (+1%% в день)\n" % Daily.deposit
 	var extra: Array[String] = []
 	if QuestManager.items.has("medicine"):
 		extra.append("лекарство для тёти Люды")

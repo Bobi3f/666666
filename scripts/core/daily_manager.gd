@@ -37,6 +37,10 @@ var done_total := 0
 ## Выкупленное дело и в какой день последний раз получен доход
 var owned: Array = []
 var paid_day := 0
+## Вклад в сберкассе: каждое утро +1% (с копейками — вниз), до 100 грн в день.
+var deposit := 0
+const INTEREST := 0.01
+const INTEREST_MAX := 100
 
 
 func _ready() -> void:
@@ -50,6 +54,11 @@ func _on_minutes(_m: float) -> void:
 	var day := TimeManager.day
 	# Новый день — доход со своего дела за вчера
 	if paid_day < day:
+		if paid_day > 0 and deposit > 0:
+			var add := mini(int(deposit * INTEREST), INTEREST_MAX)
+			if add > 0:
+				deposit += add
+				GameManager.notify("Сберкасса: на вклад начислено +%d грн, на счету %d грн" % [add, deposit])
 		if paid_day > 0 and not owned.is_empty():
 			var sum := 0
 			for id in owned:
@@ -129,8 +138,29 @@ func buy(id: String) -> bool:
 	return true
 
 
+## Положить все деньги, кроме мелочи на расходы.
+func put_money(keep := 300) -> int:
+	var sum := GameManager.money - keep
+	if sum <= 0:
+		return 0
+	GameManager.money -= sum
+	GameManager.money_changed.emit(GameManager.money)
+	deposit += sum
+	changed.emit()
+	return sum
+
+
+func take_money() -> int:
+	var sum := deposit
+	deposit = 0
+	GameManager.money += sum
+	GameManager.money_changed.emit(GameManager.money)
+	changed.emit()
+	return sum
+
+
 func save_state() -> Dictionary:
-	return {"errand": errand, "day": errand_day, "n": progress, "done": done, "total": done_total, "owned": owned, "paid": paid_day}
+	return {"deposit": deposit, "errand": errand, "day": errand_day, "n": progress, "done": done, "total": done_total, "owned": owned, "paid": paid_day}
 
 
 func load_state(d: Dictionary) -> void:
@@ -141,4 +171,5 @@ func load_state(d: Dictionary) -> void:
 	done_total = int(d.get("total", 0))
 	owned = (d.get("owned", []) as Array).duplicate()
 	paid_day = int(d.get("paid", 0))
+	deposit = int(d.get("deposit", 0))
 	changed.emit()
