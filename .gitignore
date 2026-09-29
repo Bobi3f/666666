@@ -1,3 +1,6 @@
 .godot/
 export/
 build/
+# Служебные файлы Godot, которые он создаёт сам при импорте
+*.uid
+*.import
