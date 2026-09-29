@@ -139,6 +139,85 @@ func _p(x: float, z: float) -> Vector2:
 	return Vector2((x + WORLD * 0.5) / WORLD * _size, (z + WORLD * 0.5) / WORLD * _size)
 
 
+const PAPER := Color(0.91, 0.87, 0.77)
+const FOREST_COL := Color(0.72, 0.8, 0.6)
+const FOREST_EDGE := Color(0.62, 0.72, 0.52)
+const WATER := Color(0.45, 0.56, 0.62)
+const WATER_EDGE := Color(0.32, 0.41, 0.47)
+const ROAD := Color(0.72, 0.64, 0.52)
+const ROAD_MAIN := Color(0.6, 0.56, 0.5)
+const ROAD_EDGE := Color(0.45, 0.4, 0.34)
+const HOUSE := Color(0.5, 0.42, 0.36)
+
+
+## Метры мира → точки карты.
+func _m(meters: float) -> float:
+	return meters / WORLD * _size
+
+
+## Линия толщиной в метрах (не тоньше полутора точек), с круглыми концами.
+func _line(pts: PackedVector2Array, width_m: float, c: Color) -> void:
+	var w := maxf(_m(width_m), 1.5)
+	_t.draw_polyline(pts, c, w, true)
+	for p in [pts[0], pts[pts.size() - 1]]:
+		_t.draw_circle(p, w * 0.5, c)
+
+
+## Пятно с неровным краем: прямоугольник, засыпанный кругами; у края круги
+## меньше и со сдвигом. edge — цвет каймы (рисуется чуть шире под пятном).
+func _blob(r: Rect2, c: Color, seed: int, edge := Color(0, 0, 0, 0)) -> void:
+	var rng := RandomNumberGenerator.new()
+	var step := 9.0
+	for pass_i in (2 if edge.a > 0.0 else 1):
+		rng.seed = seed
+		var grow := 2.5 if pass_i == 0 and edge.a > 0.0 else 0.0
+		var col := edge if pass_i == 0 and edge.a > 0.0 else c
+		# Середина — сплошная, кругами — только неровный край
+		var inner := r.grow(-step * 0.6 + grow)
+		_rect(inner.position.x, inner.position.y, inner.end.x, inner.end.y, col)
+		var x := r.position.x
+		while x <= r.end.x:
+			var zz := r.position.y
+			while zz <= r.end.y:
+				# Ближе к краю — круги мельче и случайнее: край «гуляет»
+				var d := minf(minf(x - r.position.x, r.end.x - x), minf(zz - r.position.y, r.end.y - zz))
+				if d > step * 1.5:
+					zz += step
+					continue
+				var rad := rng.randf_range(3.0, step * 0.9)
+				var j := Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)) if d <= step else Vector2.ZERO
+				_t.draw_circle(_p(x + j.x, zz + j.y), _m(rad + grow), col)
+				zz += step
+			x += step
+
+
+func _label_at(font: Font, text: String, at: Vector2, size: int, italic := false) -> void:
+	var p := _p(at.x, at.y)
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var col := Color(0.12, 0.1, 0.08) if not italic else Color(0.28, 0.33, 0.24)
+	p.x -= w * 0.5
+	_t.draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 5, Color(1, 1, 1, 0.85))
+	_t.draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+
+## Роза ветров: стрелка на север в правом верхнем углу.
+func _compass(font: Font) -> void:
+	var c := Vector2(_size - 34, 40)
+	_t.draw_circle(c, 18, Color(1, 1, 1, 0.6))
+	_t.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -16), c + Vector2(6, 2), c + Vector2(-6, 2)]), Color(0.7, 0.15, 0.1))
+	_t.draw_colored_polygon(PackedVector2Array([c + Vector2(0, 16), c + Vector2(6, 2), c + Vector2(-6, 2)]), Color(0.3, 0.28, 0.26))
+	_t.draw_string(font, c + Vector2(-5, -20), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
+
+
+## Масштаб: полоска на 100 метров в левом нижнем углу.
+func _scale_bar(font: Font) -> void:
+	var a := Vector2(14, _size - 30)
+	var len := _m(100.0)
+	_t.draw_rect(Rect2(a, Vector2(len, 5)), Color(0.12, 0.1, 0.08))
+	_t.draw_rect(Rect2(a + Vector2(len * 0.5, 1), Vector2(len * 0.5 - 1, 3)), Color(1, 1, 1))
+	_t.draw_string(font, a + Vector2(len + 6, 7), "100 м", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
+
+
 func _rect(x0: float, z0: float, x1: float, z1: float, c: Color) -> void:
 	var a := _p(x0, z0)
 	var b := _p(x1, z1)
@@ -149,56 +228,103 @@ func _draw_map() -> void:
 	_t = _canvas
 	_size = SIZE
 	var font := ThemeDB.fallback_font
-	_canvas.draw_rect(Rect2(Vector2(-8, -8), Vector2(SIZE + 16, SIZE + 16)), Color(0, 0, 0, 0.75))
+	_canvas.draw_rect(Rect2(Vector2(-10, -10), Vector2(SIZE + 20, SIZE + 20)), Color(0.35, 0.3, 0.24))
+	_canvas.draw_rect(Rect2(Vector2(-6, -6), Vector2(SIZE + 12, SIZE + 12)), Color(0.96, 0.93, 0.85))
 	_draw_static(true)
 	_draw_dynamic(font)
 
 
-## Всё неподвижное: земля, дороги, дома, места. labels — подписи мест.
+## Всё неподвижное — в стиле бумажного атласа района: светлая бумага,
+## леса зелёными пятнами с неровным краем, вода с береговой линией, дороги
+## линиями с обводкой, дома мелкими квадратиками. labels — подписи и значки.
 func _draw_static(labels: bool) -> void:
 	var font := ThemeDB.fallback_font
-	_rect(-200, -200, 200, 200, Color(0.36, 0.5, 0.26))
-	# Лес и поля
-	_rect(-200, -195, -20, -80, Color(0.18, 0.33, 0.18))
-	_rect(-200, 22, -50, 195, Color(0.18, 0.33, 0.18))
-	_rect(25, -185, 100, -110, Color(0.75, 0.66, 0.35))
-	_rect(110, -185, 190, -110, Color(0.4, 0.58, 0.25))
-	_rect(25, -100, 190, -30, Color(0.45, 0.34, 0.24))
-	# Дороги
-	var road := Color(0.3, 0.3, 0.32)
-	var dirt := Color(0.62, 0.52, 0.37)
-	_rect(-200, -4, 200, 4, road)
-	_rect(-165, -42.5, -57, -37.5, dirt)
-	_rect(-62, -42.5, -57, -5.5, dirt)
-	_rect(94, 4, 100, 100, road)
-	_rect(40, 55, 190, 61, road)
-	# Пруд
-	var pond: Vector3 = _world.POND_POS
-	_t.draw_circle(_p(pond.x, pond.z), 10.0 / WORLD * _size * 1.1, Color(0.25, 0.45, 0.6))
-	# Дома села
-	for x in _world.VILLAGE_X:
-		for z in [_world.ROW_A_Z, _world.ROW_B_Z]:
-			var own: bool = Vector2(x, z) == _world.PLAYER_HOUSE
-			_rect(x - 4.5, z - 3.5, x + 4.5, z + 3.5, Color(1.0, 0.85, 0.3) if own else Color(0.75, 0.5, 0.4))
-	# Город: пятиэтажки и склад
-	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
-		_rect(c.x - 21, c.y - 6, c.x + 21, c.y + 6, Color(0.7, 0.7, 0.68))
-	_rect(165, 54, 177, 96, Color(0.7, 0.7, 0.68))
-	_rect(15.5, 30, 39.5, 44, Color(0.6, 0.58, 0.5))
-	# Речка, полевое кольцо (гравий), лесная дорога, площадь в городе
-	var st: Rect2 = Roads.STREAM
-	_rect(st.position.x, st.position.y, st.end.x, st.end.y, Color(0.35, 0.55, 0.75))
-	for r in Roads.FIELD:
-		_rect(r.position.x, r.position.y, r.end.x, r.end.y, Color(0.72, 0.68, 0.6))
-	for r in Roads.FOREST:
-		_rect(r.position.x, r.position.y, r.end.x, r.end.y, Color(0.55, 0.43, 0.3))
-	var br: Rect2 = Roads.BRIDGE
-	_rect(br.position.x, br.position.y + 0.5, br.end.x, br.end.y - 0.5, Color(0.6, 0.45, 0.3))
-	var sq: Rect2 = _world.TOWN_SQUARE
-	_rect(sq.position.x, sq.position.y, sq.end.x, sq.end.y, Color(0.75, 0.73, 0.68))
-	var ad: Rect2 = _world.AUTODROME
-	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.55, 0.55, 0.57))
+	# Большая карта берёт местность из уже нарисованной текстуры мини-карты —
+	# тысяча кругов лесов не перерисовывается каждый кадр
+	if labels and _tex_vp:
+		_t.draw_texture_rect(_tex_vp.get_texture(), Rect2(Vector2.ZERO, Vector2(_size, _size)), false)
+	else:
+		_draw_terrain()
+	if labels:
+		# Крупные подписи: село, город, лес, поля — как на районной карте
+		_label_at(font, "Каменка", Vector2(-140, -70), 20)
+		_label_at(font, "Город", Vector2(120, 104), 20)
+		_label_at(font, "Сосновый бор", Vector2(-120, -150), 14, true)
+		_label_at(font, "Дубрава", Vector2(-135, 120), 14, true)
+		_label_at(font, "колхоз «Заря»", Vector2(62, -150), 13, true)
+		_label_at(font, "речка Каменка", Vector2(-100, -175), 12, true)
+		_compass(font)
+		_scale_bar(font)
+	_draw_places(labels, font)
 
+
+func _draw_terrain() -> void:
+	_rect(-200, -200, 200, 200, PAPER)
+	# Поля — чуть темнее бумаги, пашня — коричневатая
+	_blob(Rect2(25, -185, 75, 75), Color(0.88, 0.83, 0.66), 11)
+	_blob(Rect2(110, -185, 80, 75), Color(0.83, 0.86, 0.7), 12)
+	_blob(Rect2(25, -100, 165, 70), Color(0.84, 0.78, 0.66), 13)
+	# Леса: пятнами, край неровный
+	_blob(Rect2(-200, -195, 180, 115), FOREST_COL, 1, FOREST_EDGE)
+	_blob(Rect2(-200, 22, 150, 173), FOREST_COL, 2, FOREST_EDGE)
+	# Село и город — тёплые пятна застройки
+	_blob(Rect2(-165, -68, 115, 56), Color(0.93, 0.88, 0.76), 3)
+	_blob(Rect2(42, 8, 150, 94), Color(0.86, 0.84, 0.8), 4)
+	# Вода: речка с чуть неровными берегами, пруд
+	var st: Rect2 = Roads.STREAM
+	var river := PackedVector2Array()
+	var z := st.position.y
+	while z <= st.end.y:
+		river.append(_p(st.get_center().x + sin(z * 0.07) * 1.5, z))
+		z += 5.0
+	_line(river, 7.0, WATER_EDGE)
+	_line(river, 5.0, WATER)
+	var pond: Vector3 = _world.POND_POS
+	_t.draw_circle(_p(pond.x, pond.z), _m(13.5), WATER_EDGE)
+	_t.draw_circle(_p(pond.x, pond.z), _m(12.0), WATER)
+	# Дороги: трасса шире, остальные тоньше; сначала обводка, потом заливка
+	var roads: Array = [
+		[[Vector2(-200, 0), Vector2(200, 0)], 8.0, ROAD_MAIN],
+		[[Vector2(-165, -40), Vector2(-57, -40)], 5.0, ROAD],
+		[[Vector2(-59.5, -40), Vector2(-59.5, -4)], 5.0, ROAD],
+		[[Vector2(97, 4), Vector2(97, 100)], 6.0, ROAD_MAIN],
+		[[Vector2(40, 58), Vector2(190, 58)], 6.0, ROAD_MAIN],
+	]
+	for r in Roads.FIELD + Roads.FOREST:
+		var rr: Rect2 = r
+		var along_x := rr.size.x > rr.size.y
+		var a := Vector2(rr.position.x, rr.get_center().y) if along_x else Vector2(rr.get_center().x, rr.position.y)
+		var b := Vector2(rr.end.x, rr.get_center().y) if along_x else Vector2(rr.get_center().x, rr.end.y)
+		roads.append([[a, b], 4.0, ROAD])
+	for r in roads:
+		var pts := PackedVector2Array()
+		for v in r[0]:
+			pts.append(_p(v.x, v.y))
+		_line(pts, float(r[1]) + 2.5, ROAD_EDGE)
+	for r in roads:
+		var pts := PackedVector2Array()
+		for v in r[0]:
+			pts.append(_p(v.x, v.y))
+		_line(pts, float(r[1]), r[2])
+	var br: Rect2 = Roads.BRIDGE
+	_rect(br.position.x, br.position.y + 0.5, br.end.x, br.end.y - 0.5, Color(0.55, 0.45, 0.35))
+	# Дома: мелкие тёмные квадратики, свой — золотой
+	for x in _world.VILLAGE_X:
+		for zz in [_world.ROW_A_Z, _world.ROW_B_Z]:
+			var own: bool = Vector2(x, zz) == _world.PLAYER_HOUSE
+			_rect(x - 4.0, zz - 3.0, x + 4.0, zz + 3.0, Color(0.95, 0.72, 0.2) if own else HOUSE)
+	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
+		_rect(c.x - 21, c.y - 6, c.x + 21, c.y + 6, HOUSE)
+	_rect(165, 54, 177, 96, HOUSE)
+	_rect(15.5, 30, 39.5, 44, HOUSE)
+	var sq: Rect2 = _world.TOWN_SQUARE
+	_rect(sq.position.x, sq.position.y, sq.end.x, sq.end.y, Color(0.8, 0.77, 0.7))
+	var ad: Rect2 = _world.AUTODROME
+	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.72, 0.7, 0.66))
+
+
+func _draw_places(labels: bool, font: Font) -> void:
+	var pond: Vector3 = _world.POND_POS
 	var shop: Vector3 = _world.SHOP_POS
 	var places := [
 		["Дом", Vector3(_world.PLAYER_HOUSE.x, 0, _world.PLAYER_HOUSE.y), Color(1.0, 0.85, 0.3)],
@@ -227,10 +353,13 @@ func _draw_static(labels: bool) -> void:
 	for pl in places:
 		var v: Vector3 = pl[1]
 		var at := _p(v.x, v.z)
-		var r := 5.0 if labels else 9.0
+		var r := 6.0 if labels else 10.0
 		if labels and pl[0] == "Сельмаг" and Progress.delivery_active and blink:
-			r = 9.0
-		_t.draw_circle(at, r, pl[2])
+			r = 10.0
+		# Значок: белый кружок с тёмной каймой и цветной точкой
+		_t.draw_circle(at, r + 1.5, Color(0.25, 0.22, 0.2))
+		_t.draw_circle(at, r, Color(0.98, 0.97, 0.94))
+		_t.draw_circle(at, r * 0.55, pl[2])
 		if not labels:
 			continue
 		# Подписи соседних мест разводим: ларёк — слева, АЗС — сверху
@@ -239,7 +368,8 @@ func _draw_static(labels: bool) -> void:
 			off = Vector2(-48, 5)
 		elif pl[0] == "АЗС":
 			off = Vector2(-14, -9)
-		_t.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		_t.draw_string_outline(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.9))
+		_t.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
 
 
 func _draw_dynamic(font: Font) -> void:
@@ -262,4 +392,7 @@ func _draw_dynamic(font: Font) -> void:
 	var fwd := Vector2(-sin(yaw), -cos(yaw))
 	var side := Vector2(fwd.y, -fwd.x)
 	_canvas.draw_colored_polygon(PackedVector2Array([at + fwd * 11.0, at - fwd * 6.0 + side * 6.0, at - fwd * 6.0 - side * 6.0]), Color(1, 0.2, 0.2))
-	_canvas.draw_string(font, Vector2(8, SIZE - 10), "M — закрыть карту", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.7))
+	if not GameManager.touch_mode:
+		var hint := "M — закрыть карту"
+		var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		_canvas.draw_string(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.3, 0.26, 0.22))

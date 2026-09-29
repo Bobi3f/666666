@@ -118,5 +118,13 @@ func _run() -> void:
 		var n: String = radio._news()
 		if n.contains("Завтра воскресенье"): news = n
 	ok(news != "", "по радио в субботу: " + news)
+	print("== Карта")
+	var map = child("map.gd")
+	ok(map._tex_vp != null and map._tex_vp.size.x >= 1000, "местность карты — готовая текстура")
+	map._canvas.visible = true
+	await process_frame; await process_frame
+	ok(not map._mini.visible, "открыта большая карта — мини-карта прячется")
+	map._canvas.visible = false
+	await process_frame; await process_frame
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()
