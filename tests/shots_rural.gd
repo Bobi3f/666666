@@ -36,6 +36,25 @@ func _run() -> void:
 	var h: Dictionary = RL.herds[0]
 	var c: Vector2 = h.center
 	await view("rural_herd", Vector3(c.x + 30, 7, c.y + 30), Vector3(c.x, 0.5, c.y))
+	# Сёла: улица с разными домами, брошенный дом, бабушка у магазина
+	for v in [0, 1, 4]:
+		var vc: Vector2 = Region.VILLAGES[v].c
+		var e: int = Region.VILLAGES[v].entry
+		await view("village_%d" % v, Vector3(vc.x - 55.0 * e, 6, vc.y + 6), Vector3(vc.x + 10.0 * e, 1.5, vc.y - 8))
+	for i in Region.VILLAGES.size() * 8:
+		if Region.house_kind(i) == "abandoned":
+			var hv: int = i / 8
+			var k: int = i % 8
+			var vc: Vector2 = Region.VILLAGES[hv].c
+			var side := -1.0 if k < 4 else 1.0
+			var hx: float = Region.HOUSE_X[k % 4] * Region.VILLAGES[hv].entry
+			var hp := Vector3(vc.x + hx, 0, vc.y + side * 16.0)
+			await view("village_abandoned", hp + Vector3(7, 4, -side * 16.0), hp + Vector3(0, 2, 0))
+			break
+	var sv: Vector2 = Region.VILLAGES[2].c
+	var se: int = Region.VILLAGES[2].entry
+	var shop := Vector3(sv.x + 42.0 * se + 3.5 * se, 0, sv.y - 9.0 + 3.2)
+	await view("village_gran", shop + Vector3(-3, 2.2, 5), shop + Vector3(0, 0.8, 0))
 	var cp: Vector3 = RL._combine.mesh.position
 	await view("rural_combine", cp + Vector3(16, 8, 16), cp + Vector3(0, 1.5, 0))
 	quit()

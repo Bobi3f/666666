@@ -291,5 +291,19 @@ func _run() -> void:
 	var cp: Vector3 = RL._combine.mesh.position
 	await create_timer(1.5).timeout
 	ok(RL._combine.mesh.position.distance_to(cp) > 1.0, "комбайн убирает пшеницу: %s → %s %s" % [cp, RL._combine.mesh.position, RL._combine.field])
+	print("== Разные дома и жители сёл")
+	var hk := {}
+	for i in Region.VILLAGES.size() * 8: hk[Region.house_kind(i)] = int(hk.get(Region.house_kind(i), 0)) + 1
+	ok(hk.size() == 4, "четыре вида домов: %s" % str(hk))
+	ok(int(hk.get("abandoned", 0)) >= 8 and int(hk.get("abandoned", 0)) <= 20, "брошенных домов: %d" % int(hk.get("abandoned", 0)))
+	ok(RL.walkers.size() == Region.VILLAGES.size() * 2, "прохожих на улицах сёл: %d" % RL.walkers.size())
+	var wk: Dictionary = RL.walkers[0]
+	var wc: Vector2 = wk.c
+	blocker.global_position = Vector3(wc.x, 0.3, wc.y + 20.0)
+	var cam3 = root.get_viewport().get_camera_3d()
+	wk.wait = 0.0
+	var wx := float(wk.x)
+	await create_timer(1.0).timeout
+	ok(absf(float(wk.x) - wx) > 0.3 or float(wk.wait) > 0.0, "прохожий идёт по улице (камера %s)" % str(cam3.global_position if cam3 else Vector3.ZERO))
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)

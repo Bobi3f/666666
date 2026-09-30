@@ -2,7 +2,8 @@ class_name RuralLife
 extends Node3D
 ## Жизнь на просёлках и лугах района: по грунтовкам ездят трактора, «Нивы»,
 ## «Жигули», грузовики, мотоциклы и телега с лошадью; у сёл пасутся стада
-## с пастухом; в пшеничном поле ходит комбайн.
+## с пастухом; в пшеничном поле ходит комбайн. В каждом селе по улице
+## ходят жители, у магазина на лавочке сидит бабушка.
 ##
 ## Все едут по своей стороне дороги, у конца дороги стоят и разворачиваются.
 ## Перед игроком и его машиной останавливаются и сигналят. Далеко от
@@ -22,6 +23,8 @@ const SEE := 350.0
 
 var movers: Array[Dictionary] = []
 var herds: Array[Dictionary] = []
+## Жители на улицах сёл: {mesh, c (центр улицы), x (смещение), dir}
+var walkers: Array[Dictionary] = []
 var _combine: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 var _t := 0.0
@@ -43,6 +46,8 @@ func _ready() -> void:
 		if v % 2 == 0:
 			_add_herd(v)
 	_add_combine()
+	for v in Region.VILLAGES.size():
+		_add_village_people(v)
 
 
 # --- Машины на просёлках ------------------------------------------------------
@@ -261,6 +266,62 @@ func _update_herd(h: Dictionary, delta: float) -> void:
 		Villagers.set_walk(mi, _t * 3.0 + float(c.phase), 1.0)
 
 
+# --- Жители сёл ---------------------------------------------------------------
+
+const SHIRTS := [Color(0.6, 0.3, 0.25), Color(0.3, 0.4, 0.6), Color(0.45, 0.5, 0.3), Color(0.55, 0.45, 0.6), Color(0.7, 0.6, 0.3)]
+
+
+## Двое прохожих ходят вдоль улицы туда-обратно, бабушка сидит на лавочке
+## у магазина.
+func _add_village_people(v: int) -> void:
+	var c: Vector2 = Region.VILLAGES[v].c
+	var e: int = Region.VILLAGES[v].entry
+	for k in 2:
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		Villagers.person_model(b, SHIRTS[(v + k * 2) % SHIRTS.size()], Color(0.3, 0.25, 0.2).lightened(0.2 * k), false, (v + k) % 2 == 0)
+		var mi := Villagers.walking_mesh(b)
+		mi.visibility_range_end = SEE * 0.6
+		add_child(mi)
+		var w := {"mesh": mi, "c": c, "z": c.y + (2.2 if k == 0 else -2.4), "x": _rng.randf_range(-45.0, 45.0),
+			"dir": 1.0 if k == 0 else -1.0, "wait": 0.0, "phase": _rng.randf() * TAU}
+		walkers.append(w)
+		_place_walker(w)
+	var shop := Vector2(c.x + 42.0 * e, c.y - 9.0)
+	var gb := MeshBuilder.new()
+	gb.ground_shade = false
+	Villagers.person_model(gb, Color(0.45, 0.25, 0.35), Color(0.85, 0.3, 0.3), true, true)
+	var gran := gb.build_mesh()
+	gran.position = Vector3(shop.x + 3.5 * e, 0, shop.y + 3.25)
+	gran.rotation.y = PI
+	gran.visibility_range_end = SEE * 0.6
+	add_child(gran)
+
+
+func _place_walker(w: Dictionary) -> void:
+	var mi: MeshInstance3D = w.mesh
+	mi.position = Vector3((w.c as Vector2).x + float(w.x), 0, float(w.z))
+	mi.rotation.y = -PI / 2.0 if float(w.dir) > 0.0 else PI / 2.0
+
+
+## Прохожий идёт вдоль улицы, у края села стоит, оглядывается и идёт назад.
+func _update_walker(w: Dictionary, delta: float) -> void:
+	var mi: MeshInstance3D = w.mesh
+	if float(w.wait) > 0.0:
+		w.wait = float(w.wait) - delta
+		Villagers.set_walk(mi, 0.0, 0.0)
+		if float(w.wait) <= 0.0:
+			w.dir = -float(w.dir)
+			_place_walker(w)
+		return
+	w.x = float(w.x) + float(w.dir) * 1.2 * delta
+	if absf(float(w.x)) > 50.0:
+		w.x = clampf(float(w.x), -50.0, 50.0)
+		w.wait = _rng.randf_range(3.0, 10.0)
+	_place_walker(w)
+	Villagers.set_walk(mi, _t * 4.0 + float(w.phase), 1.0)
+
+
 # --- Комбайн ------------------------------------------------------------------
 
 func _add_combine() -> void:
@@ -315,3 +376,7 @@ func _process(delta: float) -> void:
 			_update_herd(h, delta)
 	if not _combine.is_empty():
 		_update_combine(delta)
+	for w in walkers:
+		var c: Vector2 = w.c
+		if absf(cam.x - c.x) < SEE * 0.6 and absf(cam.z - c.y) < SEE * 0.6:
+			_update_walker(w, delta)

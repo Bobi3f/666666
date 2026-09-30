@@ -648,11 +648,29 @@ func _village(i: int, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> voi
 		glow.box(lp + Vector3(-0.18, 4.7, -1.35), lp + Vector3(0.18, 4.85, -1.0), Color(1.0, 0.85, 0.55))
 
 
-## Сельский дом снаружи: цоколь, стены, двускатная крыша, окна с ставнями,
-## забор с калиткой, огород за домом и яблоня во дворе.
+## Какой дом стоит на месте idx: изба с ставнями, кирпичный под
+## четырёхскатной крышей, бревенчатый сруб с наличниками или брошенный —
+## с заколоченными окнами и дырявой крышей. Примерно каждый седьмой брошен.
+static func house_kind(idx: int) -> String:
+	if idx % 7 == 3:
+		return "abandoned"
+	return ["izba", "brick", "log"][(idx * 5 + idx / 8) % 3]
+
+
+## Сельский дом снаружи: цоколь, стены, крыша, окна, забор с калиткой,
+## огород за домом и дерево во дворе. Вид — по house_kind.
 func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
+	var kind := house_kind(idx)
 	var wall: Color = WALLS[idx % WALLS.size()]
 	var roof: Color = ROOFS[(idx * 7 + 1) % ROOFS.size()]
+	match kind:
+		"brick":
+			wall = [Color(0.62, 0.32, 0.24), Color(0.84, 0.82, 0.76)][idx % 2]
+		"log":
+			wall = Color(0.52, 0.37, 0.22)
+		"abandoned":
+			wall = Color(0.52, 0.5, 0.46)
+			roof = Color(0.4, 0.33, 0.28)
 	var xf := Transform3D(Basis(Vector3.UP, yaw), pos)
 	var d := _d
 	d.xf = xf
@@ -662,47 +680,139 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
 	d.add_collider(Vector3(-4, 0, -3), Vector3(4, 3.2, 3))
 	var eave := Vector3(4.3, 3.0, 3.4)
 	var ridge := 4.7
-	d.quad(Vector3(-eave.x, eave.y, eave.z), Vector3(eave.x, eave.y, eave.z), Vector3(eave.x, ridge, 0), Vector3(-eave.x, ridge, 0), roof, true)
-	d.quad(Vector3(eave.x, eave.y, -eave.z), Vector3(-eave.x, eave.y, -eave.z), Vector3(-eave.x, ridge, 0), Vector3(eave.x, ridge, 0), roof.darkened(0.1), true)
-	for x in [-3.8, 3.8]:
-		d.tri(Vector3(x, 3.0, 2.8), Vector3(x, 3.0, -2.8), Vector3(x, ridge - 0.1, 0), wall.darkened(0.08), true)
-	# Труба
-	d.box(Vector3(1.6, 3.6, -1.2), Vector3(2.2, 5.3, -0.6), Color(0.6, 0.35, 0.28))
-	# Окна на улицу и сбоку, у окон — ставни
+	if kind == "brick":
+		# Четырёхскатная крыша: конёк короче дома, скаты со всех сторон
+		var rx := 2.0
+		ridge = 4.4
+		d.quad(Vector3(-eave.x, eave.y, eave.z), Vector3(eave.x, eave.y, eave.z), Vector3(rx, ridge, 0), Vector3(-rx, ridge, 0), roof, true)
+		d.quad(Vector3(eave.x, eave.y, -eave.z), Vector3(-eave.x, eave.y, -eave.z), Vector3(-rx, ridge, 0), Vector3(rx, ridge, 0), roof.darkened(0.1), true)
+		d.tri(Vector3(eave.x, eave.y, eave.z), Vector3(eave.x, eave.y, -eave.z), Vector3(rx, ridge, 0), roof.darkened(0.05), true)
+		d.tri(Vector3(-eave.x, eave.y, -eave.z), Vector3(-eave.x, eave.y, eave.z), Vector3(-rx, ridge, 0), roof.darkened(0.05), true)
+		# Швы кладки и белый пояс под крышей
+		for y in [1.0, 1.7, 2.4]:
+			d.box(Vector3(-3.82, y, -2.82), Vector3(3.82, y + 0.05, 2.82), wall.darkened(0.12))
+		d.box(Vector3(-3.84, 2.75, -2.84), Vector3(3.84, 2.95, 2.84), Color(0.9, 0.9, 0.86))
+	elif kind == "abandoned":
+		# Крыша просела и прохудилась: на переднем скате дыра до стропил
+		d.quad(Vector3(-eave.x, eave.y, eave.z), Vector3(-0.8, eave.y, eave.z), Vector3(-0.8, ridge, 0), Vector3(-eave.x, ridge, 0), roof, true)
+		d.quad(Vector3(1.6, eave.y, eave.z), Vector3(eave.x, eave.y - 0.3, eave.z), Vector3(eave.x, ridge - 0.2, 0), Vector3(1.6, ridge, 0), roof, true)
+		d.quad(Vector3(-0.8, eave.y + 1.1, 1.3), Vector3(1.6, eave.y + 1.1, 1.3), Vector3(1.6, ridge, 0), Vector3(-0.8, ridge, 0), roof.darkened(0.1), true)
+		for x in [-0.4, 0.4, 1.2]:
+			d.box_rot(Vector3(x, (eave.y + ridge) * 0.5, eave.z * 0.5), Vector3(0.08, 0.1, 3.8), 0.0, Color(0.3, 0.25, 0.2))
+		d.quad(Vector3(eave.x, eave.y - 0.3, -eave.z), Vector3(-eave.x, eave.y, -eave.z), Vector3(-eave.x, ridge, 0), Vector3(eave.x, ridge - 0.2, 0), roof.darkened(0.15), true)
+		for x in [-3.8, 3.8]:
+			d.tri(Vector3(x, 3.0, 2.8), Vector3(x, 3.0, -2.8), Vector3(x, ridge - 0.1, 0), wall.darkened(0.1), true)
+	else:
+		d.quad(Vector3(-eave.x, eave.y, eave.z), Vector3(eave.x, eave.y, eave.z), Vector3(eave.x, ridge, 0), Vector3(-eave.x, ridge, 0), roof, true)
+		d.quad(Vector3(eave.x, eave.y, -eave.z), Vector3(-eave.x, eave.y, -eave.z), Vector3(-eave.x, ridge, 0), Vector3(eave.x, ridge, 0), roof.darkened(0.1), true)
+		for x in [-3.8, 3.8]:
+			d.tri(Vector3(x, 3.0, 2.8), Vector3(x, 3.0, -2.8), Vector3(x, ridge - 0.1, 0), wall.darkened(0.08), true)
+	if kind == "log":
+		# Брёвна сруба и выпуски по углам
+		var y := 0.6
+		while y < 3.0:
+			d.box(Vector3(-3.86, y, 2.8), Vector3(3.86, y + 0.08, 2.88), wall.darkened(0.25))
+			d.box(Vector3(-3.86, y, -2.88), Vector3(3.86, y + 0.08, -2.8), wall.darkened(0.25))
+			for x in [-3.8, 3.8]:
+				d.box(Vector3(x - 0.08, y, -2.8), Vector3(x + 0.08, y + 0.08, 2.8), wall.darkened(0.25))
+				d.box(Vector3(x - 0.22, y - 0.12, 2.75), Vector3(x + 0.22, y + 0.12, 3.05), wall.darkened(0.1))
+			y += 0.32
+		# Слуховое окошко на переднем скате
+		d.box(Vector3(-0.5, 3.3, 1.6), Vector3(0.5, 4.2, 2.0), wall)
+		glow.box(Vector3(-0.3, 3.45, 2.0), Vector3(0.3, 4.0, 2.02), Color(0.95, 0.8, 0.45))
+	# Труба: у брошенного — обломок
+	if kind == "abandoned":
+		d.box(Vector3(-2.6, 3.6, -1.2), Vector3(-2.0, 4.3, -0.6), Color(0.5, 0.33, 0.28))
+	else:
+		d.box(Vector3(1.6, 3.6, -1.2), Vector3(2.2, 5.3, -0.6), Color(0.6, 0.35, 0.28))
+	# Окна на улицу и сбоку
 	var frame := Color(0.92, 0.92, 0.88)
 	var shutter: Color = [Color(0.25, 0.45, 0.7), Color(0.3, 0.55, 0.3), Color(0.9, 0.9, 0.85)][idx % 3]
 	for x in [-2.3, 2.3]:
+		if kind == "abandoned":
+			# Заколочено крест-накрест
+			d.box(Vector3(x - 0.55, 1.15, 2.8), Vector3(x + 0.55, 2.35, 2.84), Color(0.12, 0.11, 0.1))
+			d.box_rot(Vector3(x, 1.75, 2.88), Vector3(1.5, 0.14, 0.04), 0.0, Color(0.55, 0.45, 0.32))
+			d.box(Vector3(x - 0.07, 1.1, 2.86), Vector3(x + 0.07, 2.4, 2.9), Color(0.5, 0.42, 0.3))
+			continue
 		d.box(Vector3(x - 0.6, 1.1, 2.8), Vector3(x + 0.6, 2.4, 2.86), frame)
 		glow.box(Vector3(x - 0.48, 1.22, 2.86), Vector3(x + 0.48, 2.28, 2.88), Color(0.95, 0.8, 0.45))
-		for s in [-1.0, 1.0]:
-			d.box(Vector3(x + s * 0.6 + minf(s, 0.0) * 0.45, 1.1, 2.82), Vector3(x + s * 0.6 + maxf(s, 0.0) * 0.45, 2.4, 2.9), shutter)
+		if kind == "izba":
+			for s in [-1.0, 1.0]:
+				d.box(Vector3(x + s * 0.6 + minf(s, 0.0) * 0.45, 1.1, 2.82), Vector3(x + s * 0.6 + maxf(s, 0.0) * 0.45, 2.4, 2.9), shutter)
+		elif kind == "log":
+			# Резные наличники: кокошник сверху и подзор снизу
+			d.box(Vector3(x - 0.75, 2.4, 2.84), Vector3(x + 0.75, 2.75, 2.92), frame)
+			d.box(Vector3(x - 0.2, 2.75, 2.84), Vector3(x + 0.2, 2.9, 2.92), frame)
+			d.box(Vector3(x - 0.7, 0.95, 2.84), Vector3(x + 0.7, 1.1, 2.92), frame)
+		else:
+			d.box(Vector3(x - 0.7, 1.0, 2.8), Vector3(x + 0.7, 1.1, 3.0), Color(0.75, 0.75, 0.72))
 	for z in [-1.0, 1.0]:
+		if kind == "abandoned":
+			d.box(Vector3(3.8, 1.15, z - 0.5), Vector3(3.84, 2.35, z + 0.5), Color(0.12, 0.11, 0.1))
+			continue
 		d.box(Vector3(3.8, 1.1, z - 0.55), Vector3(3.86, 2.4, z + 0.55), frame)
 		glow.box(Vector3(3.86, 1.22, z - 0.45), Vector3(3.88, 2.28, z + 0.45), Color(0.95, 0.8, 0.45))
 	# Крыльцо и дверь — сбоку фасада
 	d.box(Vector3(-0.6, 0, 2.8), Vector3(0.6, 0.45, 3.8), Color(0.5, 0.4, 0.3), true)
 	d.box(Vector3(-0.45, 0.45, 2.8), Vector3(0.45, 2.4, 2.86), Color(0.4, 0.28, 0.2))
-	# Забор: спереди с калиткой, по бокам до огорода
+	if kind == "brick":
+		# Навес над крыльцом на двух столбиках
+		d.box(Vector3(-0.9, 2.6, 2.8), Vector3(0.9, 2.7, 4.0), Color(0.4, 0.4, 0.42))
+		for x in [-0.8, 0.7]:
+			d.box(Vector3(x, 0.45, 3.85), Vector3(x + 0.1, 2.6, 3.95), Color(0.85, 0.85, 0.82))
+	# Забор: спереди с калиткой, по бокам до огорода. У брошенного —
+	# остатки: пролёты повалены или пропали
 	var fence: Color = [Color(0.55, 0.45, 0.32), Color(0.35, 0.5, 0.35), Color(0.45, 0.55, 0.7)][idx % 3]
-	for seg in [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(10, 9)], [Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)]]:
-		_fence(d, seg[0], seg[1], fence)
-	# Огород с грядками
-	d.box(Vector3(-8.5, 0, -14.5), Vector3(8.5, 0.04, -7.5), Color(0.38, 0.28, 0.18))
-	var z := -14.0
-	while z < -8.0:
-		d.box(Vector3(-8, 0.04, z), Vector3(8, 0.12, z + 0.5), Color(0.33, 0.24, 0.15))
-		if (idx + int(z)) % 2 == 0:
-			var x := -7.5
-			while x < 8.0:
-				d.box(Vector3(x - 0.15, 0.12, z + 0.1), Vector3(x + 0.15, 0.4, z + 0.4), Color(0.3, 0.5, 0.2))
-				x += 0.8
-		z += 1.2
+	if kind == "brick":
+		fence = Color(0.35, 0.36, 0.38)
+	if kind == "abandoned":
+		fence = Color(0.45, 0.42, 0.38)
+		_fence(d, Vector2(-10, 9), Vector2(-4, 9), fence)
+		_fence(d, Vector2(10, 9), Vector2(10, -2), fence)
+		# Поваленный пролёт лежит в траве
+		var t := 0.0
+		while t < 5.5:
+			d.box_rot(Vector3(1.4 + t, 0.05, 9.8 + t * 0.12), Vector3(0.1, 0.05, 1.2), 0.12, fence)
+			t += 0.35
+		for rz in [9.5, 10.2]:
+			d.box_rot(Vector3(4.1, 0.1, rz + 0.33), Vector3(5.6, 0.05, 0.08), 0.12, fence.darkened(0.2))
+		# Бурьян и кусты вместо огорода
+		for k in 24:
+			var wx := _rng.randf_range(-9.0, 9.0)
+			var wz := _rng.randf_range(-14.0, 8.0)
+			if absf(wz) < 3.5 and absf(wx) < 4.5:
+				continue
+			var weed := Color(0.35, 0.45, 0.2).lerp(Color(0.55, 0.5, 0.3), _rng.randf())
+			for st in 4:
+				var hh := _rng.randf_range(0.6, 1.5)
+				var o := Vector3(wx + _rng.randf_range(-0.4, 0.4), 0, wz + _rng.randf_range(-0.4, 0.4))
+				d.box(o + Vector3(-0.04, 0, -0.04), o + Vector3(0.04, hh, 0.04), weed)
+				d.box(o + Vector3(-0.14, hh - 0.25, -0.14), o + Vector3(0.14, hh, 0.14), weed.lightened(0.15))
+	else:
+		for seg in [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(10, 9)], [Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)]]:
+			_fence(d, seg[0], seg[1], fence)
+		# Огород с грядками
+		d.box(Vector3(-8.5, 0, -14.5), Vector3(8.5, 0.04, -7.5), Color(0.38, 0.28, 0.18))
+		var z := -14.0
+		while z < -8.0:
+			d.box(Vector3(-8, 0.04, z), Vector3(8, 0.12, z + 0.5), Color(0.33, 0.24, 0.15))
+			if (idx + int(z)) % 2 == 0:
+				var x := -7.5
+				while x < 8.0:
+					d.box(Vector3(x - 0.15, 0.12, z + 0.1), Vector3(x + 0.15, 0.4, z + 0.4), Color(0.3, 0.5, 0.2))
+					x += 0.8
+			z += 1.2
 	# Сарайчик и дерево во дворе
 	d.box(Vector3(-9.2, 0, -6.5), Vector3(-6.5, 2.2, -3.5), Color(0.45, 0.36, 0.26))
 	d.add_collider(Vector3(-9.2, 0, -6.5), Vector3(-6.5, 2.2, -3.5))
 	d.box(Vector3(-9.4, 2.2, -6.7), Vector3(-6.3, 2.35, -3.3), Color(0.35, 0.33, 0.32))
+	if kind != "abandoned" and idx % 4 == 1:
+		# Будка с цепью и поленница у сарая
+		d.box(Vector3(6.0, 0, -4.0), Vector3(7.0, 0.8, -3.0), Color(0.5, 0.38, 0.25))
+		d.box(Vector3(-6.3, 0, -6.4), Vector3(-5.6, 1.4, -3.6), Color(0.6, 0.45, 0.28))
 	glow.xf = Transform3D.IDENTITY
-	_world._tree(d, Vector3(6.8 if idx % 2 == 0 else -6.5, 0, 5.5), _rng.randf() * TAU, Vegetation.TreeKind.APPLE if idx % 3 != 2 else Vegetation.TreeKind.BIRCH)
+	_world._tree(d, Vector3(6.8 if idx % 2 == 0 else -6.5, 0, 5.5), _rng.randf() * TAU, Vegetation.TreeKind.APPLE if idx % 3 != 2 and kind != "abandoned" else Vegetation.TreeKind.BIRCH)
 	d.xf = Transform3D.IDENTITY
 
 
