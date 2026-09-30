@@ -42,7 +42,7 @@ func build(b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 	_streets(b)
 	_station(b, glow)
 	_market(b)
-	_school(b)
+	_school(b, glow)
 	_stadium(b, glow)
 	_garages(b)
 	_factory(b, glow)
@@ -208,33 +208,23 @@ func buy() -> void:
 
 # --- Школа --------------------------------------------------------------------
 
-## Школа: корпус (school.gd), флаг, двор с забором и турником.
-func _school(b: MeshBuilder) -> void:
-	var r := SCHOOL
-	var x0 := r.position.x + 2.0
-	var x1 := r.end.x - 2.0
-	var z0 := r.position.y + 2.0
-	var z1 := z0 + 11.0
-	var cx := (x0 + x1) * 0.5
-	# Сам корпус с классом и столовой — school.gd, в него можно зайти
+## Школа: корпус с кабинетами (school.gd), флаг и турник.
+func _school(b: MeshBuilder, glow: MeshBuilder) -> void:
+	# Корпус с кабинетами — school.gd: коробка ложится в общий меш города
 	var school := School.new()
 	school.name = "School"
 	add_child(school)
-	# Флагшток
+	school.build(b, glow)
+	# Флагшток у крыльца и турник с брусьями сбоку от школы
+	var cx := School.DOOR_X - 1.0
+	var z0 := School.Z0
 	b.box(Vector3(cx + 6.0, 0, z0 - 4.0), Vector3(cx + 6.12, 9.0, z0 - 3.88), Color(0.8, 0.8, 0.82))
 	b.box(Vector3(cx + 6.12, 7.6, z0 - 3.96), Vector3(cx + 7.8, 8.2, z0 - 3.92), Color(0.2, 0.45, 0.8))
 	b.box(Vector3(cx + 6.12, 7.0, z0 - 3.96), Vector3(cx + 7.8, 7.6, z0 - 3.92), Color(0.95, 0.8, 0.15))
-	# Двор за школой: турник, брусья, забор
-	var yz := z1 + 2.0
-	for tx in [x0 + 4.0, x0 + 6.0]:
-		b.box(Vector3(tx, 0, yz + 4.0), Vector3(tx + 0.1, 2.4, yz + 4.1), Color(0.4, 0.45, 0.5))
-	b.box(Vector3(x0 + 4.0, 2.3, yz + 4.0), Vector3(x0 + 6.1, 2.35, yz + 4.1), Color(0.6, 0.6, 0.62))
-	for bz in [yz + 7.0, yz + 7.6]:
-		b.box(Vector3(x0 + 9.0, 1.2, bz), Vector3(x0 + 12.0, 1.26, bz + 0.06), Color(0.6, 0.6, 0.62))
-	for seg in [[Vector2(r.position.x, r.end.y), Vector2(r.end.x, r.end.y)], [Vector2(r.position.x, z1), Vector2(r.position.x, r.end.y)], [Vector2(r.end.x, z1), Vector2(r.end.x, r.end.y)]]:
-		var a2: Vector2 = seg[0]
-		var e2: Vector2 = seg[1]
-		b.box(Vector3(minf(a2.x, e2.x) - 0.04, 0, minf(a2.y, e2.y) - 0.04), Vector3(maxf(a2.x, e2.x) + 0.04, 1.4, maxf(a2.y, e2.y) + 0.04), Color(0.3, 0.45, 0.35), true)
+	var gx := School.X0 - 1.2
+	for tz in [175.0, 177.0]:
+		b.box(Vector3(gx, 0, tz), Vector3(gx + 0.1, 2.4, tz + 0.1), Color(0.4, 0.45, 0.5))
+	b.box(Vector3(gx, 2.3, 175.0), Vector3(gx + 0.1, 2.35, 177.1), Color(0.6, 0.6, 0.62))
 
 
 # --- Стадион ------------------------------------------------------------------
@@ -510,7 +500,7 @@ static func light_state(t: float, ns: bool) -> String:
 const ROUTES := [
 	[Vector3(92.8, 0, 66), Vector3(92.8, 0, 144), Vector3(87.5, 0, 144)],
 	[Vector3(101.2, 0, 66), Vector3(101.2, 0, 174), Vector3(97, 0, 180), Vector3(97, 0, 188)],
-	[Vector3(92.8, 0, 100), Vector3(92.8, 0, 170), Vector3(60, 0, 170), Vector3(58, 0, 166)],
+	[Vector3(92.8, 0, 100), Vector3(92.8, 0, 164.5), Vector3(59, 0, 164.5), Vector3(59, 0, 166.5)],
 	[Vector3(101.2, 0, 110), Vector3(101.2, 0, 153), Vector3(128, 0, 153)],
 	[Vector3(45, 0, 62.5), Vector3(150, 0, 62.5)],
 	[Vector3(84, 0, 186), Vector3(110, 0, 186)],
