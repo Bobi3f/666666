@@ -58,6 +58,8 @@ static func _free(c: Vector2, r: float, road_gap: float) -> bool:
 		return false
 	if absf(c.y) < r + 15.0:
 		return false  # трасса
+	if Railway.dist(c.x, c.y) < r + 15.0:
+		return false
 	for v in Region.VILLAGES:
 		if (v.c as Vector2).distance_to(c) < r + 110.0:
 			return false

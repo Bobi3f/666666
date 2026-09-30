@@ -177,6 +177,9 @@ func _update_mover(m: Dictionary, delta: float, cam: Vector3) -> void:
 			if m.honk <= 0.0 and m.kind != "cart":
 				m.honk = 5.0
 				SoundLibrary.play_at("horn", body.global_position, -6.0)
+	# Шлагбаум на переезде опущен — ждём поезд
+	if Railway.closed_ahead(pos2, d, 16.0):
+		want = 0.0
 	m.v = move_toward(float(m.v), want, delta * (3.0 if want > float(m.v) else 8.0))
 	m.s = float(m.s) + float(m.v) * delta * float(m.dir)
 	if m.s <= 0.0 or m.s >= float(m.total):

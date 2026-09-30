@@ -238,7 +238,7 @@ static func tree_ok(x: float, z: float) -> bool:
 		if (f[0] as Rect2).grow(3.0).has_point(p):
 			return false
 	var l := (p - LAKE) / (LAKE_R * 1.3)
-	return l.length() > 1.0 and not Landscape.occupied(x, z)
+	return l.length() > 1.0 and Railway.dist(x, z) > 8.0 and not TownSouth.occupied(x, z) and not Landscape.occupied(x, z)
 
 
 ## Точка у остановки села: сюда высаживает районный автобус.
@@ -295,6 +295,11 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	rs.name = "Roadside"
 	add_child(rs)
 	rs.build(_world, b, _d)
+	var rw := Railway.new()
+	rw.name = "Railway"
+	add_child(rw)
+	rw.build(b, _d)
+	veg.block(-HALF, Railway.LINE[0].y - 4.0, Railway.LINE[1].x, Railway.LINE[0].y + 4.0)
 	var lm := Landmarks.new()
 	lm.name = "Landmarks"
 	add_child(lm)

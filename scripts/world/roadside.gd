@@ -55,6 +55,7 @@ func _line(b: MeshBuilder, pts: Array, offset: float, step: float) -> void:
 		while t < len:
 			var p := a + dir * t + side
 			if Region.river_dist(p.x, p.y) > Region.RIVER_HALF + 6.0 and Region.road_dist(p.x, p.y) > Region.ROAD_HALF + 1.0 \
+					and Railway.dist(p.x, p.y) > 4.0 \
 					and Landscape.height_at(p.x, p.y) < 0.1:
 				poles.append(Vector3(p.x, 0, p.y))
 				yaws.append(atan2(dir.x, dir.y) + PI * 0.5)

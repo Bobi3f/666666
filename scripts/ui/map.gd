@@ -472,6 +472,23 @@ func _draw_region() -> void:
 	for h in Region.houses():
 		var c: Vector2 = h[0]
 		_rect(c.x - 4.0, c.y - 3.0, c.x + 4.0, c.y + 3.0, HOUSE)
+	# Железная дорога: тёмная линия с белыми шашками
+	var rail := PackedVector2Array()
+	for q in Railway.LINE:
+		rail.append(_p((q as Vector2).x, (q as Vector2).y))
+	_line(rail, 4.0, Color(0.25, 0.22, 0.2))
+	var t := 0.0
+	while t < Railway.length():
+		var a: Vector2 = Railway.at(t)[0]
+		var e: Vector2 = Railway.at(minf(t + 20.0, Railway.length()))[0]
+		_t.draw_line(_p(a.x, a.y), _p(e.x, e.y), Color(0.98, 0.97, 0.94), maxf(_m(2.0), 1.0))
+		t += 40.0
+	# Южная часть города
+	for r in [TownSouth.STATION_HALL, TownSouth.SCHOOL, TownSouth.GARAGES, TownSouth.FACTORY]:
+		var rr: Rect2 = r
+		_rect(rr.position.x, rr.position.y, rr.end.x, rr.end.y, HOUSE)
+	_rect(TownSouth.STADIUM.position.x, TownSouth.STADIUM.position.y, TownSouth.STADIUM.end.x - 8.0, TownSouth.STADIUM.end.y - 2.0, Color(0.55, 0.7, 0.45))
+	_rect(TownSouth.MARKET.position.x, TownSouth.MARKET.position.y, TownSouth.MARKET.end.x, TownSouth.MARKET.end.y, Color(0.85, 0.8, 0.7))
 
 
 func _draw_places(labels: bool, font: Font) -> void:
@@ -507,6 +524,12 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Клуб", _world.CLUB_VILLAGE + Vector3(0, 0, 6), Color(0.85, 0.3, 0.8)],
 		["Дискотека", _world.CLUB_TOWN + Vector3(0, 0, -8), Color(0.85, 0.3, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
+		["Вокзал", Vector3(97, 0, 186), Color(0.3, 0.6, 0.9)],
+		["Рынок", Vector3(64, 0, 144), Color(0.95, 0.55, 0.2)],
+		["Стадион", Vector3(156, 0, 160), Color(0.4, 0.75, 0.35)],
+		["Школа", Vector3(58, 0, 174), Color(0.9, 0.75, 0.6)],
+		["Гаражи", Vector3(220, 0, 80), Color(0.6, 0.4, 0.3)],
+		["Завод", Vector3(178, 0, 228), Color(0.7, 0.3, 0.25)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
 	for s in Landmarks.sites():

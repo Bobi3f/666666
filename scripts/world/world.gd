@@ -156,6 +156,10 @@ func _ready() -> void:
 	var rural := RuralLife.new()
 	rural.name = "RuralLife"
 	add_child(rural)
+	var south := TownSouth.new()
+	south.name = "TownSouth"
+	add_child(south)
+	south.build(b, glow, _veg)
 
 	var world_mesh := b.build_chunked()
 	world_mesh.name = "WorldMesh"
