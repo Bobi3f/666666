@@ -238,7 +238,7 @@ static func tree_ok(x: float, z: float) -> bool:
 		if (f[0] as Rect2).grow(3.0).has_point(p):
 			return false
 	var l := (p - LAKE) / (LAKE_R * 1.3)
-	return l.length() > 1.0
+	return l.length() > 1.0 and not Landscape.occupied(x, z)
 
 
 ## Точка у остановки села: сюда высаживает районный автобус.
@@ -288,6 +288,13 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 		veg.block(r.position.x, r.position.y, r.end.x, r.end.y)
 	for i in VILLAGES.size():
 		_village(i, b, glow, veg)
+	# Холмы, поля, пруды и лесополосы — до лесов: лес их обходит
+	Landscape.build(b, _d, _world._water_b, self, func(p: Vector3, yaw: float, kind: int) -> void:
+		_world._tree(_d, p, yaw, kind))
+	var rs := Roadside.new()
+	rs.name = "Roadside"
+	add_child(rs)
+	rs.build(_world, b, _d)
 	_forests(_d)
 	_district_bus()
 	var ground := b.build_chunked()
@@ -323,9 +330,9 @@ func _ground(b: MeshBuilder) -> void:
 	var detail := FastNoiseLite.new()
 	detail.seed = 8
 	detail.frequency = 0.11
-	var grass := Color(0.32, 0.47, 0.21)
-	var dry := Color(0.47, 0.5, 0.27)
-	var damp := Color(0.24, 0.38, 0.17)
+	var grass := Color(0.27, 0.42, 0.17)
+	var dry := Color(0.46, 0.47, 0.24)
+	var damp := Color(0.18, 0.31, 0.13)
 	var bare := Color(0.45, 0.4, 0.28)
 	var cell := 20.0
 	var n := int(HALF * 2.0 / cell)

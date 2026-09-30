@@ -371,11 +371,12 @@ func _setup_environment() -> void:
 	_env.fog_sun_scatter = 0.25
 	# Лёгкое свечение ярких мест: окна ночью, фары, блики на воде
 	_env.glow_enabled = true
-	_env.glow_intensity = 0.35
-	_env.glow_strength = 0.9
-	_env.glow_bloom = 0.04
-	_env.glow_hdr_threshold = 1.1
-	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	# Светится только то, что ярче белого (окна, фары, лампы), — трава не выцветает
+	_env.glow_intensity = 0.6
+	_env.glow_strength = 1.0
+	_env.glow_bloom = 0.0
+	_env.glow_hdr_threshold = 0.95
+	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	# Цвет чуть насыщеннее и контрастнее — не так блекло
 	_env.adjustment_enabled = true
 	_env.adjustment_contrast = 1.06
@@ -432,7 +433,7 @@ func _update_daylight() -> void:
 	# Молния на мгновение заливает всё холодным светом
 	var fl := WeatherManager.flash
 	_env.background_energy_multiplier = lerpf(0.06, 1.0, day) + fl * 1.5
-	_env.ambient_light_energy = lerpf(0.12, 1.0, day) + fl * 2.0
+	_env.ambient_light_energy = lerpf(0.12, 0.78, day) + fl * 2.0
 	_env.fog_light_color = Color(0.05, 0.06, 0.1).lerp(Color(0.7, 0.78, 0.88).lerp(Color(0.5, 0.52, 0.55), cloud * 0.8), day)
 	# В воде — небо: днём голубое, на закате тёплое, ночью тёмное
 	if _water_mat:
@@ -462,9 +463,9 @@ func _build_ground(b: MeshBuilder) -> void:
 	var detail := FastNoiseLite.new()
 	detail.seed = 8
 	detail.frequency = 0.11
-	var grass := Color(0.32, 0.47, 0.21)
-	var dry := Color(0.47, 0.5, 0.27)
-	var damp := Color(0.24, 0.38, 0.17)
+	var grass := Color(0.27, 0.42, 0.17)
+	var dry := Color(0.46, 0.47, 0.24)
+	var damp := Color(0.18, 0.31, 0.13)
 	var bare := Color(0.45, 0.4, 0.28)
 	var cols_at := {}
 	for i in n + 1:

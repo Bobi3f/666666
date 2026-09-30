@@ -429,6 +429,18 @@ func _draw_region() -> void:
 	for f in Region.FIELDS:
 		var fr: Rect2 = f[0]
 		_blob(fr, Color(0.88, 0.83, 0.66) if (f[1] as Color).r > 0.7 else Color(0.84, 0.8, 0.68), 20 + int(fr.position.x))
+	# Лоскуты полей и холмы (кольца светлее к вершине)
+	for f in Landscape.fields:
+		var fr: Rect2 = f[0]
+		var col: Color = Landscape.CROPS[f[1]][0]
+		_rect(fr.position.x, fr.position.y, fr.end.x, fr.end.y, PAPER.lerp(col, 0.35))
+	for h in Landscape.hills:
+		var hc: Vector2 = h[0]
+		var hr: float = h[1]
+		for k in 3:
+			_t.draw_circle(_p(hc.x, hc.y), _m(hr * (1.0 - k * 0.3)), Color(0.8, 0.74, 0.6, 0.35))
+	for pd in Landscape.ponds:
+		_t.draw_circle(_p((pd[0] as Vector2).x, (pd[0] as Vector2).y), _m(float(pd[1]) * 1.2), WATER)
 	var seed := 30
 	for r in Region.FORESTS:
 		_blob(r, FOREST_COL, seed, FOREST_EDGE)
@@ -488,6 +500,8 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["ГАИ", Vector3(-100, 0, -9.2), Color(0.3, 0.45, 0.9)],
 		["Сберкасса", Vector3(137.8, 0, 21), Color(0.3, 0.8, 0.5)],
 		["Милиция", Police.STATION + Vector3(-8, 0, 0), Color(0.2, 0.35, 0.8)],
+		["Кафе у трассы", Roadside.CAFE + Vector3(0, 0, 6), Color(0.95, 0.6, 0.45)],
+		["АЗС", Roadside.FUEL2 + Vector3(0, 0, 3), Color(0.4, 0.85, 0.5)],
 		["Сельсовет", Civic.COUNCIL + Vector3(0, 0, 5), Color(0.8, 0.3, 0.25)],
 		["Больница", Civic.HOSPITAL + Vector3(0, 0, 6), Color(0.95, 0.95, 0.95)],
 		["Клуб", _world.CLUB_VILLAGE + Vector3(0, 0, 6), Color(0.85, 0.3, 0.8)],

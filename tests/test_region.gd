@@ -210,5 +210,41 @@ func _run() -> void:
 	await process_frame; await process_frame
 	ok(map._near_rect().has_point(vfar), "уехал далеко — подробная карта перерисована вокруг: %s" % str(map._near_c))
 	map._canvas.visible = false
+	print("== Пейзаж и придорожное")
+	ok(Landscape.hills.size() >= 15 and Landscape.fields.size() >= 25 and Landscape.ponds.size() >= 5,
+		"холмов %d, полей %d, прудов %d" % [Landscape.hills.size(), Landscape.fields.size(), Landscape.ponds.size()])
+	var hl: Array = Landscape.hills[0]
+	var hc: Vector2 = hl[0]
+	ok(Landscape.occupied(hc.x, hc.y) and not Region.tree_ok(hc.x, hc.y), "на холме лес не растёт")
+	ok(Landscape.height_at(hc.x, hc.y) > 10.0, "вершина холма высокая: %.0f м" % Landscape.height_at(hc.x, hc.y))
+	# Заехать на холм
+	var C2 = W.get_node("Car")
+	var from := hc + Vector2(float(hl[1]) + 25.0, 0)
+	C2.global_position = Vector3(from.x, 0.4, from.y); C2.rotation = Vector3(0, PI / 2.0, 0)
+	C2.speed = 0.0
+	C2._on_enter(); C2.fuel = 40.0
+	await frames(5)
+	await route(C2, [Vector3(hc.x, 0, hc.y)], 40.0, 20.0)
+	ok(C2.global_position.y > 5.0, "заехал на холм: высота %.1f м" % C2.global_position.y)
+	C2.speed = 0.0
+	C2.exit_car()
+	await frames(3)
+	var RS = W.get_node("Region/Roadside")
+	TM.minutes = 13 * 60.0
+	var NMr = root.get_node("NeedsManager")
+	NMr.food = 20.0
+	GM.money = 100
+	for c in RS.get_children():
+		if c is InteractZone and c.text().contains("пообедать"):
+			c.activate()
+	ok(GM.money == 100 - Roadside.CAFE_PRICE and NMr.food > 50.0, "пообедал в кафе у трассы")
+	C2.global_position = Roadside.FUEL2 + Vector3(0, 0.3, 3.4)
+	C2.fuel = 5.0
+	GM.money = 5000
+	await frames(3)
+	for c in RS.get_children():
+		if c is InteractZone and c.text().contains("заправить"):
+			c.activate()
+	ok(C2.fuel > 30.0, "заправился на второй АЗС: %d л" % int(C2.fuel))
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)
