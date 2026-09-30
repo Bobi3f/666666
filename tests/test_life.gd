@@ -22,7 +22,9 @@ func _initialize() -> void:
 func _run() -> void:
 	for i in 5: await process_frame
 	var GM = root.get_node("GameManager"); var TM = root.get_node("TimeManager")
-	GM.message.connect(func(t: String) -> void: GM.set_meta("last", t))
+	GM.message.connect(func(t: String) -> void:
+		GM.set_meta("last", t)
+		GM.set_meta("log", str(GM.get_meta("log", "")) + "\n" + t))
 	var traffic
 	for c in W.get_children():
 		if c.get_script() and c.get_script().resource_path.ends_with("pause_menu.gd"): c._close()
@@ -127,9 +129,11 @@ func _run() -> void:
 	ok(GM.challenge_line.contains("Такси"), "в строке задания: " + GM.challenge_line)
 	var d: Vector3 = T.place_pos(T.dest)
 	GM.money = 1000
+	GM.set_meta("log", "")
 	C.global_position = d + Vector3(0, 0.1, 2.0); C.speed = 0.0; C.velocity = Vector3.ZERO
 	await frames(5)
-	ok(T.state == 0 and GM.money > 1000 and last().contains("Приехали"), "довёз: +%d грн — %s" % [GM.money - 1000, last()])
+	# Рядом может всплыть «Село такое-то» — ищем «Приехали» среди всех сообщений
+	ok(T.state == 0 and GM.money > 1000 and str(GM.get_meta("log", "")).contains("Приехали"), "довёз: +%d грн — %s" % [GM.money - 1000, last()])
 	ok(GM.challenge_line == "", "строка задания очистилась")
 	C.exit_car(); await frames(3)
 	TM.minutes = 23 * 60.0
