@@ -153,6 +153,9 @@ func _ready() -> void:
 	region.name = "Region"
 	add_child(region)
 	region.build(self, b, glow, _veg)
+	var rural := RuralLife.new()
+	rural.name = "RuralLife"
+	add_child(rural)
 
 	var world_mesh := b.build_chunked()
 	world_mesh.name = "WorldMesh"

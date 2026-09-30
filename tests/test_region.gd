@@ -261,5 +261,35 @@ func _run() -> void:
 	root.get_node("NeedsManager").energy = 100.0
 	pier.activate()
 	ok(W._fishing.active() and W._fishing.spot.distance_to(pier.position) < 1.0, "закинул удочку в реку")
+	print("== Жизнь на просёлках")
+	var RL = W.get_node("RuralLife")
+	ok(RL.movers.size() >= 8, "машин и телег на грунтовках: %d" % RL.movers.size())
+	var kinds := {}
+	for m in RL.movers: kinds[m.kind] = true
+	ok(kinds.has("tractor") and kinds.has("cart") and kinds.has("moto"), "есть трактор, телега и мотоцикл")
+	ok(RL.herds.size() >= 4, "стад у сёл: %d" % RL.herds.size())
+	for h in RL.herds:
+		ok(h.cows.size() == 6, "в стаде шесть коров")
+		break
+	var mv: Dictionary = RL.movers[0]
+	mv.wait = 0.0
+	mv.s = float(mv.total) * 0.5
+	var s0 := float(mv.s)
+	for i in 60: await process_frame
+	ok(absf(float(mv.s) - s0) > 1.0, "трактор едет по дороге: %.1f м" % absf(float(mv.s) - s0))
+	# Встаём перед ним на дорогу — должен остановиться
+	var blocker: Node3D = GM.vehicle if GM.vehicle and GM.vehicle.visible else GM.player
+	var at: Array = RL._at(mv.pts, float(mv.s))
+	var dd: Vector2 = at[1] * float(mv.dir)
+	var ahead: Vector2 = at[0] + dd * 7.0 + Vector2(-dd.y, dd.x) * -1.3
+	blocker.global_position = Vector3(ahead.x, 0.3, ahead.y)
+	for i in 90: await process_frame
+	var s1 := float(mv.s)
+	for i in 30: await process_frame
+	ok(float(mv.v) < 0.3 and absf(float(mv.s) - s1) < 0.3, "остановился перед игроком")
+	blocker.global_position = Vector3(ahead.x + 40.0, 0.3, ahead.y + 40.0)
+	var cp: Vector3 = RL._combine.mesh.position
+	await create_timer(1.5).timeout
+	ok(RL._combine.mesh.position.distance_to(cp) > 1.0, "комбайн убирает пшеницу: %s → %s %s" % [cp, RL._combine.mesh.position, RL._combine.field])
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)
