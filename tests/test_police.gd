@@ -85,7 +85,11 @@ func _run() -> void:
 	var P = W.get_node("Player")
 	for pt in Police.PATROL:
 		P.global_position = pt + Vector3(0, 0.2, 0)
-		await frames(3)
+		# Ждём, пока обход засчитает точку (не дольше двух секунд)
+		for i in 120:
+			await frames(1)
+			if not pol.patrol_active or not GM.challenge_line.contains("%d из" % (Police.PATROL.find(pt) + 1)):
+				break
 	ok(not pol.patrol_active and GM.money == 300 + Police.PATROL_PAY, "обошёл пять точек: +%d" % Police.PATROL_PAY)
 	ok(desk.text().contains("уже отдежурил"), "второй раз за вечер — нет")
 	var st := pol.save_state()

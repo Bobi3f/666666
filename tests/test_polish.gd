@@ -110,7 +110,7 @@ func _run() -> void:
 	ok(AC.got.has("work20"), "20 смен в колхозе и на складе")
 	var j = child("journal.gd")
 	var txt: String = j._journal_text()
-	ok(txt.contains("ДОСТИЖЕНИЯ — 3 из 19") and txt.contains("40%"), "в журнале достижения")
+	ok(txt.contains("ДОСТИЖЕНИЯ — 3 из 20") and txt.contains("40%"), "в журнале достижения")
 	SM.save_game(true)
 	AC.load_state({})
 	SM.load_game()
