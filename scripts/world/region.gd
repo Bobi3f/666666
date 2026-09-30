@@ -295,6 +295,10 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	rs.name = "Roadside"
 	add_child(rs)
 	rs.build(_world, b, _d)
+	var lm := Landmarks.new()
+	lm.name = "Landmarks"
+	add_child(lm)
+	lm.build(_world, b, _d)
 	_forests(_d)
 	_district_bus()
 	var ground := b.build_chunked()

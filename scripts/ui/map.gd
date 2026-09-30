@@ -509,6 +509,8 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
+	for s in Landmarks.sites():
+		places.append([s[3], Vector3((s[0] as Vector2).x, 0, (s[0] as Vector2).y), Color(0.75, 0.55, 0.35)])
 	for i in Region.VILLAGES.size():
 		places.append(["Магазин", Region.shop_pos(i), Color(0.95, 0.35, 0.3)])
 		places.append(["Автобус", Region.stop_pos(i), Color(1.0, 0.9, 0.3)])

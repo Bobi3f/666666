@@ -246,5 +246,20 @@ func _run() -> void:
 		if c is InteractZone and c.text().contains("заправить"):
 			c.activate()
 	ok(C2.fuel > 30.0, "заправился на второй АЗС: %d л" % int(C2.fuel))
+	print("== Достопримечательности")
+	ok(Landmarks.sites().size() == 13, "мест: %d" % Landmarks.sites().size())
+	for site in Landmarks.sites():
+		var sc: Vector2 = site[0]
+		if Region.road_dist(sc.x, sc.y) < float(site[1]) * 0.6 and site[2] != "pier":
+			ok(false, "%s стоит на дороге" % site[3])
+	var LM = W.get_node("Region/Landmarks")
+	var pier: InteractZone = null
+	for c in LM.get_children():
+		if c is InteractZone and c.text().contains("Быстрой"): pier = c
+	ok(pier != null, "мостки на Быстрой у Малиновки")
+	TM.minutes = 7 * 60.0
+	root.get_node("NeedsManager").energy = 100.0
+	pier.activate()
+	ok(W._fishing.active() and W._fishing.spot.distance_to(pier.position) < 1.0, "закинул удочку в реку")
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)

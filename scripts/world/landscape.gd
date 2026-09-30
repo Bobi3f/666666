@@ -32,6 +32,8 @@ const CROP_NAMES := ["wheat", "sunflower", "rapeseed", "corn", "fallow", "hay", 
 ## Занято ли место под лесом: на холмах, полях и в прудах деревьев нет.
 static func occupied(x: float, z: float) -> bool:
 	plan()
+	if Landmarks.occupied(x, z):
+		return true
 	var p := Vector2(x, z)
 	for h in hills:
 		if (h[0] as Vector2).distance_to(p) < float(h[1]) * 0.95:
@@ -67,6 +69,9 @@ static func _free(c: Vector2, r: float, road_gap: float) -> bool:
 			return false
 	if (Region.LAKE).distance_to(c) < r + 60.0:
 		return false
+	for s in Landmarks.sites():
+		if (s[0] as Vector2).distance_to(c) < r + float(s[1]) + 20.0:
+			return false
 	for o in hills:
 		if (o[0] as Vector2).distance_to(c) < r + float(o[1]) + 30.0:
 			return false
