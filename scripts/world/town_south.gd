@@ -42,7 +42,7 @@ func build(b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 	_streets(b)
 	_station(b, glow)
 	_market(b)
-	_school(b, glow)
+	_school(b)
 	_stadium(b, glow)
 	_garages(b)
 	_factory(b, glow)
@@ -208,29 +208,18 @@ func buy() -> void:
 
 # --- Школа --------------------------------------------------------------------
 
-## Школа: три этажа, крыльцо с козырьком, флаг, двор с забором и турником.
-func _school(b: MeshBuilder, glow: MeshBuilder) -> void:
+## Школа: корпус (school.gd), флаг, двор с забором и турником.
+func _school(b: MeshBuilder) -> void:
 	var r := SCHOOL
 	var x0 := r.position.x + 2.0
 	var x1 := r.end.x - 2.0
 	var z0 := r.position.y + 2.0
 	var z1 := z0 + 11.0
-	var wall := Color(0.85, 0.72, 0.62)
-	b.box(Vector3(x0, 0, z0), Vector3(x1, 9.6, z1), wall, true)
-	b.box(Vector3(x0 - 0.2, 9.6, z0 - 0.2), Vector3(x1 + 0.2, 10.0, z1 + 0.2), Color(0.45, 0.45, 0.47))
-	for f in 3:
-		var y := 1.0 + f * 3.1
-		var x := x0 + 1.2
-		while x < x1 - 1.5:
-			for zf in [z0 - 0.03, z1 - 0.01]:
-				b.box(Vector3(x, y, zf), Vector3(x + 1.8, y + 1.7, zf + 0.04), Color(0.9, 0.9, 0.88))
-				glow.box(Vector3(x + 0.1, y + 0.1, zf - 0.01), Vector3(x + 1.7, y + 1.6, zf + 0.05), Color(0.9, 0.9, 0.8))
-			x += 2.6
 	var cx := (x0 + x1) * 0.5
-	b.box(Vector3(cx - 2.5, 0, z0 - 2.0), Vector3(cx + 2.5, 0.35, z0), Color(0.6, 0.6, 0.58), true)
-	b.box(Vector3(cx - 2.5, 3.0, z0 - 2.0), Vector3(cx + 2.5, 3.2, z0), Color(0.45, 0.45, 0.47))
-	b.box(Vector3(cx - 1.0, 0.35, z0 - 0.04), Vector3(cx + 1.0, 2.6, z0), Color(0.4, 0.3, 0.22))
-	_label("ШКОЛА № 1", Vector3(cx, 3.6, z0 - 0.06), PI, 90)
+	# Сам корпус с классом и столовой — school.gd, в него можно зайти
+	var school := School.new()
+	school.name = "School"
+	add_child(school)
 	# Флагшток
 	b.box(Vector3(cx + 6.0, 0, z0 - 4.0), Vector3(cx + 6.12, 9.0, z0 - 3.88), Color(0.8, 0.8, 0.82))
 	b.box(Vector3(cx + 6.12, 7.6, z0 - 3.96), Vector3(cx + 7.8, 8.2, z0 - 3.92), Color(0.2, 0.45, 0.8))
