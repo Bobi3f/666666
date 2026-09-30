@@ -1,6 +1,8 @@
 extends Node3D
-## Движение по трассе: легковушки в обе стороны и рейсовый автобус,
-## который стоит на остановках у Каменки и в городе.
+## Движение по трассе: в обе стороны едут «Жигули», «Москвичи»,
+## «Запорожцы», «Волги», «Нивы», «буханки», ГАЗоны и КамАЗы. Рейсовые
+## автобусы ходят в обе стороны и встают на каждой остановке своей
+## стороны: у Каменки, в городе и на съездах к сёлам.
 ##
 ## Ночью у всех горят фары, при торможении — стоп-сигналы.
 ## Машины едут по своей полосе и притормаживают, если впереди кто-то есть:
@@ -11,9 +13,14 @@ const CRUISE := 15.0  # м/с, около 55 км/ч
 const BUS_CRUISE := 11.0
 const LANE_Z := 2.0
 const WORLD_X := Region.HALF - 10.0
-## Остановки автобуса по полосам: -X — северная (Каменка), +X — южная (город)
+## Остановки автобуса по полосам: -X — северная сторона (Каменка),
+## +X — южная (город); остановки на съездах к сёлам добавляются в _ready.
 const STOPS := {-1: -68.5, 1: 32.0}
 const STOP_WAIT := 8.0
+## Какие машины едут по трассе (по кругу).
+const KINDS := ["car", "moskvich", "zaz", "volga", "car", "niva", "uaz", "truck", "moskvich", "kamaz", "car", "zaz"]
+
+var stops := {-1: [STOPS[-1]], 1: [STOPS[1]]}
 
 var _vehicles: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
@@ -21,26 +28,41 @@ var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.seed = 404
-	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3), Color(0.45, 0.45, 0.47), Color(0.85, 0.7, 0.3)]
+	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3), Color(0.45, 0.45, 0.47),
+		Color(0.85, 0.7, 0.3), Color(0.55, 0.2, 0.3), Color(0.3, 0.55, 0.6), Color(0.15, 0.15, 0.17)]
+	# Остановки на съездах к сёлам — как их ставит roadside.gd
+	for r in Region.ROADS:
+		var start: Vector2 = r[0]
+		if absf(start.y) > 6.0 or absf(start.x) < 230.0:
+			continue
+		(stops[1 if start.y > 0.0 else -1] as Array).append(start.x + 14.0)
 	var i := 0
 	for dir in [1, -1]:
 		for k in 12:
-			_spawn(dir, -1850.0 + k * 320.0 + dir * 40.0, colors[i % colors.size()], false)
+			var kind: String = KINDS[i % KINDS.size()]
+			var col: Color = colors[(i * 5) % colors.size()]
+			if kind == "kamaz":
+				col = Color(0.9, 0.45, 0.1)
+			elif kind == "uaz":
+				col = Color(0.4, 0.45, 0.32)
+			_spawn(dir, -1850.0 + k * 320.0 + dir * 40.0, col, kind)
 			i += 1
-	_spawn(-1, 120.0, Color(0.95, 0.75, 0.2), true)
+	_spawn(-1, 120.0, Color(0.95, 0.75, 0.2), "bus")
+	_spawn(1, -900.0, Color(0.9, 0.9, 0.85), "bus")
 
 
-func _spawn(dir: int, x: float, color: Color, bus: bool) -> void:
+func _spawn(dir: int, x: float, color: Color, kind: String) -> void:
+	var bus := kind == "bus"
 	var body := AnimatableBody3D.new()
-	body.sync_to_physics = true
-	var size := Vector3(2.5, 3.0, 10.0) if bus else Vector3(1.7, 1.4, 4.2)
+	body.sync_to_physics = false
+	var size: Vector3 = VehicleModels.NPC_SIZE.get(kind, VehicleModels.NPC_SIZE.car)
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = size
 	cs.shape = shape
 	cs.position.y = size.y * 0.5 + 0.3
 	body.add_child(cs)
-	body.add_child(_build_mesh(size, color, bus))
+	body.add_child(_build_mesh(kind, color))
 	var lights := _build_lights(size)
 	body.add_child(lights[0])
 	var snd := AudioStreamPlayer3D.new()
@@ -51,27 +73,23 @@ func _spawn(dir: int, x: float, color: Color, bus: bool) -> void:
 	snd.pitch_scale = 0.7 if bus else 1.4
 	body.add_child(snd)
 	add_child(body)
-	body.global_position = Vector3(x, 0.05, dir * LANE_Z)
-	# Модель смотрит носом в -Z; разворачиваем по направлению движения
-	body.rotation.y = -PI / 2.0 if dir > 0 else PI / 2.0
+	_place(body, x, dir)
 	snd.play()
-	_vehicles.append({"body": body, "dir": dir, "speed": BUS_CRUISE if bus else CRUISE, "bus": bus,
-		"wait": 0.0, "stopped": 0.0, "snd": snd, "len": size.z, "head": lights[1], "tail": lights[2]})
+	var cruise := BUS_CRUISE if bus else (CRUISE * 0.75 if kind in ["truck", "kamaz", "zaz", "uaz"] else CRUISE)
+	_vehicles.append({"body": body, "dir": dir, "speed": cruise, "cruise": cruise, "bus": bus, "kind": kind,
+		"wait": 0.0, "left_stop": INF, "at_stop": INF, "stopped": 0.0, "snd": snd, "len": size.z, "head": lights[1], "tail": lights[2]})
 
 
-func _build_mesh(size: Vector3, color: Color, bus: bool) -> MeshInstance3D:
+## Ставит машину в полосу носом по ходу: модель смотрит в -Z, поэтому
+## едущие на восток (+X) повёрнуты на −90°, на запад — на +90°.
+func _place(body: Node3D, x: float, dir: int) -> void:
+	body.global_transform = Transform3D(Basis(Vector3.UP, -PI / 2.0 if dir > 0 else PI / 2.0), Vector3(x, 0.05, dir * LANE_Z))
+
+
+func _build_mesh(kind: String, color: Color) -> MeshInstance3D:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	if bus:
-		VehicleModels.bus(b, color, size)
-	else:
-		# Попутки — те же Жигули другого цвета, салон затемнён
-		VehicleModels.zhiguli(b, color, false)
-		for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
-			var saved := b.xf
-			b.xf = Transform3D(Basis.IDENTITY, p)
-			VehicleModels.car_wheel(b, 0.29, 0.2)
-			b.xf = saved
+	VehicleModels.npc(b, kind, color)
 	return b.build_mesh()
 
 
@@ -104,19 +122,30 @@ func _physics_process(delta: float) -> void:
 		var body: AnimatableBody3D = v.body
 		var dir: int = v.dir
 		var x := body.global_position.x
-		var target: float = BUS_CRUISE if v.bus else CRUISE
+		var target: float = v.cruise
 
-		# Автобус: подъезжает к своей остановке и стоит
+		# Автобус: подъезжает к ближайшей остановке впереди, стоит и едет
+		# дальше; та, от которой отъехал, до следующего круга не считается
 		if v.bus:
-			var stop_x: float = STOPS[dir]
-			var to_stop := (stop_x - x) * dir
+			var to_stop := INF
+			var stop_x := INF
+			for sx in stops[dir]:
+				var d: float = (float(sx) - x) * dir
+				if d > -0.5 and d < to_stop and absf(float(sx) - float(v.left_stop)) > 0.1:
+					to_stop = d
+					stop_x = sx
 			if v.wait > 0.0:
 				v.wait -= delta
 				target = 0.0
-			elif to_stop > 0.0 and to_stop < 25.0:
-				target = clampf(to_stop * 0.6, 0.0, BUS_CRUISE)
-				if to_stop < 1.0:
+				if v.wait <= 0.0:
+					v.left_stop = v.at_stop
+			elif to_stop < 25.0:
+				target = clampf(to_stop * 0.6 + 0.6, 0.0, BUS_CRUISE)
+				if to_stop < 0.8:
 					v.wait = STOP_WAIT
+					v.at_stop = stop_x
+			if (x - float(v.left_stop)) * dir > 30.0:
+				v.left_stop = INF
 
 		# Светофор у поворота в город: на жёлтый и красный — стоп перед линией
 		if StreetLife.highway != "green":
@@ -144,8 +173,8 @@ func _physics_process(delta: float) -> void:
 		x += sp * dir * delta
 		if x * dir > WORLD_X:
 			x = -WORLD_X * dir
-		body.global_position = Vector3(x, 0.05, dir * LANE_Z)
-		(v.snd as AudioStreamPlayer3D).pitch_scale = (0.6 if v.bus else 1.0) + sp / CRUISE * 0.8
+		_place(body, x, dir)
+		(v.snd as AudioStreamPlayer3D).pitch_scale = (0.6 if v.bus or v.kind in ["truck", "kamaz"] else 1.0) + sp / CRUISE * 0.8
 
 		# Стоят из-за игрока — сигналят
 		if sp < 0.5 and v.wait <= 0.0 and gap < need + 4.0:

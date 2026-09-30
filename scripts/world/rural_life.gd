@@ -16,9 +16,15 @@ const KINDS := [
 	["niva", 9.0, Color(0.55, 0.12, 0.1)],
 	["car", 10.0, Color(0.2, 0.35, 0.6)],
 	["cart", 1.8, Color(0.5, 0.38, 0.25)],
+	["uaz", 8.0, Color(0.4, 0.45, 0.32)],
 	["moto", 8.0, Color(0.15, 0.15, 0.4)],
+	["zaz", 8.5, Color(0.85, 0.75, 0.55)],
 	["truck", 7.0, Color(0.35, 0.45, 0.3)],
+	["moskvich", 9.5, Color(0.3, 0.5, 0.55)],
 ]
+## Районный автобус (ПАЗ): ходит по длинным дорогам к сёлам, на концах
+## стоит подольше — рейс.
+const BUS := ["bus", 8.0, Color(0.95, 0.75, 0.2)]
 const SEE := 350.0
 
 var movers: Array[Dictionary] = []
@@ -41,6 +47,8 @@ func _ready() -> void:
 		if total < 150.0:
 			continue
 		_add_mover(pts, total, KINDS[i % KINDS.size()], _rng.randf() * total)
+		if total > 400.0 and i % 2 == 0:
+			_add_mover(pts, total, BUS, _rng.randf() * total)
 		i += 1
 	for v in Region.VILLAGES.size():
 		if v % 2 == 0:
@@ -57,25 +65,17 @@ func _model(kind: String, color: Color) -> Node3D:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
 	match kind:
-		"tractor":
-			VehicleModels.tractor(b, color)
-		"niva":
-			VehicleModels.niva(b, color)
-		"truck":
-			VehicleModels.gaz53(b, color, null)
 		"moto":
 			VehicleModels.java(b, color)
+			for wp in [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]:
+				b.xf = Transform3D(Basis.IDENTITY, wp)
+				VehicleModels.moto_wheel(b, 0.31)
+			b.xf = Transform3D.IDENTITY
 			Villagers.person_model(b, Color(0.3, 0.35, 0.3), Color(0.2, 0.2, 0.22), true, false)
 		"cart":
 			_cart(b)
 		_:
-			VehicleModels.zhiguli(b, color, false)
-	if kind in ["car", "niva"]:
-		for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
-			var saved := b.xf
-			b.xf = Transform3D(Basis.IDENTITY, p)
-			VehicleModels.car_wheel(b, 0.3, 0.2)
-			b.xf = saved
+			VehicleModels.npc(b, kind, color)
 	var mi := b.build_mesh()
 	mi.visibility_range_end = SEE
 	root.add_child(mi)
@@ -128,7 +128,7 @@ func _add_mover(pts: Array, total: float, spec: Array, s: float) -> void:
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	var kind: String = spec[0]
-	shape.size = Vector3(0.8, 1.4, 2.0) if kind == "moto" else (Vector3(2.2, 2.4, 6.5) if kind == "truck" else Vector3(1.7, 1.6, 4.2))
+	shape.size = Vector3(0.8, 1.4, 2.0) if kind == "moto" else VehicleModels.NPC_SIZE.get(kind, VehicleModels.NPC_SIZE.car)
 	if kind == "cart":
 		shape.size = Vector3(1.6, 1.6, 6.5)
 	cs.shape = shape
@@ -184,7 +184,7 @@ func _update_mover(m: Dictionary, delta: float, cam: Vector3) -> void:
 	m.s = float(m.s) + float(m.v) * delta * float(m.dir)
 	if m.s <= 0.0 or m.s >= float(m.total):
 		m.s = clampf(float(m.s), 0.0, float(m.total))
-		m.wait = _rng.randf_range(4.0, 12.0)
+		m.wait = _rng.randf_range(20.0, 30.0) if m.kind == "bus" else _rng.randf_range(4.0, 12.0)
 	# По своей (правой) стороне дороги
 	var side := Vector2(-d.y, d.x) * -1.3
 	var p := pos2 + side

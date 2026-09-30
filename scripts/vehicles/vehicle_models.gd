@@ -431,3 +431,175 @@ static func tractor(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -
 	b.box(Vector3(-0.5, 0.7, 1.1), Vector3(0.5, 0.8, 1.6), dark)
 	for x in [-0.45, 0.35]:
 		b.box(Vector3(x, 0.5, 1.5), Vector3(x + 0.1, 0.9, 1.6), dark)
+
+
+# --- Попутки: новые модели и сборка с колёсами ---------------------------------
+
+## «Москвич-412»: угловатый седан, узкие вертикальные фонари, решётка во
+## всю морду с прямоугольными фарами.
+static func moskvich(b: MeshBuilder, paint: Color) -> void:
+	var dark := Color(0.07, 0.07, 0.08)
+	var chrome := Color(0.78, 0.78, 0.8)
+	var glass := Color(0.3, 0.4, 0.46)
+	b.box(Vector3(-0.78, 0.32, -2.05), Vector3(0.78, 0.82, 2.05), paint)
+	b.box(Vector3(-0.72, 0.82, -0.75), Vector3(0.72, 1.36, 1.0), paint)
+	b.box(Vector3(-0.66, 0.84, -0.8), Vector3(0.66, 1.3, -0.76), glass)
+	b.box(Vector3(-0.66, 0.86, 1.0), Vector3(0.66, 1.28, 1.04), glass)
+	for x in [-0.73, 0.71]:
+		b.box(Vector3(x, 0.9, -0.66), Vector3(x + 0.02, 1.28, 0.1), glass)
+		b.box(Vector3(x, 0.9, 0.18), Vector3(x + 0.02, 1.28, 0.9), glass)
+		b.box(Vector3(x - 0.02 * signf(x), 0.55, -1.95), Vector3(x + 0.04, 0.58, 1.95), chrome)
+	b.box(Vector3(-0.74, 0.5, -2.07), Vector3(0.74, 0.76, -2.05), dark)
+	for x in [-0.7, 0.42]:
+		b.box(Vector3(x, 0.56, -2.09), Vector3(x + 0.28, 0.7, -2.06), Color(1.0, 0.97, 0.86))
+	for x in [-0.76, 0.66]:
+		b.box(Vector3(x, 0.5, 2.05), Vector3(x + 0.1, 0.8, 2.07), Color(0.9, 0.2, 0.15))
+	for z in [-2.15, 2.05]:
+		b.box(Vector3(-0.8, 0.36, z), Vector3(0.8, 0.46, z + 0.1), chrome)
+	b.box(Vector3(-0.22, 0.4, 2.15), Vector3(0.22, 0.5, 2.16), Color(0.92, 0.92, 0.9))
+
+
+## ЗАЗ-968 «Запорожец»: маленький, мотор сзади — по бокам «уши»
+## воздухозаборников, впереди багажник без решётки.
+static func zaporozhets(b: MeshBuilder, paint: Color) -> void:
+	var dark := Color(0.07, 0.07, 0.08)
+	var chrome := Color(0.78, 0.78, 0.8)
+	var glass := Color(0.3, 0.4, 0.46)
+	b.box(Vector3(-0.74, 0.3, -1.85), Vector3(0.74, 0.8, 1.85), paint)
+	b.box(Vector3(-0.68, 0.8, -0.55), Vector3(0.68, 1.36, 0.95), paint)
+	b.box(Vector3(-0.6, 0.84, -0.6), Vector3(0.6, 1.3, -0.56), glass)
+	b.box(Vector3(-0.6, 0.86, 0.95), Vector3(0.6, 1.28, 0.99), glass)
+	for x in [-0.69, 0.67]:
+		b.box(Vector3(x, 0.88, -0.48), Vector3(x + 0.02, 1.28, 0.85), glass)
+	# «Уши» над задними колёсами
+	for x in [-0.86, 0.74]:
+		b.box(Vector3(x, 0.62, 0.9), Vector3(x + 0.12, 0.98, 1.5), paint.darkened(0.1))
+		b.box(Vector3(x + (0.0 if x < 0.0 else 0.11), 0.68, 0.95), Vector3(x + (0.01 if x < 0.0 else 0.12), 0.92, 1.45), dark)
+	for x in [-0.62, 0.4]:
+		b.box(Vector3(x, 0.55, -1.87), Vector3(x + 0.22, 0.72, -1.85), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-0.1, 0.6, -1.87), Vector3(0.1, 0.72, -1.86), chrome)
+	for x in [-0.66, 0.5]:
+		b.box(Vector3(x, 0.55, 1.85), Vector3(x + 0.16, 0.7, 1.87), Color(0.9, 0.2, 0.15))
+	b.box(Vector3(-0.5, 0.45, 1.85), Vector3(0.5, 0.52, 1.88), dark)
+	for z in [-1.95, 1.85]:
+		b.box(Vector3(-0.76, 0.32, z), Vector3(0.76, 0.42, z + 0.1), chrome)
+
+
+## УАЗ-452 «буханка»: высокий фургон с плоским лбом, круглые фары,
+## окна по бокам, запаска на задней двери.
+static func uaz(b: MeshBuilder, paint: Color) -> void:
+	var dark := Color(0.07, 0.07, 0.08)
+	var glass := Color(0.3, 0.4, 0.46)
+	var white := Color(0.9, 0.9, 0.86)
+	b.box(Vector3(-0.95, 0.45, -2.2), Vector3(0.95, 2.1, 2.2), paint)
+	b.box(Vector3(-0.9, 2.1, -2.1), Vector3(0.9, 2.18, 2.1), paint.lightened(0.08))
+	b.box(Vector3(-0.96, 0.45, -2.2), Vector3(0.96, 0.9, 2.2), white if paint.v < 0.6 else paint.darkened(0.2))
+	b.box(Vector3(-0.85, 1.3, -2.22), Vector3(0.85, 1.95, -2.2), glass)
+	b.box(Vector3(-0.04, 1.3, -2.23), Vector3(0.04, 1.95, -2.21), paint)
+	for x in [-0.96, 0.94]:
+		var z := -1.9
+		while z < 1.8:
+			b.box(Vector3(x, 1.35, z), Vector3(x + 0.02, 1.85, z + 0.7), glass)
+			z += 0.95
+	for x in [-0.75, 0.55]:
+		b.box(Vector3(x, 0.85, -2.23), Vector3(x + 0.2, 1.05, -2.2), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-0.3, 0.6, -2.22), Vector3(0.3, 1.0, -2.2), dark)
+	b.box(Vector3(-0.95, 0.4, -2.35), Vector3(0.95, 0.55, -2.2), dark)
+	b.box(Vector3(-0.35, 0.9, 2.2), Vector3(0.35, 1.6, 2.35), dark)
+	for x in [-0.9, 0.78]:
+		b.box(Vector3(x, 0.8, 2.2), Vector3(x + 0.12, 1.0, 2.22), Color(0.9, 0.2, 0.15))
+
+
+## КамАЗ-5320 с тентом: кабина над мотором, высокий кузов под брезентом,
+## три оси.
+static func kamaz(b: MeshBuilder, paint: Color) -> void:
+	var dark := Color(0.08, 0.08, 0.09)
+	var glass := Color(0.3, 0.4, 0.46)
+	var tent := Color(0.4, 0.45, 0.35)
+	b.box(Vector3(-0.55, 0.65, -3.8), Vector3(0.55, 0.9, 4.0), dark)
+	# Кабина
+	b.box(Vector3(-1.25, 0.9, -4.0), Vector3(1.25, 2.9, -2.3), paint)
+	b.box(Vector3(-1.1, 1.9, -4.02), Vector3(1.1, 2.7, -4.0), glass)
+	for x in [-1.26, 1.24]:
+		b.box(Vector3(x, 1.9, -3.9), Vector3(x + 0.02, 2.6, -3.0), glass)
+	b.box(Vector3(-1.1, 1.0, -4.03), Vector3(1.1, 1.5, -4.0), dark)
+	for x in [-1.1, 0.8]:
+		b.box(Vector3(x, 1.05, -4.05), Vector3(x + 0.3, 1.25, -4.02), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-1.25, 0.7, -4.15), Vector3(1.25, 0.95, -4.0), Color(0.5, 0.5, 0.52))
+	b.box(Vector3(-1.2, 2.9, -3.8), Vector3(1.2, 3.3, -2.5), paint.lightened(0.1))
+	# Кузов с тентом
+	b.box(Vector3(-1.25, 1.2, -2.1), Vector3(1.25, 1.3, 4.1), Color(0.45, 0.35, 0.25))
+	b.box(Vector3(-1.25, 1.3, -2.1), Vector3(1.25, 3.3, 4.1), tent)
+	for z in [-1.0, 0.5, 2.0, 3.5]:
+		for x in [-1.27, 1.25]:
+			b.box(Vector3(x, 1.3, z), Vector3(x + 0.02, 3.3, z + 0.06), tent.darkened(0.25))
+	for x in [-1.1, 0.9]:
+		b.box(Vector3(x, 0.9, 4.1), Vector3(x + 0.2, 1.05, 4.12), Color(0.9, 0.2, 0.15))
+
+
+## Размер коробки столкновений попутки [ширина, высота, длина].
+const NPC_SIZE := {
+	"car": Vector3(1.7, 1.4, 4.2), "volga": Vector3(1.8, 1.5, 4.8), "niva": Vector3(1.7, 1.7, 3.8),
+	"moskvich": Vector3(1.6, 1.4, 4.2), "zaz": Vector3(1.5, 1.4, 3.8), "uaz": Vector3(1.95, 2.2, 4.5),
+	"truck": Vector3(2.3, 2.4, 6.6), "kamaz": Vector3(2.5, 3.3, 8.2), "bus": Vector3(2.5, 3.0, 10.0),
+	"tractor": Vector3(1.9, 2.8, 4.2),
+}
+
+
+## Попутка целиком: кузов и колёса (у своей машины колёса крутятся
+## отдельно, у попуток — в том же меше).
+static func npc(b: MeshBuilder, kind: String, paint: Color) -> void:
+	var wheels: Array = []
+	var r := 0.3
+	var w := 0.2
+	match kind:
+		"volga":
+			volga(b, paint)
+			wheels = [Vector3(-0.8, 0.33, -1.42), Vector3(0.8, 0.33, -1.42), Vector3(-0.8, 0.33, 1.42), Vector3(0.8, 0.33, 1.42)]
+			r = 0.33
+		"niva":
+			niva(b, paint)
+			wheels = [Vector3(-0.76, 0.33, -1.1), Vector3(0.76, 0.33, -1.1), Vector3(-0.76, 0.33, 1.1), Vector3(0.76, 0.33, 1.1)]
+			r = 0.33
+		"moskvich":
+			moskvich(b, paint)
+			wheels = [Vector3(-0.72, 0.3, -1.3), Vector3(0.72, 0.3, -1.3), Vector3(-0.72, 0.3, 1.25), Vector3(0.72, 0.3, 1.25)]
+		"zaz":
+			zaporozhets(b, paint)
+			wheels = [Vector3(-0.68, 0.28, -1.1), Vector3(0.68, 0.28, -1.1), Vector3(-0.68, 0.28, 1.15), Vector3(0.68, 0.28, 1.15)]
+			r = 0.28
+		"uaz":
+			uaz(b, paint)
+			wheels = [Vector3(-0.86, 0.38, -1.2), Vector3(0.86, 0.38, -1.2), Vector3(-0.86, 0.38, 1.25), Vector3(0.86, 0.38, 1.25)]
+			r = 0.38
+			w = 0.24
+		"truck":
+			gaz53(b, paint)
+			wheels = [Vector3(-0.98, 0.46, -2.45), Vector3(0.98, 0.46, -2.45), Vector3(-0.95, 0.46, 1.55), Vector3(0.95, 0.46, 1.55)]
+			r = 0.46
+			w = 0.3
+		"kamaz":
+			kamaz(b, paint)
+			wheels = [Vector3(-1.05, 0.5, -3.1), Vector3(1.05, 0.5, -3.1), Vector3(-1.05, 0.5, 1.8), Vector3(1.05, 0.5, 1.8),
+				Vector3(-1.05, 0.5, 2.9), Vector3(1.05, 0.5, 2.9)]
+			r = 0.5
+			w = 0.34
+		"bus":
+			bus(b, paint, NPC_SIZE.bus)
+		"tractor":
+			tractor(b, paint)
+			for p in [[Vector3(-0.92, 0.72, 0.9), 0.72, 0.42], [Vector3(0.92, 0.72, 0.9), 0.72, 0.42],
+					[Vector3(-0.78, 0.42, -1.4), 0.42, 0.22], [Vector3(0.78, 0.42, -1.4), 0.42, 0.22]]:
+				var saved := b.xf
+				b.xf = saved * Transform3D(Basis.IDENTITY, p[0])
+				car_wheel(b, p[1], p[2])
+				b.xf = saved
+		_:
+			zhiguli(b, paint, false)
+			wheels = [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]
+			r = 0.29
+	for p in wheels:
+		var saved := b.xf
+		b.xf = saved * Transform3D(Basis.IDENTITY, p)
+		car_wheel(b, r, w)
+		b.xf = saved
