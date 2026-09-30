@@ -65,7 +65,8 @@ func _run() -> void:
 	var vasya := person(vil, "Механик Васёк")
 	ok(not galya.node.visible and not vasya.node.visible, "ночью все дома — не видно")
 	TM.minutes = 16.5 * 60.0
-	await frames(3)
+	# Жители обновляются в кадре отрисовки, а не физики
+	for i in 3: await process_frame
 	ok(mikh.slot == "bench_mikh" and mikh.sit.visible and galya.slot == "bench_galya", "вечером Михалыч и баба Галя на одной лавочке")
 
 	print("== Реплики по сюжету")
