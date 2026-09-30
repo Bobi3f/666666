@@ -16,6 +16,7 @@ const CHUNK := 25.0
 ## Деревья — кусками 100×100 м: вызовов отрисовки вчетверо меньше, чем при 50 м,
 ## а тени всё равно не рисуют весь лес сразу.
 const TREE_CHUNK := 100.0
+const FAR_CHUNK := 200.0
 const GRASS_RANGE := 75.0
 
 const GRASS_SHADER := """
@@ -58,8 +59,9 @@ static var grass_material: ShaderMaterial
 var counts := {}
 ## Где растёт трава: Каменка и сёла района (дальше — только земля).
 var areas: Array[Rect2] = [Rect2(-200, -200, 400, 400)]
-## Дальше этого деревья не рисуются: на телефоне весь район — лишнее.
-const TREE_RANGE := 420.0
+## Деревья целиком рисуются до SettingsManager.tree_range(), дальше —
+## простые силуэты (ель — конус, берёза — ромб) до края видимости: лес
+## видно до горизонта, а треугольников в десятки раз меньше.
 
 
 func add_tree(kind: int, xf: Transform3D) -> void:
@@ -86,6 +88,7 @@ func build() -> void:
 		TreeKind.BIRCH: _birch_mesh(),
 		TreeKind.BUSH: _bush_mesh(),
 	}
+	var far_models := {TreeKind.SPRUCE: _far_spruce(), TreeKind.BIRCH: _far_birch()}
 	for kind in _trees:
 		var list: Array = _trees[kind]
 		if list.is_empty():
@@ -110,9 +113,31 @@ func build() -> void:
 			var mi := MultiMeshInstance3D.new()
 			mi.multimesh = mm
 			mi.name = "Trees_%d_%d_%d" % [kind, key.x, key.y]
-			mi.visibility_range_end = TREE_RANGE
-			mi.visibility_range_end_margin = 30.0
 			add_child(mi)
+
+		# Силуэты — крупными кусками по 200 м: вдали деревьев много, а
+		# вызовов отрисовки должно быть мало
+		if far_models.has(kind):
+			var far_cells := {}
+			for xf in list:
+				var o: Vector3 = (xf as Transform3D).origin
+				var key := Vector2i(floori(o.x / FAR_CHUNK), floori(o.z / FAR_CHUNK))
+				if not far_cells.has(key):
+					far_cells[key] = []
+				far_cells[key].append(xf)
+			for key in far_cells:
+				var part: Array = far_cells[key]
+				var fm := MultiMesh.new()
+				fm.transform_format = MultiMesh.TRANSFORM_3D
+				fm.mesh = far_models[kind]
+				fm.instance_count = part.size()
+				for i in part.size():
+					fm.set_instance_transform(i, part[i])
+				var fi := MultiMeshInstance3D.new()
+				fi.multimesh = fm
+				fi.name = "TreesFar_%d_%d_%d" % [kind, key.x, key.y]
+				fi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				add_child(fi)
 	_build_ground_cover()
 	SettingsManager.changed.connect(apply_detail)
 	apply_detail()
@@ -121,8 +146,16 @@ func build() -> void:
 ## Детализация из настроек: дальность травы, на низкой — травы нет вовсе.
 func apply_detail() -> void:
 	var r := SettingsManager.grass_range()
+	var near := SettingsManager.tree_range()
 	for c in get_children():
+		var gi := c as GeometryInstance3D
+		if c.name.begins_with("TreesFar"):
+			gi.visibility_range_begin = near
+			gi.visibility_range_end = SettingsManager.view_range()
+			continue
 		if c.name.begins_with("Trees"):
+			# Яблони и кусты силуэтов не имеют — они и так у домов
+			gi.visibility_range_end = near if (c.name.begins_with("Trees_0") or c.name.begins_with("Trees_2")) else minf(near, 300.0)
 			continue
 		var mi := c as MultiMeshInstance3D
 		mi.visible = r > 0.0
@@ -321,6 +354,41 @@ func _spruce_mesh() -> ArrayMesh:
 			b.xf = saved
 		b.box_rot(Vector3(0, y + 0.1, 0), Vector3(reach * 0.9, 0.5, reach * 0.9), t * 0.4, green.darkened(0.1))
 	b.box(Vector3(-0.12, 7.0, -0.12), Vector3(0.12, 7.9, 0.12), Color(0.16, 0.33, 0.17))
+	return b.build_array_mesh()
+
+
+## Силуэт ели издали: тёмный конус на коротком стволе (18 треугольников).
+func _far_spruce() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var n := 6
+	var top := Vector3(0, 7.9, 0)
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var p0 := Vector3(cos(a0) * 2.1, 1.1, sin(a0) * 2.1)
+		var p1 := Vector3(cos(a1) * 2.1, 1.1, sin(a1) * 2.1)
+		b.tri(p0, top, p1, Color(0.13, 0.27, 0.15))
+		b.tri(p0, p1, Vector3(0, 1.1, 0), Color(0.1, 0.2, 0.11))
+	b.box(Vector3(-0.16, 0, -0.16), Vector3(0.16, 1.1, 0.16), Color(0.33, 0.24, 0.17))
+	return b.build_array_mesh()
+
+
+## Силуэт берёзы издали: белый ствол и крона-ромб.
+func _far_birch() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var n := 6
+	var top := Vector3(0, 7.4, 0)
+	var bottom := Vector3(0, 2.6, 0)
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var p0 := Vector3(cos(a0) * 1.8, 4.8, sin(a0) * 1.8)
+		var p1 := Vector3(cos(a1) * 1.8, 4.8, sin(a1) * 1.8)
+		b.tri(p0, top, p1, Color(0.36, 0.56, 0.23))
+		b.tri(p0, p1, bottom, Color(0.28, 0.45, 0.18))
+	b.box(Vector3(-0.13, 0, -0.13), Vector3(0.13, 2.8, 0.13), Color(0.9, 0.9, 0.86))
 	return b.build_array_mesh()
 
 

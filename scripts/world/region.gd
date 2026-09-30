@@ -12,8 +12,9 @@ extends Node3D
 
 const Villagers := preload("res://scripts/world/villagers.gd")
 const HALF := 2000.0
-## Сёла дальше этого не рисуются (куски меша домов).
-const VIEW := 450.0
+## Сёла дальше этого не рисуются (куски меша домов): на телефоне ближе.
+static func view_range() -> float:
+	return [380.0, 500.0, 700.0][SettingsManager.detail]
 const RIVER_HALF := 8.0
 ## Опорные точки реки с севера на юг; между ними — плавная кривая.
 const RIVER := [Vector2(420, -2000), Vector2(350, -1600), Vector2(380, -1200), Vector2(340, -950), Vector2(330, -700), Vector2(300, -550), Vector2(350, -420), Vector2(320, -300),
@@ -302,10 +303,13 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	mesh.name = "RegionMesh"
 	for c in mesh.get_children():
 		var gi := c as GeometryInstance3D
-		gi.visibility_range_end = VIEW
+		gi.visibility_range_end = view_range()
 		gi.visibility_range_end_margin = 20.0
 		gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 	add_child(mesh)
+	SettingsManager.changed.connect(func() -> void:
+		for c in mesh.get_children():
+			(c as GeometryInstance3D).visibility_range_end = view_range())
 	var body := _d.build_body()
 	body.name = "RegionCollision"
 	add_child(body)

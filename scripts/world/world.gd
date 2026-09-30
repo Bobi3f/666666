@@ -110,6 +110,11 @@ var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
 var _veg := Vegetation.new()
 var _sky_top: Color
+## Туман в ясную погоду: густеет так, чтобы у края видимости всё тонуло в дымке
+var _fog_base := 0.0025
+## Кольцо холмов на горизонте: ездит вместе с камерой, прячет край мира
+var _horizon: MeshInstance3D
+var _horizon_r := 0.0
 ## Район вокруг Каменки: сёла, река, дороги (region.gd).
 var region: Region
 var _sky_horizon: Color
@@ -259,7 +264,9 @@ func _ready() -> void:
 ## Дальность — по размеру предмета: чем мельче, тем раньше пропадает.
 ## Каждый такой предмет — отдельный вызов отрисовки, а вдали его не видно.
 func _limit_view_ranges() -> void:
-	var skip := ["WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh", "Water", "Birds"]
+	# Крупные предметы (машины, будки) на высокой детализации видно дальше
+	var far_props: float = [180.0, 240.0, 320.0][SettingsManager.detail]
+	var skip := ["Horizon", "WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh", "Water", "Birds"]
 	var stack: Array[Node] = []
 	for c in get_children():
 		if not skip.has(String(c.name)) and not (c.get_script() and c.get_script().resource_path.ends_with("night_sky.gd")):
@@ -274,7 +281,7 @@ func _limit_view_ranges() -> void:
 		var size := 2.0
 		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh:
 			size = (gi as MeshInstance3D).mesh.get_aabb().size.length()
-		gi.visibility_range_end = clampf(size * 30.0, 55.0, 220.0)
+		gi.visibility_range_end = clampf(size * 30.0, 55.0, far_props)
 		gi.visibility_range_end_margin = 5.0
 		gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 
@@ -288,12 +295,64 @@ func _fit_ui() -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_view()
 	_update_daylight()
 	_check_delivery()
 	_check_road(get_process_delta_time())
 
 
 # --- Небо, солнце, смена дня и ночи ----------------------------------------
+
+## Дальность обзора из настроек: камера, туман, холмы на горизонте.
+func _update_view() -> void:
+	var r := SettingsManager.view_range()
+	var cam := get_viewport().get_camera_3d()
+	if cam and absf(cam.far - r) > 1.0:
+		cam.far = r
+	_fog_base = 1.6 / r
+	if _horizon == null or absf(_horizon_r - r) > 1.0:
+		_build_horizon(r)
+	if cam:
+		_horizon.global_position = Vector3(cam.global_position.x, 0, cam.global_position.z)
+
+
+## Холмы и лес на горизонте: низкий зубчатый вал на 72–97% дальности обзора
+## и земля под ним — за краем района не видно пустоты. Туман их почти
+## растворяет: остаётся синеватый силуэт, как в настоящей дали.
+func _build_horizon(r: float) -> void:
+	if _horizon:
+		_horizon.queue_free()
+	_horizon_r = r
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var n := 160
+	var noise := FastNoiseLite.new()
+	noise.seed = 44
+	noise.frequency = 0.08
+	noise.fractal_octaves = 2
+	var ground := Color(0.3, 0.42, 0.22)
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var d0 := Vector3(cos(a0), 0, sin(a0))
+		var d1 := Vector3(cos(a1), 0, sin(a1))
+		# Высота — по дальности: холмы видны под тем же углом на любой детализации
+		var hk := r / 900.0
+		var h0 := (18.0 + (noise.get_noise_1d(float(i)) * 0.6 + 0.5) * 50.0) * hk
+		var h1 := (18.0 + (noise.get_noise_1d(float((i + 1) % n)) * 0.6 + 0.5) * 50.0) * hk
+		# Земля под валом — чуть ниже настоящей, за краем мира
+		b.quad(d0 * r * 0.55 + Vector3(0, -0.4, 0), d0 * r * 0.72 + Vector3(0, -0.4, 0), d1 * r * 0.72 + Vector3(0, -0.4, 0), d1 * r * 0.55 + Vector3(0, -0.4, 0), ground, true)
+		# Склон к вершине и обратно вниз
+		var t0 := d0 * r * 0.78 + Vector3(0, h0, 0)
+		var t1 := d1 * r * 0.78 + Vector3(0, h1, 0)
+		b.quad(d0 * r * 0.72 + Vector3(0, -0.4, 0), t0, t1, d1 * r * 0.72 + Vector3(0, -0.4, 0), Color(0.16, 0.26, 0.17), true)
+		b.quad(t0, d0 * r * 0.97 + Vector3(0, -2, 0), d1 * r * 0.97 + Vector3(0, -2, 0), t1, Color(0.14, 0.22, 0.15), true)
+	_horizon = b.build_mesh()
+	_horizon.name = "Horizon"
+	_horizon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_horizon.extra_cull_margin = r
+	add_child(_horizon)
+
 
 func _setup_environment() -> void:
 	_sky = ProceduralSkyMaterial.new()
@@ -338,6 +397,8 @@ func _setup_environment() -> void:
 func _apply_detail() -> void:
 	# На низкой детализации — без свечения и рисунка поверхностей
 	_env.glow_enabled = SettingsManager.detail >= 1
+	# Сглаживание краёв (FXAA) — почти даром, на любой детализации
+	get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	_sun.shadow_blur = 1.5
 	var r := SettingsManager.shadow_range()
 	_sun.shadow_enabled = r > 0.0
@@ -365,7 +426,7 @@ func _update_daylight() -> void:
 	var mist := clampf(1.0 - absf(h - 6.2) / 2.6, 0.0, 1.0) * (1.0 - WeatherManager.rain)
 	if WeatherManager.season() == 1:
 		mist *= 1.6
-	_env.fog_density = 0.0025 + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03 + mist * 0.009
+	_env.fog_density = _fog_base + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03 + mist * 0.009
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
 	_sun.visible = day > 0.01
 	# Молния на мгновение заливает всё холодным светом
@@ -379,7 +440,7 @@ func _update_daylight() -> void:
 		_water_mat.set_shader_parameter("sky", Vector3(sky_col.r, sky_col.g, sky_col.b))
 		_water_mat.set_shader_parameter("deep", Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day))
 		_water_mat.set_shader_parameter("ice", clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0))
-	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.detail >= 1 else 0.0)
+	MeshBuilder.set_surface(WeatherManager.wetness, 1.0)
 	if _glow_mat:
 		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 	# Фонари зажигаются в сумерках
