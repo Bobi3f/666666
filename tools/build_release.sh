@@ -42,7 +42,9 @@ if [ "$ONLY" = "all" ]; then
 	echo "== Windows"
 	timeout 300 "$GODOT" --headless --export-release "Windows Desktop" build/win/FirstGear.exe 2>&1 | grep -iE "error" || true
 	if [ -s build/win/FirstGear.exe ]; then
-		(cd build/win && rm -f "$ROOT/releases/FirstGear-Windows.zip" && zip -q -9 "$ROOT/releases/FirstGear-Windows.zip" FirstGear.exe)
+		# Рядом с игрой: окно с ошибками (console.exe), запуск через DirectX и инструкция
+		cp "$ROOT/tools/windows/FirstGear-DirectX.bat" "$ROOT/tools/windows/README-RU.txt" build/win/
+		(cd build/win && rm -f "$ROOT/releases/FirstGear-Windows.zip" && zip -q -9 "$ROOT/releases/FirstGear-Windows.zip" ./*)
 	fi
 	if [ -n "${ANDROID_SDK:-}" ] && [ -n "${ANDROID_KEYSTORE:-}" ]; then
 		echo "== Android"
