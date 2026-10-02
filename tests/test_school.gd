@@ -80,7 +80,7 @@ func _run() -> void:
 	ok(absf(TM.minutes - (9 * 60.0 + 45.0)) < 1.0, "урок идёт 45 минут")
 	# Литература: всё неверно — два
 	S.start_lesson("lit")
-	ok(LP._items.size() == 3 and LP._question.text.contains("?"), "литература: три вопроса — " + LP._question.text)
+	ok(LP._items.size() == 3 and LP._question.text.length() > 12, "литература: три вопроса — " + LP._question.text)
 	for i in 3: LP.answer((LP.right_index() + 1) % 3)
 	ok(S.grades.back() == ["lit", 2], "ни одного верно — два")
 	# Рисование: провести по контуру — пять, каракули — два

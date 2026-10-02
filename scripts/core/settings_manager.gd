@@ -8,6 +8,8 @@ const PATH := "user://settings.cfg"
 
 ## Множитель к базовой чувствительности мыши, 0.2–3.
 var mouse_sens := 1.0
+## Инверсия камеры по вертикали: мышь/палец вверх — смотреть вниз.
+var invert_y := false
 ## Громкость 0–1.
 var volume := 0.8
 ## Громкость фоновой музыки отдельно от звуков.
@@ -62,6 +64,7 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
 		mouse_sens = clampf(float(cfg.get_value("input", "mouse_sens", 1.0)), 0.2, 3.0)
+		invert_y = bool(cfg.get_value("input", "invert_y", false))
 		volume = clampf(float(cfg.get_value("audio", "volume", 0.8)), 0.0, 1.0)
 		music = clampf(float(cfg.get_value("audio", "music", 0.5)), 0.0, 1.0)
 		auto_gearbox = bool(cfg.get_value("driving", "auto_gearbox", true))
@@ -78,6 +81,12 @@ func _ready() -> void:
 func set_mouse_sens(v: float) -> void:
 	mouse_sens = clampf(v, 0.2, 3.0)
 	_save()
+
+
+func set_invert_y(v: bool) -> void:
+	invert_y = v
+	_save()
+	changed.emit()
 
 
 func set_music(v: float) -> void:
@@ -170,6 +179,7 @@ func _apply() -> void:
 func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("input", "mouse_sens", mouse_sens)
+	cfg.set_value("input", "invert_y", invert_y)
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("audio", "music", music)
 	cfg.set_value("driving", "auto_gearbox", auto_gearbox)

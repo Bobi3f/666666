@@ -87,6 +87,7 @@ func _build_minimap() -> void:
 	add_child(_near_vp)
 	_recenter(_player_pos2())
 	_mini = Control.new()
+	_mini.add_to_group("minimap")
 	_mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mini.draw.connect(_draw_mini)
 	add_child(_mini)
@@ -172,6 +173,15 @@ func _draw_mini() -> void:
 			var mp: Vector2 = to_mini.call(v.global_position.x, v.global_position.z)
 			if Rect2(Vector2.ZERO, Vector2(side, side)).has_point(mp):
 				_mini.draw_rect(Rect2(mp - Vector2(3, 3), Vector2(6, 6)), Color(0.95, 0.9, 0.6))
+	# Цель навигатора: ромб, за краем — прижат к краю мини-карты
+	var nav := get_tree().get_first_node_in_group("nav")
+	if nav:
+		var tgt: Vector3 = nav.current()[1]
+		if tgt != Vector3.INF:
+			var tp: Vector2 = to_mini.call(tgt.x, tgt.z)
+			tp = tp.clamp(Vector2(6, 6), Vector2(side - 6, side - 6))
+			_mini.draw_colored_polygon(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0)]), Color(1.0, 0.78, 0.3))
+			_mini.draw_polyline(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0), tp + Vector2(0, -7)]), Color(0.2, 0.15, 0.05), 1.5)
 	# Игрок
 	var at: Vector2 = to_mini.call(pos.x, pos.z)
 	var yaw := _player_yaw()
@@ -525,6 +535,9 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Дискотека", _world.CLUB_TOWN + Vector3(0, 0, -8), Color(0.85, 0.3, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
 		["Вокзал", Vector3(97, 0, 186), Color(0.3, 0.6, 0.9)],
+		["Почта", _world.POST_POS, Color(0.2, 0.4, 0.85)],
+		["Попутчик", _world.HITCH_POS, Color(1.0, 0.8, 0.3)],
+		["Колонка", _world.PUMP_POS, Color(0.3, 0.75, 0.85)],
 		["Рынок", Vector3(64, 0, 144), Color(0.95, 0.55, 0.2)],
 		["Стадион", Vector3(156, 0, 160), Color(0.4, 0.75, 0.35)],
 		["Школа", Vector3(58, 0, 174), Color(0.9, 0.75, 0.6)],

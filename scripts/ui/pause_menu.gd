@@ -143,9 +143,8 @@ var _slot_buttons: Array[Button] = []
 
 func _build_main(box: VBoxContainer) -> void:
 	_resume = _button(box, "Продолжить", _close, true)
-	_continue = _button(box, "Продолжить с сохранения", func() -> void:
-		_close()
-		SaveManager.load_game(), true)
+	# «Продолжить» в главном меню — последнее сохранение, с экраном загрузки
+	_continue = _button(box, "Продолжить", _continue_saved, true)
 	# Три ячейки сохранения: можно вести несколько игр
 	var slots := HBoxContainer.new()
 	slots.add_theme_constant_override("separation", 6)
@@ -186,7 +185,7 @@ func _build_main(box: VBoxContainer) -> void:
 	_button(box, "Сообщить об ошибке", _report_bug)
 	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
 	if not OS.has_feature("web"):
-		_button(box, "Выйти из игры", func() -> void:
+		_button(box, "Выход", func() -> void:
 			SaveManager.autosave()
 			get_tree().quit())
 
@@ -203,6 +202,11 @@ func _report_bug() -> void:
 func _build_settings(box: VBoxContainer) -> void:
 	_slider(box, "Чувствительность камеры" if GameManager.touch_mode else "Чувствительность мыши",
 		0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
+	var inv := CheckButton.new()
+	inv.text = "Инверсия камеры по вертикали"
+	inv.button_pressed = SettingsManager.invert_y
+	inv.toggled.connect(SettingsManager.set_invert_y)
+	box.add_child(inv)
 	_slider(box, "Громкость", 0.0, 1.0, SettingsManager.volume, SettingsManager.set_volume)
 	_slider(box, "Музыка", 0.0, 1.0, SettingsManager.music, SettingsManager.set_music)
 	var detail_label := Label.new()
@@ -370,10 +374,13 @@ func _controls_bbcode() -> String:
 		t += "  A — прыжок / ручник, X — действие / выйти, B — присесть / вид, Y — еда / сигнал\n"
 		t += "  Start — меню, Back — карта, крестовина вверх — журнал, вправо — радио\n"
 	t += h.call("ИГРА")
+	t += "  Путь: мопед «Карпаты» → работы → паспорт и медсправка → права → первая машина\n"
+	t += "  Стрелка под мини-картой ведёт к цели. Работа — где табличка «РАБОТА»: почта (посылки),\n    попутчик у съезда на трассу, заправщик на АЗС\n"
+	t += "  Пить — колонка на деревенской улице (бесплатно) или вода в сельмаге\n"
 	t += "  Задание — слева вверху. У кого просьба — в подсказке «(!)»\n"
 	t += "  Рыбалка: закинь, жди, пока поплавок нырнёт, — и сразу подсекай\n"
 	t += "  Развоз хлеба: вези аккуратно — битый хлеб вычтут, быстро — премия\n"
-	t += "  Автошкола у трассы: змейка, разворот, стоянка — права, развоз дороже\n"
+	t += "  Автошкола у трассы: экзамен на учебных «Жигулях» — змейка, разворот, стоянка. Без прав\n    за руль машины не пустят. «Жигули» соседа (2500) — напротив дома\n"
 	t += "  Колька у съезда из деревни: спор на 200 — доехать до города за 20 с\n"
 	t += "  СТО у трассы: ремонт и тюнинг — резина, мотор, покраска\n"
 	t += "  Город: кафе «Встреча» — горячий обед, «Хозтовары» — телевизор, щенок, теплица\n"
@@ -469,6 +476,9 @@ func _focus_first(node: Node) -> void:
 
 ## Высота меню — по содержимому, но не выше экрана.
 func _fit_height() -> void:
+	# Отложенный вызов мог прийти, когда мир уже сменили («Новая игра»)
+	if not is_inside_tree():
+		return
 	var page := _pages[_page] as Control
 	var need := page.get_combined_minimum_size()
 	var room := get_viewport().get_visible_rect().size.y - (240.0 if _back.visible else 170.0)
@@ -480,7 +490,7 @@ func _refresh() -> void:
 	for i in _slot_buttons.size():
 		_slot_buttons[i].text = "%d: %s" % [i + 1, SaveManager.slot_info(i + 1)]
 		_slot_buttons[i].set_pressed_no_signal(SettingsManager.slot == i + 1)
-	_resume.text = "Начать" if _main_mode and not has else "Продолжить"
+	_resume.text = "Новая игра" if _main_mode and not has else "Продолжить"
 	_continue.visible = _main_mode and has
 	_resume.visible = not (_main_mode and has)
 	_new.visible = not (_main_mode and not has)
@@ -498,7 +508,25 @@ func _close() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-## Новая игра: сбросить деньги, время, потребности, погоду и цели, мир — заново.
+## «Продолжить» из главного меню: экран загрузки на пару кадров, пока
+## сохранение раскладывается по миру, — без рывка и мелькания.
+func _continue_saved() -> void:
+	var screen := LoadingScreen.new()
+	get_tree().root.add_child(screen)
+	screen.set_progress(0.5, "Загружаем сохранение…")
+	_close()
+	get_tree().paused = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	SaveManager.load_game()
+	screen.set_progress(1.0, "Готово")
+	await get_tree().process_frame
+	get_tree().paused = false
+	screen.queue_free()
+
+
+## Новая игра: сбросить деньги, время, потребности, погоду и цели, мир — заново
+## (через экран загрузки).
 func _new_game() -> void:
 	_started = true
 	GameManager.in_game = true
@@ -514,4 +542,4 @@ func _new_game() -> void:
 	get_tree().paused = false
 	if not GameManager.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file("res://scenes/Boot.tscn")

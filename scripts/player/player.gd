@@ -59,6 +59,12 @@ var _arm_tip: Node3D
 var _body: Node3D
 var _body_mesh: MeshInstance3D
 var _walk_phase := 0.0
+## Подсветка того, с чем можно сейчас что-то сделать (E): кольцо на земле
+## и стрелка над ним.
+var _mark: Node3D
+var _mark_ring: MeshInstance3D
+var _mark_arrow: MeshInstance3D
+var _mark_t := 0.0
 
 
 func _ready() -> void:
@@ -112,6 +118,62 @@ func _ready() -> void:
 	floor_max_angle = deg_to_rad(50.0)
 	if not GameManager.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_make_mark()
+
+
+## Янтарное кольцо и стрелка-указатель: светятся сами, видны и ночью.
+func _make_mark() -> void:
+	_mark = Node3D.new()
+	_mark.top_level = true
+	_mark.visible = false
+	add_child(_mark)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.75, 0.25, 0.75)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.no_depth_test = false
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.82
+	torus.outer_radius = 1.0
+	torus.rings = 24
+	torus.ring_segments = 4
+	torus.material = mat
+	_mark_ring = MeshInstance3D.new()
+	_mark_ring.mesh = torus
+	_mark_ring.scale = Vector3(1, 0.05, 1)
+	_mark_ring.position.y = 0.06
+	_mark_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mark.add_child(_mark_ring)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.18
+	cone.bottom_radius = 0.0
+	cone.height = 0.35
+	cone.radial_segments = 4
+	cone.rings = 1
+	cone.material = mat
+	_mark_arrow = MeshInstance3D.new()
+	_mark_arrow.mesh = cone
+	_mark_arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mark.add_child(_mark_arrow)
+
+
+func _process(delta: float) -> void:
+	var z: InteractZone = null if car != null else _nearest_zone()
+	_mark.visible = z != null
+	if z == null:
+		return
+	_mark_t += delta
+	# Размер кольца — по зоне: у машины шире, у прилавка меньше
+	var r := 0.7
+	var cs := z.get_child(0) as CollisionShape3D if z.get_child_count() > 0 else null
+	if cs and cs.shape is BoxShape3D:
+		var sz := (cs.shape as BoxShape3D).size
+		r = clampf(minf(sz.x, sz.z) * 0.45, 0.5, 2.2)
+	var pulse := 1.0 + sin(_mark_t * 4.0) * 0.06
+	_mark.global_position = Vector3(z.global_position.x, z.global_position.y, z.global_position.z)
+	_mark_ring.scale = Vector3(r * pulse, 0.05, r * pulse)
+	_mark_arrow.position.y = 2.3 + sin(_mark_t * 3.0) * 0.12
+	_mark_arrow.rotation.y = _mark_t * 1.5
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -144,6 +206,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _look(yaw: float, pitch: float) -> void:
+	if SettingsManager.invert_y:
+		pitch = -pitch
 	rotate_y(yaw)
 	# Со спины камера не лезет под землю и не смотрит строго вниз
 	var lo := -1.1 if SettingsManager.third_person else -1.45

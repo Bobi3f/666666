@@ -37,7 +37,7 @@ func _run() -> void:
 	ok(menu.is_open() and menu._title.text == "FIRST GEAR" and menu._page == "main", "главное меню при запуске")
 	await pf(3)
 	var f = root.gui_get_focus_owner()
-	ok(f is Button and f.text == "Начать", "фокус на «Начать» — можно играть с клавиатуры и геймпада: %s" % (f.text if f else "нет"))
+	ok(f is Button and f.text == "Новая игра", "фокус на «Новая игра» — можно играть с клавиатуры и геймпада: %s" % (f.text if f else "нет"))
 	menu._close()
 	# Права и «Жигули» — как у игрока, прошедшего автошколу
 	root.get_node("Progress").buy_car("car"); root.get_node("Progress").license = true

@@ -142,6 +142,7 @@ func _ready() -> void:
 	_build_town_center(b, glow)
 	_build_car_salon(b, glow)
 	_build_shops(b)
+	_water_pump(b)
 	_build_country_roads(b)
 	_build_forest(b)
 	_build_autodrome(b)
@@ -228,6 +229,7 @@ func _ready() -> void:
 	fair.name = "Fair"
 	add_child(fair)
 	_build_clubs()
+	_build_jobs()
 	var biz := preload("res://scripts/world/business_spots.gd").new()
 	biz.name = "Business"
 	add_child(biz)
@@ -1190,6 +1192,47 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 		return "E — сдать рыбу: %d шт × %d грн" % [NeedsManager.fish, FISH_PRICE]
 	fish_zone.activated.connect(_sell_fish)
 	add_child(fish_zone)
+	var water_zone := InteractZone.create("", Vector3(1.8, 2.4, 1.8))
+	water_zone.position = xf * Vector3(-3.4, 0, 4.6)
+	water_zone.rotation.y = yaw
+	water_zone.prompt_fn = func() -> String: return "E — бутылка воды (%d грн)" % WATER_PRICE
+	water_zone.activated.connect(_buy_water)
+	add_child(water_zone)
+
+
+const WATER_PRICE := 10
+## Колонка на деревенской улице: попить бесплатно.
+const PUMP_POS := Vector3(-88.0, 0, -36.2)
+
+
+func _buy_water() -> void:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 21.0:
+		GameManager.notify("Сельмаг закрыт. Попить можно из колонки на улице")
+		return
+	if GameManager.spend(WATER_PRICE):
+		NeedsManager.drink(70.0)
+		GameManager.notify("Выпил бутылку воды. Вода %d%%" % int(NeedsManager.water))
+
+
+## Колонка: чугунная тумба с рычагом и носиком, под ней мокрое пятно.
+func _water_pump(b: MeshBuilder) -> void:
+	var p := PUMP_POS
+	var iron := Color(0.25, 0.3, 0.32)
+	b.box(p + Vector3(-0.35, 0, -0.35), p + Vector3(0.35, 0.05, 0.35), Color(0.55, 0.55, 0.53))
+	b.box(p + Vector3(-0.12, 0.05, -0.12), p + Vector3(0.12, 1.35, 0.12), iron, true)
+	b.box(p + Vector3(-0.15, 1.35, -0.15), p + Vector3(0.15, 1.45, 0.15), iron.lightened(0.1))
+	b.box(p + Vector3(-0.04, 0.85, 0.12), p + Vector3(0.04, 0.95, 0.42), iron)
+	b.box(p + Vector3(-0.03, 0.75, 0.38), p + Vector3(0.03, 0.85, 0.44), iron)
+	b.box(p + Vector3(0.12, 1.2, -0.03), p + Vector3(0.75, 1.26, 0.03), iron)
+	b.box(p + Vector3(-0.3, 0.0, 0.25), p + Vector3(0.3, 0.02, 0.8), Color(0.3, 0.32, 0.3))
+	var zone := InteractZone.create("E — попить из колонки", Vector3(2.0, 2.0, 2.0))
+	zone.position = p
+	zone.activated.connect(func() -> void:
+		NeedsManager.drink(100.0)
+		SoundLibrary.play_at("splash", PUMP_POS, -10.0, 1.6)
+		GameManager.notify("Напился холодной воды из колонки. Вода 100%"))
+	add_child(zone)
 
 
 func _sell_fish() -> void:
@@ -1210,7 +1253,8 @@ func _buy_village_food() -> void:
 		return
 	if GameManager.spend(40):
 		NeedsManager.snacks += 1
-		GameManager.notify("Купил хлеб и молоко. Съесть — Q")
+		NeedsManager.drink(25.0)
+		GameManager.notify("Купил хлеб и молоко, молоко выпил сразу. Съесть хлеб — Q")
 
 
 ## Бетонная остановка у трассы: стенка, крыша, лавка, табличка «А».
@@ -2626,7 +2670,8 @@ func _kiosk_use() -> void:
 func _buy_food() -> void:
 	if GameManager.spend(45):
 		NeedsManager.snacks += 1
-		GameManager.notify("Купил батон и кефир. Съесть — Q")
+		NeedsManager.drink(25.0)
+		GameManager.notify("Купил батон и кефир, кефир выпил сразу. Съесть батон — Q")
 
 
 ## Обморок от голода или усталости: просыпаешься дома через 8 часов,
@@ -2727,6 +2772,7 @@ func _block_grass() -> void:
 	v.block(FUEL_POS.x - 9, FUEL_POS.z - 7.5, FUEL_POS.x + 9, FUEL_POS.z + 7.5)
 	v.block(GARAGE_POS.x - 7, GARAGE_POS.z - 5.5, GARAGE_POS.x + 7, GARAGE_POS.z + 6.5)
 	v.block(SHOP_POS.x - 5, SHOP_POS.z - 5, SHOP_POS.x + 3.5, SHOP_POS.z + 5)
+	v.block(PUMP_POS.x - 0.8, PUMP_POS.z - 0.6, PUMP_POS.x + 0.8, PUMP_POS.z + 1.0)
 	v.block(-57, -25, SHOP_POS.x - 4, -23)
 	v.block(BARN_POS.x - 6.5, BARN_POS.z - 4.5, BARN_POS.x + 6.5, BARN_POS.z + 6)
 	v.block(-57, -42.2, BARN_POS.x, -40.8)
@@ -2757,6 +2803,120 @@ func _block_grass() -> void:
 ## Сельский клуб у съезда с трассы и городская дискотека за пятиэтажками.
 const CLUB_VILLAGE := Vector3(-24.0, 0, -20.0)
 const CLUB_TOWN := Vector3(125.0, 0, 118.0)
+
+
+# --- Работы «по точкам» ---------------------------------------------------------
+
+## Окошко почты — в сельсовете, сбоку от входа.
+const POST_POS := Vector3(Civic.COUNCIL.x - 3.6, 0, Civic.COUNCIL.z + 5.4)
+## Попутчик голосует у съезда из Каменки на трассу.
+const HITCH_POS := Vector3(-53.0, 0, -7.2)
+## Куда везти посылки и попутчиков: сельмаги ближних сёл и город.
+var JOB_DESTS: Array:
+	get:
+		var out := []
+		for i in 4:
+			out.append(["сельмаг в селе %s" % Region.VILLAGES[i].name, Region.shop_pos(i) + Vector3(0, 0, 3.5)])
+		out.append(["больница в городе", Civic.HOSPITAL + Vector3(0, 0, 9.0)])
+		out.append(["рынок в городе", Vector3(90.0, 0, 144.0)])
+		out.append(["вокзал", Vector3(97.0, 0, 180.0)])
+		out.append(["площадь в городе", Vector3(103.0, 0, 14.0)])
+		return out
+
+var post_job: RouteJob
+var hitch_job: RouteJob
+var pump_job: RouteJob
+
+
+## Три работы для начала — все на одном RouteJob, отличаются данными:
+## посылки с почты (на мопеде), попутчик до города или села, заправщик на АЗС.
+func _build_jobs() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var route_len := func(start: Vector3, stops: Array) -> float:
+		var sum := 0.0
+		var at := start
+		for s in stops:
+			sum += at.distance_to(s[1])
+			at = s[1]
+		return sum
+	post_job = RouteJob.new()
+	post_job.name = "PostJob"
+	post_job.id = "parcel"
+	post_job.title = "Почта"
+	post_job.describe = "развезти 2 посылки по сёлам и городу"
+	post_job.giver = POST_POS
+	post_job.giver_size = Vector3(1.8, 2.2, 1.8)
+	post_job.verb = "Посылку вручил"
+	post_job.stops_fn = func() -> Array:
+		var d: Array = JOB_DESTS.duplicate()
+		d.shuffle()
+		return [d[0], d[1]]
+	post_job.pay_fn = func(stops: Array) -> int:
+		return int(round((80.0 + route_len.call(POST_POS, stops) * 0.25) / 10.0)) * 10
+	post_job.open_from = 8.0
+	post_job.open_to = 18.0
+	add_child(post_job)
+	_post_office()
+	hitch_job = RouteJob.new()
+	hitch_job.name = "HitchJob"
+	hitch_job.id = "hitch"
+	hitch_job.title = "Попутчик"
+	hitch_job.describe = "подвезти человека, куда скажет"
+	hitch_job.giver = HITCH_POS
+	hitch_job.passenger = true
+	hitch_job.verb = "Приехали"
+	hitch_job.stops_fn = func() -> Array:
+		var d: Array = JOB_DESTS.duplicate()
+		return [d[rng.randi() % d.size()]]
+	hitch_job.pay_fn = func(stops: Array) -> int:
+		return int(round((40.0 + route_len.call(HITCH_POS, stops) * 0.2) / 10.0)) * 10
+	hitch_job.open_from = 7.0
+	hitch_job.open_to = 21.0
+	add_child(hitch_job)
+	pump_job = RouteJob.new()
+	pump_job.name = "PumpJob"
+	pump_job.id = "pump"
+	pump_job.title = "Заправщик на АЗС"
+	pump_job.describe = "обслужить 4 машины у колонок (по 15 мин)"
+	# Сбоку от будки кассира — у колонок подсказка «заправить» не перебивается
+	pump_job.giver = FUEL_POS + Vector3(4.1, 0, 5.8)
+	pump_job.giver_size = Vector3(1.6, 2.2, 1.8)
+	pump_job.mode = "foot"
+	pump_job.radius = 1.6
+	pump_job.minutes_each = 15.0
+	pump_job.verb = "Машину заправил"
+	pump_job.stops_fn = func() -> Array:
+		var c := FUEL_POS
+		return [["колонка слева", c + Vector3(-1.6, 0, -1.3)], ["колонка справа", c + Vector3(1.6, 0, 1.3)],
+			["колонка справа", c + Vector3(1.6, 0, -1.3)], ["колонка слева", c + Vector3(-1.6, 0, 1.3)]]
+	pump_job.pay_fn = func(stops: Array) -> int: return stops.size() * 35
+	pump_job.make_prop = func(p: Vector3) -> Node3D:
+		# Машина клиента у колонки, по ту сторону от заправщика
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		var kinds := ["car", "moskvich", "zaz", "volga", "uaz"]
+		var cols := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3)]
+		VehicleModels.npc(b, kinds[rng.randi() % kinds.size()], cols[rng.randi() % cols.size()])
+		var mi := b.build_mesh()
+		var side := signf(p.z - FUEL_POS.z)
+		mi.position = Vector3(p.x, 0.05, FUEL_POS.z + side * 3.0)
+		mi.rotation.y = PI / 2.0
+		return mi
+	pump_job.open_from = 7.0
+	pump_job.open_to = 21.0
+	add_child(pump_job)
+
+
+## Почта: синий ящик и вывеска у окошка сбоку сельсовета.
+func _post_office() -> void:
+	var b := MeshBuilder.new()
+	var p := POST_POS
+	b.box(p + Vector3(-0.35, 0.9, -0.62), p + Vector3(0.35, 1.5, -0.4), Color(0.15, 0.35, 0.7), true)
+	b.box(p + Vector3(-0.2, 1.35, -0.4), p + Vector3(0.2, 1.38, -0.39), Color(0.1, 0.1, 0.1))
+	b.box(p + Vector3(-0.05, 0, -0.55), p + Vector3(0.05, 0.9, -0.47), Color(0.3, 0.3, 0.32))
+	add_child(b.build_mesh())
+	_label("ПОЧТА", p + Vector3(0, 2.35, -1.95), 0.0, 0.005, Color(0.2, 0.4, 0.8))
 
 
 func _build_clubs() -> void:

@@ -40,6 +40,10 @@ var pedal_reverse := false
 var in_game := false
 ## Строка идущего заезда (экзамен, спор) — показывается первой в задании.
 var challenge_line := ""
+## Куда вести стрелку-навигатор (работа, заезд); Vector3.INF — работы нет,
+## тогда стрелка ведёт по сюжетному заданию (nav_arrow.gd).
+var nav_target := Vector3.INF
+var nav_label := ""
 ## В какой машине сейчас хлеб на развоз (удары и ямы бьют хлеб только в ней).
 var delivery_vehicle: Node = null
 

@@ -1,6 +1,8 @@
 extends Node
-## Потребности: сытость и бодрость, от 0 до 100.
-## Сытость кончается примерно за сутки, бодрость — за 18 часов.
+## Потребности: сытость, бодрость и вода, от 0 до 100.
+## Сытость кончается примерно за сутки, бодрость — за 18 часов, вода —
+## за 30 часов. Жажда ненавязчивая: в обморок от неё не падают, только
+## устают быстрее, пока не попьёшь (колонка на улице — бесплатно).
 
 signal changed
 ## Обморок: от усталости (бодрость 0) или голода (сытость 0 три часа).
@@ -8,9 +10,11 @@ signal fainted(reason: String)
 
 const HUNGER_PER_MIN := 100.0 / (26.0 * 60.0)
 const ENERGY_PER_MIN := 100.0 / (18.0 * 60.0)
+const THIRST_PER_MIN := 100.0 / (30.0 * 60.0)
 
 var food := 80.0
 var energy := 90.0
+var water := 90.0
 ## Еда в запасе (купленная в ларьке). Съесть — клавиша Q.
 var snacks := 1
 ## Пойманная рыба — сдаётся в сельмаг.
@@ -19,6 +23,7 @@ var fish := 0
 var _starving := 0.0
 var _warned_food := false
 var _warned_energy := false
+var _warned_water := false
 
 
 func _ready() -> void:
@@ -27,9 +32,13 @@ func _ready() -> void:
 
 func _on_minutes(m: float) -> void:
 	food = maxf(food - HUNGER_PER_MIN * m, 0.0)
+	water = maxf(water - THIRST_PER_MIN * m, 0.0)
 	_starving = _starving + m if food <= 0.0 else 0.0
-	# Голодный устаёт вдвое быстрее
-	var tire := ENERGY_PER_MIN * (2.0 if food <= 0.0 else 1.0)
+	# Голодный устаёт вдвое быстрее, без воды — в полтора раза
+	var tire := ENERGY_PER_MIN * (2.0 if food <= 0.0 else 1.0) * (1.5 if water <= 0.0 else 1.0)
+	if water < 20.0 and not _warned_water:
+		_warned_water = true
+		GameManager.notify("Хочется пить. Колонка на деревенской улице — бесплатно, вода есть в магазинах")
 	energy = maxf(energy - tire * m, 0.0)
 	if food < 20.0 and not _warned_food:
 		_warned_food = true
@@ -67,6 +76,13 @@ func eat(amount: float) -> void:
 	changed.emit()
 
 
+func drink(amount: float) -> void:
+	water = minf(water + amount, 100.0)
+	if water >= 20.0:
+		_warned_water = false
+	changed.emit()
+
+
 func rest(amount: float) -> void:
 	energy = clampf(energy + amount, 0.0, 100.0)
 	if energy >= 15.0:
@@ -80,12 +96,14 @@ func walk_factor() -> float:
 
 
 func save_state() -> Dictionary:
-	return {"food": food, "energy": energy, "snacks": snacks, "fish": fish}
+	return {"food": food, "energy": energy, "water": water, "snacks": snacks, "fish": fish}
 
 
 func load_state(d: Dictionary) -> void:
 	food = float(d.get("food", 80.0))
 	energy = float(d.get("energy", 90.0))
+	water = float(d.get("water", 90.0))
+	_warned_water = water < 20.0
 	snacks = int(d.get("snacks", 1))
 	fish = int(d.get("fish", 0))
 	_warned_food = food < 20.0

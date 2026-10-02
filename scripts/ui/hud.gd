@@ -5,6 +5,8 @@ extends CanvasLayer
 var _top: Label
 var _food_pct: Label
 var _energy_pct: Label
+var _water_pct: Label
+var _water_bar: ProgressBar
 var _snacks: Label
 var _food_bar: ProgressBar
 var _energy_bar: ProgressBar
@@ -19,11 +21,15 @@ const MSG_TIME := 4.0
 const MSG_MIN := 2.2
 var _goal: Label
 var _keys_hint: Label
+## Стрелка-навигатор к цели задания.
+var nav: Control
 
 
 func _ready() -> void:
 	layer = 10
 	add_child(preload("res://scripts/ui/speedometer.gd").new())
+	nav = preload("res://scripts/ui/nav_arrow.gd").new()
+	add_child(nav)
 	_top = _label(Vector2(16, 12), 20)
 	_label(Vector2(16, 42), 17).text = "Сытость"
 	_food_bar = _bar_node(Vector2(100, 49), Color(0.85, 0.6, 0.2))
@@ -31,7 +37,11 @@ func _ready() -> void:
 	_label(Vector2(300, 42), 17).text = "Бодрость"
 	_energy_bar = _bar_node(Vector2(392, 49), Color(0.35, 0.65, 0.95))
 	_energy_pct = _label(Vector2(530, 42), 17)
-	_snacks = _label(Vector2(600, 42), 17)
+	_label(Vector2(592, 42), 17).text = "Вода"
+	_water_bar = _bar_node(Vector2(642, 49), Color(0.3, 0.75, 0.85))
+	_water_bar.size.x = 90.0
+	_water_pct = _label(Vector2(738, 42), 17)
+	_snacks = _label(Vector2(800, 42), 17)
 	_car = _label(Vector2(16, 0), 22)
 	_car.anchor_top = 1.0
 	_car.anchor_bottom = 1.0
@@ -54,6 +64,8 @@ func _ready() -> void:
 	_msg.offset_left = -400
 	_msg.offset_right = 400
 	_msg.offset_top = 150
+	# Длинные сообщения — в две строки, а не за край экрана
+	_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_goal = _label(Vector2(16, 70), 16)
 	_goal.modulate = Color(1.0, 0.92, 0.6)
 	# Длинные строки заданий переносятся, а не уходят под кнопки справа
@@ -133,6 +145,10 @@ func show_message(text: String) -> void:
 
 func _process(delta: float) -> void:
 	_top.text = "%s     %d грн     %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
+	# На телефоне справа кнопки — запас еды пишем в верхней строке
+	if GameManager.touch_mode:
+		_top.text += "     еды в запасе: %d" % NeedsManager.snacks
+	_snacks.visible = not GameManager.touch_mode
 	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
 	var lines: Array[String] = []
 	if GameManager.challenge_line != "":
@@ -158,7 +174,9 @@ func _process(delta: float) -> void:
 	_energy_bar.value = NeedsManager.energy
 	_food_pct.text = "%d%%" % int(NeedsManager.food)
 	_energy_pct.text = "%d%%" % int(NeedsManager.energy)
-	_snacks.text = "Еда в запасе: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еда в запасе: %d (Q)" % NeedsManager.snacks
+	_water_bar.value = NeedsManager.water
+	_water_pct.text = "%d%%" % int(NeedsManager.water)
+	_snacks.text = "Еды: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еды: %d (Q)" % NeedsManager.snacks
 	var car := GameManager.vehicle as Vehicle
 	var p := GameManager.player as Player
 	if car and car.driver:

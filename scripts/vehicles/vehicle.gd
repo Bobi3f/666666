@@ -30,6 +30,9 @@ const FUEL_LOAD := 0.05
 ## Насколько быстрее шины гасят скольжение вбок, чем в «честной» модели:
 ## с кнопками руля без этого машину на грунте разворачивает поперёк.
 const SIDE_GRIP := 2.2
+## С какого удара (м/с потерянной скорости, ~16 км/ч) машина получает
+## повреждения; слабее — только звук.
+const DAMAGE_HIT := 4.5
 
 const SPECS := {
 	"car": {
@@ -767,7 +770,10 @@ func _move(dt: float, handbrake: bool) -> void:
 			GameManager.vibrate(int(clampf(hit * 25.0, 60.0, 300.0)))
 		if self == GameManager.delivery_vehicle:
 			Progress.damage_bread(hit * 2.5)
-		_wear(hit * (2.0 if spec.roof else 3.0))
+		# Лёгкий толчок (до ~16 км/ч потерянной скорости) — только звук;
+		# ломается машина от сильных ударов
+		if hit > DAMAGE_HIT:
+			_wear((hit - DAMAGE_HIT * 0.5) * (2.0 if spec.roof else 3.0))
 		if driver:
 			if spec.two_wheels and hit > 6.0:
 				# С мотоцикла на такой скорости вылетаешь
@@ -779,8 +785,8 @@ func _move(dt: float, handbrake: bool) -> void:
 				_drop_driver()
 				p.velocity = Vector3.ZERO
 				NeedsManager.rest(-10.0)
-				GameManager.notify("Упал с мотоцикла! Ява: %d%%" % int(condition))
-			else:
+				GameManager.notify("Упал! %s: %d%%" % [spec.title, int(condition)])
+			elif hit > DAMAGE_HIT:
 				GameManager.notify("Бах! %s: %d%%" % [spec.title, int(condition)])
 
 

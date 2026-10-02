@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="FIRST GEAR"
-run/main_scene="res://scenes/World.tscn"
+run/main_scene="res://scenes/Boot.tscn"
 config/icon="res://icon.png"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 

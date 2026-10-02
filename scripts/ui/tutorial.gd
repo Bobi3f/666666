@@ -15,6 +15,10 @@ var _skip: Button
 var _yaw0 := 0.0
 var _turned := 0.0
 var _done_timer := 0.0
+## Карточка с целью игры — первой, до шагов обучения.
+var _card: PanelContainer
+
+const GOAL_TEXT := "Каменка. У тебя старый мопед «Карпаты» и 1500 грн.\n\nЦель — первая своя машина:\n1. Подработай: почта, склад, колхоз, АЗС.\n2. Сделай паспорт и медсправку, сдай на права.\n3. Купи «Жигули» у соседа и езжай дальше!"
 
 
 func _ready() -> void:
@@ -52,6 +56,68 @@ func _ready() -> void:
 	_text.add_theme_font_size_override("font_size", 18)
 	box.add_child(_text)
 	_show_step()
+	_build_card()
+
+
+## Карточка цели посреди экрана: что за игра и к чему идти. «Поехали!» — закрыть.
+func _build_card() -> void:
+	# Свой слой — выше кнопок телефона, но ниже меню паузы
+	var layer_node := CanvasLayer.new()
+	layer_node.layer = 30
+	add_child(layer_node)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer_node.add_child(center)
+	_card = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.11, 0.12, 0.94)
+	style.border_color = Color(0.95, 0.7, 0.24)
+	style.set_border_width_all(2)
+	style.set_content_margin_all(18)
+	style.set_corner_radius_all(10)
+	_card.add_theme_stylebox_override("panel", style)
+	center.add_child(_card)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	_card.add_child(box)
+	var head := Label.new()
+	head.text = "FIRST GEAR — первая передача"
+	head.add_theme_color_override("font_color", Color(0.95, 0.7, 0.24))
+	head.add_theme_font_size_override("font_size", 22)
+	box.add_child(head)
+	var body := Label.new()
+	body.text = GOAL_TEXT
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(440, 0)
+	body.add_theme_font_size_override("font_size", 18)
+	box.add_child(body)
+	var go := Button.new()
+	go.text = "Поехали!"
+	go.custom_minimum_size = Vector2(0, 52)
+	go.add_theme_font_size_override("font_size", 20)
+	var gs := StyleBoxFlat.new()
+	gs.bg_color = Color(0.95, 0.7, 0.24)
+	gs.set_corner_radius_all(8)
+	go.add_theme_stylebox_override("normal", gs)
+	go.add_theme_stylebox_override("hover", gs)
+	go.add_theme_stylebox_override("pressed", gs)
+	go.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
+	go.add_theme_color_override("font_hover_color", Color(0.1, 0.1, 0.1))
+	go.pressed.connect(close_card)
+	box.add_child(go)
+	_panel.visible = false
+
+
+func close_card() -> void:
+	if _card:
+		_card.get_parent().get_parent().queue_free()
+		_card = null
+		_panel.visible = true
+		SoundLibrary.play("click", -4.0, 1.2)
+		var p := GameManager.player as Node3D
+		if p:
+			_yaw0 = p.rotation.y
 
 
 func _touch() -> bool:
@@ -95,6 +161,8 @@ func _finish() -> void:
 func _process(delta: float) -> void:
 	if Progress.tutorial_done:
 		queue_free()
+		return
+	if _card:
 		return
 	_place()
 	var p := GameManager.player as Player
