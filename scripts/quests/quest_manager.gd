@@ -16,17 +16,23 @@ signal victory
 ## Любое событие игры — для ежедневных поручений.
 signal fired(name: String, amount: float)
 
-const MAIN := ["m_morning", "m_money", "m_wheels", "m_neighbours", "m_house", "m_master"]
+## Главный путь: мопед → первые работы → права → первая машина → дом.
+const MAIN := ["m_morning", "m_wheels", "m_money", "m_license", "m_car", "m_neighbours", "m_house", "m_master"]
 
 const QUESTS := {
 	"m_morning": {"title": "Первое утро", "main": true, "steps": [
 		{"text": "Позавтракай — съешь что-нибудь из запаса (Q)", "event": "ate", "count": 1},
 		{"text": "Выйди во двор и открой карту (M)", "event": "map", "count": 1}]},
-	"m_money": {"title": "Первые деньги", "main": true, "steps": [
-		{"text": "Заработай 800 грн: склад, колхоз, рыбалка, развоз", "event": "earned", "count": 800}]},
-	"m_wheels": {"title": "На колёсах", "main": true, "steps": [
-		{"text": "Прокатись на Жигулях или Яве 500 м", "event": "drive_m", "count": 500},
+	"m_wheels": {"title": "Старый мопед", "main": true, "steps": [
+		{"text": "Прокатись на мопеде «Карпаты» 500 м (он у калитки)", "event": "drive_m", "count": 500},
 		{"text": "Заправься на АЗС у трассы", "event": "refuel", "count": 1}]},
+	"m_money": {"title": "Первые деньги", "main": true, "steps": [
+		{"text": "Заработай 800 грн: посылки на почте, склад, колхоз, АЗС, рыбалка", "event": "earned", "count": 800}]},
+	"m_license": {"title": "Права", "main": true, "steps": [
+		{"text": "Получи паспорт в сельсовете и медсправку в больнице", "event": "med_ok", "count": 1},
+		{"text": "Сдай на права в автошколе у трассы (на учебных «Жигулях»)", "event": "license", "count": 1}]},
+	"m_car": {"title": "Первая машина", "main": true, "reward": 300, "steps": [
+		{"text": "Купи первую машину: соседские «Жигули» напротив дома или в автосалоне", "event": "car_bought", "count": 1}]},
 	"m_neighbours": {"title": "Свой среди своих", "main": true, "steps": [
 		{"text": "Выполни две просьбы жителей (поговори с ними — E)", "event": "side_done", "count": 2}]},
 	"m_house": {"title": "Новый дом", "main": true, "reward": 1000, "steps": [
@@ -194,6 +200,9 @@ func _advance(id: String) -> void:
 func _on_step_start(id: String) -> void:
 	if id == "s_olya" and quests[id].step == 0:
 		items["letters"] = 3
+	# Документы уже есть — сразу к экзамену
+	if id == "m_license" and quests[id].step == 0 and Progress.has_doc("med"):
+		_advance.call_deferred(id)
 
 
 func _complete(id: String) -> void:
@@ -222,10 +231,22 @@ func _complete(id: String) -> void:
 		# Если условие уже выполнено раньше (дом построен до задания) — засчитываем
 		if (next == "m_house" and Progress.house_level >= 1) or (next == "m_master" and Progress.house_level >= 2):
 			_advance.call_deferred(next)
+		elif (next == "m_license" and Progress.license) or (next == "m_car" and _owns_car()):
+			_complete.call_deferred(next)
+		else:
+			_on_step_start(next)
 	elif id == MAIN[-1]:
 		won = true
 		victory.emit()
 	changed.emit()
+
+
+## Есть ли своя машина (не мопед и не мотоцикл).
+func _owns_car() -> bool:
+	for k in ["car", "niva", "volga", "truck"]:
+		if Progress.owns(k):
+			return true
+	return false
 
 
 # --- Для интерфейса --------------------------------------------------------

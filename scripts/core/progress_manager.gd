@@ -302,7 +302,7 @@ func categories_text() -> String:
 
 
 func save_state() -> Dictionary:
-	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "path2": true,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days}
 
 
@@ -321,6 +321,15 @@ func load_state(d: Dictionary) -> void:
 	race_day = int(d.get("race_day", 0))
 	home_items = (d.get("home", []) as Array).duplicate()
 	owned_cars = (d.get("cars", []) as Array).duplicate()
+	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
+	# он на них без прав — так и остаётся, ничего не отбираем
+	if not d.is_empty() and not d.has("path2"):
+		for k in ["car", "moto"]:
+			if not owned_cars.has(k):
+				owned_cars.append(k)
+		license = true
+		if not categories.has("A"):
+			categories.append("A")
 	home_changed.emit()
 	planted = bool(d.get("planted", false))
 	planted_at = float(d.get("planted_at", 0.0))

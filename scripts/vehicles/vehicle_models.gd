@@ -603,3 +603,49 @@ static func npc(b: MeshBuilder, kind: String, paint: Color) -> void:
 		b.xf = saved * Transform3D(Basis.IDENTITY, p)
 		car_wheel(b, r, w)
 		b.xf = saved
+
+
+## Мопед «Карпаты»: открытая рама «под юбку», бачок между коленями,
+## узкое седло, вилка с круглой фарой, багажник сзади, педали.
+static func moped(b: MeshBuilder, paint: Color) -> void:
+	var dark := Color(0.08, 0.08, 0.09)
+	var chrome := Color(0.8, 0.8, 0.82)
+	var engine := Color(0.45, 0.45, 0.47)
+	# Рама: рулевая колонка, наклонная труба вниз, хребет назад
+	b.box(Vector3(-0.03, 0.55, -0.6), Vector3(0.03, 0.98, -0.52), paint)
+	var saved := b.xf
+	b.xf = saved * Transform3D(Basis(Vector3.RIGHT, 0.75), Vector3(0, 0.48, -0.36))
+	b.box(Vector3(-0.035, -0.04, -0.3), Vector3(0.035, 0.04, 0.3), paint)
+	b.xf = saved
+	b.box(Vector3(-0.035, 0.3, -0.18), Vector3(0.035, 0.38, 0.62), paint)
+	b.box(Vector3(-0.03, 0.38, 0.12), Vector3(0.03, 0.8, 0.18), paint)
+	# Бачок и мотор с цилиндром
+	b.box(Vector3(-0.12, 0.42, -0.3), Vector3(0.12, 0.6, -0.08), paint.lightened(0.15))
+	b.box(Vector3(-0.05, 0.6, -0.24), Vector3(0.05, 0.63, -0.16), chrome)
+	b.box(Vector3(-0.14, 0.14, -0.15), Vector3(0.14, 0.34, 0.15), engine)
+	for i in 4:
+		b.box(Vector3(-0.1, 0.34 + i * 0.025, -0.12), Vector3(0.1, 0.35 + i * 0.025, 0.02), engine.lightened(0.15))
+	# Глушитель
+	b.box(Vector3(0.12, 0.18, -0.05), Vector3(0.18, 0.24, 0.62), chrome.darkened(0.15))
+	# Седло и багажник
+	b.box(Vector3(-0.13, 0.8, 0.05), Vector3(0.13, 0.88, 0.45), Color(0.12, 0.1, 0.09))
+	b.box(Vector3(-0.12, 0.72, 0.48), Vector3(0.12, 0.75, 0.78), dark)
+	for x in [-0.12, 0.1]:
+		b.box(Vector3(x, 0.32, 0.6), Vector3(x + 0.02, 0.74, 0.62), dark)
+	# Вилка, руль, фара, спидометр
+	for x in [-0.07, 0.05]:
+		b.box(Vector3(x, 0.28, -0.66), Vector3(x + 0.02, 0.96, -0.62), chrome)
+	b.box(Vector3(-0.33, 0.98, -0.6), Vector3(0.33, 1.01, -0.56), chrome)
+	for x in [-0.36, 0.27]:
+		b.box(Vector3(x, 0.97, -0.61), Vector3(x + 0.09, 1.02, -0.55), dark)
+	b.box(Vector3(-0.09, 0.8, -0.74), Vector3(0.09, 0.95, -0.62), chrome)
+	b.box(Vector3(-0.07, 0.82, -0.75), Vector3(0.07, 0.93, -0.74), Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-0.04, 0.95, -0.66), Vector3(0.04, 1.0, -0.6), dark)
+	# Крылья
+	b.box(Vector3(-0.07, 0.56, -0.86), Vector3(0.07, 0.6, -0.4), paint)
+	b.box(Vector3(-0.07, 0.56, 0.32), Vector3(0.07, 0.6, 0.82), paint)
+	b.box(Vector3(-0.08, 0.42, 0.78), Vector3(0.08, 0.56, 0.8), Color(0.92, 0.92, 0.9))
+	# Педали на шатунах
+	for s in [-1.0, 1.0]:
+		b.box(Vector3(s * 0.16 - 0.03, 0.2, -0.02), Vector3(s * 0.16 + 0.03, 0.24, 0.12), dark)
+		b.box(Vector3(s * 0.2 - 0.05, 0.2, 0.08), Vector3(s * 0.2 + 0.05, 0.23, 0.16), dark)

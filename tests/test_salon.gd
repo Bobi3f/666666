@@ -51,7 +51,8 @@ func _run() -> void:
 	var N = W.get_node("Niva"); var V = W.get_node("Volga"); var T = W.get_node("Truck")
 
 	print("== Автосалон")
-	ok(not N.owned() and not V.owned() and not T.owned() and C.owned(), "в салоне три машины, свои — только Жигули")
+	ok(not N.owned() and not V.owned() and not T.owned() and not C.owned() and W.get_node("Moped").owned(), "в салоне три машины, «Жигули» у дома продаются, свой — мопед")
+	root.get_node("Progress").buy_car("car"); root.get_node("Progress").license = true
 	ok(N._zone.text().contains("22000") and T._zone.text().contains("грузовик"), "подсказка с ценой: " + N._zone.text())
 	GM.money = 1000
 	P.global_position = N.global_position + Vector3(2.2, 0.2, 0)

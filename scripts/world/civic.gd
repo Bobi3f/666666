@@ -202,6 +202,7 @@ func _med() -> void:
 		return
 	TimeManager.advance(120.0)
 	Progress.add_doc("med")
+	QuestManager.event("med_ok")
 	SoundLibrary.play("quest", -2.0, 1.1)
 	QuestManager.event("document")
 	GameManager.notify("Окулист, терапевт, хирург — годен! Медсправка есть: теперь в автошколу на любую категорию")

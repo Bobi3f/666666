@@ -36,6 +36,8 @@ func _run() -> void:
 		if c.get_script() and c.get_script().resource_path.ends_with("pause_menu.gd"): c._close()
 		if c.get_script() and c.get_script().resource_path.ends_with("touch_controls.gd"): tc = c
 		if c.get_script() and c.get_script().resource_path.ends_with("traffic.gd"): c.set_physics_process(false)
+	# Права и «Жигули» — как у игрока, прошедшего автошколу
+	root.get_node("Progress").buy_car("car"); root.get_node("Progress").license = true
 	ok(tc != null and GM.touch_mode, "сенсорное управление включено")
 	var P = W.get_node("Player"); var C = W.get_node("Car")
 	P.global_position = Vector3(-110, 0.2, -40); P.rotation.y = PI / 2.0

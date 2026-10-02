@@ -12,6 +12,8 @@ const BOARD := Vector3(-11.0, 0, -17.5)
 ## Где стоят учебные машины — за полевой дорогой, в стороне от автодрома
 const TRUCK_SPOT := Vector3(-15.0, 0.1, -50.0)
 const BUS_SPOT := Vector3(-15.0, 0.1, -65.0)
+## Учебные «Жигули» — экзамен на права (категория B) сдают на них.
+const CAR_SPOT := Vector3(-15.0, 0.1, -29.0)
 ## [категория, на чём, цена, kind машины]
 const CATS := [
 	["A", "мотоцикл", 200, "moto"],
@@ -23,6 +25,7 @@ const BUS_STOP := Vector3(32.0, 0, 13.0)
 
 var truck: Vehicle
 var bus: Vehicle
+var car: Vehicle
 ## Какая категория сейчас сдаётся ("" — никакая)
 var exam_cat := ""
 var _exams := {}
@@ -69,6 +72,11 @@ func _ready() -> void:
 		_exams[cat[0]] = ex
 	truck = _school_vehicle("truck", TRUCK_SPOT, "SchoolTruck")
 	bus = _school_vehicle("bus", BUS_SPOT, "SchoolBus")
+	car = _school_vehicle("car", CAR_SPOT, "SchoolCar")
+	# На учебных «Жигулях» — только экзамен на права (он в world.gd)
+	car.allowed = func() -> bool:
+		var ex = get_parent().get("_exam")
+		return ex != null and (ex as DrivingChallenge).active()
 	var shift := InteractZone.create("", Vector3(3.0, 2.2, 2.0))
 	shift.position = BUS_STOP + Vector3(-5.0, 0, 0)
 	shift.prompt_fn = _bus_prompt
@@ -116,6 +124,7 @@ func _start(i: int) -> void:
 	if not GameManager.spend(int(cat[2])):
 		return
 	exam_cat = cat[0]
+	Vehicle.exam_category = exam_cat
 	(_exams[exam_cat] as DrivingChallenge).arm()
 	var on := "на своей «Яве»" if cat[3] == "moto" else "на учебном «%s» у края автодрома" % Vehicle.SPECS[cat[3]].title
 	GameManager.notify("Инструктор: «Категория %s. Заезжай %s на старт — жёлтый круг. Конусы не сбивай»" % [cat[0], on])
@@ -124,6 +133,7 @@ func _start(i: int) -> void:
 func _result(i: int, r: Dictionary) -> void:
 	var cat: Array = CATS[i]
 	exam_cat = ""
+	Vehicle.exam_category = ""
 	if r.ok:
 		Progress.add_category(cat[0])
 		SoundLibrary.play("quest")
@@ -137,6 +147,11 @@ func _result(i: int, r: Dictionary) -> void:
 		get_tree().create_timer(4.0).timeout.connect(func() -> void: _park(v))
 
 
+## Учебные «Жигули» — на место после экзамена на права.
+func park_school_car() -> void:
+	get_tree().create_timer(4.0).timeout.connect(func() -> void: _park(car))
+
+
 ## Вернуть учебную машину на её место (если из неё вышли).
 func _park(v: Vehicle) -> void:
 	if v.driver != null:
@@ -146,7 +161,7 @@ func _park(v: Vehicle) -> void:
 			return
 	v.speed = 0.0
 	v.velocity = Vector3.ZERO
-	v.global_position = TRUCK_SPOT if v == truck else BUS_SPOT
+	v.global_position = TRUCK_SPOT if v == truck else (BUS_SPOT if v == bus else CAR_SPOT)
 	v.rotation = Vector3.ZERO
 	v.condition = 100.0
 	v.fuel = float(v.spec.tank)
@@ -154,7 +169,7 @@ func _park(v: Vehicle) -> void:
 
 func _process(_delta: float) -> void:
 	# Без экзамена на учебной машине не покатаешься — инструктор высадит
-	for v in [truck, bus]:
+	for v in [truck, bus, car]:
 		var veh: Vehicle = v
 		if veh.driver != null and not (veh.allowed.call() as bool):
 			GameManager.notify("Инструктор: «Учебная машина — только на экзамене!»")

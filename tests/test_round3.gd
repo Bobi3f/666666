@@ -55,6 +55,8 @@ func _run() -> void:
 	GM.message.connect(func(t): msgs.append(t))
 	var P = W.get_node("Player"); var C = W.get_node("Car")
 	child("pause_menu.gd")._close()
+	# «Жигули» свои (за руль тест сажает сам, без проверки прав)
+	root.get_node("Progress").buy_car("car")
 	WM.set_kind(0, 9999.0)
 
 	print("== Огород")

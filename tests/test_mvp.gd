@@ -90,43 +90,62 @@ func _run() -> void:
 	ok(QM.quests.m_morning.step == 1, "поел (Q) — следующий шаг")
 	await tap(KEY_M)
 	await tap(KEY_M)
-	ok(state("m_morning") == 2 and state("m_money") == 1, "открыл карту — задание выполнено, дальше «Первые деньги»")
+	ok(state("m_morning") == 2 and state("m_wheels") == 1, "открыл карту — задание выполнено, дальше «Старый мопед»")
 
-	print("== Сюжет 2: Первые деньги")
-	TM.minutes = 8 * 60.0; NM.energy = 100.0; NM.food = 90.0
-	W.kolkhoz_job.simulate_all()
-	TM.minutes = 12 * 60.0; NM.energy = 100.0
-	W.kolkhoz_job.simulate_all()
-	ok(state("m_money") == 2 and state("m_wheels") == 1, "две смены в колхозе (800) — «На колёсах»")
-
-	print("== Сюжет 3: На колёсах")
-	C.global_position = Vector3(-195, 0.1, 2.0); C.rotation.y = -PI / 2.0; C.fuel = 20.0
-	C.speed = 0.0; C.velocity = Vector3.ZERO
+	print("== Сюжет 2: Старый мопед")
+	var M = W.get_node("Moped")
+	M.global_position = Vector3(-195, 0.1, 2.0); M.rotation.y = -PI / 2.0; M.fuel = 5.0
+	M.speed = 0.0; M.velocity = Vector3.ZERO
 	await frames(3)
-	C._on_enter()
+	M._on_enter()
 	key(KEY_W, true)
-	for i in 60 * 25:
+	for i in 60 * 30:
 		await physics_frame
 		if QM.quests.m_wheels.step == 1:
 			break
 	key(KEY_W, false)
 	var driven: float = QM.stats.km * 1000.0
-	ok(driven > 300.0, "реальная езда засчитывается: %.0f м (до края мира ~390 м)" % driven)
+	ok(driven > 300.0, "реальная езда на мопеде засчитывается: %.0f м" % driven)
 	if QM.quests.m_wheels.step == 0:
 		QM.event("drive_m", 500.0 - QM.quests.m_wheels.n + 1.0)
 	ok(QM.quests.m_wheels.step == 1, "500 м набрано — следующий шаг: заправка")
 	key(KEY_S, true)
 	for i in 400:
 		await physics_frame
-		if C.speed_kmh() < 1.0:
+		if M.speed_kmh() < 1.0:
 			break
 	key(KEY_S, false)
-	C.exit_car()
-	C.global_position = Vector3(-110, 0.1, 9.0); C.speed = 0.0; C.velocity = Vector3.ZERO
+	M.exit_car()
+	M.global_position = Vector3(-110, 0.1, 9.0); M.speed = 0.0; M.velocity = Vector3.ZERO
 	await frames(3)
 	GM.money = 2000
 	zone_with("заправить").activate()
-	ok(state("m_wheels") == 2 and state("m_neighbours") == 1, "заправился — «Свой среди своих»")
+	ok(state("m_wheels") == 2 and state("m_money") == 1, "заправил мопед — «Первые деньги»")
+
+	print("== Сюжет 3: Первые деньги")
+	TM.minutes = 8 * 60.0; NM.energy = 100.0; NM.food = 90.0
+	W.kolkhoz_job.simulate_all()
+	TM.minutes = 12 * 60.0; NM.energy = 100.0
+	W.kolkhoz_job.simulate_all()
+	ok(state("m_money") == 2 and state("m_license") == 1, "две смены в колхозе (800) — «Права»")
+
+	print("== Сюжет 4: Права")
+	PR.add_doc("passport")
+	PR.add_doc("med")
+	QM.event("med_ok")
+	ok(QM.quests.m_license.step == 1, "документы есть — шаг «сдай экзамен»")
+	W._exam_result({"ok": true, "time": 70.0, "cones": 0})
+	ok(PR.license and state("m_license") == 2 and state("m_car") == 1, "сдал на права — «Первая машина»")
+
+	print("== Сюжет 5: Первая машина")
+	P.global_position = C.global_position + Vector3(0, 0.1, 2.5)
+	await frames(3)
+	GM.money = 3000
+	zone_with("купить «Жигули»").activate()
+	await frames(2)
+	ok(C.owned() and state("m_car") == 2 and state("m_neighbours") == 1, "купил «Жигули» — «Свой среди своих»")
+	P.global_position = Vector3(-60, 0.2, -30)
+	await frames(2)
 
 	print("== Просьбы жителей")
 	# Баба Галя: рыба
@@ -187,7 +206,7 @@ func _run() -> void:
 	NM.snacks = 3
 	talk("Дед Михалыч")
 	ok(state("s_mikhalych") == 2 and NM.snacks == 0, "дед получил картошку")
-	ok(QM.stats.quests == 10, "выполнено заданий: %d" % QM.stats.quests)
+	ok(QM.stats.quests == 12, "выполнено заданий: %d" % QM.stats.quests)
 
 	print("== Журнал")
 	await tap(KEY_J)

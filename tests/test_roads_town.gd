@@ -60,6 +60,8 @@ func _run() -> void:
 		# Светофор держим зелёным: иначе штраф за красный зависит от случайного времени
 		if c.get_script() and c.get_script().resource_path.ends_with("street_life.gd"): c.set_physics_process(false)
 		if c.get_script() and c.get_script().resource_path.ends_with("tutorial.gd"): c._finish()
+	# Права и «Жигули» — как у игрока, прошедшего автошколу
+	root.get_node("Progress").buy_car("car"); root.get_node("Progress").license = true
 	WM.set_kind(0, 9999.0)
 	TM.minutes = 11 * 60.0
 	NM.food = 100.0; NM.energy = 100.0

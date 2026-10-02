@@ -2312,7 +2312,7 @@ func _exam_prompt() -> String:
 	if Progress.license:
 		return "Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»" % EXAM_PRICE if not _exam.active() else ""
 	if _exam.active():
-		return "Инструктор: «Садись в Жигули и заезжай на старт — жёлтый круг»"
+		return "Инструктор: «Садись в учебные «Жигули» у края автодрома и заезжай на старт — жёлтый круг»"
 	if not Progress.has_doc("passport") or not Progress.has_doc("med"):
 		return "Инструктор: «На права нужны паспорт (сельсовет) и медсправка (больница)»"
 	return "E — сдать на права: змейка, разворот, стоянка (%d грн)" % EXAM_PRICE
@@ -2325,17 +2325,20 @@ func _exam_start() -> void:
 	if _exam.active() or not GameManager.spend(EXAM_PRICE):
 		return
 	_exam.arm()
-	GameManager.notify("Инструктор: «Жигули — на старт, жёлтый круг у въезда. Конусы не сбивай, в конце — встань в разметку «P»»")
+	GameManager.notify("Инструктор: «Учебные «Жигули» — у края автодрома. На старт — жёлтый круг у въезда. Конусы не сбивай, в конце — встань в разметку «P»»")
 
 
 func _exam_result(r: Dictionary) -> void:
+	var school := get_node_or_null("AutoSchool")
+	if school:
+		school.park_school_car()
 	if r.ok:
 		var first := not Progress.license
 		Progress.license = true
 		SoundLibrary.play("quest")
 		QuestManager.event("license")
 		if first:
-			GameManager.notify("Сдал за %d с! Права в кармане — за развоз хлеба теперь платят на %d грн больше" % [int(r.time), Progress.LICENSE_BONUS])
+			GameManager.notify("Сдал за %d с! Права в кармане. Теперь — первая машина: соседские «Жигули» продаются напротив дома" % int(r.time))
 		else:
 			GameManager.notify("Чисто прошёл за %d с, конусов сбито: %d" % [int(r.time), int(r.cones)])
 	else:
@@ -2788,18 +2791,37 @@ func _build_clubs() -> void:
 
 # --- Игрок и машина ---------------------------------------------------------
 
+## Где стоит мопед игрока в начале: у калитки, носом вдоль улицы.
+const MOPED_SPOT := Vector3(PLAYER_HOUSE.x - 1.2, 0, -41.3)
+## Первая машина: соседские «Жигули» и «Ява» — продаются.
+const CAR_PRICE := 2500
+const MOTO_PRICE := 1800
+
+
 func _spawn_player_and_car() -> void:
 	var player := Player.new()
 	player.name = "Player"
 	add_child(player)
 	# На дорожке у калитки, лицом к улице: первым делом видно деревню
-	# и свои «Жигули» — хочется сразу пойти и посмотреть
+	# и свой старый мопед у калитки — с него всё и начинается
 	player.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 10.0)
-	var to_car := Vector3(PLAYER_HOUSE.x + 4.0, 0, -39.5) - player.global_position
-	player.rotation.y = atan2(-to_car.x, -to_car.z)
+	var to_moped := MOPED_SPOT - player.global_position
+	player.rotation.y = atan2(-to_moped.x, -to_moped.z)
+	var moped := Vehicle.new()
+	moped.kind = "moped"
+	moped.name = "Moped"
+	moped.fuel = 4.0
+	add_child(moped)
+	GameManager.moped = moped
+	moped.global_position = MOPED_SPOT + Vector3(0, 0.1, 0)
+	moped.rotation.y = -PI / 2.0
+	# Соседские «Жигули» напротив дома — продаются: первая машина, когда
+	# будут права и деньги
 	var car := Vehicle.new()
 	car.kind = "car"
 	car.name = "Car"
+	car.price = CAR_PRICE
+	car.blurb = "соседские, 1978 года, на ходу. Ездить — только с правами"
 	add_child(car)
 	GameManager.car = car
 	# Жигули на улице перед домом, носом вдоль улицы
@@ -2809,6 +2831,8 @@ func _spawn_player_and_car() -> void:
 	var moto := Vehicle.new()
 	moto.kind = "moto"
 	moto.name = "Moto"
+	moto.price = MOTO_PRICE
+	moto.blurb = "быстрее мопеда вдвое. Нужна категория A"
 	add_child(moto)
 	GameManager.moto = moto
 	_spawn_salon_cars()

@@ -50,6 +50,18 @@ const SPECS := {
 		"seat": Vector3(0, 1.45, 0.25), "exit": Vector3(-1.0, 0.2, 0.0),
 		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true,
 	},
+	# Мопед «Карпаты» — первый транспорт: прав не нужно, медленный (до 50),
+	# бака на 6 литров хватает надолго, зато в горку тянет еле-еле.
+	"moped": {
+		"title": "Карпаты", "ratios": {-1: 0.0, 0: 0.0, 1: 3.0, 2: 1.8, 3: 1.25},
+		"final": 11.0, "wheel_r": 0.28, "mass": 95.0, "idle": 1400.0, "redline": 6500.0,
+		"torque": 6.0, "peak_rpm": 4500.0, "inertia": 0.02, "wheelbase": 1.2, "max_steer": 0.6,
+		"tank": 6.0, "fuel_k": 0.12, "grip": 10.0, "drag": 0.3, "brake": 6.0,
+		"shape": Vector3(0.6, 1.1, 1.75), "shape_y": 0.6,
+		"seat": Vector3(0, 1.3, 0.2), "exit": Vector3(-0.9, 0.2, 0.0),
+		"chase": Vector3(0, 1.8, 3.8), "roof": false, "two_wheels": true,
+		"wheels": [Vector3(0, 0.28, -0.62), Vector3(0, 0.28, 0.55)], "tail": [Vector3(0, 0.62, 0.81)],
+	},
 	# Машины из автосалона. offroad — насколько лучше держит вне асфальта,
 	# mud — во сколько раз легче катится по грунту, траве и грязи.
 	"niva": {
@@ -128,6 +140,10 @@ const MOTO_PAINT_NAMES := ["красный", "синий", "чёрный"]
 
 ## Вид сзади (V) — общий для всего транспорта.
 static var chase_view := false
+## Категория, на которую сейчас идёт экзамен в автошколе: на своей «Яве»
+## без категории A сесть можно только на экзамене.
+static var exam_category := ""
+var _sale: Label3D
 
 @export var kind := "car"
 
@@ -272,12 +288,28 @@ func _ready() -> void:
 		if school and not (allowed.is_valid() and allowed.call()):
 			return
 		if owned():
-			_on_enter()
+			if school or may_drive():
+				_on_enter()
+			else:
+				SoundLibrary.play("click", -4.0, 0.6)
+				GameManager.notify(license_warning())
 		elif GameManager.spend(price):
 			Progress.buy_car(kind)
 			SoundLibrary.play("quest")
-			GameManager.notify("«%s» теперь твоя! Садись и езжай" % spec.title))
+			GameManager.notify("«%s» теперь твоя! %s" % [spec.title, "Садись и езжай" if may_drive() else license_warning()]))
 	add_child(_zone)
+	# Продаётся — табличка с ценой над крышей, пока не купили
+	if price > 0 and not school:
+		_sale = Label3D.new()
+		_sale.text = "ПРОДАЁТСЯ\n%d грн" % price
+		_sale.font_size = 64
+		_sale.pixel_size = 0.006
+		_sale.outline_size = 12
+		_sale.modulate = Color(1.0, 0.9, 0.4)
+		_sale.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_sale.position.y = float(spec.shape_y) + float((spec.shape as Vector3).y) * 0.5 + 0.7
+		_sale.visibility_range_end = 60.0
+		add_child(_sale)
 	floor_snap_length = 0.4
 	_rng.randomize()
 	_engine_snd = AudioStreamPlayer3D.new()
@@ -1004,6 +1036,23 @@ func owned() -> bool:
 	return price == 0 or Progress.owns(kind)
 
 
+## Какие права нужны: "" — никаких (мопед, трактор колхоза).
+func category() -> String:
+	return String(Progress.KIND_CATEGORY.get(kind, ""))
+
+
+## Можно ли за руль: права нужной категории или идёт экзамен на неё.
+func may_drive() -> bool:
+	var c := category()
+	return c == "" or Progress.has_category(c) or exam_category == c
+
+
+func license_warning() -> String:
+	if category() == "B":
+		return "Без прав за руль нельзя: сначала автошкола у трассы — паспорт, медсправка и экзамен"
+	return "Нужна категория %s — экзамен в автошколе у трассы" % category()
+
+
 func paints() -> Array:
 	return MOTO_PAINTS if spec.two_wheels else PAINTS
 
@@ -1024,6 +1073,8 @@ func _paint_body() -> void:
 	match kind:
 		"moto":
 			VehicleModels.java(b, col)
+		"moped":
+			VehicleModels.moped(b, col)
 		"niva":
 			VehicleModels.niva(b, col, glass)
 		"volga":
@@ -1087,8 +1138,8 @@ func _build_car() -> void:
 
 func _build_moto() -> void:
 	_paint_body()
-	_brake_lights([Vector3(0, 0.66, 0.965)], Vector3(0.12, 0.07, 0.03))
-	for p in [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]:
+	_brake_lights(spec.get("tail", [Vector3(0, 0.66, 0.965)]), Vector3(0.12, 0.07, 0.03))
+	for p in spec.get("wheels", [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]):
 		_wheel(p, true)
 	# Мотоциклист — виден с вида сзади, пока кто-то едет
 	_rider = Node3D.new()
@@ -1102,6 +1153,8 @@ func _build_moto() -> void:
 	r.box(Vector3(0.2, 1.1, -0.75), Vector3(0.32, 1.35, 0.1), jacket)
 	r.box(Vector3(-0.14, 1.45, -0.05), Vector3(0.14, 1.75, 0.22), Color(0.9, 0.9, 0.2))
 	_rider.add_child(r.build_mesh())
+	# Модель седока — под сиденье «Явы»; на мопеде сиденье ниже
+	_rider.position.y = float((spec.seat as Vector3).y) - 1.45
 	_rider.visible = false
 	_body.add_child(_rider)
 
@@ -1140,6 +1193,8 @@ func _brake_lights(points: Array, size: Vector3) -> void:
 
 
 func _process(_delta: float) -> void:
+	if _sale:
+		_sale.visible = not owned()
 	# От первого лица мотоциклиста не рисуем — камера у него в голове
 	if _rider:
 		_rider.visible = driver != null and chase_view
@@ -1147,7 +1202,7 @@ func _process(_delta: float) -> void:
 	for g in _gauge_holders:
 		g.visible = inside
 	if driver != null and not _needles.is_empty():
-		var top: float = {"moto": 140.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+		var top: float = {"moto": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
 		var k_rpm := clampf(rpm / float(spec.redline) * 0.85, 0.0, 1.0)
 		for i in _needles.size():
@@ -1166,6 +1221,8 @@ func _gauge_spots() -> Array:
 			return [[Vector3(-0.41, 1.04, -0.327), 0.03, 0.0], [Vector3(-0.28, 1.04, -0.327), 0.03, 0.0]]
 		"moto":
 			return [[Vector3(0.0, 1.122, -0.89), 0.042, -1.1]]
+		"moped":
+			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
 		"tractor":
 			return [[Vector3(-0.15, 1.72, -0.148), 0.045, 0.0], [Vector3(0.15, 1.72, -0.148), 0.045, 0.0]]
 	# Машины из салона: торпедо по _cabin(dz, y, hx)
