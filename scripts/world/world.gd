@@ -407,8 +407,6 @@ func _setup_environment() -> void:
 func _apply_detail() -> void:
 	# На низкой детализации — без свечения и рисунка поверхностей
 	_env.glow_enabled = SettingsManager.detail >= 1
-	# Сглаживание краёв (FXAA) — почти даром, на любой детализации
-	get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	_sun.shadow_blur = 1.5
 	var r := SettingsManager.shadow_range()
 	_sun.shadow_enabled = r > 0.0
