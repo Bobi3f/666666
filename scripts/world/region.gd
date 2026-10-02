@@ -310,7 +310,8 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	ground.name = "RegionGround"
 	for c in ground.get_children():
 		# Дальность задана — общая настройка мелочи (world.gd) её не урежет
-		(c as GeometryInstance3D).visibility_range_end = HALF * 4.0
+		if c.name.begins_with("Chunk_"):
+			(c as GeometryInstance3D).visibility_range_end = HALF * 4.0
 	add_child(ground)
 	var ground_body := b.build_body()
 	ground_body.name = "RegionGroundCollision"
@@ -318,6 +319,8 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	var mesh := _d.build_chunked()
 	mesh.name = "RegionMesh"
 	for c in mesh.get_children():
+		if not c.name.begins_with("Chunk_"):
+			continue
 		var gi := c as GeometryInstance3D
 		gi.visibility_range_end = view_range()
 		gi.visibility_range_end_margin = 20.0
@@ -325,7 +328,8 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	add_child(mesh)
 	SettingsManager.changed.connect(func() -> void:
 		for c in mesh.get_children():
-			(c as GeometryInstance3D).visibility_range_end = view_range())
+			if c.name.begins_with("Chunk_"):
+				(c as GeometryInstance3D).visibility_range_end = view_range())
 	var body := _d.build_body()
 	body.name = "RegionCollision"
 	add_child(body)

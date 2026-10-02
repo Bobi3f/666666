@@ -256,9 +256,6 @@ func _ready() -> void:
 		# Кнопок сцепления и передач на экране нет — на телефоне только автомат
 		SettingsManager.auto_gearbox = true
 		add_child(preload("res://scripts/ui/touch_controls.gd").new())
-		# Телефон: экран с высокой плотностью точек — 3D рисуем в 65 %
-		# разрешения, интерфейс остаётся чётким
-		get_viewport().scaling_3d_scale = 0.65
 	# Интерфейс под высоту экрана: на телефоне около 600 точек по высоте, как
 	# на мониторе (иначе на плотном экране надписи крошечные), плюс размер
 	# текста из настроек
@@ -301,6 +298,18 @@ func _fit_ui() -> void:
 	var k := base * SettingsManager.text_scale
 	if absf(win.content_scale_factor - k) > 0.001:
 		win.content_scale_factor = k
+	_fit_render_scale()
+
+
+## Телефон: экран с высокой плотностью точек, а видеочип слабый — 3D рисуем
+## с постоянным числом строк (SettingsManager.render_lines, около 560 на
+## низкой детализации, но не больше 65 % экрана), а не во всё разрешение;
+## интерфейс остаётся чётким.
+func _fit_render_scale() -> void:
+	if not GameManager.touch_mode:
+		return
+	var h := maxf(float(get_window().size.y), 1.0)
+	get_viewport().scaling_3d_scale = clampf(SettingsManager.render_lines() / h, 0.35, 0.65)
 
 
 func _process(_delta: float) -> void:

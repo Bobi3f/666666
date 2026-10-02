@@ -39,6 +39,8 @@ var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or
 ## сама (раз в полминуты, не ниже низкой); на низкой — ещё и 3D в половину
 ## разрешения. В тестах (--no-menu) не трогаем.
 var _slow := 0.0
+## Слабый телефон на низкой детализации: 3D ещё на четверть грубее.
+var _lines_k := 1.0
 var _auto := not ("--no-menu" in OS.get_cmdline_user_args())
 
 
@@ -54,8 +56,9 @@ func _process(delta: float) -> void:
 	if detail > 0:
 		set_detail(detail - 1)
 		GameManager.notify("Игра шла медленно — детализация снижена до «%s». Вернуть — в «Настройках»" % ["низкая", "средняя"][detail])
-	elif get_viewport().scaling_3d_scale > 0.5:
-		get_viewport().scaling_3d_scale = 0.5
+	elif _lines_k > 0.75:
+		_lines_k = 0.75
+		changed.emit()
 		GameManager.notify("Игра шла медленно — картинка чуть проще, зато плавнее")
 
 
@@ -163,6 +166,21 @@ func view_range() -> float:
 ## Дальность деревьев целиком (дальше — простые силуэты леса), метры.
 func tree_range() -> float:
 	return [260.0, 380.0, 520.0][detail]
+
+
+## Дальность подробных деревьев, метры: дальше — упрощённые (до tree_range).
+func tree_lod_range() -> float:
+	return [110.0, 150.0, 200.0][detail]
+
+
+## Дальность мелких деталей мира (штакетник, рамы, ящики), метры.
+func small_range() -> float:
+	return [100.0, 140.0, 200.0][detail]
+
+
+## Телефон: сколько строк по высоте у 3D-картинки (дальше растягивается).
+func render_lines() -> float:
+	return [560.0, 680.0, 820.0][detail] * _lines_k
 
 
 ## Дальность теней от солнца (0 — без теней).

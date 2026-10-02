@@ -18,7 +18,14 @@ var _st := SurfaceTool.new()
 ## не рисуются, а фонарь или лампа перерисовывают только соседние куски,
 ## а не весь мир — на телефоне ночью это главное.
 var chunk_size := 0.0
-var _chunks := {}  # Vector2i → SurfaceTool
+var _chunks := {}  # Vector3i(x, z, мелочь 0/1) → SurfaceTool
+## Мелочь — коробки меньше SMALL_SIZE метров по диагонали (штакетник, рамы,
+## ящики): при нарезке идёт в свои куски по SMALL_CHUNK м, которые вдали не
+## рисуются (SettingsManager.small_range). Это почти половина треугольников
+## мира, а за сотню метров её всё равно не разглядеть.
+const SMALL_SIZE := 1.6
+const SMALL_CHUNK := 50.0
+var _small := false
 var _cur: SurfaceTool
 var _boxes: Array = []  # [Transform3D, Vector3 size]
 var _count := 0
@@ -45,7 +52,8 @@ func _init() -> void:
 func _pick(p: Vector3) -> void:
 	if chunk_size <= 0.0:
 		return
-	var key := Vector2i(floori(p.x / chunk_size), floori(p.z / chunk_size))
+	var size := SMALL_CHUNK if _small else chunk_size
+	var key := Vector3i(floori(p.x / size), floori(p.z / size), 1 if _small else 0)
 	var st: SurfaceTool = _chunks.get(key)
 	if st == null:
 		st = SurfaceTool.new()
@@ -60,6 +68,8 @@ func triangle_count() -> int:
 
 ## Коробка от mn до mx в локальных координатах xf.
 func box(mn: Vector3, mx: Vector3, color: Color, collide := false) -> void:
+	if chunk_size > 0.0:
+		_small = (xf.basis * (mx - mn)).length() < SMALL_SIZE
 	var c := (mn + mx) * 0.5
 	var e := (mx - mn) * 0.5
 	for fi in FACES.size():
@@ -77,6 +87,7 @@ func box(mn: Vector3, mx: Vector3, color: Color, collide := false) -> void:
 				k *= lerpf(0.72, 1.0, clampf(p.y / 1.2, 0.0, 1.0))
 			cols.append(Color(color.r * k, color.g * k, color.b * k, alpha))
 		_quad_raw(pts, cols, n)
+	_small = false
 	if collide:
 		_boxes.append([xf * Transform3D(Basis.IDENTITY, c), mx - mn])
 
@@ -136,7 +147,8 @@ func _emit(p: Vector3, n: Vector3, color: Color) -> void:
 	_cur.add_vertex(xf * p)
 
 
-## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size.
+## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size
+## (Chunk_x_z) и куски мелочи (Small_x_z) с короткой дальностью.
 func build_chunked() -> Node3D:
 	var root := Node3D.new()
 	var mat := detail_material()
@@ -145,9 +157,27 @@ func build_chunked() -> Node3D:
 		mesh.surface_set_material(0, mat)
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
-		mi.name = "Chunk_%d_%d" % [key.x, key.y]
+		mi.name = ("Small_%d_%d" if key.z == 1 else "Chunk_%d_%d") % [key.x, key.y]
 		root.add_child(mi)
+	set_small_range(root)
+	var watch := func() -> void:
+		if is_instance_valid(root):
+			set_small_range(root)
+	SettingsManager.changed.connect(watch)
+	root.tree_exited.connect(func() -> void:
+		if SettingsManager.changed.is_connected(watch):
+			SettingsManager.changed.disconnect(watch))
 	return root
+
+
+## Дальность мелочи — по детализации из настроек.
+static func set_small_range(root: Node) -> void:
+	for c in root.get_children():
+		if c.name.begins_with("Small_"):
+			var gi := c as GeometryInstance3D
+			gi.visibility_range_end = SettingsManager.small_range()
+			gi.visibility_range_end_margin = 10.0
+			gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 
 
 ## Готовый узел с мешем. unshaded — для светящихся окон.
@@ -364,13 +394,24 @@ static func grain() -> ImageTexture:
 
 
 ## Одно статическое тело со всеми коллизиями.
+## Тело со всеми коробками-коллизиями. Формы отдаются прямо физическому
+## серверу, без узла CollisionShape3D на каждую: в мире их десятки тысяч
+## (стволы, заборы, стены) — узлы съедали бы память и время загрузки на
+## телефоне. Коробки одного размера делят одну форму.
 func build_body() -> StaticBody3D:
 	var body := StaticBody3D.new()
+	var shapes := {}
+	var rid := body.get_rid()
 	for b in _boxes:
-		var shape := BoxShape3D.new()
-		shape.size = b[1]
-		var cs := CollisionShape3D.new()
-		cs.shape = shape
-		cs.transform = b[0]
-		body.add_child(cs)
+		var size: Vector3 = b[1]
+		var key := Vector3i((size * 1000.0).round())
+		var shape: BoxShape3D = shapes.get(key)
+		if shape == null:
+			shape = BoxShape3D.new()
+			shape.size = size
+			shapes[key] = shape
+		PhysicsServer3D.body_add_shape(rid, shape.get_rid(), b[0])
+	# Формы живут, пока на них ссылается тело
+	body.set_meta("shapes", shapes.values())
+	body.set_meta("shape_count", _boxes.size())
 	return body

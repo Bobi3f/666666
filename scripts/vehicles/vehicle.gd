@@ -206,6 +206,9 @@ var _smoke: CPUParticles3D
 var _rng := RandomNumberGenerator.new()
 var _warned_fuel := false
 var _headlights: Array[SpotLight3D] = []
+## Свет в салоне и слой (бит слоя 3), на который он светит.
+const CABIN_LAYER := 4
+var _cabin_light: OmniLight3D
 var _lights_forced := false
 var _brake_mat: StandardMaterial3D
 var _shift_timer := 0.0
@@ -268,15 +271,18 @@ func _ready() -> void:
 	_chase.fov = 70.0
 	add_child(_chase)
 	if spec.roof:
-		# Мягкий свет в салоне: без него при солнце сверху салон в глубокой тени
-		var cabin := OmniLight3D.new()
-		cabin.position = Vector3(0, 1.25, 0.2)
-		cabin.omni_range = 2.2
-		cabin.light_energy = 0.9
-		cabin.distance_fade_enabled = true
-		cabin.distance_fade_begin = 20.0
-		cabin.distance_fade_length = 5.0
-		add_child(cabin)
+		# Мягкий свет в салоне: без него при солнце сверху салон в глубокой
+		# тени. Горит, только пока в машине водитель, и светит только на саму
+		# машину — иначе каждая стоящая машина заново рисует кусок мира вокруг
+		_cabin_light = OmniLight3D.new()
+		_cabin_light.position = Vector3(0, 1.25, 0.2)
+		_cabin_light.omni_range = 2.2
+		_cabin_light.light_energy = 0.9
+		_cabin_light.light_cull_mask = CABIN_LAYER
+		_cabin_light.visible = false
+		add_child(_cabin_light)
+		for g in find_children("*", "GeometryInstance3D", true, false):
+			(g as GeometryInstance3D).layers |= CABIN_LAYER
 	var zone_size := Vector3(4.0, 2.0, 5.5) if not spec.two_wheels else Vector3(2.6, 2.0, 3.0)
 	_zone = InteractZone.create("E — %s: %s" % ["сесть за руль" if spec.roof else "сесть на мотоцикл", spec.title], zone_size)
 	_zone.position.y = -0.2
@@ -376,6 +382,8 @@ func _on_enter() -> void:
 	driver = p
 	GameManager.vehicle = self
 	p.sit_in(self)
+	if _cabin_light:
+		_cabin_light.visible = true
 	_update_camera(1.0)
 	_active_camera().current = true
 	if SettingsManager.auto_gearbox:
@@ -396,6 +404,8 @@ func exit_car() -> void:
 func _drop_driver() -> void:
 	var p := driver
 	driver = null
+	if _cabin_light:
+		_cabin_light.visible = false
 	if GameManager.vehicle == self:
 		GameManager.vehicle = null
 	if SettingsManager.auto_gearbox:

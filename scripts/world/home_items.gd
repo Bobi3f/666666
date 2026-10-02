@@ -40,6 +40,8 @@ func rebuild() -> void:
 func _mesh(b: MeshBuilder, name: String) -> MeshInstance3D:
 	var m := b.build_mesh()
 	m.name = name
+	# Вещи в доме — на слое интерьера: их освещают лампы дома
+	m.layers = 1 | HouseInterior.INSIDE_LAYER
 	add_child(m)
 	return m
 
@@ -67,6 +69,7 @@ func _build_tv() -> void:
 	glow.light_energy = 0.35
 	glow.omni_range = 2.2
 	glow.position = p + Vector3(0.9, 0.8, 0.4)
+	glow.light_cull_mask = HouseInterior.INSIDE_LAYER
 	m.add_child(glow)
 
 

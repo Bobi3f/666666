@@ -88,6 +88,12 @@ func build() -> void:
 		TreeKind.BIRCH: _birch_mesh(),
 		TreeKind.BUSH: _bush_mesh(),
 	}
+	var mid_models := {
+		TreeKind.SPRUCE: _mid_spruce(),
+		TreeKind.APPLE: _mid_apple(),
+		TreeKind.BIRCH: _mid_birch(),
+		TreeKind.BUSH: _mid_bush(),
+	}
 	var far_models := {TreeKind.SPRUCE: _far_spruce(), TreeKind.BIRCH: _far_birch()}
 	for kind in _trees:
 		var list: Array = _trees[kind]
@@ -102,18 +108,22 @@ func build() -> void:
 			if not cells.has(key):
 				cells[key] = []
 			cells[key].append(xf)
+		# Вблизи — подробное дерево, дальше в том же куске — упрощённое
+		# (в десять раз меньше треугольников): куски одни и те же, поэтому
+		# одно сменяет другое без пропусков
 		for key in cells:
 			var part: Array = cells[key]
-			var mm := MultiMesh.new()
-			mm.transform_format = MultiMesh.TRANSFORM_3D
-			mm.mesh = models[kind]
-			mm.instance_count = part.size()
-			for i in part.size():
-				mm.set_instance_transform(i, part[i])
-			var mi := MultiMeshInstance3D.new()
-			mi.multimesh = mm
-			mi.name = "Trees_%d_%d_%d" % [kind, key.x, key.y]
-			add_child(mi)
+			for lod in ["Trees", "TreesMid"]:
+				var mm := MultiMesh.new()
+				mm.transform_format = MultiMesh.TRANSFORM_3D
+				mm.mesh = models[kind] if lod == "Trees" else mid_models[kind]
+				mm.instance_count = part.size()
+				for i in part.size():
+					mm.set_instance_transform(i, part[i])
+				var mi := MultiMeshInstance3D.new()
+				mi.multimesh = mm
+				mi.name = "%s_%d_%d_%d" % [lod, kind, key.x, key.y]
+				add_child(mi)
 
 		# Силуэты — крупными кусками по 200 м: вдали деревьев много, а
 		# вызовов отрисовки должно быть мало
@@ -147,15 +157,20 @@ func build() -> void:
 func apply_detail() -> void:
 	var r := SettingsManager.grass_range()
 	var near := SettingsManager.tree_range()
+	var lod := SettingsManager.tree_lod_range()
 	for c in get_children():
 		var gi := c as GeometryInstance3D
 		if c.name.begins_with("TreesFar"):
 			gi.visibility_range_begin = near
 			gi.visibility_range_end = SettingsManager.view_range()
 			continue
-		if c.name.begins_with("Trees"):
+		if c.name.begins_with("TreesMid"):
 			# Яблони и кусты силуэтов не имеют — они и так у домов
-			gi.visibility_range_end = near if (c.name.begins_with("Trees_0") or c.name.begins_with("Trees_2")) else minf(near, 300.0)
+			gi.visibility_range_begin = lod
+			gi.visibility_range_end = near if (c.name.begins_with("TreesMid_0") or c.name.begins_with("TreesMid_2")) else minf(near, 300.0)
+			continue
+		if c.name.begins_with("Trees"):
+			gi.visibility_range_end = lod
 			continue
 		var mi := c as MultiMeshInstance3D
 		mi.visible = r > 0.0
@@ -354,6 +369,59 @@ func _spruce_mesh() -> ArrayMesh:
 			b.xf = saved
 		b.box_rot(Vector3(0, y + 0.1, 0), Vector3(reach * 0.9, 0.5, reach * 0.9), t * 0.4, green.darkened(0.1))
 	b.box(Vector3(-0.12, 7.0, -0.12), Vector3(0.12, 7.9, 0.12), Color(0.16, 0.33, 0.17))
+	return b.build_array_mesh()
+
+
+## Ель на средней дальности: ствол и три яруса-шатра (48 треугольников
+## вместо 700) — тех же размеров и цвета, что подробная.
+func _mid_spruce() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.box(Vector3(-0.16, 0, -0.16), Vector3(0.16, 1.4, 0.16), Color(0.33, 0.24, 0.17))
+	var tiers := [[1.0, 3.6, 2.1], [2.9, 5.6, 1.5], [4.7, 7.9, 0.9]]
+	for t in tiers.size():
+		var y0: float = tiers[t][0]
+		var y1: float = tiers[t][1]
+		var r: float = tiers[t][2]
+		var green := Color(0.13, 0.28, 0.15).lightened(t * 0.04)
+		var top := Vector3(0, y1, 0)
+		for i in 6:
+			var a0 := TAU * i / 6.0 + t * 0.5
+			var a1 := TAU * (i + 1) / 6.0 + t * 0.5
+			var p0 := Vector3(cos(a0) * r, y0, sin(a0) * r)
+			var p1 := Vector3(cos(a1) * r, y0, sin(a1) * r)
+			b.tri(p0, top, p1, green)
+			b.tri(p0, p1, Vector3(0, y0 + 0.3, 0), green.darkened(0.3))
+	return b.build_array_mesh()
+
+
+## Берёза на средней дальности: ствол и крона из трёх комков.
+func _mid_birch() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.box(Vector3(-0.13, 0, -0.13), Vector3(0.13, 6.2, 0.13), Color(0.9, 0.9, 0.86))
+	var leaf := Color(0.35, 0.55, 0.22)
+	b.box_rot(Vector3(0, 3.9, 0), Vector3(2.6, 1.9, 2.6), 0.3, leaf)
+	b.box_rot(Vector3(0.1, 5.4, -0.1), Vector3(2.3, 1.6, 2.3), 1.1, leaf.lightened(0.06))
+	b.box_rot(Vector3(-0.1, 6.7, 0.1), Vector3(1.3, 1.1, 1.3), 0.7, leaf.lightened(0.1))
+	return b.build_array_mesh()
+
+
+## Яблоня на средней дальности: ствол и раскидистая крона.
+func _mid_apple() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.box(Vector3(-0.13, 0, -0.13), Vector3(0.13, 1.4, 0.13), Color(0.38, 0.28, 0.2))
+	b.box(Vector3(-0.14, 0, -0.14), Vector3(0.14, 0.7, 0.14), Color(0.92, 0.92, 0.88))
+	var leaf := Color(0.24, 0.44, 0.19)
+	b.box_rot(Vector3(0, 2.2, 0), Vector3(3.4, 1.5, 3.4), 0.4, leaf)
+	b.box_rot(Vector3(0, 2.9, 0), Vector3(2.4, 1.0, 2.4), 1.2, leaf.lightened(0.06))
+	return b.build_array_mesh()
+
+
+## Куст на средней дальности: два комка.
+func _mid_bush() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	var leaf := Color(0.22, 0.4, 0.17)
+	b.box_rot(Vector3(0, 0.5, 0), Vector3(1.5, 0.9, 1.4), 0.3, leaf)
+	b.box_rot(Vector3(0.1, 0.8, 0.05), Vector3(1.0, 0.6, 1.0), 1.0, leaf.lightened(0.08))
 	return b.build_array_mesh()
 
 

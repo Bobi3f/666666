@@ -93,26 +93,31 @@ func _build_mesh(kind: String, color: Color) -> MeshInstance3D:
 	return b.build_mesh()
 
 
-## Фары и стоп-сигналы: отдельный меш, у каждой машины свои материалы —
-## их цвет меняется на ходу. Возвращает [узел, фары, стопы].
+## Фары и стоп-сигналы: один меш из двух поверхностей (фары, стопы), у
+## каждой машины свои материалы — их цвет меняется на ходу.
+## Возвращает [узел, фары, стопы].
 func _build_lights(size: Vector3) -> Array:
-	var root := Node3D.new()
 	var head := StandardMaterial3D.new()
 	head.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	var tail := StandardMaterial3D.new()
 	tail.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	var hx := size.x * 0.5
 	var hz := size.z * 0.5
-	var box := BoxMesh.new()
-	box.size = Vector3(0.3, 0.18, 0.04)
-	for x in [-hx + 0.3, hx - 0.3]:
-		for front in [true, false]:
-			var mi := MeshInstance3D.new()
-			mi.mesh = box
-			mi.material_override = head if front else tail
-			mi.position = Vector3(x, 0.65, (-hz - 0.03) if front else (hz + 0.03))
-			root.add_child(mi)
-	return [root, head, tail]
+	var mesh := ArrayMesh.new()
+	for front in [true, false]:
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		for x in [-hx + 0.3, hx - 0.3]:
+			var c := Vector3(x, 0.65, (-hz - 0.03) if front else (hz + 0.03))
+			b.box(c - Vector3(0.15, 0.09, 0.02), c + Vector3(0.15, 0.09, 0.02), Color.WHITE)
+		var part := b.build_array_mesh()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, part.surface_get_arrays(0))
+		mesh.surface_set_material(mesh.get_surface_count() - 1, head if front else tail)
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.name = "Lights"
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return [mi, head, tail]
 
 
 func _physics_process(delta: float) -> void:

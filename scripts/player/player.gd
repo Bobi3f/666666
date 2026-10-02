@@ -101,6 +101,7 @@ func _ready() -> void:
 	bb.ground_shade = false
 	Villagers.person_model(bb, Color(0.2, 0.33, 0.25), Color(0.25, 0.22, 0.2), false, false)
 	_body_mesh = Villagers.walking_mesh(bb)
+	_body_mesh.layers = 1 | HouseInterior.INSIDE_LAYER
 	_body.add_child(_body_mesh)
 	SettingsManager.changed.connect(_apply_view)
 	_apply_view()
