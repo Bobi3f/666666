@@ -48,6 +48,13 @@ func weekday() -> String:
 	return WEEKDAYS[day % 7]
 
 
+## Поставить время суток сразу (выбор в меню): тот же день, без голода
+## и усталости за пропущенные часы.
+func set_hour(h: float) -> void:
+	minutes = clampf(h, 0.0, 23.99) * 60.0
+	minute_passed.emit(0.0)
+
+
 func clock_text() -> String:
 	var m := int(minutes)
 	return "День %d (%s), %02d:%02d" % [day, weekday(), m / 60, m % 60]

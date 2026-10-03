@@ -93,6 +93,13 @@ func _run() -> void:
 	SM.reset_keys()
 	ok(SM.key_map.is_empty() and KeyRemap.key_for(KEY_E) == KEY_E, "«Вернуть клавиши» — всё как было")
 
+	print("== Время суток")
+	var TM = root.get_node("TimeManager")
+	TM.set_hour(23.0)
+	ok(absf(TM.hour() - 23.0) < 0.01, "ночь — 23:00")
+	TM.set_hour(7.0)
+	ok(absf(TM.hour() - 7.0) < 0.01, "утро — 7:00, тот же день")
+
 	print("\nИТОГО: " + ("всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ, провалов: %d" % fails))
 	quit(1 if fails else 0)
 

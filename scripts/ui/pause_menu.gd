@@ -203,6 +203,24 @@ func _report_bug() -> void:
 
 
 func _build_settings(box: VBoxContainer) -> void:
+	# Время суток — выбрать сразу: утро, день, вечер, ночь
+	var tl := Label.new()
+	tl.text = "Время суток"
+	box.add_child(tl)
+	var tod := HBoxContainer.new()
+	tod.add_theme_constant_override("separation", 6)
+	box.add_child(tod)
+	for t in [["Утро", 7.0], ["День", 12.0], ["Вечер", 19.0], ["Ночь", 23.0]]:
+		var b := Button.new()
+		b.text = t[0]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, _btn_h())
+		var hour: float = t[1]
+		b.pressed.connect(func() -> void:
+			SoundLibrary.play("click", -6.0)
+			TimeManager.set_hour(hour)
+			_sub.text = "%s   ·   %d грн" % [TimeManager.clock_text(), GameManager.money])
+		tod.add_child(b)
 	_slider(box, "Чувствительность камеры" if GameManager.touch_mode else "Чувствительность мыши",
 		0.2, 3.0, SettingsManager.mouse_sens, SettingsManager.set_mouse_sens)
 	var inv := CheckButton.new()
