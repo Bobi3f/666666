@@ -79,7 +79,7 @@ func _run() -> void:
 	ok(fog_morning > W._env.fog_density * 2.0, "утром дымка: %.4f, днём %.4f" % [fog_morning, W._env.fog_density])
 
 	print("== Приборы и звук дороги")
-	ok(C._needles.size() == 2 and W.get_node("Moto")._needles.size() == 1, "в Жигулях спидометр и тахометр, у Явы спидометр")
+	ok(C._needles.size() == 2 and W.get_node("Moto")._needles.size() == 2, "в Жигулях и у «Явы» — спидометр и тахометр")
 	C.global_position = Vector3(-10, 0.1, -100); C.rotation.y = -PI / 2.0
 	C._on_enter(); C.fuel = 30.0
 	await frames(3)
