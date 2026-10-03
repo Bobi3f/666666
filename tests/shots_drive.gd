@@ -29,7 +29,7 @@ func _run() -> void:
 	C._on_enter()
 	for i in 10: await physics_frame
 	C.global_position = Vector3(6.5, 0.1, -30); C.rotation.y = 0.35
-	await view("01_exam", Vector3(-3, 7, -12), Vector3(10, 0, -40))
+	await view("01_exam", Vector3(-17, 7, 8), Vector3(-30, 0, 36))
 	C.exit_car()
 	C.global_position = Vector3(-86, 0.1, 13); C.rotation.y = PI * 0.85
 	C.repaint()

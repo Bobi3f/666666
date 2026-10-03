@@ -231,18 +231,133 @@ static func java(b: MeshBuilder, paint: Color) -> void:
 	b.box(Vector3(0.1, 0.3, 0.1), Vector3(0.13, 0.4, 0.6), dark)
 
 
-## Колесо мотоцикла: шина-восьмигранник, обод, ступица, спицы.
+## «ИЖ Юпитер-5» как на плакате «Общий вид мотоцикла»: красный бак с
+## чёрной эмблемой «ИЖ», красные инструментальные ящики «Юпитер 5» по бокам,
+## двухцилиндровый мотор с рёбрами, две выхлопные трубы с глушителями по
+## обе стороны, дуги безопасности, круглая фара, щиток приборов, высокий
+## руль с зеркалом, оранжевые поворотники, пружины задней подвески,
+## хромированные щитки колёс. Надписи — Label3D по мете "labels".
+static func izh(b: MeshBuilder, paint: Color) -> void:
+	var frame := Color(0.16, 0.15, 0.15)
+	var chrome := Color(0.66, 0.68, 0.71)
+	var alloy := Color(0.62, 0.63, 0.64)
+	var seat := Color(0.2, 0.15, 0.12)
+	var amber := Color(1.0, 0.6, 0.15)
+	# Рама: рулевая колонка, хребтовая труба, передние трубы к мотору, задняя часть
+	b.box(Vector3(-0.045, 0.82, -0.66), Vector3(0.045, 1.08, -0.56), frame)
+	b.box(Vector3(-0.04, 0.8, -0.6), Vector3(0.04, 0.88, 0.62), frame)
+	b.box(Vector3(-0.04, 0.32, -0.62), Vector3(0.04, 0.84, -0.54), frame)
+	b.box(Vector3(-0.15, 0.6, 0.0), Vector3(0.15, 0.82, 0.45), frame)
+	b.box(Vector3(-0.04, 0.3, -0.5), Vector3(0.04, 0.36, 0.6), frame)
+	# Мотор: картер, крышки, два цилиндра с рёбрами наклоном вперёд
+	b.box(Vector3(-0.19, 0.28, -0.32), Vector3(0.19, 0.5, 0.18), alloy)
+	b.box(Vector3(-0.235, 0.29, -0.12), Vector3(0.235, 0.47, 0.16), alloy.lightened(0.12))
+	b.box(Vector3(-0.24, 0.33, -0.05), Vector3(-0.235, 0.43, 0.08), Color(0.25, 0.25, 0.27))
+	for cx in [-0.17, 0.03]:
+		for i in 7:
+			var y := 0.5 + i * 0.033
+			var wide := 0.0 if i % 2 == 0 else 0.015
+			b.box(Vector3(cx - wide, y, -0.46 - wide), Vector3(cx + 0.14 + wide, y + 0.022, -0.18 + wide), alloy.lightened(0.18))
+		b.box(Vector3(cx + 0.02, 0.5, -0.43), Vector3(cx + 0.12, 0.74, -0.21), alloy.darkened(0.25))
+		b.box(Vector3(cx + 0.01, 0.74, -0.44), Vector3(cx + 0.13, 0.79, -0.2), alloy.lightened(0.05))
+	# Выхлоп: из каждого цилиндра трубы вперёд-вниз, вдоль бока назад, глушитель
+	for side in [-1.0, 1.0]:
+		var x: float = 0.2 * side - 0.035
+		b.box(Vector3(x, 0.44, -0.54), Vector3(x + 0.07, 0.56, -0.44), chrome)
+		b.box(Vector3(x, 0.25, -0.55), Vector3(x + 0.07, 0.46, -0.47), chrome)
+		var xo: float = 0.26 * side - 0.035
+		b.box(Vector3(minf(x, xo), 0.23, -0.52), Vector3(maxf(x, xo) + 0.07, 0.3, -0.42), chrome)
+		b.box(Vector3(xo, 0.23, -0.45), Vector3(xo + 0.07, 0.3, 0.25), chrome)
+		b.box(Vector3(xo - 0.015, 0.22, 0.2), Vector3(xo + 0.085, 0.34, 0.98), chrome)
+		b.box(Vector3(xo - 0.02, 0.21, 0.93), Vector3(xo + 0.09, 0.35, 0.99), chrome.darkened(0.15))
+		b.box(Vector3(xo + 0.01, 0.25, 0.99), Vector3(xo + 0.06, 0.31, 1.0), Color(0.05, 0.05, 0.05))
+		# Дуги безопасности перед мотором
+		var xd: float = 0.3 * side - 0.02
+		b.box(Vector3(xd, 0.3, -0.62), Vector3(xd + 0.04, 0.68, -0.58), chrome)
+		b.box(Vector3(minf(xd, 0.0), 0.64, -0.62), Vector3(maxf(xd + 0.04, 0.0), 0.68, -0.58), chrome)
+		b.box(Vector3(xd, 0.3, -0.62), Vector3(xd + 0.04, 0.34, -0.3), chrome)
+		# Красный инструментальный ящик с эмблемой
+		var xb: float = 0.17 if side > 0.0 else -0.24
+		b.box(Vector3(xb, 0.5, 0.04), Vector3(xb + 0.07, 0.76, 0.38), paint)
+		var xe: float = 0.241 * side
+		b.box(Vector3(minf(xe, xe + 0.004 * side), 0.6, 0.1), Vector3(maxf(xe, xe + 0.004 * side), 0.66, 0.32), Color(0.08, 0.08, 0.08))
+		# Задняя подвеска: шток и пружина
+		var xs: float = 0.19 * side - 0.02
+		b.box(Vector3(xs, 0.34, 0.47), Vector3(xs + 0.04, 0.86, 0.51), chrome)
+		for k in 7:
+			b.box(Vector3(xs - 0.015, 0.45 + k * 0.045, 0.455), Vector3(xs + 0.055, 0.465 + k * 0.045, 0.525), chrome.lightened(0.1))
+		# Подножки
+		b.box(Vector3(0.2 * side - 0.05, 0.3, -0.05), Vector3(0.2 * side + 0.05, 0.33, 0.05), frame)
+	# Бак: красный, скруглённый верх, хромированная крышка, эмблемы «ИЖ»
+	b.box(Vector3(-0.17, 0.82, -0.52), Vector3(0.17, 1.0, 0.02), paint)
+	b.box(Vector3(-0.14, 1.0, -0.47), Vector3(0.14, 1.04, -0.03), paint.lightened(0.05))
+	b.box(Vector3(-0.155, 0.78, -0.5), Vector3(0.155, 0.83, 0.0), paint.darkened(0.15))
+	b.box(Vector3(-0.055, 1.04, -0.38), Vector3(0.055, 1.08, -0.27), chrome)
+	for side in [-1.0, 1.0]:
+		var xt: float = 0.171 * side
+		b.box(Vector3(minf(xt, xt + 0.006 * side), 0.86, -0.43), Vector3(maxf(xt, xt + 0.006 * side), 0.95, -0.06), Color(0.06, 0.06, 0.06))
+		b.box(Vector3(minf(xt, xt + 0.009 * side), 0.895, -0.2), Vector3(maxf(xt, xt + 0.009 * side), 0.91, -0.08), Color(0.95, 0.95, 0.95))
+	# Седло с ремнём для пассажира
+	b.box(Vector3(-0.16, 0.86, 0.0), Vector3(0.16, 0.97, 0.78), seat)
+	b.box(Vector3(-0.14, 0.97, 0.05), Vector3(0.14, 0.99, 0.74), seat.lightened(0.06))
+	b.box(Vector3(-0.165, 0.86, 0.4), Vector3(0.165, 0.995, 0.43), seat.darkened(0.4))
+	# Заднее крыло (хром), фонарь с поворотниками, номер
+	b.box(Vector3(-0.1, 0.66, 0.42), Vector3(0.1, 0.71, 1.02), chrome)
+	b.box(Vector3(-0.1, 0.42, 0.97), Vector3(0.1, 0.71, 1.02), chrome)
+	b.box(Vector3(-0.08, 0.8, 0.86), Vector3(0.08, 0.92, 0.98), Color(0.55, 0.08, 0.06))
+	for side in [-1.0, 1.0]:
+		var xr: float = 0.13 * side
+		b.box(Vector3(minf(xr, 0.0), 0.79, 0.88), Vector3(maxf(xr, 0.0), 0.81, 0.9), frame)
+		b.box(Vector3(xr - 0.035, 0.76, 0.86), Vector3(xr + 0.035, 0.84, 0.94), amber)
+	plate(b, Vector3(-0.1, 0.5, 1.02), Vector3(0.1, 0.64, 1.04))
+	# Вилка, переднее крыло, фара, щиток приборов, поворотники
+	for x in [-0.1, 0.065]:
+		b.box(Vector3(x, 0.32, -0.8), Vector3(x + 0.035, 0.96, -0.73), alloy)
+		b.box(Vector3(x - 0.005, 0.7, -0.79), Vector3(x + 0.04, 0.98, -0.71), Color(0.4, 0.36, 0.32))
+	b.box(Vector3(-0.09, 0.62, -1.02), Vector3(0.09, 0.66, -0.52), chrome)
+	b.box(Vector3(-0.09, 0.46, -1.06), Vector3(0.09, 0.66, -1.0), chrome)
+	b.box(Vector3(-0.13, 0.9, -0.95), Vector3(0.13, 1.14, -0.8), chrome)
+	b.box(Vector3(-0.11, 0.92, -0.955), Vector3(0.11, 1.12, -0.95), Color(0.75, 0.9, 0.95))
+	b.box(Vector3(-0.13, 1.14, -0.88), Vector3(0.13, 1.21, -0.72), frame)
+	for side in [-1.0, 1.0]:
+		var xf: float = 0.2 * side
+		b.box(Vector3(minf(xf, 0.0), 0.99, -0.84), Vector3(maxf(xf, 0.0), 1.01, -0.82), frame)
+		b.box(Vector3(xf - 0.035, 0.96, -0.88), Vector3(xf + 0.035, 1.04, -0.8), amber)
+	# Высокий руль, рукоятки, рычаги, зеркало слева
+	b.box(Vector3(-0.05, 1.21, -0.76), Vector3(0.05, 1.28, -0.7), chrome)
+	b.box(Vector3(-0.38, 1.27, -0.74), Vector3(0.38, 1.3, -0.7), chrome)
+	for x in [-0.42, 0.32]:
+		b.box(Vector3(x, 1.26, -0.75), Vector3(x + 0.1, 1.31, -0.69), Color(0.06, 0.06, 0.06))
+	for x in [-0.36, 0.26]:
+		b.box(Vector3(x, 1.27, -0.82), Vector3(x + 0.1, 1.29, -0.74), chrome)
+	b.box(Vector3(-0.32, 1.3, -0.73), Vector3(-0.3, 1.5, -0.71), chrome)
+	b.box(Vector3(-0.38, 1.48, -0.73), Vector3(-0.24, 1.6, -0.71), Color(0.55, 0.6, 0.62))
+	# Центральная подставка (сложена) и рычаг кикстартера
+	b.box(Vector3(-0.12, 0.2, 0.0), Vector3(0.12, 0.25, 0.25), frame)
+	b.box(Vector3(0.24, 0.32, 0.05), Vector3(0.27, 0.36, 0.3), chrome)
+	b.set_meta("labels", [
+		["ИЖ", Vector3(0.18, 0.905, -0.3), PI / 2.0, 0.0022, Color(0.97, 0.97, 0.97)],
+		["ИЖ", Vector3(-0.18, 0.905, -0.3), -PI / 2.0, 0.0022, Color(0.97, 0.97, 0.97)],
+		["ЮПИТЕР 5", Vector3(0.246, 0.63, 0.21), PI / 2.0, 0.0011, Color(0.97, 0.97, 0.97)],
+		["ЮПИТЕР 5", Vector3(-0.246, 0.63, 0.21), -PI / 2.0, 0.0011, Color(0.97, 0.97, 0.97)],
+	])
+
+
+## Колесо мотоцикла: шина-кольцо из восьми сегментов, хромированный обод,
+## спицы крест-накрест и ступица с барабаном — сквозь колесо видно.
 static func moto_wheel(b: MeshBuilder, r: float, rim: Variant = null) -> void:
 	var tyre := Color(0.07, 0.07, 0.08)
-	var spoke: Color = rim if rim is Color else Color(0.75, 0.75, 0.78)
-	for a in [0.0, PI / 4.0, PI / 2.0, 3.0 * PI / 4.0]:
+	var spoke: Color = rim if rim is Color else Color(0.72, 0.73, 0.76)
+	var seg := r * 0.42
+	for i in 8:
 		var saved := b.xf
-		b.xf = saved * Transform3D(Basis(Vector3.RIGHT, a), Vector3.ZERO)
-		b.box(Vector3(-0.05, -r, -r * 0.42), Vector3(0.05, r, r * 0.42), tyre)
-		b.box(Vector3(-0.03, -r * 0.8, -r * 0.33), Vector3(0.03, r * 0.8, r * 0.33), spoke)
-		b.box(Vector3(-0.01, -r * 0.78, -0.006), Vector3(0.01, r * 0.78, 0.006), Color(0.85, 0.85, 0.87))
+		b.xf = saved * Transform3D(Basis(Vector3.RIGHT, i * PI / 4.0), Vector3.ZERO)
+		b.box(Vector3(-0.05, r - 0.085, -seg), Vector3(0.05, r, seg), tyre)
+		b.box(Vector3(-0.025, r - 0.115, -seg * 0.85), Vector3(0.025, r - 0.08, seg * 0.85), spoke)
+		b.box(Vector3(-0.006, 0.0, -0.005), Vector3(0.006, r - 0.1, 0.005), Color(0.82, 0.83, 0.85))
 		b.xf = saved
-	b.box(Vector3(-0.07, -0.06, -0.06), Vector3(0.07, 0.06, 0.06), Color(0.5, 0.5, 0.52))
+	b.box(Vector3(-0.07, -0.08, -0.08), Vector3(0.07, 0.08, 0.08), Color(0.6, 0.6, 0.62))
+	b.box(Vector3(-0.08, -0.03, -0.03), Vector3(0.08, 0.03, 0.03), Color(0.4, 0.4, 0.42))
 
 
 ## Салон: торпедо с приборами, руль перед водителем (слева), сиденья.

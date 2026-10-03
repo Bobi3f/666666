@@ -18,6 +18,10 @@ const FLOOR := 0.4
 ## Автодром (x, z, ширина, длина): въезд с трассы у старта, разворот в конце.
 const AUTODROME := Rect2(-40, 14, 22, 57)
 const ENTRY := Rect2(-32, 1.5, 6, 12.5)
+## Весь асфальт автошколы: автодром, въезд, дорожка к крыльцу, стоянка
+## учебных машин и проезд к ней (Roads.on_asphalt — по нему сцепление).
+const ASPHALT := [Rect2(-40, 14, 22, 57), Rect2(-32, 1.5, 6, 12.5), Rect2(-26, 13, 16, 2),
+	Rect2(-13, 26, 7, 37), Rect2(-18, 26, 5, 4)]
 ## Экзамен для любой категории: старт, змейка между конусами, разворот,
 ## в конце — встать в разметку «P».
 const EXAM_START := Vector3(-29, 0, 18.5)
@@ -332,7 +336,7 @@ func _start(i: int) -> void:
 	exam_cat = cat[0]
 	Vehicle.exam_category = exam_cat
 	(_exams[exam_cat] as DrivingChallenge).arm()
-	var on := "на своей «Яве»" if cat[3] == "moto" else "на учебном «%s» у края автодрома" % Vehicle.SPECS[cat[3]].title
+	var on := "на своём мотоцикле" if cat[3] == "moto" else "на учебном «%s» у края автодрома" % Vehicle.SPECS[cat[3]].title
 	GameManager.notify("Инструктор: «Категория %s. Заезжай %s на старт — жёлтый круг. Конусы не сбивай»" % [cat[0], on])
 
 

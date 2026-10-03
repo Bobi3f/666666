@@ -53,6 +53,18 @@ const SPECS := {
 		"seat": Vector3(0, 1.45, 0.25), "exit": Vector3(-1.0, 0.2, 0.0),
 		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true,
 	},
+	# «ИЖ Юпитер-5» из автосалона: двухцилиндровый, тяжелее и мощнее «Явы»,
+	# бак больше, разгоняется до 130.
+	"izh": {
+		"title": "ИЖ Юпитер-5", "ratios": {-1: -2.8, 0: 0.0, 1: 2.8, 2: 1.85, 3: 1.35, 4: 1.05},
+		"final": 5.6, "wheel_r": 0.32, "mass": 235.0, "idle": 1200.0, "redline": 7000.0,
+		"torque": 42.0, "peak_rpm": 5200.0, "inertia": 0.04, "wheelbase": 1.4, "max_steer": 0.52,
+		"tank": 18.0, "fuel_k": 0.42, "grip": 11.0, "drag": 0.23, "brake": 8.0,
+		"shape": Vector3(0.75, 1.25, 2.1), "shape_y": 0.72,
+		"seat": Vector3(0, 1.52, 0.3), "exit": Vector3(-1.0, 0.2, 0.0),
+		"chase": Vector3(0, 2.1, 4.4), "roof": false, "two_wheels": true,
+		"wheels": [Vector3(0, 0.32, -0.76), Vector3(0, 0.32, 0.64)], "tail": [Vector3(0, 0.86, 0.985)],
+	},
 	# Мопед «Карпаты» — первый транспорт: прав не нужно, медленный (до 50),
 	# бака на 6 литров хватает надолго, зато в горку тянет еле-еле.
 	"moped": {
@@ -1120,6 +1132,8 @@ func _paint_body() -> void:
 	match kind:
 		"moto":
 			VehicleModels.java(b, col)
+		"izh":
+			VehicleModels.izh(b, col)
 		"moped":
 			VehicleModels.moped(b, col)
 		"niva":
@@ -1136,6 +1150,18 @@ func _paint_body() -> void:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
+	# Надписи модели (эмблемы на баке и т. п.) — живут вместе с кузовом
+	for l in b.get_meta("labels", []):
+		var lb := Label3D.new()
+		lb.text = l[0]
+		lb.position = l[1]
+		lb.rotation.y = l[2]
+		lb.pixel_size = l[3]
+		lb.modulate = l[4]
+		lb.font_size = 64
+		lb.outline_size = 0
+		lb.double_sided = false
+		_paint_mesh.add_child(lb)
 	if school and not _body.has_node("SchoolMarks"):
 		_school_marks()
 	# Номерные знаки — один раз, перекраска их не трогает
@@ -1393,7 +1419,7 @@ func _process(_delta: float) -> void:
 	for g in _gauge_holders:
 		g.visible = inside
 	if driver != null and not _needles.is_empty():
-		var top: float = {"moto": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+		var top: float = {"moto": 140.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
 		var k_rpm := clampf(rpm / float(spec.redline) * 0.85, 0.0, 1.0)
 		for i in _needles.size():
@@ -1412,6 +1438,8 @@ func _gauge_spots() -> Array:
 			return [[Vector3(-0.41, 1.04, -0.327), 0.03, 0.0], [Vector3(-0.28, 1.04, -0.327), 0.03, 0.0]]
 		"moto":
 			return [[Vector3(0.0, 1.122, -0.89), 0.042, -1.1]]
+		"izh":
+			return [[Vector3(0.0, 1.212, -0.8), 0.045, -1.1]]
 		"moped":
 			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
 		"tractor":

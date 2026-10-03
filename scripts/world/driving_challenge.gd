@@ -137,7 +137,8 @@ func _vehicle() -> Vehicle:
 	var v := GameManager.vehicle as Vehicle
 	if v and only_car and v.spec.two_wheels:
 		return null
-	if v and only_kind != "" and v.kind != only_kind:
+	# Экзамен на мотоцикл можно сдавать и на «Яве», и на «ИЖе»
+	if v and only_kind != "" and v.kind != only_kind and not (only_kind == "moto" and v.kind == "izh"):
 		return null
 	return v
 

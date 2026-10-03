@@ -54,8 +54,9 @@ static func on_asphalt(x: float, z: float) -> bool:
 		return true
 	if x > -120.0 and x < -78.0 and z > 0.0 and z < 21.0:
 		return true
-	if x > -2.0 and x < 20.0 and z > -75.0 and z < -18.0:
-		return true
-	if x > 6.0 and x < 12.0 and z > -18.0 and z < 0.0:
-		return true
+	# Автошкола к югу от трассы
+	if x > -41.0 and x < -5.0 and z > 1.0 and z < 72.0:
+		for r in AutoSchool.ASPHALT:
+			if (r as Rect2).has_point(Vector2(x, z)):
+				return true
 	return x > 38.0 and x < 200.0 and z > 0.0 and z < 200.0

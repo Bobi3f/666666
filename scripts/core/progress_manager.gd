@@ -49,7 +49,7 @@ const DOC_NAMES := {"passport": "паспорт", "propiska": "справка о
 	"school_cert": "аттестат о среднем образовании"}
 ## Какую категорию прав требует машина: мотоцикл — A, легковые — B,
 ## грузовик — C, автобус — D; трактору права не спрашивают.
-const KIND_CATEGORY := {"moto": "A", "car": "B", "niva": "B", "volga": "B", "truck": "C", "bus": "D"}
+const KIND_CATEGORY := {"moto": "A", "izh": "A", "car": "B", "niva": "B", "volga": "B", "truck": "C", "bus": "D"}
 ## В какой день уже был заезд с Колькой (раз в день).
 var race_day := 0
 ## Купленное в «Хозтоварах»: tv — телевизор в комнате, dog — пёс с будкой
@@ -104,7 +104,8 @@ func owns(kind: String) -> bool:
 func buy_car(kind: String) -> void:
 	if not owned_cars.has(kind):
 		owned_cars.append(kind)
-		QuestManager.event("car_bought")
+		# Мотоцикл из салона — не машина: в «Автопарк» не считается
+		QuestManager.event("moto_bought" if kind == "izh" else "car_bought")
 
 
 func has_item(id: String) -> bool:

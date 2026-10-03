@@ -2293,6 +2293,7 @@ const SALON_CARS := [
 	["niva", 22000, "вездеход — грязь и лес ей нипочём", Vector3(52, 0.1, 17)],
 	["volga", 36000, "быстрая и мягкая, в такси платят больше", Vector3(60, 0.1, 17)],
 	["truck", 28000, "грузовик — развоз хлеба вдвое дороже", Vector3(68.5, 0.1, 18.5)],
+	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Явы», два глушителя", Vector3(52, 0.1, 23.0)],
 ]
 
 
@@ -2322,7 +2323,7 @@ func _spawn_salon_cars() -> void:
 		v.kind = entry[0]
 		v.price = entry[1]
 		v.blurb = entry[2]
-		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck"}[entry[0]]
+		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh"}[entry[0]]
 		add_child(v)
 		v.global_position = entry[3]
 		v.fuel = v.tank() * 0.5
@@ -2344,12 +2345,10 @@ func _build_autodrome(b: MeshBuilder) -> void:
 	var e := AutoSchool.ENTRY
 	var asphalt := Color(0.3, 0.3, 0.31)
 	var white := Color(0.88, 0.88, 0.85)
-	b.box(Vector3(a.position.x, 0, a.position.y), Vector3(a.end.x, 0.04, a.end.y), asphalt)
-	b.box(Vector3(e.position.x, 0, e.position.y), Vector3(e.end.x, 0.04, e.end.y), asphalt)
-	# Дорожка от въезда к крыльцу и стоянка учебных машин за домом
-	b.box(Vector3(e.end.x, 0, 13.0), Vector3(AutoSchool.HOUSE.x - 2.0, 0.035, 15.0), asphalt)
-	b.box(Vector3(-13.0, 0, 26.0), Vector3(-6.0, 0.035, 63.0), asphalt)
-	b.box(Vector3(a.end.x, 0, 26.0), Vector3(-13.0, 0.035, 30.0), asphalt)
+	# Автодром, въезд, дорожка к крыльцу, стоянка учебных машин за домом
+	for i in AutoSchool.ASPHALT.size():
+		var r: Rect2 = AutoSchool.ASPHALT[i]
+		b.box(Vector3(r.position.x, 0, r.position.y), Vector3(r.end.x, 0.04 if i < 2 else 0.035, r.end.y), asphalt)
 	# Разметка: бортики-линии по краю, старт, стоянка
 	for r in [[a.position.x, a.position.y, a.position.x + 0.15, a.end.y], [a.end.x - 0.15, a.position.y, a.end.x, a.end.y],
 			[a.position.x, a.end.y - 0.15, a.end.x, a.end.y]]:
