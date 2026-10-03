@@ -1312,7 +1312,7 @@ func _school_marks() -> void:
 
 ## Живой щиток на руле: вид → [картинка (точки), табличка (м), центр, наклон]
 const DASH := {
-	"izh": [Vector2i(288, 132), Vector2(0.36, 0.165), Vector3(0.0, 1.277, -0.6), 1.15],
+	"izh": [Vector2i(292, 136), Vector2(0.36, 0.168), Vector3(0.0, 1.277, -0.6), 1.15],
 	"moto": [Vector2i(306, 143), Vector2(0.37, 0.173), Vector3(0.0, 1.25, -0.74), 1.1],
 }
 var _dash_vp: SubViewport

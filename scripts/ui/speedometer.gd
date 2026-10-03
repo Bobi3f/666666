@@ -44,7 +44,7 @@ func _process(delta: float) -> void:
 		size = Vector2(r * 4.0 + r * 0.9 + 12.0, r * 2.0 + 34.0)
 	elif v.kind == "izh":
 		r = _jawa_r()
-		size = Vector2(r * 2.0 + r * 2.5 + 16.0, r * 2.0 + 26.0)
+		size = Vector2(r * 2.0 + r * 2.5 + 22.0, r * 2.0 + 34.0)
 	var vs := get_viewport_rect().size
 	if GameManager.touch_mode:
 		# Между рулём (слева до ~300) и педалями (справа от ~600 до края)
@@ -346,59 +346,64 @@ func _gear_dot(p: Vector2, label: String, on: bool, amber: Color, dim: Color, r 
 	draw_string(_font, p + Vector2(-w * 0.5, fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.05, 0.05, 0.05) if on else Color.WHITE)
 
 
-## Приборы «ИЖ Юпитер-5», как настоящий щиток: два чёрных корпуса. Слева
-## блок лампочек с подписями — ПОВОРОТ (мигает), ЗАЖИГАНИЕ (мотор не
-## заведён), ДАЛЬНИЙ СВЕТ, НЕЙТРАЛЬ, МАСЛО (мотор стоит — давления нет)
-## и значок «ИЖ»; справа спидометр до 160 с одометром и суточным счётчиком.
+## Приборы «ИЖ Юпитер-5», как настоящий щиток: два чёрных скруглённых
+## корпуса-трапеции, между ними внизу круглая заглушка. Слева — лампочки
+## квадратиками с подписями под ними: сверху ПОВОРОТ (мигает) и ЗАЖИГАНИЕ
+## (мотор не заведён), снизу ДАЛЬНИЙ СВЕТ, НЕЙТРАЛЬ, МАСЛО (мотор стоит —
+## давления нет), внизу рельефный значок «ИЖ». Справа спидометр до 160:
+## вверху суточный счётчик (последняя цифра на красном), под ним km/h,
+## под осью стрелки — общий пробег.
 func _draw_izh(v: Vehicle) -> void:
 	var r := _jawa_r()
 	var white := Color(0.96, 0.96, 0.94)
 	var bw := r * 2.5
-	var lb := Rect2(Vector2(4, 4), Vector2(bw, r * 2.0))
-	var cs := Vector2(lb.end.x + 8.0 + r, 4.0 + r)
-	# Корпуса: скруглённые, чёрные, с серым краем
-	var body := StyleBoxFlat.new()
-	body.bg_color = Color(0.06, 0.06, 0.07, 0.95)
-	body.border_color = Color(0.35, 0.35, 0.37)
-	body.set_border_width_all(2)
-	body.set_corner_radius_all(int(r * 0.35))
-	draw_style_box(body, lb)
-	draw_style_box(body, Rect2(cs - Vector2(r + 3.0, r + 3.0), Vector2(r * 2.0 + 6.0, r * 2.0 + 6.0)))
-	# Лампочки: верхний ряд — поворот и зажигание, нижний — дальний, нейтраль, масло
+	var h := r * 2.0 + 6.0
+	var lb := Rect2(Vector2(4, 4), Vector2(bw, h))
+	var sb := Rect2(Vector2(lb.end.x + 4.0, 4), Vector2(r * 2.0 + 10.0, h))
+	var cs := Vector2(sb.get_center().x, 4.0 + r + 3.0)
+	_izh_body(lb)
+	_izh_body(sb)
+	# Заглушка между корпусами внизу
+	var pin := Vector2(lb.end.x + 2.0, lb.end.y - r * 0.14)
+	draw_circle(pin, r * 0.13, Color(0.7, 0.71, 0.73))
+	draw_circle(pin, r * 0.08, Color(0.15, 0.15, 0.16))
+	# Лампочки
 	var fs := 7 if r < 50.0 else 9
 	var q := r * 0.36
 	var lamps := [
-		["ПОВОРОТ", Color(0.95, 0.5, 0.15), v.blink_on(), "turn"],
-		["ЗАЖИГАНИЕ", Color(0.85, 0.15, 0.2), not v.engine_on, "battery"],
-		["ДАЛЬН. СВЕТ", Color(0.25, 0.45, 1.0), v.headlights_on(), "beam"],
-		["НЕЙТРАЛЬ", Color(0.2, 0.75, 0.4), v.gear == 0, "N"],
-		["МАСЛО", Color(0.85, 0.15, 0.2), not v.engine_on, "oil"],
+		["ПОВОРОТ", Color(0.9, 0.42, 0.18), v.blink_on(), "turn"],
+		["ЗАЖИГАНИЕ", Color(0.6, 0.15, 0.25), not v.engine_on, "battery"],
+		["ДАЛЬНИЙ СВЕТ", Color(0.3, 0.45, 0.95), v.headlights_on(), "beam"],
+		["НЕЙТРАЛЬ", Color(0.25, 0.3, 0.55), v.gear == 0, "N"],
+		["МАСЛО", Color(0.6, 0.15, 0.25), not v.engine_on, "oil"],
 	]
 	for i in lamps.size():
 		var L: Array = lamps[i]
 		var row := 0 if i < 2 else 1
-		var col: float = 0.0 if row == 0 else (i - 2.0)
-		var cx := lb.position.x + bw * (0.3 + i * 0.4) if row == 0 else lb.position.x + bw * (1.0 / 6.0 + col / 3.0)
-		var cy := lb.position.y + r * (0.42 if row == 0 else 1.02)
+		var cx := lb.position.x + bw * (0.42 + i * 0.26) if row == 0 else lb.position.x + bw * (0.19 + (i - 2) * 0.31)
+		var cy := lb.position.y + r * (0.42 if row == 0 else 1.0)
 		var c: Color = L[1]
 		var on: bool = L[2]
 		var sq := Rect2(Vector2(cx - q * 0.5, cy - q * 0.5), Vector2(q, q))
-		draw_rect(sq, c if on else c.darkened(0.72))
-		draw_rect(sq, Color(0.6, 0.6, 0.62), false, 1.0)
-		_izh_icon(String(L[3]), sq, Color.WHITE if on else Color(1, 1, 1, 0.55))
-		# Подпись — не шире своей колонки: шрифт мельче, пока не влезет
+		# Горит — ярко, не горит — тусклое цветное стекло
+		draw_rect(sq, c.lightened(0.25) if on else c.darkened(0.45))
+		draw_rect(sq, Color(0.5, 0.5, 0.52), false, 1.0)
+		_izh_icon(String(L[3]), sq, Color.WHITE if on else Color(1, 1, 1, 0.6))
 		var t: String = L[0]
 		var tf := fs
 		var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf).x
-		var room := bw * (0.4 if row == 0 else 1.0 / 3.0) - 3.0
+		var room := bw * (0.26 if row == 0 else 0.31) - 2.0
 		while tw > room and tf > 5:
 			tf -= 1
 			tw = _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf).x
-		draw_string(_font, Vector2(cx - tw * 0.5, sq.end.y + tf + 1.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf, Color(0.9, 0.85, 0.7))
-	var logo := "ИЖ"
-	var lw := _font.get_string_size(logo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 5).x
-	draw_string(_font, Vector2(lb.get_center().x - lw * 0.5, lb.end.y - 6.0), logo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 5, Color(0.4, 0.4, 0.42))
-	# Спидометр 0–160: деления через 10, цифры через 20, одометр и суточный
+		draw_string(_font, Vector2(cx - tw * 0.5, sq.end.y + tf + 1.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf, Color(0.9, 0.88, 0.8))
+	# Значок «ИЖ» — рельефные косые полосы внизу корпуса
+	var lc := Vector2(lb.get_center().x, lb.end.y - r * 0.3)
+	for k in 4:
+		var x := lc.x - r * 0.3 + k * r * 0.16
+		draw_colored_polygon(PackedVector2Array([Vector2(x, lc.y - r * 0.08), Vector2(x + r * 0.12, lc.y - r * 0.08),
+			Vector2(x + r * 0.09, lc.y + r * 0.08), Vector2(x - r * 0.03, lc.y + r * 0.08)]), Color(0.2, 0.2, 0.22))
+	# Спидометр 0–160: деления через 10, цифры через 20
 	draw_circle(cs, r - 1.0, Color(0.03, 0.03, 0.035))
 	var top := 160.0
 	var sfs := 10 if r < 50.0 else 13
@@ -412,27 +417,52 @@ func _draw_izh(v: Vehicle) -> void:
 			var p := _at(cs, a, r - (17.0 if r < 50.0 else 22.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x * 0.5, -sfs * 0.35)
 			draw_string(_font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, white)
 		s += 10
-	var km := int(float(Achievements.counts.get("drive_m", 0.0)) / 1000.0) % 100000
-	# Счётчики — внизу, в просвете шкалы между 0 и 160: суточный выше,
-	# общий ниже; надпись km/h — над осью стрелки
-	var cf := maxi(sfs - 3, 6)
-	if r >= 50.0:
-		_izh_counter(cs + Vector2(0, r * 0.46), "%04d" % (int(float(Achievements.counts.get("drive_m", 0.0)) / 100.0) % 10000), true, cf)
-		_izh_counter(cs + Vector2(0, r * 0.74), "%05d" % km, false, cf)
-	else:
-		# На маленьком приборе (телефон) — только общий пробег
-		_izh_counter(cs + Vector2(0, r * 0.66), "%05d" % km, false, cf)
+	var drive := float(Achievements.counts.get("drive_m", 0.0))
+	var cf := maxi(sfs - 5, 6)
+	_izh_counter(cs + Vector2(0, -r * 0.3), "%04d" % (int(drive / 100.0) % 10000), true, cf)
 	var unit := "km/h"
-	draw_string(_font, cs + Vector2(-_font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf).x * 0.5, -r * 0.26), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf, white)
-	_jawa_needle(cs, r, clampf(_shown / top, 0.0, 1.02))
+	draw_string(_font, cs + Vector2(-_font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf).x * 0.5, -r * 0.1), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf, white)
+	_izh_counter(cs + Vector2(0, r * 0.38), "%05d" % (int(drive / 1000.0) % 100000), false, cf)
+	var gost := "ГОСТ 1578-76"
+	var gf := maxi(sfs - 7, 5)
+	draw_string(_font, cs + Vector2(-_font.get_string_size(gost, HORIZONTAL_ALIGNMENT_LEFT, -1, gf).x * 0.5, r * 0.72), gost, HORIZONTAL_ALIGNMENT_LEFT, -1, gf, Color(0.7, 0.7, 0.7))
+	_izh_needle(cs, r, clampf(_shown / top, 0.0, 1.02))
+	if on_bike:
+		return
 	# Передача и бензин
-	var gy := r * 2.0 + 20.0
+	var gy := h + 22.0
 	var gear := v.gear_name()
 	draw_string(_font, Vector2(lb.get_center().x - _font.get_string_size(gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, gy), gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.95, 0.7, 0.24))
 	var fuel := clampf(v.fuel / v.tank(), 0.0, 1.0)
 	var fw := r * 1.4
 	draw_rect(Rect2(cs.x - fw * 0.5, gy - 9.0, fw, 5.0), Color(1, 1, 1, 0.15))
 	draw_rect(Rect2(cs.x - fw * 0.5, gy - 9.0, fw * fuel, 5.0), Color(0.95, 0.3, 0.2) if fuel < 0.15 else Color(0.4, 0.8, 0.45))
+
+
+## Корпус щитка «ИЖа»: скруглённая трапеция — сверху шире, снизу уже.
+func _izh_body(rc: Rect2) -> void:
+	var pts := PackedVector2Array()
+	var k := rc.size.x * 0.08
+	var corners := [[rc.position + Vector2(0, 0), 0], [Vector2(rc.end.x, rc.position.y), 1],
+		[rc.end - Vector2(k, 0), 2], [Vector2(rc.position.x + k, rc.end.y), 3]]
+	var rad := minf(rc.size.x, rc.size.y) * 0.18
+	var c := [rc.position + Vector2(rad, rad), Vector2(rc.end.x - rad, rc.position.y + rad),
+		rc.end - Vector2(k + rad, rad), Vector2(rc.position.x + k + rad, rc.end.y - rad)]
+	var a0 := [PI, -PI * 0.5, 0.0, PI * 0.5]
+	for i in 4:
+		for j in 7:
+			var a: float = a0[i] + PI * 0.5 * j / 6.0
+			pts.append((c[i] as Vector2) + Vector2(cos(a), sin(a)) * rad)
+	draw_colored_polygon(pts, Color(0.07, 0.07, 0.08, 0.97))
+	pts.append(pts[0])
+	draw_polyline(pts, Color(0.32, 0.32, 0.34), 2.0)
+
+
+## Стрелка «ИЖа»: белая, тонкая, с маленькой серебристой осью.
+func _izh_needle(c: Vector2, r: float, k: float) -> void:
+	var a := START + SWEEP * k
+	draw_line(_at(c, a + PI, r * 0.12), _at(c, a, r - 6.0), Color(0.97, 0.97, 0.95), 3.0)
+	draw_circle(c, r * 0.07, Color(0.75, 0.76, 0.78))
 
 
 ## Счётчик километров: белые цифры в чёрных окошках; у суточного последняя
