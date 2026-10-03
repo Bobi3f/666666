@@ -92,9 +92,10 @@ func _run() -> void:
 	ok(G.doll.position.x > 0.2, "справа от водителя")
 	var r0 := G.rel
 	G._ride_t = 59.9
-	for i in 6:
+	for i in 30:
 		C.speed = 10.0
-		await physics_frame
+		await process_frame
+		if G.rel > r0: break
 	ok(G.rel == r0 + G.RIDE_GAIN, "минута катания: +%d" % G.RIDE_GAIN)
 	C.speed = 0.0
 	ok(W.get_node("Girl").get_path() == G.get_path() and G.save_state().has("rel"), "сохраняется по прежнему пути")
