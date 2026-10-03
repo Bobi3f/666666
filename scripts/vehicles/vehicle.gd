@@ -283,7 +283,7 @@ func _ready() -> void:
 		_build_car()
 	_build_gauges()
 	_build_turn_lamps()
-	if kind == "izh":
+	if DASH.has(kind):
 		_build_dash_screen()
 	# Камеры отдельно от машины: сглаживаются между шагами физики, иначе
 	# на телефоне и в браузере картинка при езде подёргивается
@@ -1310,17 +1310,23 @@ func _school_marks() -> void:
 			m.add_child(l)
 
 
+## Живой щиток на руле: вид → [картинка (точки), табличка (м), центр, наклон]
+const DASH := {
+	"izh": [Vector2i(288, 132), Vector2(0.36, 0.165), Vector3(0.0, 1.277, -0.6), 1.15],
+	"moto": [Vector2i(304, 132), Vector2(0.37, 0.16), Vector3(0.0, 1.25, -0.74), 1.1],
+}
 var _dash_vp: SubViewport
 var _dash_quad: MeshInstance3D
 
 
-## Щиток на руле — экранчик с приборами, как на настоящем «ИЖе»: блок
-## лампочек и спидометр. Рисует его dash_panel.gd в маленький SubViewport,
+## Щиток на руле — экранчик с приборами, как на настоящих «ИЖе» (блок
+## лампочек и спидометр) и «Яве» (спидометр, тахометр и пульт «JAWA»). Рисует его dash_panel.gd в маленький SubViewport,
 ## картинка — на наклонной табличке над рулём. Обновляется только когда
 ## на мотоцикле кто-то едет.
 func _build_dash_screen() -> void:
 	_dash_vp = SubViewport.new()
-	_dash_vp.size = Vector2i(288, 132)
+	var d: Array = DASH[kind]
+	_dash_vp.size = d[0]
 	_dash_vp.transparent_bg = true
 	_dash_vp.disable_3d = true
 	_dash_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -1330,7 +1336,7 @@ func _build_dash_screen() -> void:
 	_dash_vp.add_child(panel)
 	_dash_quad = MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(0.36, 0.165)
+	q.size = d[1]
 	_dash_quad.mesh = q
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1339,8 +1345,9 @@ func _build_dash_screen() -> void:
 	_dash_quad.material_override = mat
 	_dash_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Над рулём, лицом к мотоциклисту (вверх и назад)
-	_dash_quad.position = Vector3(0.0, 1.277, -0.6) + Vector3(0, sin(1.15), cos(1.15)) * 0.003
-	_dash_quad.rotation.x = -1.15
+	var tilt: float = d[3]
+	_dash_quad.position = (d[2] as Vector3) + Vector3(0, sin(tilt), cos(tilt)) * 0.003
+	_dash_quad.rotation.x = -tilt
 	_dash_quad.visible = false
 	_body.add_child(_dash_quad)
 
@@ -1589,8 +1596,8 @@ func _gauge_spots() -> Array:
 		"car":
 			return [[Vector3(-0.41, 1.04, -0.327), 0.03, 0.0], [Vector3(-0.28, 1.04, -0.327), 0.03, 0.0]]
 		"moto":
-			# Спидометр слева, тахометр справа — в колодцах над фарой
-			return [[Vector3(-0.1, 1.129, -0.766), 0.044, -1.1], [Vector3(0.1, 1.129, -0.766), 0.044, -1.1]]
+			# Приборы «Явы» — живой экранчик на руле (_build_dash_screen)
+			return []
 		"izh":
 			# Щиток «ИЖа» — живой экранчик на руле (_build_dash_screen)
 			return []

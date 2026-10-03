@@ -363,19 +363,17 @@ static func java(b: MeshBuilder, paint: Color) -> void:
 	for sx in [-1.0, 1.0]:
 		tube(b, hp + Vector3(0.09 * sx, -0.04, 0.06), hp + Vector3(0.2 * sx, -0.04, 0.06), 0.01, frame)
 		disc(b, hp + Vector3(0.23 * sx, -0.04, 0.04), Vector3.FORWARD, 0.035, 0.08, amber)
-	# Приборы: два колодца — спидометр и тахометр, между ними пульт с
-	# надписью «JAWA» и четырьмя лампочками (зарядка, дальний, нейтраль,
-	# поворот); стрелки и шкалы — Vehicle._build_gauges
-	var tilt := Vector3(0, sin(1.1), cos(1.1))
+	# Приборы над фарой: корпус из трёх частей — спидометр, пульт «JAWA» с
+	# лампочками, тахометр. Сами приборы — живой экранчик (Vehicle._build_dash_screen)
+	var tilt := Basis(Vector3.RIGHT, -1.1)
+	var saved := b.xf
+	b.xf = saved * Transform3D(tilt, Vector3(0.0, 1.25, -0.74))
+	for p in [[-0.185, -0.06], [-0.055, 0.055], [0.06, 0.185]]:
+		b.box(Vector3(p[0], -0.08, -0.05), Vector3(p[1], 0.08, 0.0), frame)
+	b.xf = saved
+	# Кронштейны щитка к рулевой колонке
 	for sx in [-1.0, 1.0]:
-		disc(b, Vector3(0.1 * sx, 1.1, -0.78), tilt, 0.05, 0.06, frame)
-		disc(b, Vector3(0.1 * sx, 1.1, -0.78) + tilt * 0.031, tilt, 0.052, 0.006, chrome)
-	b.box(Vector3(-0.045, 1.07, -0.8), Vector3(0.045, 1.12, -0.72), Color(0.12, 0.12, 0.13))
-	var lamps := [Color(0.85, 0.1, 0.1), Color(0.15, 0.35, 0.95), Color(0.1, 0.75, 0.3), Color(0.1, 0.75, 0.5)]
-	for i in 4:
-		var lx := -0.025 + (i % 2) * 0.05
-		var lz := -0.785 + (i / 2) * 0.035
-		b.box(Vector3(lx - 0.012, 1.12, lz - 0.012), Vector3(lx + 0.012, 1.127, lz + 0.012), lamps[i])
+		tube(b, head + Vector3(0.07 * sx, 0.05, -0.04), Vector3(0.07 * sx, 1.22, -0.72), 0.01, frame)
 	# Руль, рукоятки, рычаги, круглые зеркала
 	var hb := head + Vector3(0, 0.15, 0.02)
 	for sx in [-1.0, 1.0]:

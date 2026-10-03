@@ -1,7 +1,7 @@
 extends "res://scripts/ui/speedometer.gd"
 ## Щиток на руле: те же приборы, что на экране, но нарисованные в маленький
 ## экранчик (SubViewport) — он висит на руле мотоцикла и показывает живые
-## стрелку и лампочки. Сейчас — у «ИЖ Юпитер-5».
+## стрелку и лампочки. У «ИЖ Юпитер-5» и «Явы 350».
 
 ## Размер приборов в экранчике (точки)
 const R := 60.0
@@ -28,9 +28,12 @@ func _process(delta: float) -> void:
 	position = Vector2.ZERO
 	size = Vector2(R * 4.5 + 16.0, R * 2.0 + 10.0)
 	_shown = lerpf(_shown, vehicle.speed_kmh(), minf(delta * 8.0, 1.0))
+	_shown_rpm = lerpf(_shown_rpm, vehicle.rpm, minf(delta * 10.0, 1.0))
 	queue_redraw()
 
 
 func _draw() -> void:
 	if vehicle and vehicle.kind == "izh":
 		_draw_izh(vehicle)
+	elif vehicle and vehicle.kind == "moto":
+		_draw_jawa(vehicle)

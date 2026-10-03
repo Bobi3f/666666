@@ -75,7 +75,7 @@ func _run() -> void:
 	var jl := []
 	for c in JV._paint_mesh.get_children():
 		if c is Label3D: jl.append(c.text)
-	ok(jl.count("JAWA") == 3 and jl.count("350") == 2 and JV._gauge_spots().size() == 2, "«Ява 350»: JAWA на баке и брызговике, 350 на крышках, спидометр и тахометр")
+	ok(jl.count("JAWA") == 3 and jl.count("350") == 2 and JV._dash_vp != null and JV._gauge_spots().is_empty(), "«Ява 350»: JAWA на баке и брызговике, 350 на крышках, живой щиток на руле")
 
 	ok(I._dash_vp != null and I._dash_quad != null and I._gauge_spots().is_empty(), "у «ИЖа» на руле — живой щиток (лампочки и спидометр)")
 

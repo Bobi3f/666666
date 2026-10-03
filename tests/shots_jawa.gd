@@ -43,4 +43,13 @@ func _run() -> void:
 	M.rpm = 4200.0
 	for i in 20: await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/jawa_dash.png" % OS.get_environment("SHOTS"))
+	# Щиток на руле вблизи
+	M.set_physics_process(false)
+	var cam2 := Camera3D.new(); cam2.fov = 40.0; W.add_child(cam2)
+	var mx := M.global_transform
+	cam2.global_position = mx * Vector3(0.0, 1.5, -0.25)
+	cam2.look_at(mx * Vector3(0.0, 1.25, -0.74))
+	cam2.make_current()
+	for i in 8: await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/jawa_panel3d.png" % OS.get_environment("SHOTS"))
 	quit()
