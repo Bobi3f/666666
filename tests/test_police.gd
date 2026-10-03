@@ -70,7 +70,7 @@ func _run() -> void:
 	print("== Отделение милиции")
 	var desk: InteractZone = null
 	for c in pol.get_children():
-		if c is InteractZone: desk = c
+		if c is InteractZone and c.name != "PlateDesk": desk = c
 	ok(desk.text().contains("не хватает"), "долг есть, денег нет: " + desk.text())
 	GM.money = 800
 	ok(desk.text().contains("оплатить штрафы: 500"), "у дежурного — оплатить штрафы")
@@ -100,5 +100,43 @@ func _run() -> void:
 	ok(pol.debt == 0, "старое сохранение — без долга")
 	pol.load_state(st)
 	ok(pol.debt == 200, "долг сохраняется")
+
+	print("== ГАИ: свой номер")
+	var PRG = root.get_node("Progress")
+	PRG.buy_car("car")
+	var pd: InteractZone = pol.get_node("PlateDesk")
+	TM.minutes = 20 * 60.0
+	ok(pd.text().contains("с 8:00"), "вечером окошко закрыто: " + pd.text())
+	TM.minutes = 10 * 60.0
+	ok(pd.text().contains("новый номер"), "днём: " + pd.text())
+	var PL = load("res://scripts/vehicles/plates.gd")
+	ok(PL.parse("А1234км") == "а 12-34 КМ" and PL.parse(" б 77-77 хa") == "" and PL.parse("в 00-07 ОД") == "в 00-07 ОД",
+		"свой номер пишется как надо: %s" % PL.parse("А1234км"))
+	ok(PL.parse("12-34") == "" and PL.parse("аб 1234 КМ") == "", "кривой номер не принимают")
+	var nice: Array = PL.nice_numbers(5, 3)
+	ok(nice.size() == 3 and PL.parse(nice[0]) == nice[0], "красивые номера: %s" % ", ".join(nice))
+	pd.activate()
+	var panel = pol.plate_panel
+	ok(panel.visible and paused and panel._cars_box.get_child_count() >= 2, "окошко ГАИ: машины на выбор — %d" % panel._cars_box.get_child_count())
+	panel.select(C)
+	GM.money = 1000
+	var old: String = C.plate()
+	ok(panel.buy("а 77-77 КМ", panel.NICE_PRICE) and C.plate() == "а 77-77 КМ" and GM.money == 1000 - panel.NICE_PRICE,
+		"красивый номер за %d грн: %s → %s" % [panel.NICE_PRICE, old, C.plate()])
+	var lbl: Label3D = C.find_child("Plates", true, false).find_children("*", "Label3D", false, false)[0]
+	await process_frame
+	ok(lbl.text == "а 77-77 КМ", "на машине — новый номер")
+	var M = W.get_node("Moped")
+	panel.select(M)
+	ok(not panel.buy("а 77-77 КМ", panel.PLAIN_PRICE), "занятый номер второй раз не дадут: " + panel._status.text)
+	GM.money = 10
+	ok(not panel.buy("к 11-22 КМ", panel.PLAIN_PRICE) and panel._status.text.contains("денег"), "без денег — никак")
+	panel.close_panel()
+	ok(not panel.visible and not paused, "закрыл — игра идёт")
+	var cst: Dictionary = C.save_state()
+	C.set_plate("")
+	ok(C.plate() != "а 77-77 КМ", "без регистрации — заводской номер")
+	C.load_state(cst)
+	ok(C.plate() == "а 77-77 КМ", "номер сохраняется")
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
 	quit(1 if fails > 0 else 0)

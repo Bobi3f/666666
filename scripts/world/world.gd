@@ -2948,8 +2948,11 @@ func _build_clubs() -> void:
 
 # --- Игрок и машина ---------------------------------------------------------
 
-## Где стоит мопед игрока в начале: у калитки, носом вдоль улицы.
-const MOPED_SPOT := Vector3(PLAYER_HOUSE.x - 1.2, 0, -41.3)
+## Где стоит мопед игрока в начале: в своём дворе слева от дорожки, носом
+## к калитке.
+const MOPED_SPOT := Vector3(PLAYER_HOUSE.x - 5.0, 0, -47.0)
+## Ява продаётся у соседа: во дворе дома слева (западнее), у дорожки.
+const MOTO_SPOT := Vector3(PLAYER_HOUSE.x - 30.5, 0, -47.5)
 ## Первая машина: соседские «Жигули» и «Ява» — продаются.
 const CAR_PRICE := 2500
 const MOTO_PRICE := 1800
@@ -2959,8 +2962,8 @@ func _spawn_player_and_car() -> void:
 	var player := Player.new()
 	player.name = "Player"
 	add_child(player)
-	# На дорожке у калитки, лицом к улице: первым делом видно деревню
-	# и свой старый мопед у калитки — с него всё и начинается
+	# На дорожке у калитки: первым делом видно свой старый мопед во дворе —
+	# с него всё и начинается
 	player.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 10.0)
 	var to_moped := MOPED_SPOT - player.global_position
 	player.rotation.y = atan2(-to_moped.x, -to_moped.z)
@@ -2971,7 +2974,7 @@ func _spawn_player_and_car() -> void:
 	add_child(moped)
 	GameManager.moped = moped
 	moped.global_position = MOPED_SPOT + Vector3(0, 0.1, 0)
-	moped.rotation.y = -PI / 2.0
+	moped.rotation.y = PI
 	# Соседские «Жигули» напротив дома — продаются: первая машина, когда
 	# будут права и деньги
 	var car := Vehicle.new()
@@ -2984,7 +2987,7 @@ func _spawn_player_and_car() -> void:
 	# Жигули на улице перед домом, носом вдоль улицы
 	car.global_position = Vector3(PLAYER_HOUSE.x + 4.0, 0.1, -39.5)
 	car.rotation.y = -PI / 2.0
-	# Ява у забора через дорогу от калитки
+	# Ява во дворе у соседа — продаётся
 	var moto := Vehicle.new()
 	moto.kind = "moto"
 	moto.name = "Moto"
@@ -2993,5 +2996,5 @@ func _spawn_player_and_car() -> void:
 	add_child(moto)
 	GameManager.moto = moto
 	_spawn_salon_cars()
-	moto.global_position = Vector3(PLAYER_HOUSE.x - 5.0, 0.1, -41.6)
-	moto.rotation.y = -PI / 2.0
+	moto.global_position = MOTO_SPOT + Vector3(0, 0.1, 0)
+	moto.rotation.y = PI

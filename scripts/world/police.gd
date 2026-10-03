@@ -4,8 +4,9 @@ extends Node3D
 ## дежурные «Жигули» с мигалкой, дежурный у входа.
 ##
 ## Здесь гасят долг по штрафам (если на посту ГАИ платить было нечем или
-## уехал от инспектора) и подрабатывают дружинником: вечером обойти город
-## по пяти точкам — жёлтая стрелка покажет, куда идти.
+## уехал от инспектора), подрабатывают дружинником (вечером обойти город
+## по пяти точкам — жёлтая стрелка покажет, куда идти) и регистрируют
+## номера своих машин в окошке ГАИ (PlatePanel).
 
 const Villagers := preload("res://scripts/world/villagers.gd")
 ## Отделение: центр, вход смотрит на дорогу (к -X)
@@ -24,6 +25,7 @@ var _arrow: MeshInstance3D
 var _t := 0.0
 var _blink: Array = []
 var _lit: MeshInstance3D
+var plate_panel: PlatePanel
 
 
 func _ready() -> void:
@@ -151,6 +153,25 @@ func _build() -> void:
 	desk.prompt_fn = _desk_prompt
 	desk.activated.connect(_desk)
 	add_child(desk)
+	# Окошко ГАИ сбоку от входа: номера для своих машин
+	var gai := InteractZone.create("", Vector3(2.0, 2.2, 1.6))
+	gai.name = "PlateDesk"
+	gai.position = c + Vector3(-8.4, 0, -2.4)
+	gai.prompt_fn = _plate_prompt
+	gai.activated.connect(open_plates)
+	add_child(gai)
+	var sign := Label3D.new()
+	sign.text = "ГАИ · НОМЕРА"
+	sign.font_size = 64
+	sign.pixel_size = 0.006
+	sign.outline_size = 10
+	sign.modulate = Color(1.0, 0.95, 0.7)
+	sign.outline_modulate = Color(0.1, 0.2, 0.5)
+	sign.position = c + Vector3(-7.06, 2.4, -2.4)
+	sign.rotation.y = -PI / 2.0
+	add_child(sign)
+	plate_panel = PlatePanel.new()
+	add_child(plate_panel)
 	var arrow := MeshInstance3D.new()
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.4
@@ -164,6 +185,31 @@ func _build() -> void:
 	arrow.visible = false
 	add_child(arrow)
 	_arrow = arrow
+
+
+## Свои машины, которым можно сменить номер (не учебные и не колхозный трактор).
+func own_vehicles() -> Array:
+	var out := []
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var car := v as Vehicle
+		if car and car.owned() and not car.school and car.kind != "tractor":
+			out.append(car)
+	return out
+
+
+func _plate_prompt() -> String:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 17.0:
+		return "ГАИ: номера регистрируют с 8:00 до 17:00"
+	return "E — ГАИ: новый номер для своей машины (от %d грн)" % PlatePanel.PLAIN_PRICE
+
+
+func open_plates() -> void:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 17.0:
+		return
+	SoundLibrary.play("click", -4.0)
+	plate_panel.open(own_vehicles())
 
 
 func _desk_prompt() -> String:

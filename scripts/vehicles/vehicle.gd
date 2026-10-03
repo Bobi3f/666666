@@ -175,6 +175,9 @@ var blurb := ""
 var engine_tuned := false
 var paint := 0
 var _paint_mesh: MeshInstance3D
+## Номер из ГАИ ("" — заводской, см. plate()) и места табличек модели.
+var plate_text := ""
+var _plate_spots: Array = []
 ## Сколько ещё секунд машину «трясёт» после ямы (камера при этом не дёргается)
 var _shake := 0.0
 var braking := false
@@ -1121,8 +1124,9 @@ func _paint_body() -> void:
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
 	# Номерные знаки — один раз, перекраска их не трогает
+	_plate_spots = b.get_meta("plates", [])
 	if not _body.has_node("Plates"):
-		Plates.attach(_body, _paint_mesh.get_aabb(), Plates.number(String(name).hash()), spec.two_wheels, b.get_meta("plates", []))
+		_attach_plates()
 	# Стёкла — прозрачные, чтобы из салона было видно дорогу
 	if not spec.two_wheels:
 		var gm := glass.build_mesh()
@@ -1148,6 +1152,25 @@ func bump(strength: float) -> void:
 		GameManager.vibrate(int(30.0 + strength * 30.0))
 	if self == GameManager.delivery_vehicle:
 		Progress.damage_bread(strength * 2.5)
+
+
+## Номер машины: зарегистрированный в ГАИ или выданный с завода.
+func plate() -> String:
+	return plate_text if plate_text != "" else Plates.number(String(name).hash())
+
+
+## Новый номер (окошко ГАИ в милиции) — таблички перевешиваются сразу.
+func set_plate(t: String) -> void:
+	plate_text = t
+	var old := _body.get_node_or_null("Plates")
+	if old:
+		_body.remove_child(old)
+		old.queue_free()
+	_attach_plates()
+
+
+func _attach_plates() -> void:
+	Plates.attach(_body, _paint_mesh.get_aabb(), plate(), spec.two_wheels, _plate_spots)
 
 
 func repaint() -> void:
@@ -1372,6 +1395,7 @@ func save_state() -> Dictionary:
 		"tires": tires,
 		"engine_tuned": engine_tuned,
 		"paint": paint,
+		"plate": plate_text,
 	}
 
 
@@ -1385,6 +1409,9 @@ func load_state(d: Dictionary) -> void:
 	condition = float(d.get("condition", 100.0))
 	tires = bool(d.get("tires", false))
 	engine_tuned = bool(d.get("engine_tuned", false))
+	var pt := str(d.get("plate", ""))
+	if pt != plate_text and _paint_mesh:
+		set_plate(pt)
 	var p := int(d.get("paint", 0)) % paints().size()
 	if p != paint:
 		paint = p

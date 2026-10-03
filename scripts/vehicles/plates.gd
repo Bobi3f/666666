@@ -24,6 +24,34 @@ static func number(seed: int) -> String:
 	return "%s %02d-%02d %s" % [letter, digits / 100, digits % 100, REGIONS[rng.randi() % REGIONS.size()]]
 
 
+## Красивые номера: одинаковые цифры, «77-77», «00-07», «12-34».
+static func nice_numbers(seed: int, n: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var out := []
+	while out.size() < n:
+		var d := rng.randi_range(1, 9)
+		var e := rng.randi_range(0, 9)
+		var digits: String = ["%d%d-%d%d" % [d, d, d, d], "%d%d-%d%d" % [d, e, d, e],
+			"00-0%d" % d, "%d0-00" % d, "%d%d-%d%d" % [d, e, e, d]][rng.randi() % 5]
+		var t := "%s %s %s" % [LETTERS[rng.randi() % LETTERS.length()], digits, REGIONS[rng.randi() % REGIONS.size()]]
+		if not out.has(t):
+			out.append(t)
+	return out
+
+
+## Номер, набранный игроком, — в правильный вид «а 12-34 КМ»; "" — если так
+## номер не пишут. Пробелы и чёрточка — как угодно, регистр — любой.
+static func parse(raw: String) -> String:
+	var t := raw.strip_edges().replace(" ", "").replace("-", "")
+	var re := RegEx.create_from_string("^([а-яё])(\\d{4})([а-яё]{2})$")
+	var m := re.search(t.to_lower())
+	if m == null:
+		return ""
+	var d := m.get_string(2)
+	return "%s %s-%s %s" % [m.get_string(1), d.substr(0, 2), d.substr(2, 2), m.get_string(3).to_upper()]
+
+
 ## Повесить знаки на транспорт. spots — белые таблички самой модели
 ## (VehicleModels.plate: [место надписи, поворот, размер]); если их нет —
 ## таблички ставятся по габаритам box (AABB кузова), rear_only — мотоцикл.
