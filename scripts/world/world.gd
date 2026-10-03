@@ -1134,8 +1134,9 @@ func _light_pool_material() -> StandardMaterial3D:
 	return _light_pool_mat
 
 
-## Сельмаг: кирпичная коробка с крыльцом и вывеской. Хлеб дешевле, чем
-## в городском ларьке, но работает только днём.
+## Сельмаг: кирпичное здание с крыльцом и вывеской, внутрь можно зайти —
+## прилавок, полки с товаром, холодильник, продавщица. Покупают у прилавка.
+## Хлеб дешевле, чем в городском ларьке.
 func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	# Локально фасад смотрит на +Z, разворот — дверью к съезду
 	var yaw := -PI / 2.0
@@ -1144,7 +1145,17 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	glow.xf = xf
 	var brick := Color(0.66, 0.36, 0.26)
 	var h := 3.4
-	b.box(Vector3(-4.5, 0, -3.0), Vector3(4.5, h, 3.0), brick, true)
+	# Лампы и потолок внутри — свой светящийся меш: окна мира (glow) днём
+	# притушены, а в магазине светло всегда
+	var lamps := MeshBuilder.new()
+	lamps.ground_shade = false
+	lamps.xf = xf
+	WalkIn.shell(b, Vector3(9.0, h, 6.0), 0.4, brick, Color(0.78, 0.86, 0.8), Color(0.55, 0.5, 0.45), 0.0, 1.2, 2.3, lamps)
+	_shop_inside(b, lamps, h)
+	var lm := lamps.build_mesh(true)
+	lm.name = "ShopLamps"
+	lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(lm)
 	# Швы кладки на фасаде
 	var y := 0.4
 	while y < h:
@@ -1153,8 +1164,8 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	b.box(Vector3(-4.6, 0, -3.1), Vector3(4.6, 0.4, 3.1), Color(0.45, 0.44, 0.42))
 	# Плоская крыша с парапетом
 	b.box(Vector3(-4.7, h, -3.2), Vector3(4.7, h + 0.25, 3.2), Color(0.35, 0.35, 0.36))
-	# Дверь, крыльцо с козырьком
-	b.box(Vector3(-0.6, 0.4, 3.0), Vector3(0.6, 2.5, 3.05), Color(0.3, 0.42, 0.35))
+	# Открытая дверь (створка у стены), крыльцо с козырьком
+	b.box(Vector3(0.6, 0.4, 3.0), Vector3(0.65, 2.5, 4.15), Color(0.3, 0.42, 0.35))
 	b.box(Vector3(-1.4, 0, 3.0), Vector3(1.4, 0.4, 4.4), Color(0.58, 0.58, 0.56), true)
 	b.box(Vector3(-1.6, 2.8, 3.0), Vector3(1.6, 2.92, 4.5), Color(0.5, 0.52, 0.55))
 	for x in [-1.5, 1.4]:
@@ -1184,14 +1195,16 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	sign.rotation.y = yaw
 	add_child(sign)
 
-	var zone := InteractZone.create("E — сельмаг: хлеб и молоко (40 грн)", Vector3(2.8, 2.4, 3.2))
-	zone.position = xf * Vector3(0, 0, 4.5)
+	# Всё покупают внутри, у прилавка: хлеб посередине, рыбу принимают
+	# слева у весов, воду — справа у холодильника
+	var zone := InteractZone.create("E — сельмаг: хлеб и молоко (40 грн)", Vector3(2.0, 2.2, 1.4))
+	zone.position = xf * Vector3(-0.4, 0.4, 0.4)
 	zone.rotation.y = yaw
 	zone.activated.connect(_buy_village_food)
 	add_child(zone)
 
-	var fish_zone := InteractZone.create("", Vector3(1.8, 2.4, 1.8))
-	fish_zone.position = xf * Vector3(3.4, 0, 4.6)
+	var fish_zone := InteractZone.create("", Vector3(1.4, 2.2, 1.4))
+	fish_zone.position = xf * Vector3(-2.3, 0.4, 0.4)
 	fish_zone.rotation.y = yaw
 	fish_zone.prompt_fn = func() -> String:
 		if NeedsManager.fish <= 0:
@@ -1199,12 +1212,53 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 		return "E — сдать рыбу: %d шт × %d грн" % [NeedsManager.fish, FISH_PRICE]
 	fish_zone.activated.connect(_sell_fish)
 	add_child(fish_zone)
-	var water_zone := InteractZone.create("", Vector3(1.8, 2.4, 1.8))
-	water_zone.position = xf * Vector3(-3.4, 0, 4.6)
+	var water_zone := InteractZone.create("", Vector3(1.4, 2.2, 1.4))
+	water_zone.position = xf * Vector3(1.6, 0.4, 0.4)
 	water_zone.rotation.y = yaw
 	water_zone.prompt_fn = func() -> String: return "E — бутылка воды (%d грн)" % WATER_PRICE
 	water_zone.activated.connect(_buy_water)
 	add_child(water_zone)
+
+
+## Внутри сельмага (в его координатах, пол на 0.4): прилавок поперёк зала,
+## за ним продавщица и полки до потолка, холодильник, весы, касса.
+func _shop_inside(b: MeshBuilder, lamps: MeshBuilder, h: float) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 45
+	var f := 0.4
+	WalkIn.counter(b, Vector3(-3.2, f, -0.9), Vector3(2.4, f + 1.0, -0.35), Color(0.55, 0.4, 0.28), Color(0.75, 0.75, 0.72))
+	# Витрина-холодильник на прилавке: стекло и колбаса с сыром под ним
+	b.box(Vector3(-1.6, f + 1.0, -0.85), Vector3(0.4, f + 1.32, -0.4), Color(0.7, 0.8, 0.85))
+	for i in 5:
+		b.box(Vector3(-1.5 + i * 0.38, f + 1.0, -0.75), Vector3(-1.22 + i * 0.38, f + 1.1, -0.5), [Color(0.7, 0.3, 0.3), Color(0.95, 0.85, 0.4)][i % 2])
+	# Весы и касса
+	b.box(Vector3(-2.7, f + 1.0, -0.8), Vector3(-2.2, f + 1.12, -0.45), Color(0.85, 0.85, 0.82))
+	b.box(Vector3(-2.6, f + 1.12, -0.7), Vector3(-2.3, f + 1.4, -0.66), Color(0.3, 0.3, 0.32))
+	b.box(Vector3(1.4, f + 1.0, -0.8), Vector3(1.9, f + 1.25, -0.45), Color(0.25, 0.25, 0.27))
+	# Полки вдоль задней стены и у боковых
+	WalkIn.shelf(b, Vector3(-4.2, f, -2.75), Vector3(2.8, h - 0.4, -2.35), r)
+	# Холодильник «ЗИЛ» в углу
+	b.box(Vector3(3.2, f, -2.75), Vector3(4.2, f + 1.8, -1.95), Color(0.92, 0.92, 0.9), true)
+	b.box(Vector3(3.25, f + 1.1, -1.95), Vector3(3.3, f + 1.4, -1.9), Color(0.6, 0.6, 0.62))
+	# Ящики с овощами у входа и мешок муки
+	for i in 3:
+		var x := 2.6 + (i % 2) * 0.7
+		b.box(Vector3(x, f, 0.8 + (i / 2) * 0.7), Vector3(x + 0.6, f + 0.35, 1.3 + (i / 2) * 0.7), Color(0.6, 0.45, 0.3), true)
+		b.box(Vector3(x + 0.05, f + 0.35, 0.85 + (i / 2) * 0.7), Vector3(x + 0.55, f + 0.45, 1.25 + (i / 2) * 0.7), [Color(0.8, 0.6, 0.3), Color(0.85, 0.35, 0.2), Color(0.4, 0.6, 0.25)][i])
+	b.box(Vector3(-3.6, f, 1.6), Vector3(-3.1, f + 0.6, 2.1), Color(0.9, 0.88, 0.8), true)
+	# Плакат «Хлеб — всему голова» на стене
+	b.box(Vector3(-1.2, f + 1.7, -2.34), Vector3(0.6, f + 2.3, -2.33), Color(0.9, 0.85, 0.6))
+	# Лампы дневного света
+	for x in [-2.2, 1.6]:
+		WalkIn.lamp(lamps, Vector3(x, h - 0.13, -0.2))
+	# Продавщица за прилавком
+	var pb := MeshBuilder.new()
+	pb.ground_shade = false
+	Villagers.person_model(pb, Color(0.92, 0.92, 0.95), Color(0.3, 0.25, 0.2), false, true)
+	var seller := pb.build_mesh()
+	seller.name = "Seller"
+	seller.transform = b.xf * Transform3D(Basis.IDENTITY, Vector3(-0.6, f, -1.5))
+	add_child(seller)
 
 
 const WATER_PRICE := 10

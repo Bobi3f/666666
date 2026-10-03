@@ -11,7 +11,7 @@ LOGS="${TEST_LOGS:-/tmp/firstgear-tests}"
 mkdir -p "$LOGS"
 
 # Наборы без экрана (headless) и с экраном (сенсорное управление, меню)
-HEADLESS="check_scripts test_vehicles test_driving test_life test_mvp test_round3 test_salon test_village test_seasons test_polish test_gai test_tutorial_save test_roads_town test_region test_jobs test_police test_club test_docs test_town_south test_traffic test_school test_path test_jobs_route test_boot test_perf_lod test_soak"
+HEADLESS="check_scripts test_vehicles test_driving test_life test_mvp test_round3 test_salon test_village test_seasons test_polish test_gai test_tutorial_save test_roads_town test_region test_jobs test_police test_club test_docs test_town_south test_traffic test_school test_path test_jobs_route test_boot test_perf_lod test_walk_in test_soak"
 SCREEN="test_touch test_menu_pad test_options test_view"
 
 run_one() {

@@ -93,8 +93,16 @@ func _build() -> void:
 	var b := MeshBuilder.new()
 	var wall := Color(0.86, 0.84, 0.76)
 	var blue := Color(0.2, 0.35, 0.65)
-	# Двухэтажное здание, вход к дороге (к -X)
-	b.box(c + Vector3(-7, 0, -4.5), c + Vector3(7, 6.6, 4.5), wall, true)
+	# Двухэтажное здание, вход к дороге (к -X). Первый этаж открыт: дверь
+	# ведёт в дежурную часть (WalkIn: фасад смотрит в +Z своих координат —
+	# поворачиваем его к -X), второй — сплошной
+	# Лампы и потолок внутри горят всегда — отдельный светящийся меш
+	var lamps := MeshBuilder.new()
+	lamps.ground_shade = false
+	b.xf = Transform3D(Basis(Vector3.UP, -PI / 2.0), c)
+	WalkIn.shell(b, Vector3(9.0, 3.3, 14.0), 0.3, wall, Color(0.62, 0.72, 0.68), Color(0.5, 0.42, 0.34), 0.0, 1.3, 2.3, lamps)
+	b.xf = Transform3D.IDENTITY
+	b.box(c + Vector3(-7, 3.3, -4.5), c + Vector3(7, 6.6, 4.5), wall, true)
 	b.box(c + Vector3(-7.01, 3.2, -4.51), c + Vector3(7.01, 3.45, 4.51), blue)
 	b.box(c + Vector3(-7.3, 6.6, -4.8), c + Vector3(7.3, 6.85, 4.8), Color(0.4, 0.4, 0.42))
 	for fl in [0.9, 4.1]:
@@ -106,7 +114,8 @@ func _build() -> void:
 					b.box(c + Vector3(-7.07, fl, z - 0.45 + k * 0.3), c + Vector3(-7.04, fl + 1.5, z - 0.41 + k * 0.3), Color(0.2, 0.2, 0.22))
 	# Крыльцо, дверь, козырёк
 	b.box(c + Vector3(-8.6, 0, -1.4), c + Vector3(-7, 0.3, 1.4), Color(0.6, 0.6, 0.58), true)
-	b.box(c + Vector3(-7.04, 0.3, -0.7), c + Vector3(-7.0, 2.5, 0.7), Color(0.3, 0.25, 0.2))
+	# Дверь открыта — створка у стены
+	b.box(c + Vector3(-8.2, 0.3, 0.65), c + Vector3(-7.0, 2.5, 0.7), Color(0.3, 0.25, 0.2))
 	b.box(c + Vector3(-8.4, 2.7, -1.5), c + Vector3(-7, 2.85, 1.5), Color(0.35, 0.35, 0.37))
 	# Флагшток
 	var fp := c + Vector3(-9.5, 0, 3.5)
@@ -116,10 +125,15 @@ func _build() -> void:
 	b.box(fp + Vector3(0, 6.42, 0.05), fp + Vector3(0.025, 6.58, 1.3), Color(0.95, 0.95, 0.95))
 	# Площадка перед входом
 	b.box(c + Vector3(-13, 0, -6), c + Vector3(-7, 0.04, 6), Color(0.45, 0.45, 0.46))
-	add_child(b.build_mesh())
 	# Ночью горят окна дежурной части и фонарь над входом
 	var lit := MeshBuilder.new()
 	lit.ground_shade = false
+	_inside(b, lamps)
+	add_child(b.build_mesh())
+	var lm := lamps.build_mesh(true)
+	lm.name = "Lamps"
+	lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(lm)
 	for z in [-3.0, -1.5, 1.5]:
 		lit.box(c + Vector3(-7.06, 0.9, z - 0.5), c + Vector3(-7.04, 2.4, z + 0.5), Color(1.0, 0.88, 0.6))
 	lit.box(c + Vector3(-7.07, 4.1, -3.5), c + Vector3(-7.05, 5.6, -2.5), Color(1.0, 0.88, 0.6))
@@ -140,34 +154,36 @@ func _build() -> void:
 		l.rotation.y = side[1]
 		add_child(l)
 	_blink = car(self, c + Vector3(-9.5, 0.05, -4.2), PI / 2.0)
-	# Дежурный у входа
-	var pb := MeshBuilder.new()
-	pb.ground_shade = false
-	Villagers.person_model(pb, Color(0.3, 0.36, 0.3), Color(0.2, 0.25, 0.4), false, false)
-	var duty := pb.build_mesh()
-	duty.position = c + Vector3(-8.2, 0.3, 1.9)
-	duty.rotation.y = -PI / 2.0
-	add_child(duty)
-	var desk := InteractZone.create("", Vector3(2.4, 2.2, 3.0))
-	desk.position = c + Vector3(-8.6, 0, 0)
+	# Дежурный и инспектор ГАИ — за своими окошками внутри
+	for spot in [Vector3(-2.2, 0.3, -2.6), Vector3(-2.2, 0.3, 2.7)]:
+		var pb := MeshBuilder.new()
+		pb.ground_shade = false
+		Villagers.person_model(pb, Color(0.3, 0.36, 0.3), Color(0.2, 0.25, 0.4), false, false)
+		var duty := pb.build_mesh()
+		duty.position = c + spot
+		duty.rotation.y = -PI / 2.0
+		add_child(duty)
+	var desk := InteractZone.create("", Vector3(1.6, 2.2, 2.4))
+	desk.name = "DutyDesk"
+	desk.position = c + Vector3(-4.3, 0.3, -2.6)
 	desk.prompt_fn = _desk_prompt
 	desk.activated.connect(_desk)
 	add_child(desk)
 	# Окошко ГАИ сбоку от входа: номера для своих машин
-	var gai := InteractZone.create("", Vector3(2.0, 2.2, 1.6))
+	var gai := InteractZone.create("", Vector3(1.6, 2.2, 2.4))
 	gai.name = "PlateDesk"
-	gai.position = c + Vector3(-8.4, 0, -2.4)
+	gai.position = c + Vector3(-4.3, 0.3, 2.7)
 	gai.prompt_fn = _plate_prompt
 	gai.activated.connect(open_plates)
 	add_child(gai)
 	var sign := Label3D.new()
 	sign.text = "ГАИ · НОМЕРА"
 	sign.font_size = 64
-	sign.pixel_size = 0.006
+	sign.pixel_size = 0.004
 	sign.outline_size = 10
 	sign.modulate = Color(1.0, 0.95, 0.7)
 	sign.outline_modulate = Color(0.1, 0.2, 0.5)
-	sign.position = c + Vector3(-7.06, 2.4, -2.4)
+	sign.position = c + Vector3(-3.36, 2.75, 2.7)
 	sign.rotation.y = -PI / 2.0
 	add_child(sign)
 	plate_panel = PlatePanel.new()
@@ -210,6 +226,68 @@ func open_plates() -> void:
 		return
 	SoundLibrary.play("click", -4.0)
 	plate_panel.open(own_vehicles())
+
+
+## Дежурная часть на первом этаже (координаты от STATION, вход с -X):
+## слева — окошко дежурного, справа — окошко ГАИ, между ними проход в
+## кабинеты; у входа скамейка, в глубине — камера за решёткой.
+func _inside(b: MeshBuilder, lamps: MeshBuilder) -> void:
+	var c := STATION
+	var f := 0.3
+	var wood := Color(0.45, 0.33, 0.24)
+	var paint := Color(0.62, 0.72, 0.68)
+	for side in [-1.0, 1.0]:
+		# Перегородка с окошком: стойка, стекло над ней, стена до потолка
+		var z0: float = 1.2 * side
+		var z1: float = 4.3 * side
+		var zmin := minf(z0, z1)
+		var zmax := maxf(z0, z1)
+		WalkIn.counter(b, c + Vector3(-3.5, f, zmin), c + Vector3(-2.9, f + 1.05, zmax), wood, Color(0.7, 0.68, 0.62))
+		# Окошки — рамы без стекла: дежурного видно; стекло не пускает внутрь
+		var z := zmin
+		while z <= zmax + 0.01:
+			b.box(c + Vector3(-3.25, f + 1.05, z - 0.03), c + Vector3(-3.19, f + 2.35, z + 0.03), Color(0.85, 0.85, 0.82))
+			z += (zmax - zmin) / 3.0
+		b.add_collider(c + Vector3(-3.24, f + 1.05, zmin), c + Vector3(-3.2, f + 2.35, zmax))
+		b.box(c + Vector3(-3.3, f + 2.35, zmin), c + Vector3(-3.1, 3.18, zmax), paint)
+		# Полукруглое окошко-«амбразура» в стекле и бумаги на стойке
+		b.box(c + Vector3(-3.4, f + 1.05, side * 2.8 - 0.2), c + Vector3(-3.1, f + 1.07, side * 2.8 + 0.2), Color(0.95, 0.95, 0.9))
+		# Стол и стул за окошком, телефон
+		b.box(c + Vector3(-2.4, f, side * 3.0 - 0.8), c + Vector3(-1.4, f + 0.75, side * 3.0 + 0.8), wood, true)
+		b.box(c + Vector3(-2.2, f + 0.75, side * 3.0 - 0.4), c + Vector3(-1.9, f + 0.85, side * 3.0 - 0.15), Color(0.15, 0.15, 0.15))
+		b.box(c + Vector3(-1.2, f, side * 3.0 - 0.25), c + Vector3(-0.75, f + 0.45, side * 3.0 + 0.25), Color(0.3, 0.3, 0.32))
+	# Скамейка для посетителей вдоль фасада
+	b.box(c + Vector3(-6.75, f + 0.42, -4.2), c + Vector3(-6.35, f + 0.48, -1.8), wood, true)
+	b.box(c + Vector3(-6.75, f + 0.48, -4.2), c + Vector3(-6.7, f + 0.95, -1.8), wood)
+	# Доска «Их разыскивает милиция» и стенд с правилами дорожного движения
+	b.box(c + Vector3(-6.78, f + 1.3, 1.6), c + Vector3(-6.77, f + 2.1, 3.6), Color(0.85, 0.82, 0.7))
+	for i in 3:
+		b.box(c + Vector3(-6.77, f + 1.45, 1.8 + i * 0.6), c + Vector3(-6.76, f + 1.95, 2.2 + i * 0.6), Color(0.35, 0.33, 0.3))
+	# Камера (КПЗ) в глубине: решётка от пола до потолка и нары
+	var cell_x := 3.6
+	var z := 0.8
+	while z < 4.3:
+		b.box(c + Vector3(cell_x - 0.03, f, z - 0.03), c + Vector3(cell_x + 0.03, 3.18, z + 0.03), Color(0.2, 0.2, 0.22))
+		z += 0.22
+	b.add_collider(c + Vector3(cell_x - 0.05, f, 0.75), c + Vector3(cell_x + 0.05, 3.18, 4.3))
+	b.box(c + Vector3(cell_x, f, 0.75), c + Vector3(6.8, 3.18, 0.85), paint, true)
+	b.box(c + Vector3(5.2, f + 0.45, 1.0), c + Vector3(6.75, f + 0.55, 4.2), wood, true)
+	# Сейф и шкаф с делами в кабинете за окошками
+	b.box(c + Vector3(5.8, f, -4.25), c + Vector3(6.75, f + 1.2, -3.4), Color(0.35, 0.38, 0.35), true)
+	b.box(c + Vector3(3.0, f, -4.28), c + Vector3(5.2, f + 2.2, -3.8), wood, true)
+	# Лампы под потолком
+	for p in [Vector3(-5.0, 3.18, 0), Vector3(-1.5, 3.18, -2.8), Vector3(-1.5, 3.18, 2.8), Vector3(4.5, 3.18, 0)]:
+		WalkIn.lamp(lamps, c + p)
+	var duty_sign := Label3D.new()
+	duty_sign.text = "ДЕЖУРНАЯ ЧАСТЬ"
+	duty_sign.font_size = 64
+	duty_sign.pixel_size = 0.004
+	duty_sign.outline_size = 10
+	duty_sign.modulate = Color(1.0, 0.95, 0.7)
+	duty_sign.outline_modulate = Color(0.1, 0.2, 0.5)
+	duty_sign.position = c + Vector3(-3.36, 2.75, -2.7)
+	duty_sign.rotation.y = -PI / 2.0
+	add_child(duty_sign)
 
 
 func _desk_prompt() -> String:

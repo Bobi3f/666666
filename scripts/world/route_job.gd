@@ -42,6 +42,8 @@ var verb := "Готово"
 ## Табличка над раздатчиком и её размер (у соседних окошек — помельче).
 var sign_text := "РАБОТА"
 var sign_pixel := 0.006
+## На какой высоте над раздатчиком табличка (в помещении — ниже потолка).
+var sign_height := 3.0
 ## (точки, плата) -> String: описание готового заказа в подсказке.
 var describe_fn: Callable
 ## Посылки: сколько коробок везём (видно на мопеде или в машине) и сколько
@@ -81,7 +83,7 @@ func _ready() -> void:
 	_sign.outline_size = 12
 	_sign.modulate = Color(1.0, 0.8, 0.3)
 	_sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_sign.position = giver + Vector3(0, 3.0, 0)
+	_sign.position = giver + Vector3(0, sign_height, 0)
 	_sign.visibility_range_end = 70.0
 	add_child(_sign)
 	_beacon = _make_beacon()

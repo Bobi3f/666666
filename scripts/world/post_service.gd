@@ -24,7 +24,9 @@ var _rng := RandomNumberGenerator.new()
 func build(world: Node3D) -> void:
 	_world = world
 	_rng.randomize()
-	_add_office("Каменка", "в Каменке", world.POST_POS, 0.0, _kamenka_homes())
+	# Почта Каменки — в сельсовете, окошки внутри; к крыльцу подъезжать снаружи
+	_add_office("Каменка", "в Каменке", Civic.COUNCIL + Civic.KAMENKA_WINDOW, 0.0, _kamenka_homes(),
+		Civic.COUNCIL + Vector3(0, 0, 7.0))
 	_add_office("Город", "в городе", TOWN_POST, PI / 2.0, _town_homes())
 	for i in VILLAGE_POSTS:
 		var v: Dictionary = Region.VILLAGES[i]
@@ -37,10 +39,10 @@ func build(world: Node3D) -> void:
 		_jobs(o)
 
 
-func _add_office(n: String, where: String, window: Vector3, yaw: float, homes: Array) -> void:
+func _add_office(n: String, where: String, window: Vector3, yaw: float, homes: Array, road := Vector3.INF) -> void:
 	var fwd := Basis(Vector3.UP, yaw) * Vector3.BACK
 	offices.append({"name": n, "where": where, "window": window, "yaw": yaw,
-		"road": window + fwd * 4.0, "homes": homes})
+		"road": window + fwd * 4.0 if road == Vector3.INF else road, "homes": homes})
 
 
 ## Окно «по домам» слева, «в другую почту» справа (если смотреть на окошко).
@@ -68,6 +70,9 @@ func _jobs(o: Dictionary) -> void:
 		return _round10(50.0 + 20.0 * stops.size() + _route_len(o.window, stops) * 0.2)
 	home.describe_fn = func(stops: Array, pay: int) -> String:
 		return "посылки по домам %s — %d адреса, %d грн" % [o.where, stops.size(), pay]
+	if o.name == "Каменка":
+		# Окошки в сельсовете — таблички под потолком
+		home.sign_height = 2.15
 	add_child(home)
 	var bag := RouteJob.new()
 	bag.name = "PostBag_" + o.name
@@ -89,6 +94,8 @@ func _jobs(o: Dictionary) -> void:
 		return _round10(60.0 + _route_len(o.window, stops) * 0.3)
 	bag.describe_fn = func(stops: Array, pay: int) -> String:
 		return "мешок посылок — %s, %d грн" % [stops[0][0], pay]
+	if o.name == "Каменка":
+		bag.sign_height = 2.15
 	add_child(bag)
 	o["home_job"] = home
 	o["bag_job"] = bag
