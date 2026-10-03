@@ -64,6 +64,12 @@ func _run() -> void:
 	ok(wij <= 0.171 and wju <= 0.201, "эмблемы в рамках: «ИЖ» %.2f ≤ 0.17 м, «ЮПИТЕР 5» %.2f ≤ 0.2 м" % [wij, wju])
 	ok(checked > 10 and worst <= 1.31, "все надписи на технике (%d) не шире своих рамок: самая широкая %.2f м" % [checked, worst])
 
+	# «Жигули» — по чертежу ВАЗ-2106: база 2424, длина 4166, высота 1440 мм
+	var C: Vehicle = W.get_node("Car")
+	var box: AABB = C._paint_mesh.get_aabb()
+	var wb: float = absf(C._wheels[2].position.z - C._wheels[0].position.z)
+	ok(absf(wb - 2.42) < 0.03 and box.size.z > 4.1 and box.size.z < 4.26 and box.end.y > 1.4 and box.end.y < 1.5, "«Жигули» по чертежу: база %.2f, длина %.2f, высота %.2f м" % [wb, box.size.z, box.end.y])
+
 	print("== Купил и поехал")
 	PR.buy_car("izh")
 	ok(I.owned() and not I.may_drive(), "купил, но без категории A не поедет")

@@ -12,6 +12,16 @@ extends RefCounted
 ## дворники, номера, салон с торпедо, рулём и сиденьями.
 ## glass_b — куда класть стёкла: у машины игрока они отдельным прозрачным
 ## мешем, иначе из салона дороги не видно; у попуток — вместе с кузовом.
+## Колёса «Жигулей» по чертежу ВАЗ-2106: база 2424, свес спереди 650,
+## колея 1365 спереди и 1321 сзади (мм).
+const ZHIGULI_WHEELS := [Vector3(-0.69, 0.29, -1.43), Vector3(0.69, 0.29, -1.43), Vector3(-0.67, 0.29, 0.99), Vector3(0.67, 0.29, 0.99)]
+
+
+## «Жигули» ВАЗ-2106 по чертежу: длина 4166, ширина 1611, высота 1440 мм.
+## Четыре круглые фары в чёрной окантовке с хромом, решётка со значком,
+## бамперы с чёрными клыками и боковинами, оранжевые поворотники,
+## хромированные молдинги по борту, по порогу и аркам, наклонные лобовое
+## и заднее стёкла, «жабры» на задней стойке, большие задние фонари.
 static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: MeshBuilder = null) -> void:
 	var gb := glass_b if glass_b else b
 	var dark := Color(0.07, 0.07, 0.08)
@@ -19,70 +29,131 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 	var glass := Color(0.35, 0.45, 0.5)
 	var seat := Color(0.32, 0.2, 0.15)
 	var gap := paint.darkened(0.45)
-	# Низ кузова, пороги, капот и багажник
-	b.box(Vector3(-0.82, 0.34, -2.05), Vector3(0.82, 0.78, 2.05), paint)
-	b.box(Vector3(-0.83, 0.3, -1.0), Vector3(0.83, 0.36, 1.1), dark)
-	b.box(Vector3(-0.8, 0.78, -2.05), Vector3(0.8, 0.9, -0.62), paint)
-	b.box(Vector3(-0.8, 0.78, 1.1), Vector3(0.8, 0.9, 2.05), paint)
-	# Выштамповка-молдинг вдоль бока
-	for x in [-0.835, 0.825]:
-		b.box(Vector3(x, 0.6, -2.0), Vector3(x + 0.01, 0.63, 2.0), chrome)
-	# Арки колёс — тёмные вырезы
-	for z in [-1.3, 1.3]:
-		for x in [-0.84, 0.8]:
-			b.box(Vector3(x, 0.3, z - 0.42), Vector3(x + 0.04, 0.62, z + 0.42), dark)
-	# Двери: щели и ручки
-	for x in [-0.835, 0.825]:
-		for z in [-0.6, 0.3, 1.1]:
-			b.box(Vector3(x, 0.36, z - 0.01), Vector3(x + 0.01, 1.35, z + 0.01), gap)
-		for z in [-0.2, 0.7]:
-			b.box(Vector3(x - 0.01, 0.74, z), Vector3(x + 0.02, 0.77, z + 0.14), chrome)
-	# Стойки, крыша, стёкла по кругу
-	for x in [-0.74, 0.68]:
-		b.box(Vector3(x, 0.9, -0.62), Vector3(x + 0.06, 1.42, -0.5), paint)
-		b.box(Vector3(x, 0.9, 1.0), Vector3(x + 0.06, 1.42, 1.12), paint)
-		b.box(Vector3(x, 0.9, 0.24), Vector3(x + 0.06, 1.42, 0.32), paint)
-		gb.box(Vector3(x + 0.02, 0.92, -0.5), Vector3(x + 0.04, 1.38, 0.24), glass)
-		gb.box(Vector3(x + 0.02, 0.92, 0.32), Vector3(x + 0.04, 1.38, 1.0), glass)
-	b.box(Vector3(-0.76, 1.42, -0.64), Vector3(0.76, 1.48, 1.14), paint)
-	gb.box(Vector3(-0.7, 0.92, -0.64), Vector3(0.7, 1.4, -0.6), glass)
-	gb.box(Vector3(-0.7, 0.92, 1.12), Vector3(0.7, 1.4, 1.16), glass)
-	# Водостоки на крыше, дворники
-	for x in [-0.76, 0.72]:
-		b.box(Vector3(x, 1.46, -0.64), Vector3(x + 0.04, 1.5, 1.14), chrome)
-	for x in [-0.45, 0.1]:
-		b.box(Vector3(x, 0.91, -0.66), Vector3(x + 0.4, 0.93, -0.64), dark)
-	# Зеркала
-	for x in [-0.95, 0.83]:
-		b.box(Vector3(x, 0.92, -0.62), Vector3(x + 0.12, 1.02, -0.56), dark)
-	# Бамперы с клыками и накладками
-	for z in [-2.14, 2.04]:
-		b.box(Vector3(-0.86, 0.32, z), Vector3(0.86, 0.44, z + 0.1), chrome)
-		b.box(Vector3(-0.86, 0.34, z + 0.03), Vector3(0.86, 0.37, z + 0.07), dark)
-		for x in [-0.45, 0.37]:
-			b.box(Vector3(x, 0.28, z - 0.02), Vector3(x + 0.08, 0.5, z + 0.12), chrome)
-	# Решётка радиатора с рёбрами, круглые двойные фары (по кусочку ромбом)
-	b.box(Vector3(-0.4, 0.55, -2.07), Vector3(0.4, 0.78, -2.05), dark)
-	for i in 6:
-		b.box(Vector3(-0.38, 0.57 + i * 0.035, -2.08), Vector3(0.38, 0.585 + i * 0.035, -2.06), chrome)
-	for x in [-0.72, -0.53, 0.43, 0.62]:
-		b.box(Vector3(x - 0.01, 0.57, -2.08), Vector3(x + 0.1, 0.77, -2.05), chrome)
-		b.box(Vector3(x + 0.01, 0.59, -2.09), Vector3(x + 0.08, 0.75, -2.07), Color(1.0, 0.97, 0.86))
-	# Поворотники спереди, фонари сзади (стоп-сигналы — отдельно)
-	for x in [-0.8, 0.66]:
-		b.box(Vector3(x, 0.46, -2.07), Vector3(x + 0.14, 0.52, -2.05), Color(0.95, 0.6, 0.1))
-		b.box(Vector3(x, 0.7, 2.05), Vector3(x + 0.14, 0.76, 2.07), Color(0.95, 0.6, 0.1))
+	var hx := 0.8
+	# Кузов короче на бамперы: с ними — ровно 4166 мм
+	var zf := -1.98
+	var zr := 1.98
+	var ws := -0.88  # низ лобового стекла
+	var wt := -0.38  # верх лобового стекла
+	var rt := 1.04  # верх заднего стекла
+	var rs := 1.3  # низ заднего стекла
+	var roof := 1.38
+	# Низ кузова, капот, крышка багажника
+	b.box(Vector3(-hx, 0.33, zf + 0.04), Vector3(hx, 0.78, zr - 0.04), paint)
+	b.box(Vector3(-hx + 0.03, 0.36, zf), Vector3(hx - 0.03, 0.78, zr), paint)
+	b.box(Vector3(-hx + 0.01, 0.78, zf + 0.02), Vector3(hx - 0.01, 0.82, ws), paint)
+	b.box(Vector3(-0.6, 0.82, zf + 0.12), Vector3(0.6, 0.84, ws - 0.04), paint.lightened(0.03))
+	b.box(Vector3(-hx + 0.01, 0.78, rs - 0.04), Vector3(hx - 0.01, 0.87, zr - 0.02), paint)
+	# Решётки воздухозаборника на капоте у лобового стекла
+	for x in [-0.42, 0.18]:
+		b.box(Vector3(x, 0.84, ws - 0.2), Vector3(x + 0.24, 0.845, ws - 0.13), dark)
+	# Арки колёс: тёмные вырезы и хромированная окантовка
+	var w: Array = ZHIGULI_WHEELS
+	for i in 2:
+		var wz: float = (w[i * 2] as Vector3).z
+		for sx in [-1.0, 1.0]:
+			var xo: float = (hx + 0.006) * sx
+			b.box(Vector3(minf(xo, xo - 0.04 * sx), 0.3, wz - 0.4), Vector3(maxf(xo, xo - 0.04 * sx), 0.64, wz + 0.4), dark)
+			pipe(b, [Vector3(xo, 0.36, wz - 0.42), Vector3(xo, 0.58, wz - 0.36), Vector3(xo, 0.67, wz - 0.18),
+				Vector3(xo, 0.67, wz + 0.18), Vector3(xo, 0.58, wz + 0.36), Vector3(xo, 0.36, wz + 0.42)], 0.008, chrome)
+	# Борт: молдинг по поясу, хром по порогу, двери — щели и ручки
+	for sx in [-1.0, 1.0]:
+		var xo: float = (hx + 0.004) * sx
+		var xl := minf(xo, xo + 0.008 * sx)
+		var xh := maxf(xo, xo + 0.008 * sx)
+		b.box(Vector3(xl, 0.7, zf + 0.1), Vector3(xh, 0.72, zr - 0.1), chrome)
+		b.box(Vector3(xl, 0.34, -0.98), Vector3(xh, 0.37, 0.57), chrome)
+		b.box(Vector3(xl, 0.37, -0.98), Vector3(xh, 0.39, 0.57), dark)
+		for z in [ws + 0.04, 0.18, 1.12]:
+			b.box(Vector3(xl, 0.38, z - 0.008), Vector3(xh, 1.0 if z < 1.0 else 0.86, z + 0.008), gap)
+		for z in [-0.22, 0.72]:
+			b.box(Vector3(xl - 0.006 * sx, 0.74, z), Vector3(xh + 0.006 * sx, 0.77, z + 0.15), chrome)
+		# Боковой повторитель поворота на переднем крыле
+		b.box(Vector3(xl, 0.72, zf + 0.35), Vector3(xh, 0.76, zf + 0.45), Color(0.95, 0.55, 0.1))
+		# Брызговики за колёсами
+		b.box(Vector3(0.62 * sx - 0.08, 0.12, (w[0] as Vector3).z + 0.44), Vector3(0.62 * sx + 0.08, 0.36, (w[0] as Vector3).z + 0.46), dark)
+		b.box(Vector3(0.6 * sx - 0.08, 0.12, (w[2] as Vector3).z + 0.44), Vector3(0.6 * sx + 0.08, 0.36, (w[2] as Vector3).z + 0.46), dark)
+	# Стойки: наклонные передние, средняя, наклонные задние с «жабрами»
+	for sx in [-1.0, 1.0]:
+		var x: float = 0.72 * sx
+		tube(b, Vector3(x, 0.84, ws + 0.02), Vector3(x * 0.98, roof, wt), 0.03, paint)
+		b.box(Vector3(x - 0.03, 0.84, 0.15), Vector3(x + 0.03, roof, 0.22), paint)
+		tube(b, Vector3(x, 0.86, rs - 0.05), Vector3(x * 0.98, roof, rt), 0.045, paint)
+		var xv: float = (0.77) * sx
+		b.box(Vector3(minf(xv, xv + 0.01 * sx), 1.08, 1.0), Vector3(maxf(xv, xv + 0.01 * sx), 1.16, 1.16), dark)
+		# Боковые стёкла с хромированной рамкой
+		var xg: float = 0.735 * sx
+		gb.quad(Vector3(xg, 0.88, ws + 0.12), Vector3(xg, 0.88, 0.15), Vector3(xg, roof - 0.03, 0.15), Vector3(xg, roof - 0.03, wt + 0.08), glass, true)
+		gb.quad(Vector3(xg, 0.88, 0.22), Vector3(xg, 0.88, 1.12), Vector3(xg, roof - 0.03, rt - 0.02), Vector3(xg, roof - 0.03, 0.22), glass, true)
+		b.box(Vector3(minf(xg, xg + 0.03 * sx), 0.86, ws + 0.1), Vector3(maxf(xg, xg + 0.03 * sx), 0.88, 1.18), chrome)
+	# Крыша с водостоками, лобовое и заднее стёкла
+	b.box(Vector3(-0.73, roof, wt - 0.02), Vector3(0.73, roof + 0.06, rt + 0.02), paint)
+	for sx in [-1.0, 1.0]:
+		b.box(Vector3(0.735 * sx - 0.02, roof + 0.02, wt), Vector3(0.735 * sx + 0.02, roof + 0.06, rt), chrome)
+	gb.quad(Vector3(-0.7, 0.86, ws), Vector3(0.7, 0.86, ws), Vector3(0.7, roof, wt), Vector3(-0.7, roof, wt), glass, true)
+	gb.quad(Vector3(0.7, 0.88, rs), Vector3(-0.7, 0.88, rs), Vector3(-0.7, roof, rt), Vector3(0.7, roof, rt), glass, true)
+	# Хромированные рамки стёкол и дворники
+	tube(b, Vector3(-0.71, 0.86, ws), Vector3(0.71, 0.86, ws), 0.012, chrome)
+	tube(b, Vector3(-0.71, 0.88, rs), Vector3(0.71, 0.88, rs), 0.012, chrome)
+	for x in [-0.5, 0.05]:
+		tube(b, Vector3(x, 0.875, ws - 0.03), Vector3(x + 0.42, 0.9, ws + 0.02), 0.008, dark)
+	# Зеркала на дверях
+	for sx in [-1.0, 1.0]:
+		tube(b, Vector3(0.8 * sx, 0.9, ws + 0.25), Vector3(0.88 * sx, 0.96, ws + 0.25), 0.012, chrome)
+		disc(b, Vector3(0.9 * sx, 0.98, ws + 0.25), Vector3.BACK, 0.06, 0.04, chrome)
+	# Перед: чёрная панель в хромированной рамке, четыре круглые фары,
+	# решётка с рёбрами и значком
+	b.box(Vector3(-0.78, 0.52, zf - 0.012), Vector3(0.78, 0.79, zf), dark)
+	for y in [0.51, 0.785]:
+		b.box(Vector3(-0.79, y, zf - 0.02), Vector3(0.79, y + 0.018, zf), chrome)
+	for x in [-0.79, 0.772]:
+		b.box(Vector3(x, 0.51, zf - 0.02), Vector3(x + 0.018, 0.8, zf), chrome)
+	for x in [-0.64, -0.46, 0.46, 0.64]:
+		disc(b, Vector3(x, 0.655, zf - 0.02), Vector3.FORWARD, 0.082, 0.025, chrome)
+		disc(b, Vector3(x, 0.655, zf - 0.03), Vector3.FORWARD, 0.066, 0.01, Color(1.0, 0.97, 0.86))
+	b.box(Vector3(-0.36, 0.54, zf - 0.016), Vector3(0.36, 0.77, zf - 0.012), Color(0.3, 0.3, 0.32))
+	for i in 7:
+		b.box(Vector3(-0.36, 0.55 + i * 0.032, zf - 0.025), Vector3(0.36, 0.56 + i * 0.032, zf - 0.015), chrome)
+	for i in 9:
+		var x := -0.34 + i * 0.085
+		b.box(Vector3(x, 0.54, zf - 0.024), Vector3(x + 0.008, 0.77, zf - 0.016), chrome.darkened(0.15))
+	b.box(Vector3(-0.035, 0.62, zf - 0.035), Vector3(0.035, 0.7, zf - 0.025), Color(0.75, 0.12, 0.1))
+	b.box(Vector3(-0.025, 0.63, zf - 0.04), Vector3(0.025, 0.69, zf - 0.035), chrome)
+	# Поворотники под фарами
+	for sx in [-1.0, 1.0]:
+		b.box(Vector3(0.55 * sx - 0.09, 0.47, zf - 0.02), Vector3(0.55 * sx + 0.09, 0.51, zf), Color(0.95, 0.55, 0.1))
+	# Бамперы: хромированная полоса, резиновая накладка, чёрные клыки и
+	# чёрные боковины, заходящие на крылья
+	for e in [[zf - 0.1, zf], [zr, zr + 0.1]]:
+		var z0: float = e[0]
+		var z1: float = e[1]
+		b.box(Vector3(-0.78, 0.36, z0), Vector3(0.78, 0.47, z1), chrome)
+		b.box(Vector3(-0.78, 0.4, z0 - 0.005), Vector3(0.78, 0.43, z1 + 0.005), dark)
+		for x in [-0.4, 0.32]:
+			b.box(Vector3(x, 0.3, z0 - 0.04), Vector3(x + 0.08, 0.5, z1 + 0.02), dark)
+		for sx in [-1.0, 1.0]:
+			var zc := z0 if z0 > 0.0 else z1
+			b.box(Vector3(minf(0.71 * sx, 0.83 * sx), 0.36, minf(zc, zc - 0.3 * signf(z0))), Vector3(maxf(0.71 * sx, 0.83 * sx), 0.47, maxf(zc, zc - 0.3 * signf(z0))), dark)
+	# Задние фонари: большие, полосами — красный, оранжевый, белый
+	for sx in [-1.0, 1.0]:
+		var x0: float = 0.45 * sx
+		var x1: float = 0.79 * sx
+		b.box(Vector3(minf(x0, x1), 0.6, zr), Vector3(maxf(x0, x1), 0.79, zr + 0.015), chrome)
+		var cols := [Color(0.55, 0.08, 0.06), Color(0.95, 0.55, 0.1), Color(0.9, 0.9, 0.88)]
+		for k in 3:
+			var y := 0.615 + k * 0.058
+			b.box(Vector3(minf(x0, x1) + 0.01, y, zr + 0.01), Vector3(maxf(x0, x1) - 0.01, y + 0.05, zr + 0.02), cols[k])
 	# Номера
-	plate(b, Vector3(-0.26, 0.42, -2.16), Vector3(0.26, 0.53, -2.15))
-	plate(b, Vector3(-0.26, 0.48, 2.06), Vector3(0.26, 0.6, 2.07))
-	# Выхлопная труба, эмблема
-	b.box(Vector3(0.45, 0.24, 1.9), Vector3(0.53, 0.3, 2.2), dark)
-	b.box(Vector3(-0.05, 0.82, -2.06), Vector3(0.05, 0.86, -2.04), chrome)
+	plate(b, Vector3(-0.26, 0.3, zf - 0.11), Vector3(0.26, 0.41, zf - 0.1))
+	plate(b, Vector3(-0.26, 0.6, zr + 0.01), Vector3(0.26, 0.72, zr + 0.02))
+	# Выхлопная труба, значок на багажнике
+	b.box(Vector3(0.45, 0.24, zr - 0.15), Vector3(0.53, 0.3, zr + 0.12), dark)
+	b.box(Vector3(-0.04, 0.8, zr), Vector3(0.04, 0.84, zr + 0.01), chrome)
 	if not interior:
-		b.box(Vector3(-0.7, 0.9, -0.6), Vector3(0.7, 1.4, 1.1), Color(0.12, 0.12, 0.13))
+		b.box(Vector3(-0.68, 0.88, -0.5), Vector3(0.68, 1.36, 1.1), Color(0.12, 0.12, 0.13))
 		return
 	# Салон: потолок, торпедо с приборами, руль, рычаги, сиденья с подголовниками
-	b.box(Vector3(-0.7, 1.4, -0.58), Vector3(0.7, 1.42, 1.08), Color(0.85, 0.82, 0.75))
+	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.85, 0.82, 0.75))
 	var panel := Color(0.26, 0.22, 0.19)
 	b.box(Vector3(-0.72, 0.9, -0.58), Vector3(0.72, 1.02, -0.32), panel)
 	b.box(Vector3(-0.5, 1.0, -0.4), Vector3(-0.22, 1.08, -0.33), Color(0.1, 0.1, 0.1))
@@ -812,7 +883,7 @@ static func npc(b: MeshBuilder, kind: String, paint: Color) -> void:
 				b.xf = saved
 		_:
 			zhiguli(b, paint, false)
-			wheels = [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]
+			wheels.assign(ZHIGULI_WHEELS)
 			r = 0.29
 	for p in wheels:
 		var saved := b.xf

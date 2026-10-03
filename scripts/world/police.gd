@@ -40,9 +40,9 @@ static func car(parent: Node3D, pos: Vector3, yaw: float) -> Array:
 	b.ground_shade = false
 	VehicleModels.zhiguli(b, Color(0.93, 0.93, 0.92), false)
 	for sx in [-1.0, 1.0]:
-		b.box(Vector3(sx * 0.86 - 0.02, 0.5, -2.0), Vector3(sx * 0.86 + 0.02, 0.64, 2.0), Color(0.15, 0.3, 0.7))
-	b.box(Vector3(-0.45, 1.38, -0.12), Vector3(0.45, 1.46, 0.12), Color(0.2, 0.2, 0.22))
-	for p in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+		b.box(Vector3(sx * 0.81 - 0.01, 0.5, -2.0), Vector3(sx * 0.81 + 0.01, 0.64, 2.0), Color(0.15, 0.3, 0.7))
+	b.box(Vector3(-0.45, 1.44, -0.12), Vector3(0.45, 1.52, 0.12), Color(0.2, 0.2, 0.22))
+	for p in VehicleModels.ZHIGULI_WHEELS:
 		var saved := b.xf
 		b.xf = Transform3D(Basis.IDENTITY, p)
 		VehicleModels.car_wheel(b, 0.29, 0.2)

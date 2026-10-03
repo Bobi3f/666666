@@ -1729,7 +1729,7 @@ func _town_details(b: MeshBuilder, glow: MeshBuilder) -> void:
 		var yaw := PI / 2.0 if r.randf() < 0.5 else -PI / 2.0
 		b.xf = Transform3D(Basis(Vector3.UP, yaw), Vector3(x, 0, 63.4))
 		VehicleModels.zhiguli(b, colors[r.randi() % colors.size()], false)
-		for wp in [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]:
+		for wp in VehicleModels.ZHIGULI_WHEELS:
 			var saved := b.xf
 			b.xf = saved * Transform3D(Basis.IDENTITY, wp)
 			VehicleModels.car_wheel(b, 0.29, 0.2)

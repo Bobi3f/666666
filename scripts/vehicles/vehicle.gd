@@ -41,7 +41,7 @@ const SPECS := {
 		"torque": 175.0, "peak_rpm": 3500.0, "inertia": 0.18, "wheelbase": 2.4, "max_steer": 0.6,
 		"tank": 40.0, "fuel_k": 1.0, "grip": 9.0, "drag": 0.42, "brake": 9.0,
 		"shape": Vector3(1.66, 1.1, 4.15), "shape_y": 0.72,
-		"seat": Vector3(-0.36, 1.22, 0.4), "exit": Vector3(-1.6, 0.2, 0.2),
+		"seat": Vector3(-0.36, 1.16, 0.4), "exit": Vector3(-1.6, 0.2, 0.2),
 		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
 	},
 	"moto": {
@@ -1342,8 +1342,9 @@ func _apply_parts() -> void:
 
 func _build_car() -> void:
 	_paint_body()
-	_brake_lights(spec.get("tail", [Vector3(-0.62, 0.62, 2.06), Vector3(0.48, 0.62, 2.06)]), Vector3(0.16, 0.12, 0.03))
-	for p in spec.get("wheels", [Vector3(-0.78, 0.29, -1.3), Vector3(0.78, 0.29, -1.3), Vector3(-0.78, 0.29, 1.3), Vector3(0.78, 0.29, 1.3)]):
+	# Стоп-сигналы — на красной полосе больших задних фонарей
+	_brake_lights(spec.get("tail", [Vector3(-0.62, 0.64, 2.0), Vector3(0.62, 0.64, 2.0)]), Vector3(0.3, 0.05, 0.02))
+	for p in spec.get("wheels", VehicleModels.ZHIGULI_WHEELS):
 		if p is Array:
 			_wheel(p[0], false, p[1], p[2])
 		else:
