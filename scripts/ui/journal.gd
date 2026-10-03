@@ -6,6 +6,7 @@ var _panel: PanelContainer
 var _text: RichTextLabel
 var _title: Label
 var _close_btn: Button
+var _license_btn: Button
 var _victory := false
 
 
@@ -41,10 +42,23 @@ func _ready() -> void:
 	_text.add_theme_font_size_override("normal_font_size", 17)
 	_text.add_theme_font_size_override("bold_font_size", 18)
 	box.add_child(_text)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	box.add_child(buttons)
+	# Права — карточка с таблицей категорий поверх журнала
+	_license_btn = Button.new()
+	_license_btn.text = "Водительское удостоверение"
+	_license_btn.custom_minimum_size = Vector2(0, 40)
+	_license_btn.pressed.connect(func() -> void:
+		var card := get_tree().get_first_node_in_group("license_card") as LicenseCard
+		if card:
+			card.open())
+	buttons.add_child(_license_btn)
 	_close_btn = Button.new()
 	_close_btn.custom_minimum_size = Vector2(0, 40)
+	_close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_close_btn.pressed.connect(_close)
-	box.add_child(_close_btn)
+	buttons.add_child(_close_btn)
 	_panel.visible = false
 	QuestManager.victory.connect(_on_victory)
 
@@ -73,6 +87,7 @@ func _open(victory: bool) -> void:
 	_title.text = "Ты — хозяин Каменки!" if victory else "Журнал"
 	_close_btn.text = "Играть дальше" if victory else "Закрыть (J)"
 	_text.text = _victory_text() if victory else _journal_text()
+	_license_btn.visible = not victory
 	_panel.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

@@ -106,6 +106,9 @@ func _school_vehicle(kind: String, at: Vector3, node_name: String) -> Vehicle:
 	v.kind = kind
 	v.name = node_name
 	v.school = true
+	# Учебная легковая — синяя, как в настоящей автошколе
+	if kind == "car":
+		v.paint = 2
 	v.allowed = func() -> bool: return exam_cat != "" and (_exams[exam_cat] as DrivingChallenge).only_kind == kind
 	add_child(v)
 	v.global_position = at
@@ -113,8 +116,10 @@ func _school_vehicle(kind: String, at: Vector3, node_name: String) -> Vehicle:
 	return v
 
 
-## Дом автошколы: кирпич, крыльцо, вывеска; внутри класс — парты рядами
-## лицом к доске, плакаты со знаками, стол инструктора, стенд категорий.
+## Дом автошколы: кирпич, крыльцо, вывеска. Внутри класс как в настоящей
+## автошколе: серые стены в плакатах ПДД, светлая плитка, стулья с
+## откидными столиками, стол инструктора с креслом, окно с цветами,
+## тренажёр с рулём и педалями, стенд экзаменов на категории.
 func _build_house() -> void:
 	var c := xf()
 	var b := MeshBuilder.new()
@@ -128,7 +133,9 @@ func _build_house() -> void:
 	var h := hs.y
 	var f := FLOOR
 	var brick := Color(0.72, 0.62, 0.48)
-	WalkIn.shell(b, hs, f, brick, Color(0.85, 0.88, 0.8), Color(0.5, 0.42, 0.34), -2.0, 1.3, 2.3, lamps)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	WalkIn.shell(b, hs, f, brick, Color(0.5, 0.51, 0.49), Color(0.84, 0.84, 0.82), -2.0, 1.3, 2.3, lamps)
 	# Цоколь — чуть ниже пола класса, иначе их верх рябит
 	b.box(Vector3(-hx - 0.1, 0, -hz - 0.1), Vector3(hx + 0.1, f - 0.08, hz + 0.1), Color(0.5, 0.5, 0.48))
 	b.box(Vector3(-hx - 0.2, h, -hz - 0.2), Vector3(hx + 0.2, h + 0.25, hz + 0.2), Color(0.35, 0.4, 0.5))
@@ -142,36 +149,96 @@ func _build_house() -> void:
 	for z in [-2.0, 0.5]:
 		b.box(Vector3(hx, 1.2, z), Vector3(hx + 0.05, 2.4, z + 1.4), Color(0.6, 0.75, 0.85))
 		b.box(Vector3(-hx - 0.05, 1.2, z), Vector3(-hx, 2.4, z + 1.4), Color(0.6, 0.75, 0.85))
-	# Доска и стол инструктора у задней стены (слева), парты рядами к ним
-	var wood := Color(0.55, 0.4, 0.26)
-	b.box(Vector3(-4.2, f + 0.9, -3.53), Vector3(-0.8, f + 2.1, -3.5), Color(0.15, 0.3, 0.22))
-	b.box(Vector3(-4.2, f + 0.85, -3.55), Vector3(-0.8, f + 0.9, -3.42), wood)
-	WalkIn.counter(b, Vector3(-3.6, f, -2.7), Vector3(-1.6, f + 0.78, -1.9), wood, wood.lightened(0.2))
-	b.box(Vector3(-3.2, f + 0.78, -2.5), Vector3(-2.8, f + 0.8, -2.2), Color(0.95, 0.95, 0.9))
+	# Плитка: швы на светлом полу
+	var x0 := -hx + 0.2
+	while x0 < hx - 0.2:
+		b.box(Vector3(x0, f, -hz + 0.2), Vector3(x0 + 0.015, f + 0.003, hz - 0.2), Color(0.7, 0.7, 0.68))
+		x0 += 0.6
+	var z0 := -hz + 0.2
+	while z0 < hz - 0.2:
+		b.box(Vector3(-hx + 0.2, f, z0), Vector3(hx - 0.2, f + 0.003, z0 + 0.015), Color(0.7, 0.7, 0.68))
+		z0 += 0.6
+	# Окно в задней стене: рама, стекло (изнутри и снаружи), подоконник с цветами
+	var wx0 := -1.3
+	var wx1 := 0.4
+	b.box(Vector3(wx0 - 0.08, f + 0.95, -hz + 0.2), Vector3(wx1 + 0.08, f + 2.35, -hz + 0.23), Color(0.95, 0.95, 0.95))
+	b.box(Vector3(wx0, f + 1.02, -hz + 0.2), Vector3(wx1, f + 2.28, -hz + 0.235), Color(0.72, 0.85, 0.92))
+	b.box(Vector3((wx0 + wx1) * 0.5 - 0.03, f + 1.02, -hz + 0.2), Vector3((wx0 + wx1) * 0.5 + 0.03, f + 2.28, -hz + 0.24), Color(0.95, 0.95, 0.95))
+	b.box(Vector3(wx0, f + 1.02, -hz - 0.05), Vector3(wx1, f + 2.28, -hz), Color(0.6, 0.75, 0.85))
+	b.box(Vector3(wx0 - 0.15, f + 0.9, -hz + 0.2), Vector3(wx1 + 0.15, f + 0.95, -hz + 0.45), Color(0.95, 0.95, 0.93))
+	for px in [wx0 + 0.25, wx1 - 0.35]:
+		b.box(Vector3(px, f + 0.95, -hz + 0.25), Vector3(px + 0.2, f + 1.12, -hz + 0.42), Color(0.92, 0.92, 0.9))
+		for k in 5:
+			var lx: float = px + 0.1 + rng.randf_range(-0.12, 0.12)
+			var lz := -hz + 0.33 + rng.randf_range(-0.08, 0.08)
+			b.box(Vector3(lx - 0.015, f + 1.1, lz - 0.015), Vector3(lx + 0.015, f + 1.1 + rng.randf_range(0.25, 0.5), lz + 0.015), Color(0.3, 0.55, 0.25))
+	# Плакаты «Правила дорожного движения» на левой стене — два ряда
+	var px0 := -hx + 0.21
+	for row in 2:
+		for i in 6:
+			var z := -hz + 0.3 + i * 1.12
+			var y := f + 1.25 + row * 0.78
+			b.box(Vector3(px0, y, z), Vector3(px0 + 0.012, y + 0.72, z + 1.04), Color(0.95, 0.95, 0.93))
+			b.box(Vector3(px0 + 0.012, y + 0.62, z + 0.02), Vector3(px0 + 0.016, y + 0.7, z + 1.02), Color(0.15, 0.3, 0.65))
+			for k in 6:
+				var cz := z + 0.06 + (k % 3) * 0.33
+				var cy := y + 0.06 + (k / 3) * 0.28
+				var col: Color = [Color(0.35, 0.55, 0.3), Color(0.85, 0.75, 0.4), Color(0.4, 0.5, 0.7), Color(0.8, 0.35, 0.3), Color(0.6, 0.6, 0.62)][rng.randi() % 5]
+				b.box(Vector3(px0 + 0.012, cy, cz), Vector3(px0 + 0.016, cy + 0.22, cz + 0.28), col)
+	# Таблица дорожных знаков на правой стене: синие, запрещающие, треугольники
+	var sx := hx - 0.21
+	b.box(Vector3(sx - 0.012, f + 1.0, -1.4), Vector3(sx, f + 2.6, 1.8), Color(0.96, 0.96, 0.95))
+	b.box(Vector3(sx - 0.016, f + 2.45, -1.35), Vector3(sx - 0.012, f + 2.56, 1.75), Color(0.15, 0.3, 0.65))
+	for r in 4:
+		for k in 7:
+			var z := -1.25 + k * 0.42
+			var y := f + 1.1 + r * 0.33
+			var kind := (r + k * 3) % 4
+			var at := Vector3(sx - 0.014, y, z)
+			match kind:
+				0:
+					b.box(at + Vector3(-0.004, 0, 0), at + Vector3(0, 0.24, 0.24), Color(0.15, 0.35, 0.75))
+					b.box(at + Vector3(-0.008, 0.08, 0.06), at + Vector3(-0.004, 0.16, 0.18), Color(0.95, 0.95, 0.95))
+				1:
+					b.box(at + Vector3(-0.004, 0, 0), at + Vector3(0, 0.24, 0.24), Color(0.85, 0.12, 0.1))
+					b.box(at + Vector3(-0.008, 0.04, 0.04), at + Vector3(-0.004, 0.2, 0.2), Color(0.97, 0.97, 0.97))
+				2:
+					b.tri(at + Vector3(-0.006, 0, 0), at + Vector3(-0.006, 0.24, 0.12), at + Vector3(-0.006, 0, 0.24), Color(0.85, 0.12, 0.1))
+					b.tri(at + Vector3(-0.01, 0.04, 0.045), at + Vector3(-0.01, 0.17, 0.12), at + Vector3(-0.01, 0.04, 0.195), Color(0.97, 0.97, 0.97))
+				_:
+					b.box(at + Vector3(-0.004, 0, 0), at + Vector3(0, 0.24, 0.24), Color(0.95, 0.8, 0.15))
+					b.box(at + Vector3(-0.008, 0.1, 0.03), at + Vector3(-0.004, 0.14, 0.21), Color(0.1, 0.1, 0.1))
+	# Стол инструктора, кресло за ним, стул для ученика сбоку, бумаги и цветок
+	var wood := Color(0.78, 0.6, 0.38)
+	WalkIn.counter(b, Vector3(-3.6, f, -2.7), Vector3(-1.6, f + 0.76, -1.9), wood, wood.lightened(0.1))
+	b.box(Vector3(-3.3, f + 0.76, -2.5), Vector3(-2.9, f + 0.8, -2.2), Color(0.95, 0.95, 0.9))
+	b.box(Vector3(-2.2, f + 0.76, -2.55), Vector3(-2.05, f + 0.9, -2.4), Color(0.2, 0.3, 0.6))
+	b.box(Vector3(-1.95, f + 0.76, -2.6), Vector3(-1.75, f + 0.92, -2.4), Color(0.9, 0.9, 0.88))
+	for k in 6:
+		var lx := -1.85 + rng.randf_range(-0.12, 0.12)
+		b.box(Vector3(lx - 0.015, f + 0.92, -2.52), Vector3(lx + 0.015, f + 0.92 + rng.randf_range(0.2, 0.4), -2.48), Color(0.3, 0.55, 0.25))
+	_office_chair(b, Vector3(-2.6, f, -3.15))
+	_tablet_chair(b, Vector3(-3.9, f, -1.4), 0.6)
+	# Стулья с откидными столиками — лицом к столу инструктора, вразнобой
 	for row in 3:
-		for col in 2:
-			# Парты правее прохода от двери к столу инструктора
-			var x := -0.7 + col * 1.9
-			var z := -0.6 + row * 1.3
-			b.box(Vector3(x, f + 0.7, z), Vector3(x + 1.2, f + 0.75, z + 0.5), wood, true)
-			b.box(Vector3(x + 0.05, f, z + 0.05), Vector3(x + 0.1, f + 0.7, z + 0.45), wood.darkened(0.3))
-			b.box(Vector3(x + 1.1, f, z + 0.05), Vector3(x + 1.15, f + 0.7, z + 0.45), wood.darkened(0.3))
-			b.box(Vector3(x + 0.1, f + 0.42, z + 0.6), Vector3(x + 1.1, f + 0.47, z + 0.95), wood.darkened(0.15))
+		for col in 3:
+			var p := Vector3(-0.2 + col * 1.35 + rng.randf_range(-0.15, 0.15), f, -0.9 + row * 1.25 + rng.randf_range(-0.1, 0.1))
+			_tablet_chair(b, p, 0.35 + rng.randf_range(-0.25, 0.25))
 	# Стенд категорий у задней стены справа
 	b.box(Vector3(1.0, f + 1.1, -3.52), Vector3(4.4, f + 2.4, -3.48), Color(0.15, 0.3, 0.6))
-	# Плакаты со знаками на боковой стене: «STOP», «уступи», «кирпич»
-	var signs := [Color(0.8, 0.12, 0.1), Color(0.95, 0.95, 0.9), Color(0.85, 0.15, 0.12)]
-	for i in 3:
-		var z := -2.5 + i * 1.6
-		b.box(Vector3(hx - 0.22, f + 1.2, z), Vector3(hx - 0.2, f + 2.1, z + 0.8), Color(0.92, 0.9, 0.82))
-		b.box(Vector3(hx - 0.23, f + 1.35, z + 0.15), Vector3(hx - 0.22, f + 1.95, z + 0.65), signs[i])
-		if i == 1:
-			b.box(Vector3(hx - 0.235, f + 1.5, z + 0.25), Vector3(hx - 0.23, f + 1.8, z + 0.55), Color(0.85, 0.15, 0.12))
-		if i == 2:
-			b.box(Vector3(hx - 0.235, f + 1.6, z + 0.2), Vector3(hx - 0.23, f + 1.7, z + 0.6), Color(0.95, 0.95, 0.95))
-	# Учебный руль и педали на тумбе в углу
-	b.box(Vector3(-4.6, f, 2.3), Vector3(-3.8, f + 0.8, 3.3), Color(0.35, 0.35, 0.38), true)
-	b.box(Vector3(-4.3, f + 0.8, 2.6), Vector3(-4.25, f + 1.2, 3.0), Color(0.1, 0.1, 0.1))
+	# Тренажёр: рама, сиденье, рулевая колонка с рулём, педали
+	var dark := Color(0.12, 0.12, 0.13)
+	b.box(Vector3(-4.6, f, 2.0), Vector3(-3.6, f + 0.08, 3.2), dark, true)
+	b.box(Vector3(-4.45, f + 0.08, 2.75), Vector3(-3.75, f + 0.45, 3.15), Color(0.25, 0.25, 0.28))
+	b.box(Vector3(-4.45, f + 0.45, 3.0), Vector3(-3.75, f + 0.95, 3.12), Color(0.25, 0.25, 0.28))
+	b.box(Vector3(-4.15, f + 0.08, 2.15), Vector3(-4.05, f + 0.85, 2.25), Color(0.9, 0.75, 0.15))
+	var saved := b.xf
+	for a in [0.0, PI / 4.0, PI / 2.0, 3.0 * PI / 4.0]:
+		b.xf = saved * Transform3D(Basis(Vector3(0, 0.45, -0.89).normalized(), a), Vector3(-4.1, f + 0.95, 2.35))
+		b.box(Vector3(-0.19, -0.015, -0.015), Vector3(0.19, 0.015, 0.015), dark)
+	b.xf = saved
+	for x in [-4.35, -4.15, -3.95]:
+		b.box(Vector3(x, f + 0.08, 2.05), Vector3(x + 0.1, f + 0.2, 2.12), Color(0.5, 0.5, 0.52))
 	for x in [-1.8, 1.8]:
 		WalkIn.lamp(lamps, Vector3(x, h - 0.13, 0.0))
 	add_child(b.build_mesh())
@@ -197,13 +264,42 @@ func _build_house() -> void:
 	board.rotation.y = PI
 	add_child(board)
 	var pdd := Label3D.new()
-	pdd.text = "ПДД"
-	pdd.font_size = 96
-	pdd.pixel_size = 0.004
+	pdd.text = "ПРАВИЛА ДОРОЖНОГО ДВИЖЕНИЯ"
+	pdd.font_size = 64
+	pdd.pixel_size = 0.003
 	pdd.outline_size = 0
-	pdd.position = c * Vector3(-1.5, f + 1.85, -3.49)
-	pdd.rotation.y = PI
+	pdd.modulate = Color(0.15, 0.3, 0.65)
+	pdd.position = c * Vector3(-hx + 0.24, f + 2.92, 0.0)
+	pdd.rotation.y = PI + PI / 2.0
 	add_child(pdd)
+
+
+## Стул с откидным столиком справа: чёрный каркас, серая обивка.
+## Сидящий смотрит на −Z (в координатах дома), yaw поворачивает.
+func _tablet_chair(b: MeshBuilder, p: Vector3, yaw: float) -> void:
+	var saved := b.xf
+	b.xf = saved * Transform3D(Basis(Vector3.UP, yaw), p)
+	var frame := Color(0.08, 0.08, 0.09)
+	var cloth := Color(0.25, 0.25, 0.27)
+	for lx in [-0.22, 0.2]:
+		for lz in [-0.2, 0.2]:
+			b.box(Vector3(lx, 0, lz), Vector3(lx + 0.025, 0.45, lz + 0.025), frame)
+	b.box(Vector3(-0.23, 0.42, -0.22), Vector3(0.23, 0.5, 0.23), cloth, true)
+	b.box(Vector3(-0.22, 0.5, 0.2), Vector3(0.22, 0.95, 0.26), cloth)
+	b.box(Vector3(-0.25, 0.6, -0.15), Vector3(-0.22, 0.64, 0.2), frame)
+	b.box(Vector3(0.22, 0.6, -0.15), Vector3(0.25, 0.64, 0.2), frame)
+	b.box(Vector3(0.18, 0.66, -0.38), Vector3(0.42, 0.69, 0.05), frame)
+	b.xf = saved
+
+
+## Офисное кресло: крестовина на колёсиках, сиденье, высокая спинка.
+func _office_chair(b: MeshBuilder, p: Vector3) -> void:
+	var black := Color(0.06, 0.06, 0.07)
+	b.box(p + Vector3(-0.32, 0.03, -0.03), p + Vector3(0.32, 0.07, 0.03), black)
+	b.box(p + Vector3(-0.03, 0.03, -0.32), p + Vector3(0.03, 0.07, 0.32), black)
+	b.box(p + Vector3(-0.03, 0.07, -0.03), p + Vector3(0.03, 0.42, 0.03), Color(0.3, 0.3, 0.32))
+	b.box(p + Vector3(-0.26, 0.42, -0.24), p + Vector3(0.26, 0.52, 0.26), black, true)
+	b.box(p + Vector3(-0.25, 0.52, -0.32), p + Vector3(0.25, 1.25, -0.22), black)
 
 
 func _missing_docs() -> String:

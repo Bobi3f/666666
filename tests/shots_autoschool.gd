@@ -29,4 +29,17 @@ func _run() -> void:
 	var xf: Transform3D = AutoSchool.xf()
 	await shot("autoschool_class", xf * Vector3(3.8, 2.3, 3.2), xf * Vector3(-2.0, 0.8, -3.0))
 	await shot("autoschool_board", xf * Vector3(-0.5, 2.0, 1.5), xf * Vector3(2.7, 1.6, -3.5))
+	var SC: Vehicle = W.get_node("AutoSchool").car
+	var cp := SC.global_position
+	await shot("autoschool_car", cp + Vector3(-3.6, 1.6, -3.4), cp + Vector3(0, 0.8, 0.2))
+	await shot("autoschool_car_side", cp + Vector3(4.2, 1.3, 1.0), cp + Vector3(0, 0.7, 0.3))
+	var PR = root.get_node("Progress")
+	TM.day = 5
+	PR.add_category("B")
+	TM.day = 9
+	PR.add_category("A")
+	var card: LicenseCard = W.get_node("LicenseCard")
+	card.open()
+	for i in 6: await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/autoschool_license.png" % OS.get_environment("SHOTS"))
 	quit()

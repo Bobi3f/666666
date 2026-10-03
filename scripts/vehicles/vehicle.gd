@@ -1136,6 +1136,8 @@ func _paint_body() -> void:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
+	if school and not _body.has_node("SchoolMarks"):
+		_school_marks()
 	# Номерные знаки — один раз, перекраска их не трогает
 	_plate_spots = b.get_meta("plates", [])
 	if not _body.has_node("Plates"):
@@ -1189,6 +1191,67 @@ func _attach_plates() -> void:
 func repaint() -> void:
 	paint = (paint + 1) % paints().size()
 	_paint_body()
+
+
+## Учебная машина: треугольник «У» на крыше, у легковой — жёлтая полоса
+## со штриховкой по бокам и надпись «УЧЕБНАЯ».
+func _school_marks() -> void:
+	var box := _paint_mesh.get_aabb()
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var top := box.end.y
+	# Треугольник на крыше: стойка, красная кайма, белое поле, смотрит вперёд
+	var zc := box.position.z + box.size.z * (0.42 if kind == "car" else 0.15)
+	b.box(Vector3(-0.03, top, zc - 0.03), Vector3(0.03, top + 0.12, zc + 0.03), Color(0.2, 0.2, 0.2))
+	for side in [-1.0, 1.0]:
+		var z: float = zc + side * 0.01
+		b.tri(Vector3(-0.3, top + 0.1, z), Vector3(0.3, top + 0.1, z), Vector3(0, top + 0.62, z), Color(0.85, 0.12, 0.1), true)
+		var z2: float = zc + side * 0.02
+		b.tri(Vector3(-0.2, top + 0.15, z2), Vector3(0.2, top + 0.15, z2), Vector3(0, top + 0.5, z2), Color(0.97, 0.97, 0.97), true)
+	if kind == "car":
+		var yellow := Color(0.98, 0.75, 0.1)
+		for sx in [-1.0, 1.0]:
+			var x: float = (box.end.x + 0.006) * sx
+			var x2: float = x + 0.004 * sx
+			# Полоса понизу дверей и заднего крыла
+			b.box(Vector3(minf(x, x2), 0.38, -0.55), Vector3(maxf(x, x2), 0.56, 1.95), yellow)
+			# Чёрная штриховка в конце полосы
+			var z := 1.0
+			while z < 1.9:
+				var x3: float = x + 0.008 * sx
+				b.tri(Vector3(x3, 0.38, z), Vector3(x3, 0.56, z + 0.12), Vector3(x3, 0.38, z + 0.08), Color(0.08, 0.08, 0.08), true)
+				b.tri(Vector3(x3, 0.38, z + 0.08), Vector3(x3, 0.56, z + 0.12), Vector3(x3, 0.56, z + 0.2), Color(0.08, 0.08, 0.08), true)
+				z += 0.2
+	var m := b.build_mesh()
+	m.name = "SchoolMarks"
+	_body.add_child(m)
+	var u := Label3D.new()
+	u.text = "У"
+	u.font_size = 96
+	u.pixel_size = 0.0035
+	u.outline_size = 0
+	u.modulate = Color(0.05, 0.05, 0.05)
+	u.double_sided = false
+	u.position = Vector3(0, top + 0.27, zc - 0.03)
+	u.rotation.y = PI
+	m.add_child(u)
+	var u2 := u.duplicate() as Label3D
+	u2.position.z = zc + 0.03
+	u2.rotation.y = 0.0
+	m.add_child(u2)
+	if kind == "car":
+		for sx in [-1.0, 1.0]:
+			var l := Label3D.new()
+			l.text = "УЧЕБНАЯ\nавтошкола «Каменка»"
+			l.font_size = 64
+			l.pixel_size = 0.0028
+			l.outline_size = 0
+			l.modulate = Color(0.97, 0.97, 0.97)
+			# Только снаружи — иначе просвечивает сквозь стёкла с другого борта
+			l.double_sided = false
+			l.position = Vector3((box.end.x + 0.012) * sx, 0.82, 0.05)
+			l.rotation.y = PI / 2.0 * sx
+			m.add_child(l)
 
 
 ## Тяга мотора с учётом форсировки.

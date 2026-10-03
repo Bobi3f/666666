@@ -32,6 +32,7 @@ func _run() -> void:
 	child("tutorial.gd")._finish()
 	for i in 3: await physics_frame
 	var PR = root.get_node("Progress")
+	var TM = root.get_node("TimeManager")
 	var AS: AutoSchool = W.get_node("AutoSchool")
 	var xf: Transform3D = AutoSchool.xf()
 	var a: Rect2 = AutoSchool.AUTODROME
@@ -88,6 +89,30 @@ func _run() -> void:
 	P.global_position = cz.global_position + Vector3(0, 0.15, 0)
 	await frames(5)
 	ok(P._zones.has(cz) and cz.text().contains("категорию C"), "у стенда: " + cz.text())
+
+	print("== Учебная машина и права")
+	var SC: Vehicle = AS.car
+	ok(SC.paint_name() == "синий" and SC._body.has_node("SchoolMarks"), "учебная — синяя, с полосой и знаком «У»")
+	ok(not W.get_node("Car")._body.has_node("SchoolMarks"), "у своих машин знака нет")
+	var card: LicenseCard = W.get_node("LicenseCard")
+	ok(not card._any(), "прав ещё нет")
+	TM.day = 4
+	PR.add_category("B")
+	TM.day = 6
+	PR.add_category("C")
+	ok(card._has("B") and card._has("C") and not card._has("A") and int(PR.category_days["B"]) == 4 and int(PR.category_days["C"]) == 6, "в карточке: B с 4-го дня, C с 6-го")
+	ok(PR.license_no.begins_with("ВХХ №"), "номер удостоверения: " + PR.license_no)
+	var J = child("journal.gd")
+	J._open(false)
+	J._license_btn.pressed.emit()
+	ok(card.visible and paused, "журнал → «Водительское удостоверение» — карточка")
+	card.close_card()
+	ok(not card.visible and paused, "закрыл — снова журнал (пауза)")
+	J._close()
+	var sd: Dictionary = PR.save_state()
+	PR.category_days = {}
+	PR.load_state(sd)
+	ok(int(PR.category_days.get("C", 0)) == 6, "дни категорий сохраняются")
 
 	print("\nИТОГО: " + ("всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ, провалов: %d" % fails))
 	quit(1 if fails else 0)

@@ -2363,13 +2363,13 @@ func _build_autodrome(b: MeshBuilder) -> void:
 	_label("P", pc + Vector3(0, 0.06, 0), 0.0, 0.03, white).rotation = Vector3(-PI / 2.0, PI, 0)
 	# Указатель у трассы
 	_sign(b, Vector3(e.position.x - 1.5, 0, 6.0), PI, "Автошкола ↓", 1.6)
-	# Инструктор — за столом в классе, к нему подходят сдавать на права
+	# Инструктор — в кресле за столом в классе, к нему подходят сдавать на права
 	var xf := AutoSchool.xf()
 	var f := AutoSchool.FLOOR
 	var who := MeshBuilder.new()
 	who.ground_shade = false
-	who.xf = xf * Transform3D(Basis(Vector3.UP, PI), Vector3(-2.6, f, -3.0))
-	Villagers.person_model(who, Color(0.25, 0.3, 0.45), Color(0.2, 0.2, 0.22), false, false)
+	who.xf = xf * Transform3D(Basis(Vector3.UP, PI), Vector3(-2.6, f + 0.02, -3.1))
+	Villagers.person_model(who, Color(0.25, 0.3, 0.45), Color(0.2, 0.2, 0.22), true, false)
 	var who_mesh := who.build_mesh()
 	who_mesh.name = "Instructor"
 	add_child(who_mesh)
@@ -2447,11 +2447,11 @@ func _exam_result(r: Dictionary) -> void:
 		school.park_school_car()
 	if r.ok:
 		var first := not Progress.license
-		Progress.license = true
+		Progress.add_category("B")
 		SoundLibrary.play("quest")
 		QuestManager.event("license")
 		if first:
-			GameManager.notify("Сдал за %d с! Права в кармане. Теперь — первая машина: соседские «Жигули» продаются напротив дома" % int(r.time))
+			GameManager.notify("Сдал за %d с! Права в кармане (журнал J → «Водительское удостоверение»). Теперь — первая машина: соседские «Жигули» продаются напротив дома" % int(r.time))
 		else:
 			GameManager.notify("Чисто прошёл за %d с, конусов сбито: %d" % [int(r.time), int(r.cones)])
 	else:
@@ -3006,6 +3006,10 @@ func _build_clubs() -> void:
 	t.prize = 150
 	t.plaza = Rect2(-25.0, 7.0, 54.0, 10.0)
 	add_child(t)
+	# Водительское удостоверение — карточка из журнала
+	var card := LicenseCard.new()
+	card.name = "LicenseCard"
+	add_child(card)
 	# Оля — девушка через улицу, с ней можно подружиться
 	var girl := Girl.new()
 	girl.name = "Girl"

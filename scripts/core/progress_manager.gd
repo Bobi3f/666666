@@ -40,6 +40,10 @@ var docs: Array = []
 ## Открытые категории прав, кроме B (B — это license): A — мотоцикл,
 ## C — грузовик, D — автобус.
 var categories: Array = []
+## Когда открыта категория (день игры) — для карточки прав.
+var category_days := {}
+## Номер удостоверения (выдаётся с первыми правами).
+var license_no := ""
 const DOC_NAMES := {"passport": "паспорт", "propiska": "справка о прописке",
 	"work_book": "трудовая книжка", "med": "медсправка водителя",
 	"school_cert": "аттестат о среднем образовании"}
@@ -288,6 +292,10 @@ func has_category(c: String) -> bool:
 
 
 func add_category(c: String) -> void:
+	if not category_days.has(c):
+		category_days[c] = TimeManager.day
+	if license_no == "":
+		license_no = "ВХХ № %06d" % (100000 + (TimeManager.day * 7919 + int(TimeManager.minutes)) % 900000)
 	if c == "B":
 		license = true
 	elif not categories.has(c):
@@ -305,7 +313,7 @@ func categories_text() -> String:
 
 func save_state() -> Dictionary:
 	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "path2": true,
-		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day}
+		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day, "cat_days": category_days, "license_no": license_no}
 
 
 func load_state(d: Dictionary) -> void:
@@ -323,6 +331,9 @@ func load_state(d: Dictionary) -> void:
 	race_day = int(d.get("race_day", 0))
 	home_items = (d.get("home", []) as Array).duplicate()
 	fridge_day = int(d.get("fridge", 0))
+	var cd: Variant = d.get("cat_days", {})
+	category_days = (cd as Dictionary).duplicate() if cd is Dictionary else {}
+	license_no = str(d.get("license_no", ""))
 	owned_cars = (d.get("cars", []) as Array).duplicate()
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем
