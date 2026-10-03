@@ -432,6 +432,8 @@ func _draw_terrain() -> void:
 	_rect(sq.position.x, sq.position.y, sq.end.x, sq.end.y, Color(0.8, 0.77, 0.7))
 	var ad: Rect2 = _world.AUTODROME
 	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.72, 0.7, 0.66))
+	var ah := AutoSchool.HOUSE
+	_rect(ah.x - 5.0, ah.z - 3.75, ah.x + 5.0, ah.z + 3.75, HOUSE)
 
 
 ## Район вокруг Каменки: поля, леса, озеро, река с мостами, грунтовки, сёла.
@@ -515,7 +517,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Склад", Vector3(27.5, 0, 37), Color(0.9, 0.9, 0.9)],
 		["Ларёк", Vector3(25, 0, 9), Color(0.5, 0.7, 1.0)],
 		["Пруд", pond, Color(0.6, 0.85, 1.0)],
-		["Автошкола", Vector3(9, 0, -45), Color(0.95, 0.7, 0.25)],
+		["Автошкола", AutoSchool.HOUSE, Color(0.95, 0.7, 0.25)],
 		["Колька", _world.RACE_START, Color(0.95, 0.45, 0.35)],
 		["Площадь", Vector3(122, 0, 21), Color(0.95, 0.9, 0.7)],
 		["Кафе", Vector3(84.5, 0, 16.5), Color(0.95, 0.6, 0.45)],

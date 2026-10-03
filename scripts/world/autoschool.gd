@@ -6,14 +6,29 @@ extends Node3D
 ##
 ## С категорией D и трудовой книжкой берут водителем рейсового автобуса:
 ## смена у городской остановки.
+##
+## Стоит к югу от трассы, между Дубравой и школой: кирпичный дом с классом
+## (внутрь можно зайти — парты, плакаты со знаками, стол инструктора, стенд
+## категорий), рядом автодром и стоянка учебных машин.
 
-## Стенд с категориями у будки автошколы
-const BOARD := Vector3(-11.0, 0, -17.5)
-## Где стоят учебные машины — за полевой дорогой, в стороне от автодрома
-const TRUCK_SPOT := Vector3(-15.0, 0.1, -50.0)
-const BUS_SPOT := Vector3(-15.0, 0.1, -65.0)
+## Дом автошколы (центр) — дверью к трассе (локальный +Z смотрит на −Z мира).
+const HOUSE := Vector3(-8.0, 0, 21.0)
+const HOUSE_SIZE := Vector3(10.0, 3.4, 7.5)
+const FLOOR := 0.4
+## Автодром (x, z, ширина, длина): въезд с трассы у старта, разворот в конце.
+const AUTODROME := Rect2(-40, 14, 22, 57)
+const ENTRY := Rect2(-32, 1.5, 6, 12.5)
+## Экзамен для любой категории: старт, змейка между конусами, разворот,
+## в конце — встать в разметку «P».
+const EXAM_START := Vector3(-29, 0, 18.5)
+const EXAM_POINTS := [Vector3(-25.5, 0, 24), Vector3(-32.5, 0, 31), Vector3(-25.5, 0, 38), Vector3(-32.5, 0, 45), Vector3(-29, 0, 62)]
+const EXAM_CONES := [Vector3(-29, 0, 24), Vector3(-29, 0, 31), Vector3(-29, 0, 38), Vector3(-29, 0, 45)]
+const PARK := Vector3(-36.5, 0, 36)
+## Где стоят учебные машины — на стоянке за домом автошколы
+const TRUCK_SPOT := Vector3(-9.5, 0.1, 42.0)
+const BUS_SPOT := Vector3(-9.5, 0.1, 57.0)
 ## Учебные «Жигули» — экзамен на права (категория B) сдают на них.
-const CAR_SPOT := Vector3(-15.0, 0.1, -29.0)
+const CAR_SPOT := Vector3(-9.5, 0.1, 31.0)
 ## [категория, на чём, цена, kind машины]
 const CATS := [
 	["A", "мотоцикл", 200, "moto"],
@@ -32,26 +47,28 @@ var _exams := {}
 var _bus_day := -1
 
 
+## Перевод из координат дома (фасад +Z, пол класса на FLOOR) в мир.
+static func xf() -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, PI), HOUSE)
+
+
 func _ready() -> void:
-	var b := MeshBuilder.new()
-	var c := BOARD
-	# Стенд: два столба и щит с тремя табличками
-	for x in [-2.4, 2.3]:
-		b.box(c + Vector3(x, 0, -0.05), c + Vector3(x + 0.1, 2.3, 0.05), Color(0.4, 0.4, 0.42), true)
-	b.box(c + Vector3(-2.5, 1.2, -0.04), c + Vector3(2.5, 2.3, 0.04), Color(0.15, 0.3, 0.6))
-	add_child(b.build_mesh())
-	add_child(b.build_body())
+	_build_house()
+	var c := xf()
 	for i in CATS.size():
 		var cat: Array = CATS[i]
+		# Таблички категорий на стенде у задней стены класса
 		var l := Label3D.new()
 		l.text = "%s\n%s" % [cat[0], cat[1]]
 		l.font_size = 96
-		l.pixel_size = 0.0028
+		l.pixel_size = 0.0018
 		l.outline_size = 0
-		l.position = c + Vector3(-1.6 + i * 1.6, 1.75, 0.06)
+		l.position = c * Vector3(1.6 + i * 1.1, FLOOR + 1.75, -3.47)
+		l.rotation.y = PI
 		add_child(l)
-		var z := InteractZone.create("", Vector3(1.5, 2.2, 1.8))
-		z.position = c + Vector3(-1.6 + i * 1.6, 0, 1.0)
+		var z := InteractZone.create("", Vector3(1.0, 2.2, 1.4))
+		z.name = "Cat" + String(cat[0])
+		z.position = c * Vector3(1.6 + i * 1.1, FLOOR, -2.6)
 		var ci := i
 		z.prompt_fn = func() -> String: return _prompt(ci)
 		z.activated.connect(func() -> void: _start(ci))
@@ -61,8 +78,8 @@ func _ready() -> void:
 		ex.name = "Exam" + String(cat[0])
 		ex.title = "Экзамен на %s" % cat[0]
 		ex.only_kind = cat[3]
-		ex.start_pos = Vector3(9, 0, -22.5)
-		ex.points = [Vector3(5.5, 0, -28), Vector3(12.5, 0, -35), Vector3(5.5, 0, -42), Vector3(12.5, 0, -49), Vector3(9, 0, -66)]
+		ex.start_pos = EXAM_START
+		ex.points.assign(EXAM_POINTS)
 		ex.stage_names = {0: "змейка между конусами", 4: "разворот в конце площадки"}
 		ex.point_radius = 3.5 if cat[0] == "A" else 4.5
 		ex.max_cones = 1 if cat[0] == "A" else 3
@@ -94,6 +111,99 @@ func _school_vehicle(kind: String, at: Vector3, node_name: String) -> Vehicle:
 	v.global_position = at
 	v.rotation.y = 0.0
 	return v
+
+
+## Дом автошколы: кирпич, крыльцо, вывеска; внутри класс — парты рядами
+## лицом к доске, плакаты со знаками, стол инструктора, стенд категорий.
+func _build_house() -> void:
+	var c := xf()
+	var b := MeshBuilder.new()
+	b.xf = c
+	var lamps := MeshBuilder.new()
+	lamps.ground_shade = false
+	lamps.xf = c
+	var hs := HOUSE_SIZE
+	var hx := hs.x * 0.5
+	var hz := hs.z * 0.5
+	var h := hs.y
+	var f := FLOOR
+	var brick := Color(0.72, 0.62, 0.48)
+	WalkIn.shell(b, hs, f, brick, Color(0.85, 0.88, 0.8), Color(0.5, 0.42, 0.34), -2.0, 1.3, 2.3, lamps)
+	# Цоколь — чуть ниже пола класса, иначе их верх рябит
+	b.box(Vector3(-hx - 0.1, 0, -hz - 0.1), Vector3(hx + 0.1, f - 0.08, hz + 0.1), Color(0.5, 0.5, 0.48))
+	b.box(Vector3(-hx - 0.2, h, -hz - 0.2), Vector3(hx + 0.2, h + 0.25, hz + 0.2), Color(0.35, 0.4, 0.5))
+	# Крыльцо с козырьком, вывеска над дверью, окна по фасаду
+	b.box(Vector3(-3.4, 0, hz), Vector3(-0.6, f, hz + 1.4), Color(0.58, 0.58, 0.56), true)
+	b.box(Vector3(-3.6, 2.85, hz), Vector3(-0.4, 2.97, hz + 1.5), Color(0.45, 0.48, 0.52))
+	b.box(Vector3(-1.2, f, hz), Vector3(-1.15, 2.7, hz + 1.1), Color(0.25, 0.35, 0.55))
+	b.box(Vector3(0.2, 2.75, hz), Vector3(hx - 0.3, 3.3, hz + 0.08), Color(0.2, 0.35, 0.65))
+	for x in [0.8, 3.0]:
+		b.box(Vector3(x, 1.2, hz), Vector3(x + 1.4, 2.4, hz + 0.05), Color(0.6, 0.75, 0.85))
+	for z in [-2.0, 0.5]:
+		b.box(Vector3(hx, 1.2, z), Vector3(hx + 0.05, 2.4, z + 1.4), Color(0.6, 0.75, 0.85))
+		b.box(Vector3(-hx - 0.05, 1.2, z), Vector3(-hx, 2.4, z + 1.4), Color(0.6, 0.75, 0.85))
+	# Доска и стол инструктора у задней стены (слева), парты рядами к ним
+	var wood := Color(0.55, 0.4, 0.26)
+	b.box(Vector3(-4.2, f + 0.9, -3.53), Vector3(-0.8, f + 2.1, -3.5), Color(0.15, 0.3, 0.22))
+	b.box(Vector3(-4.2, f + 0.85, -3.55), Vector3(-0.8, f + 0.9, -3.42), wood)
+	WalkIn.counter(b, Vector3(-3.6, f, -2.7), Vector3(-1.6, f + 0.78, -1.9), wood, wood.lightened(0.2))
+	b.box(Vector3(-3.2, f + 0.78, -2.5), Vector3(-2.8, f + 0.8, -2.2), Color(0.95, 0.95, 0.9))
+	for row in 3:
+		for col in 2:
+			# Парты правее прохода от двери к столу инструктора
+			var x := -0.7 + col * 1.9
+			var z := -0.6 + row * 1.3
+			b.box(Vector3(x, f + 0.7, z), Vector3(x + 1.2, f + 0.75, z + 0.5), wood, true)
+			b.box(Vector3(x + 0.05, f, z + 0.05), Vector3(x + 0.1, f + 0.7, z + 0.45), wood.darkened(0.3))
+			b.box(Vector3(x + 1.1, f, z + 0.05), Vector3(x + 1.15, f + 0.7, z + 0.45), wood.darkened(0.3))
+			b.box(Vector3(x + 0.1, f + 0.42, z + 0.6), Vector3(x + 1.1, f + 0.47, z + 0.95), wood.darkened(0.15))
+	# Стенд категорий у задней стены справа
+	b.box(Vector3(1.0, f + 1.1, -3.52), Vector3(4.4, f + 2.4, -3.48), Color(0.15, 0.3, 0.6))
+	# Плакаты со знаками на боковой стене: «STOP», «уступи», «кирпич»
+	var signs := [Color(0.8, 0.12, 0.1), Color(0.95, 0.95, 0.9), Color(0.85, 0.15, 0.12)]
+	for i in 3:
+		var z := -2.5 + i * 1.6
+		b.box(Vector3(hx - 0.22, f + 1.2, z), Vector3(hx - 0.2, f + 2.1, z + 0.8), Color(0.92, 0.9, 0.82))
+		b.box(Vector3(hx - 0.23, f + 1.35, z + 0.15), Vector3(hx - 0.22, f + 1.95, z + 0.65), signs[i])
+		if i == 1:
+			b.box(Vector3(hx - 0.235, f + 1.5, z + 0.25), Vector3(hx - 0.23, f + 1.8, z + 0.55), Color(0.85, 0.15, 0.12))
+		if i == 2:
+			b.box(Vector3(hx - 0.235, f + 1.6, z + 0.2), Vector3(hx - 0.23, f + 1.7, z + 0.6), Color(0.95, 0.95, 0.95))
+	# Учебный руль и педали на тумбе в углу
+	b.box(Vector3(-4.6, f, 2.3), Vector3(-3.8, f + 0.8, 3.3), Color(0.35, 0.35, 0.38), true)
+	b.box(Vector3(-4.3, f + 0.8, 2.6), Vector3(-4.25, f + 1.2, 3.0), Color(0.1, 0.1, 0.1))
+	for x in [-1.8, 1.8]:
+		WalkIn.lamp(lamps, Vector3(x, h - 0.13, 0.0))
+	add_child(b.build_mesh())
+	add_child(b.build_body())
+	var lm := lamps.build_mesh(true)
+	lm.name = "SchoolLamps"
+	lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(lm)
+	var sign := Label3D.new()
+	sign.text = "АВТОШКОЛА"
+	sign.font_size = 96
+	sign.pixel_size = 0.0045
+	sign.outline_size = 0
+	sign.position = c * Vector3(2.5, 3.02, hz + 0.1)
+	sign.rotation.y = PI
+	add_child(sign)
+	var board := Label3D.new()
+	board.text = "ЭКЗАМЕНЫ НА КАТЕГОРИИ"
+	board.font_size = 64
+	board.pixel_size = 0.0025
+	board.outline_size = 0
+	board.position = c * Vector3(2.7, f + 2.25, -3.46)
+	board.rotation.y = PI
+	add_child(board)
+	var pdd := Label3D.new()
+	pdd.text = "ПДД"
+	pdd.font_size = 96
+	pdd.pixel_size = 0.004
+	pdd.outline_size = 0
+	pdd.position = c * Vector3(-1.5, f + 1.85, -3.49)
+	pdd.rotation.y = PI
+	add_child(pdd)
 
 
 func _missing_docs() -> String:

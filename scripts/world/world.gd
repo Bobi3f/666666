@@ -2065,7 +2065,7 @@ func _sign(b: MeshBuilder, p: Vector3, yaw: float, text: String, width: float, r
 
 func _road_signs(b: MeshBuilder) -> void:
 	# У конца деревенской улицы — куда ведёт полевая дорога
-	_sign(b, Vector3(-55.5, 0, -33.8), 0.0, "Колхоз «Заря» →\nАвтошкола →", 1.6)
+	_sign(b, Vector3(-55.5, 0, -33.8), 0.0, "Колхоз «Заря» →", 1.6)
 	# Выезд из деревни на трассу — уступи дорогу
 	_sign(b, Vector3(-55.8, 0, -8.6), 0.0, "УСТУПИ\nДОРОГУ", 1.1, true)
 	# С трассы на полевую дорогу
@@ -2330,8 +2330,8 @@ func _spawn_salon_cars() -> void:
 
 # --- Автодром и заезды --------------------------------------------------------
 
-## Площадка автошколы у трассы (x, z, ширина, длина) и въезд к ней.
-const AUTODROME := Rect2(-2, -75, 22, 57)
+## Площадка автошколы у трассы (x, z, ширина, длина) — к югу от трассы.
+const AUTODROME := AutoSchool.AUTODROME
 const Villagers := preload("res://scripts/world/villagers.gd")
 const EXAM_PRICE := 300
 const RACE_BET := 200
@@ -2341,36 +2341,41 @@ const RACE_START := Vector3(-59.5, 0, -20.0)
 
 func _build_autodrome(b: MeshBuilder) -> void:
 	var a := AUTODROME
+	var e := AutoSchool.ENTRY
 	var asphalt := Color(0.3, 0.3, 0.31)
 	var white := Color(0.88, 0.88, 0.85)
 	b.box(Vector3(a.position.x, 0, a.position.y), Vector3(a.end.x, 0.04, a.end.y), asphalt)
-	b.box(Vector3(6, 0, a.end.y), Vector3(12, 0.04, -5.5), asphalt)
+	b.box(Vector3(e.position.x, 0, e.position.y), Vector3(e.end.x, 0.04, e.end.y), asphalt)
+	# Дорожка от въезда к крыльцу и стоянка учебных машин за домом
+	b.box(Vector3(e.end.x, 0, 13.0), Vector3(AutoSchool.HOUSE.x - 2.0, 0.035, 15.0), asphalt)
+	b.box(Vector3(-13.0, 0, 26.0), Vector3(-6.0, 0.035, 63.0), asphalt)
+	b.box(Vector3(a.end.x, 0, 26.0), Vector3(-13.0, 0.035, 30.0), asphalt)
 	# Разметка: бортики-линии по краю, старт, стоянка
 	for r in [[a.position.x, a.position.y, a.position.x + 0.15, a.end.y], [a.end.x - 0.15, a.position.y, a.end.x, a.end.y],
-			[a.position.x, a.position.y, a.end.x, a.position.y + 0.15]]:
+			[a.position.x, a.end.y - 0.15, a.end.x, a.end.y]]:
 		b.box(Vector3(r[0], 0.04, r[1]), Vector3(r[2], 0.05, r[3]), white)
-	b.box(Vector3(6.2, 0.04, -21.3), Vector3(11.8, 0.05, -20.7), Color(0.95, 0.8, 0.2))
-	_label("СТАРТ", Vector3(9, 0.06, -19.6), 0.0, 0.012, Color(0.95, 0.8, 0.2)).rotation = Vector3(-PI / 2.0, 0, 0)
-	var pc := Vector3(16.5, 0, -40)
+	var st := AutoSchool.EXAM_START
+	b.box(Vector3(st.x - 2.8, 0.04, st.z - 1.8), Vector3(st.x + 2.8, 0.05, st.z - 1.2), Color(0.95, 0.8, 0.2))
+	_label("СТАРТ", Vector3(st.x, 0.06, st.z - 2.9), 0.0, 0.012, Color(0.95, 0.8, 0.2)).rotation = Vector3(-PI / 2.0, PI, 0)
+	var pc := AutoSchool.PARK
 	for r in [[-1.7, -3.1, 1.7, -3.0], [-1.7, 3.0, 1.7, 3.1], [-1.75, -3.1, -1.65, 3.1], [1.65, -3.1, 1.75, 3.1]]:
 		b.box(pc + Vector3(r[0], 0.04, r[1]), pc + Vector3(r[2], 0.05, r[3]), white)
-	_label("P", pc + Vector3(0, 0.06, 0), 0.0, 0.03, white).rotation = Vector3(-PI / 2.0, 0, 0)
-	# Будка автошколы с вывеской и инструктор у въезда
-	var k := Vector3(-5, 0, -21.5)
-	b.box(k + Vector3(-2, 0, -2), k + Vector3(2, 2.6, 2), Color(0.85, 0.82, 0.72), true)
-	b.box(k + Vector3(-2.2, 2.6, -2.2), k + Vector3(2.2, 2.8, 2.2), Color(0.35, 0.4, 0.5))
-	b.box(k + Vector3(2.0, 1.0, -1.2), k + Vector3(2.03, 1.9, 1.2), Color(0.6, 0.75, 0.85))
-	b.box(k + Vector3(-1.9, 2.1, 2.0), k + Vector3(1.9, 2.55, 2.04), Color(0.2, 0.35, 0.65))
-	_label("АВТОШКОЛА", k + Vector3(0, 2.33, 2.06), 0.0, 0.0045, Color(1, 1, 1))
+	_label("P", pc + Vector3(0, 0.06, 0), 0.0, 0.03, white).rotation = Vector3(-PI / 2.0, PI, 0)
+	# Указатель у трассы
+	_sign(b, Vector3(e.position.x - 1.5, 0, 6.0), PI, "Автошкола ↓", 1.6)
+	# Инструктор — за столом в классе, к нему подходят сдавать на права
+	var xf := AutoSchool.xf()
+	var f := AutoSchool.FLOOR
 	var who := MeshBuilder.new()
 	who.ground_shade = false
-	who.xf = Transform3D(Basis(Vector3.UP, PI * 0.75), Vector3(-1.8, 0, -17.5))
+	who.xf = xf * Transform3D(Basis(Vector3.UP, PI), Vector3(-2.6, f, -3.0))
 	Villagers.person_model(who, Color(0.25, 0.3, 0.45), Color(0.2, 0.2, 0.22), false, false)
 	var who_mesh := who.build_mesh()
 	who_mesh.name = "Instructor"
 	add_child(who_mesh)
-	var zone := InteractZone.create("", Vector3(2.4, 2.0, 2.4))
-	zone.position = Vector3(-1.8, 0, -17.5)
+	var zone := InteractZone.create("", Vector3(2.4, 2.0, 1.4))
+	zone.name = "InstructorZone"
+	zone.position = xf * Vector3(-2.6, f, -1.2)
 	zone.prompt_fn = _exam_prompt
 	zone.activated.connect(_exam_start)
 	add_child(zone)
@@ -2379,11 +2384,11 @@ func _build_autodrome(b: MeshBuilder) -> void:
 	_exam.name = "Exam"
 	_exam.title = "Экзамен"
 	_exam.only_car = true
-	_exam.start_pos = Vector3(9, 0, -22.5)
-	_exam.points = [Vector3(5.5, 0, -28), Vector3(12.5, 0, -35), Vector3(5.5, 0, -42), Vector3(12.5, 0, -49), Vector3(9, 0, -66)]
+	_exam.start_pos = AutoSchool.EXAM_START
+	_exam.points.assign(AutoSchool.EXAM_POINTS)
 	_exam.stage_names = {0: "змейка между конусами", 4: "разворот в конце площадки"}
-	_exam.cone_positions = [Vector3(9, 0, -28), Vector3(9, 0, -35), Vector3(9, 0, -42), Vector3(9, 0, -49),
-		pc + Vector3(-1.9, 0, -3.3), pc + Vector3(1.9, 0, -3.3), pc + Vector3(-1.9, 0, 3.3), pc + Vector3(1.9, 0, 3.3)]
+	_exam.cone_positions.assign(AutoSchool.EXAM_CONES)
+	_exam.cone_positions.append_array([pc + Vector3(-1.9, 0, -3.3), pc + Vector3(1.9, 0, -3.3), pc + Vector3(-1.9, 0, 3.3), pc + Vector3(1.9, 0, 3.3)])
 	_exam.park_center = pc
 	_exam.park_size = Vector2(3.4, 6.2)
 	_exam.max_cones = 2
@@ -2854,7 +2859,7 @@ func _block_grass() -> void:
 	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
 	v.block(76, 10, 93.5, 34)
 	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
-	v.block(AUTODROME.position.x - 7, AUTODROME.position.y - 1, AUTODROME.end.x + 1, AUTODROME.end.y + 12)
+	v.block(AUTODROME.position.x - 1, AutoSchool.ENTRY.position.y, -2.0, AUTODROME.end.y + 1)
 	v.block(POND_POS.x + 9, -40.6, -164, -39.4)
 	# Огороды за домами
 	for x in VILLAGE_X:

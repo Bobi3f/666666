@@ -10,7 +10,7 @@ const QUEST_TARGETS := {
 	"m_wheels:1": ["АЗС", Vector3(-110.0, 0, 13.0)],
 	"m_money:0": ["Почта — посылки", Vector3(-59.1, 0, -46.6)],
 	"m_license:0": ["", ""],
-	"m_license:1": ["Автошкола", Vector3(-11.0, 0, -17.5)],
+	"m_license:1": ["Автошкола", "InstructorZone"],
 	"m_car:0": ["«Жигули» у соседа", "Car"],
 }
 
