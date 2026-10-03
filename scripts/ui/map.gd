@@ -539,7 +539,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Колонка", _world.PUMP_POS, Color(0.3, 0.75, 0.85)],
 		["Рынок", Vector3(64, 0, 144), Color(0.95, 0.55, 0.2)],
 		["Стадион", Vector3(156, 0, 160), Color(0.4, 0.75, 0.35)],
-		["Школа", Vector3(58, 0, 174), Color(0.9, 0.75, 0.6)],
+		["Школа", School.at(Vector3(School.DOOR_X, 0, School.Z0 - 6.0)), Color(0.9, 0.75, 0.6)],
 		["Гаражи", Vector3(220, 0, 80), Color(0.6, 0.4, 0.3)],
 		["Завод", Vector3(178, 0, 228), Color(0.7, 0.3, 0.25)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],

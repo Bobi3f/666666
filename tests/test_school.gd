@@ -38,16 +38,38 @@ func _run() -> void:
 	await frames(3)
 
 	print("== Здание")
-	ok(ray(Vector3(S.DOOR_X, 1.0, S.Z0 - 2.0), Vector3(S.DOOR_X, 1.0, S.Z0 + 3.0)).is_empty(), "входная дверь открыта")
-	ok(not ray(Vector3(S.DOOR_X - 6.0, 1.0, S.Z0 - 2.0), Vector3(S.DOOR_X - 6.0, 1.0, S.Z0 + 3.0)).is_empty(), "стены сплошные")
-	ok(ray(Vector3(S.DOOR_X, 1.0, S.Z0 + 1.0), Vector3(S.DOOR_X, 1.0, (S.ZN + S.ZS) * 0.5)).is_empty(), "из вестибюля — в коридор")
+	# Координаты школы — свои (School.at переводит в мир)
+	ok(ray(S.at(Vector3(S.DOOR_X, 1.0, S.Z0 - 2.0)), S.at(Vector3(S.DOOR_X, 1.0, S.Z0 + 3.0))).is_empty(), "входная дверь открыта")
+	ok(not ray(S.at(Vector3(S.DOOR_X - 6.0, 1.0, S.Z0 - 2.0)), S.at(Vector3(S.DOOR_X - 6.0, 1.0, S.Z0 + 3.0))).is_empty(), "стены сплошные")
+	ok(ray(S.at(Vector3(S.DOOR_X, 1.0, S.Z0 + 1.0)), S.at(Vector3(S.DOOR_X, 1.0, (S.ZN + S.ZS) * 0.5))).is_empty(), "из вестибюля — в коридор")
 	for r in S.ROOMS:
 		var dx: float = r[6]
 		var inside := (float(r[4]) + float(r[5])) * 0.5
-		ok(ray(Vector3(dx, 1.0, (S.ZN + S.ZS) * 0.5), Vector3(dx, 1.0, inside)).is_empty(), "из коридора — в кабинет «%s»" % r[1])
-	P.global_position = Vector3(S.DOOR_X, 0.1, S.Z0 + 2.0)
+		ok(ray(S.at(Vector3(dx, 1.0, (S.ZN + S.ZS) * 0.5)), S.at(Vector3(dx, 1.0, inside))).is_empty(), "из коридора — в кабинет «%s»" % r[1])
+	P.global_position = S.at(Vector3(S.DOOR_X, 0.1, S.Z0 + 2.0))
 	await frames(30)
-	ok(P.global_position.z > S.Z0 and absf(P.global_position.y) < 0.5, "игрок внутри на полу: %s" % str(P.global_position.round()))
+	ok(P.global_position.z > S.at(Vector3(0, 0, S.Z0)).z and absf(P.global_position.y) < 0.5, "игрок внутри на полу: %s" % str(P.global_position.round()))
+
+	print("== Школьный двор")
+	var yard: Rect2 = S.YARD
+	var gate: Vector3 = S.at(Vector3(S.DOOR_X, 0.8, yard.position.y))
+	ok(ray(gate + Vector3(0, 0, -3.0), gate + Vector3(0, 0, 3.0)).is_empty(), "ворота во двор открыты")
+	ok(not ray(gate + Vector3(-8.0, 0, -3.0), gate + Vector3(-8.0, 0, 3.0)).is_empty(), "двор за забором")
+	var side: Vector3 = S.at(Vector3(yard.end.x, 0.8, yard.get_center().y))
+	ok(not ray(side + Vector3(3.0, 0, 0), side + Vector3(-3.0, 0, 0)).is_empty(), "забор и сбоку")
+	var ts = W.get_node("TownSouth")
+	ok(ts.SCHOOL.has_point(Vector2(gate.x, gate.z + 1.0)) and not ts.SCHOOL.has_point(Vector2(59.0, 180.0)), "школа переехала: двор у %s" % str(gate.round()))
+	# От улицы до крыльца — пешком через ворота
+	P.global_position = S.at(Vector3(S.DOOR_X, 0.1, yard.position.y - 4.0))
+	P.rotation.y = PI
+	var ev := InputEventKey.new(); ev.physical_keycode = KEY_W; ev.keycode = KEY_W; ev.pressed = true
+	Input.parse_input_event(ev)
+	for i in 600:
+		await physics_frame
+		if P.global_position.z > S.at(Vector3(0, 0, S.Z0 - 2.5)).z: break
+	ev = InputEventKey.new(); ev.physical_keycode = KEY_W; ev.keycode = KEY_W; ev.pressed = false
+	Input.parse_input_event(ev)
+	ok(P.global_position.z > S.at(Vector3(0, 0, S.Z0 - 2.5)).z, "от ворот по дорожке дошёл до крыльца")
 	for id in ["math", "lit", "art", "clay"]:
 		ok(S.has_node("Lesson_" + id), "место для урока: " + S.SUBJECTS[id])
 	ok(S.has_node("Buffet"), "буфет в столовой")

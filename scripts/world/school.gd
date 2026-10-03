@@ -1,6 +1,9 @@
 class_name School
 extends Node3D
-## Школа № 1 в южной части города — в неё можно зайти и учиться.
+## Школа № 1 на западе города, за рынком — в неё можно зайти и учиться.
+## Вокруг — школьный двор за забором: ворота и дорожка к крыльцу,
+## спортплощадка с футбольным полем, турником и брусьями, флагшток,
+## клумбы, деревья, лавочки; от главной улицы — подъезд.
 ##
 ## Первый этаж: вестибюль с вахтёршей, коридор и пять кабинетов —
 ## математика, литература, рисование (ИЗО), лепка (скульптура) и столовая.
@@ -15,6 +18,11 @@ extends Node3D
 ## настоящего света нет — лампы светятся сами.
 
 const Villagers := preload("res://scripts/world/villagers.gd")
+## Где стоит школа: всё ниже (X0…, кабинеты, двор) — в своих координатах,
+## здание целиком сдвинуто на ORIGIN (узел School стоит там же).
+const ORIGIN := Vector3(-48.0, 0, -68.0)
+## Школьный двор за забором (свои координаты) и ворота в нём.
+const YARD := Rect2(32.0, 138.0, 54.0, 58.0)
 const X0 := 42.0
 const X1 := 76.0
 const Z0 := 168.0
@@ -140,8 +148,22 @@ func progress_text() -> String:
 
 ## b, glow — общий меш города (коробка, окна снаружи, коллизии стен).
 ## Внутреннее — в своих мешах с малой дальностью видимости.
+## Точка в своих координатах школы → в мире.
+static func at(p: Vector3) -> Vector3:
+	return p + ORIGIN
+
+
 func build(b: MeshBuilder, glow: MeshBuilder) -> void:
+	position = ORIGIN
+	# Коробка и двор — в общем меше города: сдвигаем его на место школы
+	var b_xf := b.xf
+	var g_xf := glow.xf
+	b.xf = Transform3D(Basis.IDENTITY, ORIGIN)
+	glow.xf = b.xf
 	_shell(b, glow)
+	_grounds(b)
+	b.xf = b_xf
+	glow.xf = g_xf
 	var ib := MeshBuilder.new()
 	var lamps := MeshBuilder.new()
 	lamps.ground_shade = false
@@ -218,6 +240,128 @@ func _shell(b: MeshBuilder, glow: MeshBuilder) -> void:
 	b.box(Vector3(DOOR_X + 1.3, 1.45, Z0 - 0.06), Vector3(DOOR_X + 2.5, 2.15, Z0 - 0.02), Color(0.15, 0.3, 0.55))
 	_label("ШКОЛА № 1", Vector3(DOOR_X, 3.6, Z0 - 0.06), PI, 0.01, Color(1, 1, 1), 150.0)
 	_label("Уроки: пн–пт 8:00–14:00\nВечерняя школа 18:00–21:00", Vector3(DOOR_X + 1.9, 1.8, Z0 - 0.07), PI, 0.0035, Color(1, 1, 0.9), 40.0)
+
+
+## Школьный двор: забор с воротами, дорожка к крыльцу, спортплощадка,
+## флагшток, клумбы, деревья, лавочки и подъезд от главной улицы.
+func _grounds(b: MeshBuilder) -> void:
+	var y := YARD
+	var x0 := y.position.x
+	var x1 := y.end.x
+	var z0 := y.position.y
+	var z1 := y.end.y
+	var green := Color(0.25, 0.42, 0.3)
+	var white := Color(0.95, 0.95, 0.92)
+	# Подъезд: от главной улицы на запад и к воротам
+	var asphalt := Color(0.3, 0.3, 0.31)
+	b.box(Vector3(DOOR_X - 6.0, 0, 122.0), Vector3(89.0, 0.05, 129.0), asphalt)
+	b.box(Vector3(DOOR_X - 2.5, 0, 129.0), Vector3(DOOR_X + 2.5, 0.05, z0 + 0.5), asphalt)
+	# Площадка у ворот: «зебра» и знак «Осторожно, дети»
+	for i in 6:
+		b.box(Vector3(DOOR_X - 2.3 + i * 0.85, 0.05, 123.5), Vector3(DOOR_X - 1.8 + i * 0.85, 0.07, 127.5), white)
+	b.box(Vector3(DOOR_X + 3.2, 0, z0 - 2.0), Vector3(DOOR_X + 3.28, 2.4, z0 - 1.92), Color(0.6, 0.6, 0.62))
+	b.box(Vector3(DOOR_X + 2.85, 1.8, z0 - 2.03), Vector3(DOOR_X + 3.63, 2.5, z0 - 1.99), Color(0.95, 0.9, 0.25))
+	# Забор: столбики через 2.5 м и две перекладины, ворота у дорожки
+	var gate0 := DOOR_X - 2.0
+	var gate1 := DOOR_X + 2.0
+	var runs := [[Vector3(x0, 0, z0), Vector3(gate0, 0, z0)], [Vector3(gate1, 0, z0), Vector3(x1, 0, z0)],
+		[Vector3(x0, 0, z1), Vector3(x1, 0, z1)], [Vector3(x0, 0, z0), Vector3(x0, 0, z1)], [Vector3(x1, 0, z0), Vector3(x1, 0, z1)]]
+	for r in runs:
+		var a: Vector3 = r[0]
+		var c: Vector3 = r[1]
+		var len := a.distance_to(c)
+		var dir := (c - a) / len
+		var k := 0.0
+		while k <= len + 0.01:
+			var p := a + dir * k
+			b.box(p + Vector3(-0.05, 0, -0.05), p + Vector3(0.05, 1.5, 0.05), green)
+			k += 2.5
+		for h in [0.35, 1.35]:
+			var mn := Vector3(minf(a.x, c.x) - 0.02, h, minf(a.z, c.z) - 0.02)
+			var mx := Vector3(maxf(a.x, c.x) + 0.02, h + 0.06, maxf(a.z, c.z) + 0.02)
+			b.box(mn, mx, green)
+		# Сетка — частые тонкие прутья (вдали — мелочь, не рисуется)
+		k = 0.0
+		while k < len:
+			var p := a + dir * k
+			b.box(p + Vector3(-0.012, 0.35, -0.012), p + Vector3(0.012, 1.35, 0.012), green.lightened(0.15))
+			k += 0.5
+		b.add_collider(Vector3(minf(a.x, c.x) - 0.06, 0, minf(a.z, c.z) - 0.06), Vector3(maxf(a.x, c.x) + 0.06, 1.5, maxf(a.z, c.z) + 0.06))
+	# Ворота открыты — створки к забору
+	for sx in [-1.0, 1.0]:
+		var gx: float = DOOR_X + sx * 2.0
+		b.box(Vector3(gx - 0.08, 0, z0 - 0.08), Vector3(gx + 0.08, 1.8, z0 + 0.08), green.darkened(0.3), true)
+		b.box(Vector3(gx - 0.03, 0.2, z0 + 0.1), Vector3(gx + 0.03, 1.5, z0 + 1.9), green)
+	# Дорожка от ворот к крыльцу и поперечная — к спортплощадке
+	var tile := Color(0.6, 0.58, 0.55)
+	b.box(Vector3(DOOR_X - 1.5, 0, z0), Vector3(DOOR_X + 1.5, 0.04, Z0 - 2.0), tile)
+	b.box(Vector3(x0 + 3.0, 0, 161.0), Vector3(DOOR_X - 1.5, 0.04, 162.6), tile)
+	# Спортплощадка: поле с разметкой и воротами, вокруг — беговая дорожка
+	var f := Rect2(x0 + 3.0, z0 + 3.0, 15.0, 11.0)
+	b.box(Vector3(f.position.x - 1.2, 0, f.position.y - 1.2), Vector3(f.end.x + 1.2, 0.03, f.end.y + 1.2), Color(0.62, 0.32, 0.24))
+	b.box(Vector3(f.position.x, 0, f.position.y), Vector3(f.end.x, 0.05, f.end.y), Color(0.33, 0.58, 0.28))
+	for zz in [f.position.y + 0.2, f.end.y - 0.3]:
+		b.box(Vector3(f.position.x + 0.2, 0.05, zz), Vector3(f.end.x - 0.2, 0.06, zz + 0.1), white)
+	var fcz := f.get_center().y
+	b.box(Vector3(f.get_center().x - 0.05, 0.05, f.position.y + 0.2), Vector3(f.get_center().x + 0.05, 0.06, f.end.y - 0.2), white)
+	for gx in [f.position.x + 0.3, f.end.x - 0.3]:
+		for gz in [fcz - 1.5, fcz + 1.5]:
+			b.box(Vector3(gx - 0.05, 0, gz - 0.05), Vector3(gx + 0.05, 1.5, gz + 0.05), white, true)
+		b.box(Vector3(gx - 0.05, 1.45, fcz - 1.5), Vector3(gx + 0.05, 1.55, fcz + 1.55), white)
+	# Турник, брусья и «шведская стенка» у площадки
+	var t := Vector3(x0 + 3.0, 0, f.end.y + 3.0)
+	for dz in [0.0, 2.0]:
+		b.box(t + Vector3(-0.05, 0, dz - 0.05), t + Vector3(0.05, 2.4, dz + 0.05), Color(0.4, 0.45, 0.5), true)
+	b.box(t + Vector3(-0.03, 2.3, 0.0), t + Vector3(0.03, 2.36, 2.0), Color(0.65, 0.65, 0.67))
+	var br := t + Vector3(3.0, 0, 0)
+	for dx in [0.0, 1.8]:
+		for dz in [0.0, 0.6]:
+			b.box(br + Vector3(dx - 0.04, 0, dz - 0.04), br + Vector3(dx + 0.04, 1.4, dz + 0.04), Color(0.4, 0.45, 0.5))
+		b.box(br + Vector3(-0.1, 1.35, -0.03), br + Vector3(1.9, 1.42, 0.03), Color(0.55, 0.4, 0.25))
+		b.box(br + Vector3(-0.1, 1.35, 0.57), br + Vector3(1.9, 1.42, 0.63), Color(0.55, 0.4, 0.25))
+	var sw := t + Vector3(7.0, 0, 0)
+	for dx in [0.0, 1.6]:
+		b.box(sw + Vector3(dx - 0.05, 0, -0.05), sw + Vector3(dx + 0.05, 2.6, 0.05), Color(0.6, 0.45, 0.3), true)
+	for i in 8:
+		b.box(sw + Vector3(0.0, 0.3 + i * 0.3, -0.02), sw + Vector3(1.6, 0.34 + i * 0.3, 0.02), Color(0.6, 0.45, 0.3))
+	# Флагшток у крыльца
+	var fp := Vector3(DOOR_X + 5.0, 0, Z0 - 4.0)
+	b.box(fp + Vector3(-0.06, 0, -0.06), fp + Vector3(0.06, 9.0, 0.06), Color(0.8, 0.8, 0.82), true)
+	b.box(fp + Vector3(0.06, 7.6, -0.02), fp + Vector3(1.8, 8.2, 0.02), Color(0.2, 0.45, 0.8))
+	b.box(fp + Vector3(0.06, 7.0, -0.02), fp + Vector3(1.8, 7.6, 0.02), Color(0.95, 0.8, 0.15))
+	# Клумбы с цветами вдоль дорожки и лавочки
+	var r := RandomNumberGenerator.new()
+	r.seed = 1001
+	for side in [-1.0, 1.0]:
+		var bx: float = DOOR_X + side * 4.5
+		b.box(Vector3(bx - 1.2, 0, z0 + 6.0), Vector3(bx + 1.2, 0.25, Z0 - 6.0), Color(0.9, 0.9, 0.88))
+		b.box(Vector3(bx - 1.1, 0, z0 + 6.1), Vector3(bx + 1.1, 0.3, Z0 - 6.1), Color(0.35, 0.25, 0.18))
+		var fz := z0 + 6.5
+		while fz < Z0 - 6.5:
+			for fx in [bx - 0.6, bx, bx + 0.6]:
+				var col: Color = [Color(0.95, 0.3, 0.3), Color(0.98, 0.85, 0.2), Color(0.85, 0.5, 0.9), Color(0.98, 0.98, 0.95)][r.randi() % 4]
+				b.box(Vector3(fx - 0.08, 0.3, fz - 0.08), Vector3(fx + 0.08, 0.45, fz + 0.08), col)
+			fz += 0.7
+		for bz in [z0 + 9.0, z0 + 18.0]:
+			var lx: float = DOOR_X + side * 6.6
+			b.box(Vector3(lx - 0.25, 0.4, bz - 1.0), Vector3(lx + 0.25, 0.46, bz + 1.0), Color(0.55, 0.4, 0.25), true)
+			b.box(Vector3(lx + side * 0.25 - 0.03, 0.46, bz - 1.0), Vector3(lx + side * 0.25 + 0.03, 0.9, bz + 1.0), Color(0.55, 0.4, 0.25))
+			for e in [-0.8, 0.8]:
+				b.box(Vector3(lx - 0.2, 0, bz + e - 0.04), Vector3(lx + 0.2, 0.4, bz + e + 0.04), Color(0.3, 0.3, 0.32))
+	# Берёзы и клёны во дворе — у забора, не на площадке
+	for tp in [Vector3(x1 - 3.0, 0, z0 + 4.0), Vector3(x1 - 3.0, 0, z0 + 12.0), Vector3(x1 - 3.0, 0, z0 + 20.0),
+			Vector3(x1 - 10.0, 0, z0 + 3.0), Vector3(x0 + 2.5, 0, z1 - 3.0), Vector3(x1 - 3.0, 0, z1 - 3.0)]:
+		_yard_tree(b, tp, r)
+
+
+## Дерево во дворе: белый или бурый ствол и крона из нескольких комков.
+func _yard_tree(b: MeshBuilder, p: Vector3, r: RandomNumberGenerator) -> void:
+	var birch := r.randf() < 0.5
+	b.box(p + Vector3(-0.14, 0, -0.14), p + Vector3(0.14, 3.2, 0.14), Color(0.9, 0.9, 0.86) if birch else Color(0.4, 0.3, 0.22), true)
+	var leaf := Color(0.33, 0.55, 0.22) if birch else Color(0.26, 0.45, 0.2)
+	for i in 5:
+		var c := p + Vector3(r.randf_range(-0.9, 0.9), r.randf_range(3.0, 5.2), r.randf_range(-0.9, 0.9))
+		b.box_rot(c, Vector3(1.6, 1.3, 1.6) * r.randf_range(0.8, 1.2), r.randf() * TAU, leaf.lightened(r.randf() * 0.12))
 
 
 ## Стена вдоль X на z от x0 до x1 с проёмами [x_center] шириной 1.8 м.
