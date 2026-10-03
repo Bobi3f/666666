@@ -569,14 +569,14 @@ static func izh(b: MeshBuilder, paint: Color) -> void:
 	var up := Vector3(0, 0.16, 0)
 	for sx in [-1.0, 1.0]:
 		tube(b, head + Vector3(0.07 * sx, 0.06, -0.1), head + Vector3(0.07 * sx, 0.08, -0.1) + up, 0.01, frame)
-	b.box(head + Vector3(-0.15, 0.08, -0.2) + up, head + Vector3(-0.005, 0.14, -0.03) + up, frame)
-	var lamp_cols := [Color(0.95, 0.5, 0.15), Color(0.8, 0.15, 0.2), Color(0.25, 0.45, 1.0), Color(0.2, 0.7, 0.4), Color(0.8, 0.15, 0.2)]
-	for i in 5:
-		var lx := -0.125 + (i % 3) * 0.04 if i >= 2 else -0.105 + i * 0.05
-		var lz := -0.16 if i < 2 else -0.09
-		b.box(head + Vector3(lx - 0.014, 0.14, lz - 0.014) + up, head + Vector3(lx + 0.014, 0.145, lz + 0.014) + up, lamp_cols[i])
-	var tilt := Vector3(0, sin(1.3), cos(1.3))
-	disc(b, head + Vector3(0.075, 0.13, -0.11) + up, tilt, 0.065, 0.05, frame)
+	# Корпус щитка: два чёрных колодца — лампочки и спидометр. Сами приборы —
+	# живой экранчик над ними (Vehicle._build_dash_screen)
+	var tilt := Basis(Vector3.RIGHT, -1.15)
+	var saved := b.xf
+	b.xf = saved * Transform3D(tilt, head + Vector3(0.0, 0.097, -0.1) + up)
+	b.box(Vector3(-0.19, -0.086, -0.04), Vector3(-0.004, 0.086, 0.0), frame)
+	b.box(Vector3(0.004, -0.086, -0.04), Vector3(0.19, 0.086, 0.0), frame)
+	b.xf = saved
 	# Передние поворотники на стойках у фары
 	for sx in [-1.0, 1.0]:
 		tube(b, hp + Vector3(0.1 * sx, -0.06, 0.06), hp + Vector3(0.22 * sx, -0.06, 0.06), 0.01, frame)

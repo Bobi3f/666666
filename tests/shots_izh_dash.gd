@@ -29,14 +29,17 @@ func _run() -> void:
 	I.set_physics_process(false)
 	I.set_process(false)
 	I._show_turn(true)
+	# Обработка машины заморожена — щиток на руле включаем сами
+	I._dash_quad.visible = true
+	I._dash_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	for i in 15: await process_frame
 	var pfx := OS.get_environment("PFX")
 	root.get_viewport().get_texture().get_image().save_png("%s/izh_dash_%s.png" % [OS.get_environment("SHOTS"), pfx])
 	if pfx == "pc":
 		var cam := Camera3D.new(); cam.fov = 35.0; W.add_child(cam)
 		var xf := I.global_transform
-		cam.global_position = xf * Vector3(0.9, 1.5, -1.3)
-		cam.look_at(xf * Vector3(0.0, 1.2, -0.6))
+		cam.global_position = xf * Vector3(0.0, 1.62, 0.05)
+		cam.look_at(xf * Vector3(0.0, 1.28, -0.6))
 		cam.make_current()
 		for i in 8: await process_frame
 		root.get_viewport().get_texture().get_image().save_png("%s/izh_panel3d.png" % OS.get_environment("SHOTS"))

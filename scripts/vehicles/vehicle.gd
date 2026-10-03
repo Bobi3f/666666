@@ -283,6 +283,8 @@ func _ready() -> void:
 		_build_car()
 	_build_gauges()
 	_build_turn_lamps()
+	if kind == "izh":
+		_build_dash_screen()
 	# Камеры отдельно от машины: сглаживаются между шагами физики, иначе
 	# на телефоне и в браузере картинка при езде подёргивается
 	_seat_mark = Node3D.new()
@@ -1308,6 +1310,41 @@ func _school_marks() -> void:
 			m.add_child(l)
 
 
+var _dash_vp: SubViewport
+var _dash_quad: MeshInstance3D
+
+
+## Щиток на руле — экранчик с приборами, как на настоящем «ИЖе»: блок
+## лампочек и спидометр. Рисует его dash_panel.gd в маленький SubViewport,
+## картинка — на наклонной табличке над рулём. Обновляется только когда
+## на мотоцикле кто-то едет.
+func _build_dash_screen() -> void:
+	_dash_vp = SubViewport.new()
+	_dash_vp.size = Vector2i(288, 132)
+	_dash_vp.transparent_bg = true
+	_dash_vp.disable_3d = true
+	_dash_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_dash_vp)
+	var panel: Control = load("res://scripts/ui/dash_panel.gd").new()
+	panel.vehicle = self
+	_dash_vp.add_child(panel)
+	_dash_quad = MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.36, 0.165)
+	_dash_quad.mesh = q
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_texture = _dash_vp.get_texture()
+	_dash_quad.material_override = mat
+	_dash_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Над рулём, лицом к мотоциклисту (вверх и назад)
+	_dash_quad.position = Vector3(0.0, 1.277, -0.6) + Vector3(0, sin(1.15), cos(1.15)) * 0.003
+	_dash_quad.rotation.x = -1.15
+	_dash_quad.visible = false
+	_body.add_child(_dash_quad)
+
+
 ## Включить поворотник: −1 налево, 1 направо, 0 — выключить.
 func set_turn(d: int) -> void:
 	turn = d
@@ -1522,6 +1559,10 @@ func _brake_lights(points: Array, size: Vector3) -> void:
 func _process(_delta: float) -> void:
 	if _sale:
 		_sale.visible = not owned()
+	if _dash_vp:
+		var on := driver != null
+		_dash_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+		_dash_quad.visible = on
 	_update_turn(_delta)
 	# От первого лица мотоциклиста не рисуем — камера у него в голове
 	if _rider:
@@ -1551,8 +1592,8 @@ func _gauge_spots() -> Array:
 			# Спидометр слева, тахометр справа — в колодцах над фарой
 			return [[Vector3(-0.1, 1.129, -0.766), 0.044, -1.1], [Vector3(0.1, 1.129, -0.766), 0.044, -1.1]]
 		"izh":
-			# Спидометр — в правом колодце щитка, лампочки нарисованы в модели
-			return [[Vector3(0.075, 1.337, -0.602), 0.058, -1.3]]
+			# Щиток «ИЖа» — живой экранчик на руле (_build_dash_screen)
+			return []
 		"moped":
 			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
 		"tractor":
