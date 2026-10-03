@@ -3,13 +3,11 @@ extends CanvasLayer
 ## подсказка действия и всплывающие сообщения.
 
 var _top: Label
-var _food_pct: Label
-var _energy_pct: Label
-var _water_pct: Label
-var _water_bar: ProgressBar
+## Сытость, бодрость, вода — круглые кольца в одну строку с временем и деньгами
+var _needs: Control
+const RING_R := 15.0
+const RINGS := [["сытость", Color(0.95, 0.65, 0.2)], ["бодрость", Color(0.4, 0.7, 1.0)], ["вода", Color(0.35, 0.85, 0.9)]]
 var _snacks: Label
-var _food_bar: ProgressBar
-var _energy_bar: ProgressBar
 var _car: Label
 var _prompt: Label
 var _msg: Label
@@ -30,18 +28,13 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/speedometer.gd").new())
 	nav = preload("res://scripts/ui/nav_arrow.gd").new()
 	add_child(nav)
-	_top = _label(Vector2(16, 12), 20)
-	_label(Vector2(16, 42), 17).text = "Сытость"
-	_food_bar = _bar_node(Vector2(100, 49), Color(0.85, 0.6, 0.2))
-	_food_pct = _label(Vector2(238, 42), 17)
-	_label(Vector2(300, 42), 17).text = "Бодрость"
-	_energy_bar = _bar_node(Vector2(392, 49), Color(0.35, 0.65, 0.95))
-	_energy_pct = _label(Vector2(530, 42), 17)
-	_label(Vector2(592, 42), 17).text = "Вода"
-	_water_bar = _bar_node(Vector2(642, 49), Color(0.3, 0.75, 0.85))
-	_water_bar.size.x = 90.0
-	_water_pct = _label(Vector2(738, 42), 17)
-	_snacks = _label(Vector2(800, 42), 17)
+	_top = _label(Vector2(16, 12), 19)
+	_needs = Control.new()
+	_needs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_needs.size = Vector2(RINGS.size() * (RING_R * 2.0 + 30.0), RING_R * 2.0 + 14.0)
+	_needs.draw.connect(_draw_needs)
+	add_child(_needs)
+	_snacks = _label(Vector2(0, 12), 17)
 	_car = _label(Vector2(16, 0), 22)
 	_car.anchor_top = 1.0
 	_car.anchor_bottom = 1.0
@@ -66,7 +59,7 @@ func _ready() -> void:
 	_msg.offset_top = 150
 	# Длинные сообщения — в две строки, а не за край экрана
 	_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_goal = _label(Vector2(16, 70), 16)
+	_goal = _label(Vector2(16, 56), 16)
 	_goal.modulate = Color(1.0, 0.92, 0.6)
 	# Длинные строки заданий переносятся, а не уходят под кнопки справа
 	_goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -144,11 +137,12 @@ func show_message(text: String) -> void:
 
 
 func _process(delta: float) -> void:
-	_top.text = "%s     %d грн     %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
-	# На телефоне справа кнопки — запас еды пишем в верхней строке
-	if GameManager.touch_mode:
-		_top.text += "     еды в запасе: %d" % NeedsManager.snacks
-	_snacks.visible = not GameManager.touch_mode
+	_top.text = "%s    %d грн    %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
+	# В ту же строку — кольца сытости, бодрости и воды, за ними запас еды
+	var tw := _top.get_combined_minimum_size().x
+	_needs.position = Vector2(16.0 + tw + 14.0, 6.0)
+	_needs.queue_redraw()
+	_snacks.position = Vector2(_needs.position.x + (RINGS.size() - 1) * (RING_R * 2.0 + 30.0) + RING_R * 2.0 + 18.0, 14.0)
 	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
 	var lines: Array[String] = []
 	if GameManager.challenge_line != "":
@@ -170,12 +164,6 @@ func _process(delta: float) -> void:
 	_update_money_pop(delta)
 	# Подсказка по клавишам на телефоне не нужна — там кнопки
 	_keys_hint.visible = not GameManager.touch_mode
-	_food_bar.value = NeedsManager.food
-	_energy_bar.value = NeedsManager.energy
-	_food_pct.text = "%d%%" % int(NeedsManager.food)
-	_energy_pct.text = "%d%%" % int(NeedsManager.energy)
-	_water_bar.value = NeedsManager.water
-	_water_pct.text = "%d%%" % int(NeedsManager.water)
 	_snacks.text = "Еды: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еды: %d (Q)" % NeedsManager.snacks
 	var car := GameManager.vehicle as Vehicle
 	var p := GameManager.player as Player
@@ -222,6 +210,33 @@ func _process(delta: float) -> void:
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)
 	else:
 		_msg.text = ""
+
+
+## Три кольца: доля заполнения дугой, процент в середине, подпись справа
+## мелко. Меньше 20% — кольцо краснеет.
+func _draw_needs() -> void:
+	var font := ThemeDB.fallback_font
+	var vals := [NeedsManager.food, NeedsManager.energy, NeedsManager.water]
+	var step := RING_R * 2.0 + 30.0
+	for i in RINGS.size():
+		var c := Vector2(RING_R + 2.0 + i * step, RING_R + 2.0)
+		var v: float = clampf(vals[i], 0.0, 100.0)
+		var col: Color = RINGS[i][1]
+		if v < 20.0:
+			col = Color(0.95, 0.3, 0.25)
+		_needs.draw_circle(c, RING_R, Color(0, 0, 0, 0.45))
+		_needs.draw_arc(c, RING_R - 3.0, 0.0, TAU, 32, Color(1, 1, 1, 0.15), 4.0, true)
+		if v > 0.5:
+			_needs.draw_arc(c, RING_R - 3.0, -PI * 0.5, -PI * 0.5 + TAU * v / 100.0, 32, col, 4.0, true)
+		var t := str(int(v))
+		var fs := 11
+		var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		_needs.draw_string_outline(font, c + Vector2(-w * 0.5, 4.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.8))
+		_needs.draw_string(font, c + Vector2(-w * 0.5, 4.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+		var cap: String = RINGS[i][0]
+		var cw := font.get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		_needs.draw_string_outline(font, c + Vector2(-cw * 0.5, RING_R + 11.0), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0, 0, 0, 0.8))
+		_needs.draw_string(font, c + Vector2(-cw * 0.5, RING_R + 11.0), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.85))
 
 
 func _bar_node(pos: Vector2, color: Color) -> ProgressBar:

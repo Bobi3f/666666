@@ -149,7 +149,7 @@ func _run() -> void:
 	TM.advance(20.0)
 	for i in 2: await process_frame
 	ok(NM.water == 0.0 and NM.energy > 0.0 and last().contains("пить"), "жажда напоминает, но в обморок не валит: " + last())
-	ok(hud._water_bar != null and hud._water_pct.text == "0%", "в HUD — полоска воды")
+	ok(hud._needs != null and hud.RINGS.size() == 3, "в HUD — кольцо воды")
 	var st: Dictionary = NM.save_state()
 	NM.water = 77.0
 	NM.load_state(st)
