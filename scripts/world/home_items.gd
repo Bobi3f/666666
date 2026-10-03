@@ -1,7 +1,9 @@
 extends Node3D
 ## Покупки из «Хозтоваров» у себя дома: телевизор в комнате, пёс Шарик
-## с будкой во дворе, теплица над огородом. Появляются сразу после покупки
-## и после перестройки дома встают на новые места.
+## с будкой во дворе, теплица над огородом. С базара: ковёр, магнитофон
+## «Весна» (играет музыку), холодильник «ЗИЛ» (каждое утро +1 еды в запас),
+## кресло-качалка. Появляются сразу после покупки и после перестройки дома
+## встают на новые места.
 
 var house_pos := Vector3.ZERO  # центр двора игрока (земля)
 var door_x := 0.0  # смещение двери вдоль фасада
@@ -10,12 +12,25 @@ var _dog: Node3D
 var _tail: Node3D
 var _bark_cool := 0.0
 var _t := 0.0
+var _chair: Node3D
+var _tape: AudioStreamPlayer3D
 
 
 func _ready() -> void:
 	Progress.home_changed.connect(rebuild)
 	Progress.house_changed.connect(func(_l: int) -> void: rebuild.call_deferred())
+	TimeManager.minute_passed.connect(func(_m: float) -> void: _fridge())
 	rebuild.call_deferred()
+
+
+## Холодильник: утром в нём находится что поесть — раз в сутки.
+func _fridge() -> void:
+	if not Progress.has_item("fridge") or Progress.fridge_day >= TimeManager.day or TimeManager.hour() < 6.0:
+		return
+	Progress.fridge_day = TimeManager.day
+	NeedsManager.snacks += 1
+	NeedsManager.changed.emit()
+	GameManager.notify("В холодильнике «ЗИЛ» нашлось что поесть: +1 еды в запас")
 
 
 func _house() -> HouseInterior:
@@ -29,6 +44,16 @@ func rebuild() -> void:
 		remove_child(c)
 		c.queue_free()
 	_dog = null
+	_chair = null
+	_tape = null
+	if Progress.has_item("rug"):
+		_build_rug()
+	if Progress.has_item("tape"):
+		_build_tape()
+	if Progress.has_item("fridge"):
+		_build_fridge()
+	if Progress.has_item("chair"):
+		_build_chair()
 	if Progress.has_item("tv"):
 		_build_tv()
 	if Progress.has_item("dog"):
@@ -71,6 +96,118 @@ func _build_tv() -> void:
 	glow.position = p + Vector3(0.9, 0.8, 0.4)
 	glow.light_cull_mask = HouseInterior.INSIDE_LAYER
 	m.add_child(glow)
+
+
+## Ковёр с узором посреди комнаты.
+func _build_rug() -> void:
+	var h := _house()
+	if h == null:
+		return
+	var r := h._room_rect()
+	var c := Vector3(r.get_center().x, 0.012, r.get_center().y - 0.6)
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var rings := [Color(0.55, 0.1, 0.1), Color(0.85, 0.7, 0.35), Color(0.45, 0.08, 0.1), Color(0.15, 0.25, 0.45), Color(0.8, 0.65, 0.3)]
+	var w := 1.1
+	var d := 0.8
+	for i in rings.size():
+		var k := 1.0 - i * 0.18
+		var y := c.y + i * 0.002
+		b.quad(Vector3(c.x - w * k, y, c.z + d * k), Vector3(c.x + w * k, y, c.z + d * k), Vector3(c.x + w * k, y, c.z - d * k), Vector3(c.x - w * k, y, c.z - d * k), rings[i])
+	var m := _mesh(b, "Rug")
+	m.global_transform = h.global_transform
+
+
+## Магнитофон «Весна» на тумбочке: по E играет кассету.
+func _build_tape() -> void:
+	var h := _house()
+	if h == null:
+		return
+	var r := h._room_rect()
+	var p := Vector3(r.position.x + 0.12, 0, r.position.y + 1.25)
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	b.box(p, p + Vector3(0.45, 0.6, 0.55), Color(0.42, 0.28, 0.17))
+	var t := p + Vector3(0.08, 0.6, 0.05)
+	b.box(t, t + Vector3(0.28, 0.24, 0.45), Color(0.15, 0.15, 0.16))
+	b.box(t + Vector3(0.28, 0.03, 0.04), t + Vector3(0.29, 0.21, 0.16), Color(0.55, 0.55, 0.57))
+	b.box(t + Vector3(0.28, 0.03, 0.29), t + Vector3(0.29, 0.21, 0.41), Color(0.55, 0.55, 0.57))
+	b.box(t + Vector3(0.28, 0.08, 0.18), t + Vector3(0.295, 0.17, 0.27), Color(0.75, 0.7, 0.55))
+	b.box(t + Vector3(0.12, 0.24, 0.05), t + Vector3(0.14, 0.27, 0.4), Color(0.8, 0.8, 0.82))
+	var m := _mesh(b, "Tape")
+	m.global_transform = h.global_transform
+	_tape = AudioStreamPlayer3D.new()
+	_tape.stream = Assets.sound("music/radio_1", Callable())
+	_tape.position = t + Vector3(0.15, 0.12, 0.22)
+	_tape.unit_size = 4.0
+	_tape.max_distance = 25.0
+	m.add_child(_tape)
+	var z := InteractZone.create("E — магнитофон «Весна»", Vector3(1.4, 1.6, 1.6))
+	z.name = "TapeZone"
+	z.prompt_fn = func() -> String:
+		return "E — выключить магнитофон" if _tape and _tape.playing else "E — включить магнитофон «Весна»"
+	z.position = p + Vector3(0.6, 0, 0.27)
+	z.activated.connect(toggle_tape)
+	m.add_child(z)
+
+
+func toggle_tape() -> void:
+	if _tape == null or _tape.stream == null:
+		return
+	if _tape.playing:
+		_tape.stop()
+	else:
+		_tape.volume_db = linear_to_db(maxf(SettingsManager.music, 0.01)) + 2.0
+		_tape.play()
+
+
+## Холодильник «ЗИЛ» в углу кухни.
+func _build_fridge() -> void:
+	var h := _house()
+	if h == null:
+		return
+	var k := h._kitchen_rect()
+	var p := Vector3(k.end.x - 0.7, 0, k.position.y + 0.05)
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var white := Color(0.93, 0.93, 0.9)
+	b.box(p, p + Vector3(0.62, 1.55, 0.6), white, true)
+	b.box(p + Vector3(0.0, 1.55, 0.0), p + Vector3(0.62, 1.62, 0.6), white.darkened(0.08))
+	b.box(p + Vector3(0.02, 1.0, 0.6), p + Vector3(0.6, 1.02, 0.61), Color(0.6, 0.6, 0.6))
+	b.box(p + Vector3(0.5, 0.75, 0.6), p + Vector3(0.55, 1.35, 0.65), Color(0.75, 0.76, 0.78))
+	b.box(p + Vector3(0.18, 1.4, 0.6), p + Vector3(0.44, 1.46, 0.605), Color(0.7, 0.15, 0.12))
+	var m := _mesh(b, "Fridge")
+	m.global_transform = h.global_transform
+	var body := b.build_body()
+	add_child(body)
+	body.global_transform = h.global_transform
+
+
+## Кресло-качалка у телевизора — само тихонько покачивается.
+func _build_chair() -> void:
+	var h := _house()
+	if h == null:
+		return
+	var r := h._room_rect()
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var wood := Color(0.48, 0.3, 0.16)
+	var seat := Color(0.62, 0.2, 0.15)
+	for x in [-0.3, 0.26]:
+		b.box(Vector3(x, 0, -0.4), Vector3(x + 0.04, 0.05, 0.4), wood)
+		b.box(Vector3(x, 0.05, -0.2), Vector3(x + 0.04, 0.45, -0.16), wood)
+		b.box(Vector3(x, 0.05, 0.2), Vector3(x + 0.04, 0.45, 0.24), wood)
+		b.box(Vector3(x, 0.62, -0.25), Vector3(x + 0.04, 0.66, 0.15), wood)
+	b.box(Vector3(-0.3, 0.42, -0.25), Vector3(0.3, 0.5, 0.25), seat)
+	b.box(Vector3(-0.3, 0.5, 0.2), Vector3(0.3, 1.1, 0.28), seat)
+	b.box(Vector3(-0.3, 1.1, 0.18), Vector3(0.3, 1.16, 0.3), wood)
+	_chair = Node3D.new()
+	_chair.name = "Chair"
+	add_child(_chair)
+	_chair.global_transform = h.global_transform * Transform3D(Basis(Vector3.UP, PI * 0.75), Vector3(r.position.x + 1.7, 0, r.position.y + 0.9))
+	var m := b.build_mesh()
+	m.layers = 1 | HouseInterior.INSIDE_LAYER
+	_chair.add_child(m)
 
 
 ## Пёс у будки во дворе, виляет хвостом. Будка у бедного и среднего
@@ -160,9 +297,11 @@ func _build_greenhouse() -> void:
 
 
 func _process(delta: float) -> void:
+	_t += delta
+	if _chair and is_instance_valid(_chair):
+		(_chair.get_child(0) as Node3D).rotation.x = sin(_t * 1.6) * 0.06
 	if _dog == null or not is_instance_valid(_dog):
 		return
-	_t += delta
 	_bark_cool -= delta
 	var p := GameManager.player as Node3D
 	var near := p != null and p.global_position.distance_to(_dog.global_position) < 7.0

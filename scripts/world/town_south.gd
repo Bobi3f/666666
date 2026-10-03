@@ -135,18 +135,30 @@ func _label(text: String, p: Vector3, yaw: float, size: int) -> void:
 
 # --- Рынок --------------------------------------------------------------------
 
-## Рынок: два ряда прилавков под полосатыми навесами, на прилавках —
-## овощи, фрукты, банки; за прилавками — продавцы. Купить — у любого.
+## Рынок: два ряда прилавков под полосатыми навесами, за прилавками —
+## продавцы. Большинство торгует едой, но есть лавки «Для дома» и
+## «Автозапчасти» (окно MarketPanel). Вокруг — забор: кирпичные столбы,
+## зелёные решётки, вход — ворота со стороны улицы.
+const STALLS := ["food", "home", "food", "parts", "food", "food", "parts", "food", "home", "food"]
+const STALL_SIGN := {"home": "ДЛЯ ДОМА", "parts": "АВТОЗАПЧАСТИ"}
+
+var market_panel: MarketPanel
+
+
 func _market(b: MeshBuilder) -> void:
 	var r := MARKET
 	b.box(Vector3(r.position.x, 0, r.position.y), Vector3(r.end.x, 0.05, r.end.y), Color(0.5, 0.5, 0.48))
 	var awn := [Color(0.8, 0.2, 0.15), Color(0.2, 0.45, 0.75), Color(0.25, 0.6, 0.3), Color(0.9, 0.7, 0.15)]
-	var goods := [Color(0.85, 0.2, 0.1), Color(0.95, 0.6, 0.1), Color(0.5, 0.35, 0.2), Color(0.3, 0.55, 0.2), Color(0.9, 0.85, 0.3), Color(0.6, 0.2, 0.4)]
 	var k := 0
 	for row in [r.position.y + 8.0, r.position.y + 22.0]:
 		var x := r.position.x + 4.0
 		while x < r.end.x - 5.0:
+			var kind: String = STALLS[k % STALLS.size()]
 			var a: Color = awn[k % awn.size()]
+			if kind == "home":
+				a = Color(0.85, 0.45, 0.65)
+			elif kind == "parts":
+				a = Color(0.2, 0.22, 0.26)
 			# Прилавок, стойки, полосатый навес
 			b.box(Vector3(x, 0, row), Vector3(x + 5.0, 1.0, row + 1.2), Color(0.55, 0.42, 0.28), true)
 			for px in [x, x + 4.9]:
@@ -155,14 +167,19 @@ func _market(b: MeshBuilder) -> void:
 			var s := 0.0
 			while s < 5.0:
 				b.quad(Vector3(x + s, 2.7, row - 0.3), Vector3(x + s + 0.5, 2.7, row - 0.3), Vector3(x + s + 0.5, 2.4, row + 3.2), Vector3(x + s, 2.4, row + 3.2),
-					a if int(s * 2.0) % 2 == 0 else Color(0.95, 0.95, 0.92), true)
+					a if int(s * 2.0) % 2 == 0 else (Color(0.95, 0.8, 0.2) if kind == "parts" else Color(0.95, 0.95, 0.92)), true)
 				s += 0.5
-			# Товар кучками и ящиками
-			for g in 5:
-				var gc: Color = goods[(k * 3 + g) % goods.size()]
-				var gx := x + 0.3 + g * 0.95
-				b.box(Vector3(gx, 1.0, row + 0.15), Vector3(gx + 0.8, 1.12, row + 1.05), Color(0.6, 0.48, 0.3))
-				b.box(Vector3(gx + 0.08, 1.12, row + 0.25), Vector3(gx + 0.72, 1.3, row + 0.95), gc)
+			match kind:
+				"home":
+					_home_goods(b, x, row)
+				"parts":
+					_parts_goods(b, x, row, k)
+				_:
+					_food_goods(b, x, row, k)
+			if STALL_SIGN.has(kind):
+				# Вывеска над прилавком, к покупателю (−Z)
+				b.box(Vector3(x + 0.6, 2.05, row - 0.32), Vector3(x + 4.4, 2.4, row - 0.27), Color(0.95, 0.92, 0.85))
+				_label(STALL_SIGN[kind], Vector3(x + 2.5, 2.22, row - 0.34), PI, 34)
 			# Продавец за прилавком
 			var pb := MeshBuilder.new()
 			pb.ground_shade = false
@@ -173,27 +190,147 @@ func _market(b: MeshBuilder) -> void:
 			seller.visibility_range_end = 150.0
 			add_child(seller)
 			var zone := InteractZone.create("", Vector3(4.6, 2.0, 1.6))
+			zone.name = "Stall_%d_%s" % [k, kind]
 			zone.position = Vector3(x + 2.5, 0, row - 0.8)
-			zone.prompt_fn = func() -> String:
-				var h := TimeManager.hour()
-				if h < 7.0 or h >= 16.0:
-					return "Рынок работает с 7:00 до 16:00"
-				return "E — купить овощи, сало и молоко (%d грн)" % MARKET_PRICE
-			zone.activated.connect(buy)
+			zone.prompt_fn = _stall_prompt.bind(kind)
+			if kind == "food":
+				zone.activated.connect(buy)
+			else:
+				zone.activated.connect(open_stall.bind(kind))
 			add_child(zone)
 			x += 7.0
 			k += 1
 	# Ворота с вывеской «РЫНОК» со стороны улицы
-	for gz in [r.position.y + 12.0, r.position.y + 20.0]:
+	var g0 := r.position.y + 12.0
+	var g1 := r.position.y + 20.0
+	for gz in [g0 - 0.3, g1]:
 		b.box(Vector3(r.end.x - 0.3, 0, gz), Vector3(r.end.x + 0.3, 4.2, gz + 0.3), Color(0.35, 0.4, 0.45), true)
-	b.box(Vector3(r.end.x - 0.3, 3.6, r.position.y + 12.0), Vector3(r.end.x + 0.3, 4.6, r.position.y + 20.3), Color(0.2, 0.4, 0.65))
-	_label("РЫНОК", Vector3(r.end.x + 0.32, 4.1, r.position.y + 16.15), PI / 2.0, 100)
-	# Ограда из сетки по периметру
-	for seg in [[Vector2(r.position.x, r.position.y), Vector2(r.end.x, r.position.y)], [Vector2(r.position.x, r.end.y), Vector2(r.end.x, r.end.y)],
-			[Vector2(r.position.x, r.position.y), Vector2(r.position.x, r.end.y)]]:
-		var a2: Vector2 = seg[0]
-		var e2: Vector2 = seg[1]
-		b.box(Vector3(minf(a2.x, e2.x) - 0.04, 0, minf(a2.y, e2.y) - 0.04), Vector3(maxf(a2.x, e2.x) + 0.04, 1.6, maxf(a2.y, e2.y) + 0.04), Color(0.55, 0.58, 0.6), true)
+	b.box(Vector3(r.end.x - 0.3, 3.6, g0 - 0.3), Vector3(r.end.x + 0.3, 4.6, g1 + 0.3), Color(0.2, 0.4, 0.65))
+	_label("РЫНОК", Vector3(r.end.x + 0.32, 4.1, (g0 + g1) * 0.5), PI / 2.0, 100)
+	# Открытые створки ворот — решётки, развёрнутые внутрь
+	_fence_run(b, Vector2(r.end.x, g0), Vector2(r.end.x - 3.6, g0 + 0.6), false)
+	_fence_run(b, Vector2(r.end.x, g1), Vector2(r.end.x - 3.6, g1 - 0.6), false)
+	# Забор по периметру; со стороны улицы — проём под ворота
+	_fence_run(b, Vector2(r.position.x, r.position.y), Vector2(r.end.x, r.position.y))
+	_fence_run(b, Vector2(r.position.x, r.end.y), Vector2(r.end.x, r.end.y))
+	_fence_run(b, Vector2(r.position.x, r.position.y), Vector2(r.position.x, r.end.y))
+	_fence_run(b, Vector2(r.end.x, r.position.y), Vector2(r.end.x, g0 - 0.3))
+	_fence_run(b, Vector2(r.end.x, g1 + 0.3), Vector2(r.end.x, r.end.y))
+
+
+## Забор от a до c: кирпичные столбы через ~3 м, между ними на бетонном
+## цоколе — зелёная решётка из прутьев. posts=false — без столбов (створка).
+func _fence_run(b: MeshBuilder, a: Vector2, c: Vector2, posts := true) -> void:
+	var brick := Color(0.62, 0.3, 0.22)
+	var green := Color(0.2, 0.42, 0.28)
+	var length := a.distance_to(c)
+	var n := maxi(int(ceilf(length / 3.0)), 1)
+	var dir := (c - a) / length
+	var yaw := atan2(dir.x, dir.y)
+	var saved := b.xf
+	for i in n:
+		var p0 := a + dir * (length * i / n)
+		var p1 := a + dir * (length * (i + 1) / n)
+		var mid := (p0 + p1) * 0.5
+		var seg := p0.distance_to(p1)
+		b.xf = saved * Transform3D(Basis(Vector3.UP, yaw), Vector3(mid.x, 0, mid.y))
+		# Локально: панель вдоль Z, длиной seg
+		var hz := seg * 0.5
+		b.box(Vector3(-0.12, 0, -hz), Vector3(0.12, 0.3, hz), Color(0.62, 0.62, 0.6), true)
+		b.box(Vector3(-0.03, 0.3, -hz), Vector3(0.03, 0.36, hz), green)
+		b.box(Vector3(-0.03, 1.72, -hz), Vector3(0.03, 1.78, hz), green)
+		var z := -hz + 0.15
+		while z < hz - 0.1:
+			b.box(Vector3(-0.015, 0.36, z - 0.015), Vector3(0.015, 1.9, z + 0.015), green)
+			z += 0.3
+		b.add_collider(Vector3(-0.08, 0, -hz), Vector3(0.08, 1.8, hz))
+		if posts:
+			for pz in ([-hz, hz] if i == 0 else [hz]):
+				b.box(Vector3(-0.22, 0, pz - 0.22), Vector3(0.22, 2.1, pz + 0.22), brick, true)
+				b.box(Vector3(-0.26, 2.1, pz - 0.26), Vector3(0.26, 2.18, pz + 0.26), Color(0.7, 0.7, 0.68))
+	b.xf = saved
+
+
+## Овощи, сало и банки — кучками и ящиками.
+func _food_goods(b: MeshBuilder, x: float, row: float, k: int) -> void:
+	var goods := [Color(0.85, 0.2, 0.1), Color(0.95, 0.6, 0.1), Color(0.5, 0.35, 0.2), Color(0.3, 0.55, 0.2), Color(0.9, 0.85, 0.3), Color(0.6, 0.2, 0.4)]
+	for g in 5:
+		var gc: Color = goods[(k * 3 + g) % goods.size()]
+		var gx := x + 0.3 + g * 0.95
+		b.box(Vector3(gx, 1.0, row + 0.15), Vector3(gx + 0.8, 1.12, row + 1.05), Color(0.6, 0.48, 0.3))
+		b.box(Vector3(gx + 0.08, 1.12, row + 0.25), Vector3(gx + 0.72, 1.3, row + 0.95), gc)
+
+
+## Для дома: свёрнутые ковры, магнитофон, маленький холодильник, лампа.
+func _home_goods(b: MeshBuilder, x: float, row: float) -> void:
+	for i in 3:
+		var c: Color = [Color(0.6, 0.12, 0.12), Color(0.2, 0.3, 0.55), Color(0.75, 0.55, 0.25)][i]
+		b.box(Vector3(x + 0.25, 1.0 + i * 0.16, row + 0.2), Vector3(x + 1.6, 1.16 + i * 0.16, row + 0.36), c)
+		b.box(Vector3(x + 0.25, 1.0 + i * 0.16, row + 0.36), Vector3(x + 1.6, 1.04 + i * 0.16, row + 0.4), Color(0.9, 0.8, 0.5))
+	b.box(Vector3(x + 1.9, 1.0, row + 0.3), Vector3(x + 2.5, 1.24, row + 0.6), Color(0.15, 0.15, 0.16))
+	b.box(Vector3(x + 1.95, 1.05, row + 0.29), Vector3(x + 2.1, 1.19, row + 0.3), Color(0.6, 0.6, 0.62))
+	b.box(Vector3(x + 2.3, 1.05, row + 0.29), Vector3(x + 2.45, 1.19, row + 0.3), Color(0.6, 0.6, 0.62))
+	b.box(Vector3(x + 2.8, 1.0, row + 0.2), Vector3(x + 3.4, 1.85, row + 0.8), Color(0.93, 0.93, 0.9))
+	b.box(Vector3(x + 3.3, 1.35, row + 0.15), Vector3(x + 3.34, 1.7, row + 0.2), Color(0.7, 0.7, 0.72))
+	b.box(Vector3(x + 3.9, 1.0, row + 0.45), Vector3(x + 3.96, 1.6, row + 0.51), Color(0.3, 0.3, 0.3))
+	b.box(Vector3(x + 3.7, 1.55, row + 0.28), Vector3(x + 4.15, 1.8, row + 0.68), Color(0.95, 0.75, 0.35))
+
+
+## Автозапчасти: стопки покрышек, диски, глушители, канистра-бак, спидометры.
+func _parts_goods(b: MeshBuilder, x: float, row: float, k: int) -> void:
+	var tyre := Color(0.08, 0.08, 0.09)
+	var rims := [Color(0.86, 0.88, 0.92), Color(0.75, 0.12, 0.1), Color(0.85, 0.66, 0.2)]
+	# Покрышки стопкой на земле перед прилавком
+	for i in 3:
+		var y := i * 0.2
+		b.box(Vector3(x + 0.1, y, row - 0.75), Vector3(x + 0.75, y + 0.19, row - 0.1), tyre)
+		b.box(Vector3(x + 0.3, y + 0.19, row - 0.55), Vector3(x + 0.55, y + 0.2, row - 0.3), Color(0.3, 0.3, 0.3))
+	# Диски на прилавке, стоймя
+	for i in 3:
+		var gx := x + 0.35 + i * 0.55
+		b.box(Vector3(gx, 1.0, row + 0.4), Vector3(gx + 0.45, 1.45, row + 0.5), rims[(i + k) % rims.size()])
+		b.box(Vector3(gx + 0.15, 1.15, row + 0.38), Vector3(gx + 0.3, 1.3, row + 0.4), Color(0.2, 0.2, 0.22))
+	# Хромовые глушители
+	for i in 2:
+		b.box(Vector3(x + 2.1, 1.0 + i * 0.14, row + 0.2 + i * 0.3), Vector3(x + 3.3, 1.12 + i * 0.14, row + 0.32 + i * 0.3), Color(0.8, 0.82, 0.86))
+	# Бак — красный
+	b.box(Vector3(x + 3.5, 1.0, row + 0.2), Vector3(x + 4.0, 1.35, row + 0.9), Color(0.7, 0.12, 0.1))
+	b.box(Vector3(x + 3.65, 1.35, row + 0.45), Vector3(x + 3.8, 1.42, row + 0.6), Color(0.2, 0.2, 0.2))
+	# Спидометры — круглые циферблаты
+	for i in 2:
+		var gx := x + 4.15 + i * 0.35
+		b.box(Vector3(gx, 1.0, row + 0.5), Vector3(gx + 0.3, 1.3, row + 0.55), Color(0.85, 0.85, 0.88))
+		b.box(Vector3(gx + 0.03, 1.03, row + 0.49), Vector3(gx + 0.27, 1.27, row + 0.5), Color(0.1, 0.15, 0.12))
+		b.box(Vector3(gx + 0.14, 1.15, row + 0.485), Vector3(gx + 0.24, 1.17, row + 0.49), Color(0.4, 1.0, 0.55))
+
+
+func _stall_prompt(kind: String) -> String:
+	var h := TimeManager.hour()
+	if h < 7.0 or h >= 16.0:
+		return "Рынок работает с 7:00 до 16:00"
+	match kind:
+		"home":
+			return "E — товары для дома: ковёр, магнитофон, холодильник, кресло"
+		"parts":
+			return "E — запчасти: спидометр, глушак, бак, колёса, диски"
+	return "E — купить овощи, сало и молоко (%d грн)" % MARKET_PRICE
+
+
+## Лавка «Для дома» или «Автозапчасти»: окно покупок.
+func open_stall(kind: String) -> void:
+	var h := TimeManager.hour()
+	if h < 7.0 or h >= 16.0:
+		return
+	if market_panel == null:
+		market_panel = MarketPanel.new()
+		add_child(market_panel)
+	SoundLibrary.play("click", -4.0)
+	var own := []
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var car := v as Vehicle
+		if car and car.owned() and not car.school:
+			own.append(car)
+	market_panel.open(kind, own)
 
 
 ## Покупка на рынке: две порции еды в запас.

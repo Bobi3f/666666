@@ -119,9 +119,10 @@ static func plate(b: MeshBuilder, mn: Vector3, mx: Vector3) -> void:
 	b.set_meta("plates", spots)
 
 
-static func car_wheel(b: MeshBuilder, r: float, w: float) -> void:
+## rim — цвет дисков с базара (null — заводские серые).
+static func car_wheel(b: MeshBuilder, r: float, w: float, rim: Variant = null) -> void:
 	var tyre := Color(0.07, 0.07, 0.08)
-	var disc := Color(0.55, 0.55, 0.57)
+	var disc: Color = rim if rim is Color else Color(0.55, 0.55, 0.57)
 	# Шина — восьмигранник из трёх повёрнутых брусков
 	for a in [0.0, PI / 4.0, PI / 2.0, 3.0 * PI / 4.0]:
 		var saved := b.xf
@@ -129,7 +130,7 @@ static func car_wheel(b: MeshBuilder, r: float, w: float) -> void:
 		b.box(Vector3(-w * 0.5, -r, -r * 0.42), Vector3(w * 0.5, r, r * 0.42), tyre)
 		b.xf = saved
 	b.box(Vector3(-w * 0.52, -r * 0.55, -r * 0.55), Vector3(w * 0.52, r * 0.55, r * 0.55), disc)
-	b.box(Vector3(-w * 0.56, -r * 0.3, -r * 0.3), Vector3(w * 0.56, r * 0.3, r * 0.3), Color(0.82, 0.82, 0.84))
+	b.box(Vector3(-w * 0.56, -r * 0.3, -r * 0.3), Vector3(w * 0.56, r * 0.3, r * 0.3), disc.lightened(0.3) if rim is Color else Color(0.82, 0.82, 0.84))
 	for a in [0.0, PI / 2.0]:
 		var saved := b.xf
 		b.xf = saved * Transform3D(Basis(Vector3.RIGHT, a), Vector3.ZERO)
@@ -231,13 +232,14 @@ static func java(b: MeshBuilder, paint: Color) -> void:
 
 
 ## Колесо мотоцикла: шина-восьмигранник, обод, ступица, спицы.
-static func moto_wheel(b: MeshBuilder, r: float) -> void:
+static func moto_wheel(b: MeshBuilder, r: float, rim: Variant = null) -> void:
 	var tyre := Color(0.07, 0.07, 0.08)
+	var spoke: Color = rim if rim is Color else Color(0.75, 0.75, 0.78)
 	for a in [0.0, PI / 4.0, PI / 2.0, 3.0 * PI / 4.0]:
 		var saved := b.xf
 		b.xf = saved * Transform3D(Basis(Vector3.RIGHT, a), Vector3.ZERO)
 		b.box(Vector3(-0.05, -r, -r * 0.42), Vector3(0.05, r, r * 0.42), tyre)
-		b.box(Vector3(-0.03, -r * 0.8, -r * 0.33), Vector3(0.03, r * 0.8, r * 0.33), Color(0.75, 0.75, 0.78))
+		b.box(Vector3(-0.03, -r * 0.8, -r * 0.33), Vector3(0.03, r * 0.8, r * 0.33), spoke)
 		b.box(Vector3(-0.01, -r * 0.78, -0.006), Vector3(0.01, r * 0.78, 0.006), Color(0.85, 0.85, 0.87))
 		b.xf = saved
 	b.box(Vector3(-0.07, -0.06, -0.06), Vector3(0.07, 0.06, 0.06), Color(0.5, 0.5, 0.52))

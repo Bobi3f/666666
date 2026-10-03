@@ -178,6 +178,14 @@ var _paint_mesh: MeshInstance3D
 ## Номер из ГАИ ("" — заводской, см. plate()) и места табличек модели.
 var plate_text := ""
 var _plate_spots: Array = []
+## Запчасти с базара: "speedo" (спидометр с подсветкой), "exhaust" (прямоточный
+## глушитель: громче и +6% тяги), "tank" (бак в полтора раза больше),
+## "wheels" (большие колёса: выше и держат на грунте), "rims" — цвет дисков
+## (номер в RIMS, нет ключа — заводские).
+var parts := {}
+const RIMS := [Color(0.86, 0.88, 0.92), Color(0.1, 0.1, 0.11), Color(0.75, 0.12, 0.1), Color(0.85, 0.66, 0.2)]
+const RIM_NAMES := ["хромированные", "чёрные", "красные", "золотые"]
+const BIG_WHEEL := 1.18
 ## Сколько ещё секунд машину «трясёт» после ямы (камера при этом не дёргается)
 var _shake := 0.0
 var braking := false
@@ -657,7 +665,7 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 	var surf := surface()
 	var roll: float = surf.roll
 	if roll > 1.01:
-		roll = 1.0 + (roll - 1.0) * float(spec.get("mud", 1.0))
+		roll = 1.0 + (roll - 1.0) * float(spec.get("mud", 1.0)) * (0.7 if has_part("wheels") else 1.0)
 	var rolling: float = 0.012 * mass * 9.8 * roll
 	var resist: float = rolling * signf(speed) + (spec.drag as float) * speed * absf(speed)
 	speed += (force - resist) / mass * dt
@@ -760,6 +768,9 @@ func _move(dt: float, handbrake: bool) -> void:
 	# Всесезонка: на грунте, траве и в грязи держит заметно лучше
 	if tires:
 		grip *= 1.08 if on_asphalt() else 1.35
+	# Большие колёса с базара — тоже лучше вне асфальта
+	if has_part("wheels") and not on_asphalt():
+		grip *= 1.25
 	# Вездеход держит вне асфальта лучше, «Волга» — хуже
 	if not on_asphalt():
 		grip *= float(spec.get("offroad", 1.0))
@@ -858,9 +869,11 @@ func _update_sound() -> void:
 		# 4 цилиндра — 2 вспышки на оборот, одноцилиндровая Ява — одна, но звонче;
 		# звук записан на 55 вспышек в секунду
 		var per_rev := 2.0 if spec.roof else 1.2
-		_engine_snd.pitch_scale = clampf(rpm / 60.0 * per_rev / 55.0, 0.3, 4.0)
+		# Прямоток — ниже и громче
+		var loud := has_part("exhaust")
+		_engine_snd.pitch_scale = clampf(rpm / 60.0 * per_rev / 55.0 * (0.88 if loud else 1.0), 0.3, 4.0)
 		var gas := 1.0 if driver and Input.is_physical_key_pressed(KEY_W) else 0.0
-		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0)
+		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0) + (4.0 if loud else 0.0)
 	elif _engine_snd.playing:
 		_engine_snd.stop()
 	# Визг шин в заносе
@@ -1037,11 +1050,11 @@ func headlights_on() -> bool:
 
 
 func tank() -> float:
-	return spec.tank
+	return float(spec.tank) * (1.5 if has_part("tank") else 1.0)
 
 
 func refuel(liters: float) -> void:
-	fuel = minf(fuel + liters, spec.tank)
+	fuel = minf(fuel + liters, tank())
 	_warned_fuel = false
 
 
@@ -1180,7 +1193,58 @@ func repaint() -> void:
 
 ## Тяга мотора с учётом форсировки.
 func _torque() -> float:
-	return (spec.torque as float) * (1.2 if engine_tuned else 1.0)
+	return (spec.torque as float) * (1.2 if engine_tuned else 1.0) * (1.06 if has_part("exhaust") else 1.0)
+
+
+func has_part(n: String) -> bool:
+	return parts.has(n) and n != "rims"
+
+
+## Поставить запчасть с базара. Диски при каждой покупке — следующего цвета.
+func fit_part(n: String) -> void:
+	if n == "rims":
+		parts["rims"] = (int(parts.get("rims", -1)) + 1) % RIMS.size()
+	else:
+		parts[n] = true
+	_apply_parts()
+
+
+## Внешний вид запчастей: колёса (размер, цвет дисков) и труба глушителя.
+func _apply_parts() -> void:
+	if not _body:
+		return
+	var big := has_part("wheels")
+	var disc: Variant = RIMS[int(parts["rims"])] if parts.has("rims") else null
+	for n in _wheels:
+		var cur: Variant = n.get_meta("disc") if n.has_meta("disc") else null
+		if cur != disc:
+			n.set_meta("disc", disc)
+			for c in n.get_children():
+				c.queue_free()
+			n.add_child(_wheel_mesh(n.get_meta("moto"), n.get_meta("r"), n.get_meta("w"), disc))
+		n.scale = Vector3.ONE * (BIG_WHEEL if big else 1.0)
+	# Колёса растут от оси — кузов поднимаем, чтобы они стояли на земле
+	_body.position.y = float(spec.wheel_r) * (BIG_WHEEL - 1.0) if big else 0.0
+	var old := _body.get_node_or_null("Exhaust")
+	if old:
+		old.free()
+	if has_part("exhaust") and _paint_mesh:
+		var box := _paint_mesh.get_aabb()
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		var chrome := Color(0.8, 0.82, 0.86)
+		if spec.two_wheels:
+			# Труба вдоль правого бока, срез назад
+			b.box(Vector3(0.14, 0.3, -0.2), Vector3(0.22, 0.38, box.end.z - 0.05), chrome)
+			b.box(Vector3(0.13, 0.29, box.end.z - 0.08), Vector3(0.23, 0.39, box.end.z + 0.02), Color(0.08, 0.08, 0.08))
+		else:
+			var x := box.position.x * 0.5
+			var y := box.position.y + 0.18
+			b.box(Vector3(x - 0.07, y - 0.07, box.end.z - 0.5), Vector3(x + 0.07, y + 0.07, box.end.z + 0.12), chrome)
+			b.box(Vector3(x - 0.05, y - 0.05, box.end.z + 0.1), Vector3(x + 0.05, y + 0.05, box.end.z + 0.13), Color(0.08, 0.08, 0.08))
+		var m := b.build_mesh()
+		m.name = "Exhaust"
+		_body.add_child(m)
 
 
 func _build_car() -> void:
@@ -1217,21 +1281,28 @@ func _build_moto() -> void:
 
 
 func _wheel(p: Vector3, moto: bool, r := 0.0, w := 0.2) -> void:
-	var wb := MeshBuilder.new()
-	wb.ground_shade = false
 	if r <= 0.0:
 		r = spec.wheel_r
-	if moto:
-		VehicleModels.moto_wheel(wb, r)
-	else:
-		VehicleModels.car_wheel(wb, r, w)
 	var n := Node3D.new()
 	# Маленькие колёса крутятся быстрее
 	n.set_meta("k", float(spec.wheel_r) / r)
+	n.set_meta("moto", moto)
+	n.set_meta("r", r)
+	n.set_meta("w", w)
 	n.position = p
-	n.add_child(wb.build_mesh())
+	n.add_child(_wheel_mesh(moto, r, w, null))
 	_body.add_child(n)
 	_wheels.append(n)
+
+
+func _wheel_mesh(moto: bool, r: float, w: float, disc: Variant) -> MeshInstance3D:
+	var wb := MeshBuilder.new()
+	wb.ground_shade = false
+	if moto:
+		VehicleModels.moto_wheel(wb, r, disc)
+	else:
+		VehicleModels.car_wheel(wb, r, w, disc)
+	return wb.build_mesh()
 
 
 ## Стоп-сигналы — отдельный меш со своим материалом: его яркость меняется.
@@ -1396,6 +1467,7 @@ func save_state() -> Dictionary:
 		"engine_tuned": engine_tuned,
 		"paint": paint,
 		"plate": plate_text,
+		"parts": parts.duplicate(),
 	}
 
 
@@ -1409,6 +1481,11 @@ func load_state(d: Dictionary) -> void:
 	condition = float(d.get("condition", 100.0))
 	tires = bool(d.get("tires", false))
 	engine_tuned = bool(d.get("engine_tuned", false))
+	var pa: Variant = d.get("parts", {})
+	parts = (pa as Dictionary).duplicate() if pa is Dictionary else {}
+	if parts.has("rims"):
+		parts["rims"] = int(parts["rims"]) % RIMS.size()
+	_apply_parts()
 	var pt := str(d.get("plate", ""))
 	if pt != plate_text and _paint_mesh:
 		set_plate(pt)

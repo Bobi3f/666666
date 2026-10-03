@@ -51,6 +51,8 @@ var race_day := 0
 ## Купленное в «Хозтоварах»: tv — телевизор в комнате, dog — пёс с будкой
 ## во дворе, greenhouse — теплица над огородом (картошка растёт быстрее).
 var home_items: Array = []
+## День, когда холодильник последний раз дал еду (раз в сутки, с утра).
+var fridge_day := 0
 ## Купленные в автосалоне машины: niva, volga, truck.
 var owned_cars: Array = []
 ## Во сколько раз больше платят за этот развоз (грузовик — вдвое).
@@ -303,7 +305,7 @@ func categories_text() -> String:
 
 func save_state() -> Dictionary:
 	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "path2": true,
-		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days}
+		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day}
 
 
 func load_state(d: Dictionary) -> void:
@@ -320,6 +322,7 @@ func load_state(d: Dictionary) -> void:
 	categories = (d.get("cats", []) as Array).duplicate()
 	race_day = int(d.get("race_day", 0))
 	home_items = (d.get("home", []) as Array).duplicate()
+	fridge_day = int(d.get("fridge", 0))
 	owned_cars = (d.get("cars", []) as Array).duplicate()
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем

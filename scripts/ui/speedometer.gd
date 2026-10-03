@@ -67,9 +67,16 @@ func _draw() -> void:
 	var top := _max_speed(v)
 	var amber := Color(0.95, 0.7, 0.24)
 	var cream := Color(0.94, 0.9, 0.81)
+	var rim := Color(0.55, 0.55, 0.58, 0.9)
+	# Спидометр с базара — с зелёной подсветкой и хромовым ободом
+	if v.has_part("speedo"):
+		amber = Color(0.35, 1.0, 0.55)
+		cream = Color(0.7, 1.0, 0.8)
+		rim = Color(0.85, 0.88, 0.92)
+		draw_circle(c, r + 7.0, Color(0.2, 1.0, 0.45, 0.18))
 	# Корпус прибора
 	draw_circle(c, r + 3.0, Color(0.05, 0.05, 0.06, 0.75))
-	draw_arc(c, r + 2.0, 0.0, TAU, 64, Color(0.55, 0.55, 0.58, 0.9), 2.5)
+	draw_arc(c, r + 2.0, 0.0, TAU, 64, rim, 3.5 if v.has_part("speedo") else 2.5)
 	# Деления: мелкие каждые 10 км/ч, крупные с цифрами — каждые 20
 	var s := 0
 	while s <= int(top):
