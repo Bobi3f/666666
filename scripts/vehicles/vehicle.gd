@@ -1120,6 +1120,9 @@ func _paint_body() -> void:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
 	_body.add_child(_paint_mesh)
+	# Номерные знаки — один раз, перекраска их не трогает
+	if not _body.has_node("Plates"):
+		Plates.attach(_body, _paint_mesh.get_aabb(), Plates.number(String(name).hash()), spec.two_wheels, b.get_meta("plates", []))
 	# Стёкла — прозрачные, чтобы из салона было видно дорогу
 	if not spec.two_wheels:
 		var gm := glass.build_mesh()

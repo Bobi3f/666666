@@ -60,6 +60,9 @@ func _ready() -> void:
 
 # --- Машины на просёлках ------------------------------------------------------
 
+var _plate_n := 0
+
+
 func _model(kind: String, color: Color) -> Node3D:
 	var root := Node3D.new()
 	var b := MeshBuilder.new()
@@ -79,6 +82,10 @@ func _model(kind: String, color: Color) -> Node3D:
 	var mi := b.build_mesh()
 	mi.visibility_range_end = SEE
 	root.add_child(mi)
+	# Номера — у всего с мотором, кроме тракторов (у телеги их нет и подавно)
+	if kind != "cart" and kind != "tractor":
+		Plates.attach(root, mi.get_aabb(), Plates.number(kind.hash() + _plate_n * 31), kind == "moto", b.get_meta("plates", []))
+		_plate_n += 1
 	if kind == "cart":
 		# Лошадь с шагом — отдельным мешем с шейдером животных
 		var hb := MeshBuilder.new()

@@ -73,8 +73,8 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 		b.box(Vector3(x, 0.46, -2.07), Vector3(x + 0.14, 0.52, -2.05), Color(0.95, 0.6, 0.1))
 		b.box(Vector3(x, 0.7, 2.05), Vector3(x + 0.14, 0.76, 2.07), Color(0.95, 0.6, 0.1))
 	# Номера
-	b.box(Vector3(-0.26, 0.42, -2.16), Vector3(0.26, 0.53, -2.15), Color(0.92, 0.92, 0.9))
-	b.box(Vector3(-0.26, 0.48, 2.06), Vector3(0.26, 0.6, 2.07), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.26, 0.42, -2.16), Vector3(0.26, 0.53, -2.15))
+	plate(b, Vector3(-0.26, 0.48, 2.06), Vector3(0.26, 0.6, 2.07))
 	# Выхлопная труба, эмблема
 	b.box(Vector3(0.45, 0.24, 1.9), Vector3(0.53, 0.3, 2.2), dark)
 	b.box(Vector3(-0.05, 0.82, -2.06), Vector3(0.05, 0.86, -2.04), chrome)
@@ -106,6 +106,19 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 
 
 ## Колесо Жигулей: шина, диск, колпак с «звёздочкой».
+## Белая табличка под номер. Где она — запоминается в builder (метка
+## «plates»): потом на неё ложится надпись номера (см. Plates).
+static func plate(b: MeshBuilder, mn: Vector3, mx: Vector3) -> void:
+	b.box(mn, mx, Color(0.92, 0.92, 0.9))
+	var spots: Array = b.get_meta("plates", [])
+	var c := (mn + mx) * 0.5
+	var back := c.z > 0.0
+	# Надпись — на лицевой стороне, чуть впереди таблички
+	var face := Vector3(c.x, c.y, mx.z + 0.004 if back else mn.z - 0.004)
+	spots.append([b.xf * face, (b.xf.basis.get_euler().y) + (0.0 if back else PI), Vector2(mx.x - mn.x, mx.y - mn.y)])
+	b.set_meta("plates", spots)
+
+
 static func car_wheel(b: MeshBuilder, r: float, w: float) -> void:
 	var tyre := Color(0.07, 0.07, 0.08)
 	var disc := Color(0.55, 0.55, 0.57)
@@ -205,7 +218,7 @@ static func java(b: MeshBuilder, paint: Color) -> void:
 		b.box(Vector3(x, 1.06, -0.78), Vector3(x + 0.07, 1.14, -0.76), dark)
 	# Заднее крыло с номером, фонарь (стоп — отдельно)
 	b.box(Vector3(-0.1, 0.6, 0.45), Vector3(0.1, 0.66, 0.95), paint)
-	b.box(Vector3(-0.1, 0.44, 0.9), Vector3(0.1, 0.6, 0.92), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.1, 0.44, 0.9), Vector3(0.1, 0.6, 0.92))
 	# Два глушителя-«рыбки»
 	for x in [0.17, -0.25]:
 		b.box(Vector3(x, 0.26, -0.1), Vector3(x + 0.08, 0.34, 0.95), chrome)
@@ -285,8 +298,8 @@ static func niva(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 	b.box(Vector3(-0.2, 0.7, -1.9), Vector3(0.2, 0.86, -1.88), chrome)
 	for z in [-1.98, 1.87]:
 		b.box(Vector3(-0.88, 0.36, z), Vector3(0.88, 0.5, z + 0.11), dark)
-	b.box(Vector3(-0.26, 0.42, -2.0), Vector3(0.26, 0.52, -1.99), Color(0.92, 0.92, 0.9))
-	b.box(Vector3(-0.26, 0.55, 1.88), Vector3(0.26, 0.65, 1.89), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.26, 0.42, -2.0), Vector3(0.26, 0.52, -1.99))
+	plate(b, Vector3(-0.26, 0.55, 1.88), Vector3(0.26, 0.65, 1.89))
 	for x in [-0.82, 0.68]:
 		b.box(Vector3(x, 0.8, 1.87), Vector3(x + 0.14, 0.95, 1.89), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-0.72, 1.58, -0.7), Vector3(0.72, 1.6, 1.8), Color(0.8, 0.78, 0.72))
@@ -329,8 +342,8 @@ static func volga(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> 
 		for x in [-0.5, 0.42]:
 			b.box(Vector3(x, 0.26, z - 0.02), Vector3(x + 0.08, 0.5, z + 0.14), chrome)
 	b.box(Vector3(-0.03, 0.9, -2.28), Vector3(0.03, 1.02, -2.08), chrome)
-	b.box(Vector3(-0.26, 0.4, -2.5), Vector3(0.26, 0.5, -2.49), Color(0.92, 0.92, 0.9))
-	b.box(Vector3(-0.26, 0.5, 2.37), Vector3(0.26, 0.6, 2.38), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.26, 0.4, -2.5), Vector3(0.26, 0.5, -2.49))
+	plate(b, Vector3(-0.26, 0.5, 2.37), Vector3(0.26, 0.6, 2.38))
 	for x in [-0.88, 0.7]:
 		b.box(Vector3(x, 0.6, 2.36), Vector3(x + 0.18, 0.76, 2.38), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-0.76, 1.38, -0.84), Vector3(0.76, 1.4, 1.2), Color(0.82, 0.8, 0.74))
@@ -374,7 +387,7 @@ static func gaz53(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> 
 	for z in [0.4, 1.6, 2.8]:
 		for x in [-1.17, 1.1]:
 			b.box(Vector3(x, 1.1, z), Vector3(x + 0.07, 1.72, z + 0.08), wood.darkened(0.3))
-	b.box(Vector3(-0.26, 1.2, 3.21), Vector3(0.26, 1.34, 3.22), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.26, 1.2, 3.21), Vector3(0.26, 1.34, 3.22))
 	for x in [-1.05, 0.9]:
 		b.box(Vector3(x, 0.85, 3.18), Vector3(x + 0.15, 0.95, 3.22), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-1.05, 2.15, -2.1), Vector3(1.05, 2.18, -0.95), Color(0.3, 0.32, 0.3))
@@ -456,7 +469,7 @@ static func moskvich(b: MeshBuilder, paint: Color) -> void:
 		b.box(Vector3(x, 0.5, 2.05), Vector3(x + 0.1, 0.8, 2.07), Color(0.9, 0.2, 0.15))
 	for z in [-2.15, 2.05]:
 		b.box(Vector3(-0.8, 0.36, z), Vector3(0.8, 0.46, z + 0.1), chrome)
-	b.box(Vector3(-0.22, 0.4, 2.15), Vector3(0.22, 0.5, 2.16), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.22, 0.4, 2.15), Vector3(0.22, 0.5, 2.16))
 
 
 ## ЗАЗ-968 «Запорожец»: маленький, мотор сзади — по бокам «уши»
@@ -644,7 +657,7 @@ static func moped(b: MeshBuilder, paint: Color) -> void:
 	# Крылья
 	b.box(Vector3(-0.07, 0.56, -0.86), Vector3(0.07, 0.6, -0.4), paint)
 	b.box(Vector3(-0.07, 0.56, 0.32), Vector3(0.07, 0.6, 0.82), paint)
-	b.box(Vector3(-0.08, 0.42, 0.78), Vector3(0.08, 0.56, 0.8), Color(0.92, 0.92, 0.9))
+	plate(b, Vector3(-0.08, 0.42, 0.78), Vector3(0.08, 0.56, 0.8))
 	# Педали на шатунах
 	for s in [-1.0, 1.0]:
 		b.box(Vector3(s * 0.16 - 0.03, 0.2, -0.02), Vector3(s * 0.16 + 0.03, 0.24, 0.12), dark)

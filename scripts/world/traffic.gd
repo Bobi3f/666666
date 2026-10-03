@@ -64,7 +64,9 @@ func _spawn(dir: int, x: float, color: Color, kind: String) -> void:
 	cs.shape = shape
 	cs.position.y = size.y * 0.5 + 0.3
 	body.add_child(cs)
-	body.add_child(_build_mesh(kind, color))
+	var mesh := _build_mesh(kind, color)
+	body.add_child(mesh)
+	Plates.attach(body, mesh.get_aabb(), Plates.number(_vehicles.size() * 7919 + 101), false, mesh.get_meta("plates", []))
 	var lights := _build_lights(size)
 	body.add_child(lights[0])
 	var snd := AudioStreamPlayer3D.new()
@@ -91,7 +93,9 @@ func _build_mesh(kind: String, color: Color) -> MeshInstance3D:
 	var b := MeshBuilder.new()
 	b.ground_shade = false
 	VehicleModels.npc(b, kind, color)
-	return b.build_mesh()
+	var mi := b.build_mesh()
+	mi.set_meta("plates", b.get_meta("plates", []))
+	return mi
 
 
 ## Фары и стоп-сигналы: один меш из двух поверхностей (фары, стопы), у

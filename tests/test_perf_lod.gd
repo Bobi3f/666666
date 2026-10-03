@@ -140,6 +140,20 @@ func _run() -> void:
 		if d < tr.SOUND_RANGE - 20.0 and absf(cam.z) < 40.0 and not playing: near_on = false
 	ok(far_off and near_on and heard < tr._vehicles.size(), "мотор слышно только у ближних: %d из %d" % [heard, tr._vehicles.size()])
 
+	print("== Номерные знаки")
+	var re := RegEx.create_from_string("^[а-я] \\d\\d-\\d\\d [А-Я]{2}$")
+	var cplates: Node = W.get_node("Car/Body/Plates") if W.has_node("Car/Body/Plates") else W.get_node("Car").find_child("Plates", true, false)
+	var clabels: Array = cplates.find_children("*", "Label3D", false, false)
+	ok(clabels.size() == 2 and re.search((clabels[0] as Label3D).text) != null, "у «Жигулей» номер спереди и сзади: %s" % (clabels[0] as Label3D).text)
+	var PL = load("res://scripts/vehicles/plates.gd")
+	ok(PL.number(42) == PL.number(42) and PL.number(42) != PL.number(43), "номер у машины постоянный, у разных — разный")
+	ok((clabels[0] as Label3D).visibility_range_end <= 20.0 and cplates.get_node_or_null("Plate") == null, "надпись — только вблизи, табличка — своя у модели")
+	var mplates: Node = W.get_node("Moto").find_child("Plates", true, false)
+	var mlabels: Array = mplates.find_children("*", "Label3D", false, false)
+	ok(mlabels.size() == 1 and (mlabels[0] as Label3D).text.contains("\n"), "у Явы — один номер сзади, в две строки")
+	var tplates: Node = tr._vehicles[0].body.get_node_or_null("Plates")
+	ok(tplates != null and tplates.find_children("*", "Label3D", false, false).size() == 2, "у попуток тоже номера")
+
 	print("== Телефон: 3D — постоянное число строк")
 	var GM = root.get_node("GameManager")
 	GM.touch_mode = true
