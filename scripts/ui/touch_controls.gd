@@ -81,6 +81,9 @@ func _ready() -> void:
 	_add_button("Вид", KEY_V, "drive", "br", Vector2(-190, -222), 34)
 	_add_button("Выйти", KEY_E, "drive", "br", Vector2(-72, -262), 38)
 	_add_button("Радио", KEY_B, "drive", "br", Vector2(-298, -318), 32)
+	# Поворотники — стрелки над спидометром, между рулём и педалями
+	_add_button("◀", KEY_Z, "drive", "bc", Vector2(-36, -172), 24)
+	_add_button("▶", KEY_X, "drive", "bc", Vector2(36, -172), 24)
 	_add_button("Меню", KEY_ESCAPE, "all", "tr", Vector2(-50, 130), 30)
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)
@@ -237,7 +240,7 @@ func _layout() -> void:
 		var base := Vector2(size.x, 0.0)
 		var off: Vector2 = e.offset
 		var anchor: String = e.anchor
-		if lefty and anchor != "tr":
+		if lefty and anchor != "tr" and anchor != "bc":
 			anchor = "bl" if anchor == "br" else "br"
 			off.x = -off.x
 		match anchor:
@@ -245,6 +248,10 @@ func _layout() -> void:
 				base = size
 			"bl":
 				base = Vector2(0.0, size.y)
+			"bc":
+				# Над спидометром: середина между рулём и педалями (как в speedometer.gd)
+				var mid := (310.0 + size.x - 400.0) * 0.5
+				base = Vector2(size.x - mid if lefty else mid, size.y)
 		var center: Vector2 = base + off
 		(e.node as TouchScreenButton).position = center - half
 		e["rect"] = Rect2(center - half, half * 2.0)

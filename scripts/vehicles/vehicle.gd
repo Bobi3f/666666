@@ -204,6 +204,13 @@ var _shake := 0.0
 var braking := false
 
 var _steer := 0.0
+## Поворотники: −1 левый, 1 правый, 0 выключены (Z / X). Мигают с щелчками
+## и гаснут сами, когда руль вернулся после поворота — как в настоящей.
+var turn := 0
+var _turn_t := 0.0
+var _turn_steered := false
+var _turn_lamps: Array = []  # [MeshInstance3D, сторона −1/1]
+static var _turn_mat: StandardMaterial3D
 var _yaw_rate := 0.0
 var _lean := 0.0
 var _camera: SmoothCamera
@@ -274,6 +281,7 @@ func _ready() -> void:
 	else:
 		_build_car()
 	_build_gauges()
+	_build_turn_lamps()
 	# Камеры отдельно от машины: сглаживаются между шагами физики, иначе
 	# на телефоне и в браузере картинка при езде подёргивается
 	_seat_mark = Node3D.new()
@@ -461,6 +469,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_shift(gear - 1)
 		KEY_H:
 			SoundLibrary.play_at("horn", global_position, 2.0, 1.0 if spec.roof else 1.35)
+		KEY_Z:
+			set_turn(0 if turn == -1 else -1)
+		KEY_X:
+			set_turn(0 if turn == 1 else 1)
 		KEY_L:
 			_lights_forced = not _lights_forced
 			SoundLibrary.play("click", -8.0)
@@ -1285,6 +1297,87 @@ func _school_marks() -> void:
 			m.add_child(l)
 
 
+## Включить поворотник: −1 налево, 1 направо, 0 — выключить.
+func set_turn(d: int) -> void:
+	turn = d
+	_turn_t = 0.0
+	_turn_steered = false
+	SoundLibrary.play("click", -10.0, 1.4)
+	_show_turn(d != 0)
+
+
+## Сейчас лампа поворотника горит (мигает: полсекунды горит, полсекунды нет).
+func blink_on() -> bool:
+	return turn != 0 and fmod(_turn_t, 0.7) < 0.35
+
+
+func _update_turn(delta: float) -> void:
+	if turn == 0:
+		return
+	var was := blink_on()
+	_turn_t += delta
+	var now := blink_on()
+	if now != was:
+		_show_turn(now)
+		if driver:
+			SoundLibrary.play("click", -16.0, 1.9 if now else 1.6)
+	# Повернул руль в сторону поворота и вернул прямо — выключается сам
+	# Руль влево (A) — положительный, а левый поворотник — −1
+	var k := -_steer / maxf(float(spec.max_steer), 0.01)
+	if signf(k) == float(turn) and absf(k) > 0.45:
+		_turn_steered = true
+	elif _turn_steered and absf(k) < 0.08:
+		turn = 0
+		_show_turn(false)
+
+
+func _show_turn(on: bool) -> void:
+	for l in _turn_lamps:
+		(l[0] as Node3D).visible = on and int(l[1]) == turn
+
+
+## Лампы поворотников — поверх оранжевых фонарей модели; горят светящимся
+## янтарём, в выключенном виде их не видно (виден фонарь модели).
+func _build_turn_lamps() -> void:
+	if _turn_mat == null:
+		_turn_mat = StandardMaterial3D.new()
+		_turn_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_turn_mat.albedo_color = Color(1.0, 0.62, 0.1)
+	var spots: Array = []  # [центр, размер, сторона]
+	match kind:
+		"car":
+			for sx in [-1.0, 1.0]:
+				spots.append([Vector3(0.55 * sx, 0.49, -2.0), Vector3(0.19, 0.045, 0.012), sx])
+				spots.append([Vector3(0.62 * sx, 0.698, 1.998), Vector3(0.33, 0.052, 0.012), sx])
+				spots.append([Vector3(0.812 * sx, 0.74, -1.58), Vector3(0.012, 0.045, 0.11), sx])
+		"moto":
+			for sx in [-1.0, 1.0]:
+				spots.append([Vector3(0.23 * sx, 0.9, -0.8), Vector3(0.085, 0.085, 0.09), sx])
+				spots.append([Vector3(0.23 * sx, 0.6, 0.86), Vector3(0.085, 0.085, 0.085), sx])
+		"izh":
+			for sx in [-1.0, 1.0]:
+				spots.append([Vector3(0.25 * sx, 0.92, -0.7), Vector3(0.085, 0.085, 0.09), sx])
+				spots.append([Vector3(0.19 * sx, 0.78, 0.88), Vector3(0.085, 0.085, 0.09), sx])
+		_:
+			var box := _paint_mesh.get_aabb() if _paint_mesh else AABB(Vector3(-0.8, 0.3, -2.0), Vector3(1.6, 1.2, 4.0))
+			var x := box.end.x - 0.08
+			var y := box.position.y + box.size.y * 0.3
+			for sx in [-1.0, 1.0]:
+				spots.append([Vector3(x * sx, y, box.position.z - 0.01), Vector3(0.12, 0.08, 0.03), sx])
+				spots.append([Vector3(x * sx, y, box.end.z + 0.01), Vector3(0.12, 0.08, 0.03), sx])
+	for sp in spots:
+		var m := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = sp[1]
+		m.mesh = bm
+		m.material_override = _turn_mat
+		m.position = sp[0]
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		m.visible = false
+		_body.add_child(m)
+		_turn_lamps.append([m, int(sp[2])])
+
+
 ## Тяга мотора с учётом форсировки.
 func _torque() -> float:
 	return (spec.torque as float) * (1.2 if engine_tuned else 1.0) * (1.06 if has_part("exhaust") else 1.0)
@@ -1418,6 +1511,7 @@ func _brake_lights(points: Array, size: Vector3) -> void:
 func _process(_delta: float) -> void:
 	if _sale:
 		_sale.visible = not owned()
+	_update_turn(_delta)
 	# От первого лица мотоциклиста не рисуем — камера у него в голове
 	if _rider:
 		_rider.visible = driver != null and chase_view

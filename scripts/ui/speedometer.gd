@@ -12,7 +12,6 @@ const SWEEP := deg_to_rad(270.0)
 
 var _shown := 0.0  # скорость на стрелке — догоняет настоящую плавно
 var _shown_rpm := 0.0
-var _blink := 0.0
 var _font: Font
 
 
@@ -54,7 +53,6 @@ func _process(delta: float) -> void:
 		position = Vector2(vs.x - size.x - 18.0, vs.y - size.y - 18.0)
 	_shown = lerpf(_shown, v.speed_kmh(), minf(delta * 8.0, 1.0))
 	_shown_rpm = lerpf(_shown_rpm, v.rpm, minf(delta * 10.0, 1.0))
-	_blink += delta
 	queue_redraw()
 
 
@@ -133,6 +131,13 @@ func _draw() -> void:
 	var gear := v.gear_name()
 	draw_string(_font, c + Vector2(-_font.get_string_size(gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x * 0.5, -r * 0.18),
 		gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, amber)
+	# Зелёные стрелки поворотников по бокам от передачи
+	for d in [-1, 1]:
+		var lit: bool = v.blink_on() and v.turn == d
+		var ac: Vector2 = c + Vector2(d * r * 0.36, -r * 0.24)
+		var w := r * 0.11
+		draw_colored_polygon(PackedVector2Array([ac + Vector2(d * w, 0), ac + Vector2(-d * w * 0.6, -w * 0.8), ac + Vector2(-d * w * 0.6, w * 0.8)]),
+			Color(0.2, 0.95, 0.35) if lit else Color(1, 1, 1, 0.12))
 	# Бензин — полоска под прибором
 	var fuel := clampf(v.fuel / v.tank(), 0.0, 1.0)
 	var w := r * 0.8
@@ -193,7 +198,7 @@ func _draw_jawa(v: Vehicle) -> void:
 	draw_rect(Rect2(pc - Vector2(pw * 0.5, r * 0.75), Vector2(pw, r * 1.5)), Color(0.07, 0.07, 0.08, 0.92))
 	var jt := "JAWA"
 	draw_string(_font, pc + Vector2(-_font.get_string_size(jt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 1).x * 0.5, -r * 0.48), jt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 1, Color(0.75, 0.75, 0.78))
-	var on := [not v.engine_on, v.headlights_on(), v.gear == 0, v.engine_on and fmod(_blink, 1.0) < 0.5 and Input.is_physical_key_pressed(KEY_A) != Input.is_physical_key_pressed(KEY_D)]
+	var on := [not v.engine_on, v.headlights_on(), v.gear == 0, v.blink_on()]
 	var cols := [Color(0.95, 0.15, 0.12), Color(0.2, 0.45, 1.0), Color(0.15, 0.85, 0.35), Color(0.15, 0.85, 0.6)]
 	var lr := r * 0.13
 	for i in 4:
