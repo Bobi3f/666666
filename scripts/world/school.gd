@@ -4,6 +4,9 @@ extends Node3D
 ## Вокруг — школьный двор за забором: ворота и дорожка к крыльцу,
 ## спортплощадка с футбольным полем, турником и брусьями, флагшток,
 ## клумбы, деревья, лавочки; от главной улицы — подъезд.
+## На поле — футбол с ребятами (football.gd), на уроке физкультуры —
+## тот же матч на оценку. Перед уроками звенит звонок, в перемены и
+## после уроков во дворе бегают дети.
 ##
 ## Первый этаж: вестибюль с вахтёршей, коридор и пять кабинетов —
 ## математика, литература, рисование (ИЗО), лепка (скульптура) и столовая.
@@ -23,6 +26,10 @@ const Villagers := preload("res://scripts/world/villagers.gd")
 const ORIGIN := Vector3(-48.0, 0, -68.0)
 ## Школьный двор за забором (свои координаты) и ворота в нём.
 const YARD := Rect2(32.0, 138.0, 54.0, 58.0)
+## Футбольное поле во дворе (свои координаты; ворота — на концах по X).
+const FIELD := Rect2(35.0, 141.0, 15.0, 11.0)
+const PE_NAME := "Физкультура"
+const YARD_KIDS := 6
 const X0 := 42.0
 const X1 := 76.0
 const Z0 := 168.0
@@ -43,7 +50,8 @@ const ROOMS := [
 	["clay", "Лепка", 64.5, 76.0, 180.5, 191.0, 66.9],
 ]
 const SUBJECTS := {"math": "Математика", "lit": "Литература", "art": "Рисование", "clay": "Лепка"}
-const TEACHERS := {"math": "Марья Ивановна", "lit": "Анна Петровна", "art": "Виктор Семёнович", "clay": "Галина Фёдоровна"}
+const TEACHERS := {"math": "Марья Ивановна", "lit": "Анна Петровна", "art": "Виктор Семёнович", "clay": "Галина Фёдоровна",
+	"pe": "Физрук Пал Палыч"}
 const LESSON_MIN := 45.0
 const LESSONS_PER_DAY := 4
 const PER_SUBJECT := 2
@@ -85,6 +93,11 @@ var panel: LessonPanel
 var _kids: MeshInstance3D
 var _teachers: MeshInstance3D
 var _rng := RandomNumberGenerator.new()
+var football: Football
+## Дети во дворе: [{node, to}]
+var _yard_kids: Array = []
+var _bell_hour := -1
+var _t := 0.0
 
 
 func _ready() -> void:
@@ -164,6 +177,14 @@ func build(b: MeshBuilder, glow: MeshBuilder) -> void:
 	_grounds(b)
 	b.xf = b_xf
 	glow.xf = g_xf
+	football = Football.new()
+	football.name = "Football"
+	add_child(football)
+	football.setup(Rect2(FIELD.position + Vector2(ORIGIN.x, ORIGIN.z), FIELD.size))
+	football.can_play = _football_why
+	football.finished.connect(_on_football)
+	_zone("pe", Vector3(FIELD.get_center().x - 3.0, 0, FIELD.end.y + 2.4), Vector3(1.6, 2.2, 1.6))
+	_make_yard_kids()
 	var ib := MeshBuilder.new()
 	var lamps := MeshBuilder.new()
 	lamps.ground_shade = false
@@ -297,7 +318,7 @@ func _grounds(b: MeshBuilder) -> void:
 	b.box(Vector3(DOOR_X - 1.5, 0, z0), Vector3(DOOR_X + 1.5, 0.04, Z0 - 2.0), tile)
 	b.box(Vector3(x0 + 3.0, 0, 161.0), Vector3(DOOR_X - 1.5, 0.04, 162.6), tile)
 	# Спортплощадка: поле с разметкой и воротами, вокруг — беговая дорожка
-	var f := Rect2(x0 + 3.0, z0 + 3.0, 15.0, 11.0)
+	var f := FIELD
 	b.box(Vector3(f.position.x - 1.2, 0, f.position.y - 1.2), Vector3(f.end.x + 1.2, 0.03, f.end.y + 1.2), Color(0.62, 0.32, 0.24))
 	b.box(Vector3(f.position.x, 0, f.position.y), Vector3(f.end.x, 0.05, f.end.y), Color(0.33, 0.58, 0.28))
 	for zz in [f.position.y + 0.2, f.end.y - 0.3]:
@@ -696,12 +717,16 @@ func buy_buffet() -> void:
 # --- Уроки --------------------------------------------------------------------
 
 func lesson_prompt(subject: String) -> String:
-	var name: String = SUBJECTS[subject]
+	var name: String = SUBJECTS.get(subject, PE_NAME)
 	if lesson_time() == "":
 		return "%s: уроков сейчас нет. Пн–Пт 8:00–14:00, вечерняя школа 18:00–21:00" % name
 	if _today == TimeManager.day and lessons_today >= LESSONS_PER_DAY:
 		return "%s: «На сегодня хватит, приходи завтра»" % TEACHERS[subject]
 	var verb := "сесть за парту"
+	if subject == "pe":
+		if lesson_time() != "day":
+			return "%s: «Физкультура — только днём, вечером поле для ребят»" % TEACHERS[subject]
+		return "E — урок физкультуры: матч с ребятами на оценку. %s" % progress_text()
 	if subject == "art":
 		verb = "встать к мольберту"
 	elif subject == "clay":
@@ -721,6 +746,11 @@ func start_lesson(subject: String) -> void:
 		return
 	_subject = subject
 	var who: String = TEACHERS[subject]
+	if subject == "pe":
+		if lesson_time() != "day" or not football.start(true):
+			return
+		GameManager.notify("%s: «Свисток! Три минуты: кто больше забьёт»" % who)
+		return
 	match subject:
 		"math":
 			panel.start_quiz("Математика · %s: «Решаем примеры в уме»" % who, math_items())
@@ -803,6 +833,83 @@ func _on_done(grade: int, comment: String) -> void:
 	_check_cert()
 
 
+## Конец матча: на уроке физкультуры — оценка по счёту.
+func _on_football(mine: int, theirs: int, pe: bool) -> void:
+	if not pe:
+		return
+	_subject = "pe"
+	var grade := 5 if mine > theirs else (4 if mine == theirs else (3 if mine > 0 else 2))
+	_on_done(grade, "счёт %d : %d" % [mine, theirs])
+
+
+## Можно ли сейчас погонять мяч: "" — да, иначе почему нет.
+func _football_why() -> String:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 20.0:
+		return "Футбол: ребята гоняют мяч с 8:00 до 20:00"
+	return ""
+
+
+## Дети во дворе: бегают между клумбами и деревьями, у турника.
+func _make_yard_kids() -> void:
+	var shirts := [Color(0.95, 0.95, 0.95), Color(0.85, 0.25, 0.25), Color(0.3, 0.5, 0.85), Color(0.95, 0.8, 0.2),
+		Color(0.35, 0.65, 0.35), Color(0.75, 0.4, 0.75)]
+	for i in YARD_KIDS:
+		var pb := MeshBuilder.new()
+		pb.ground_shade = false
+		Villagers.person_model(pb, shirts[i % shirts.size()], Color(0.3, 0.25, 0.2), false, i % 2 == 0)
+		var mi := Villagers.walking_mesh(pb)
+		mi.scale = Vector3.ONE * 0.75
+		mi.visibility_range_end = 90.0
+		mi.name = "YardKid%d" % i
+		add_child(mi)
+		mi.position = _yard_spot()
+		_yard_kids.append({"node": mi, "to": _yard_spot(), "wait": _rng.randf_range(0.0, 3.0), "speed": _rng.randf_range(1.2, 2.6)})
+
+
+## Случайное место во дворе (свои координаты): не на футбольном поле и не
+## на клумбах у дорожки.
+func _yard_spot() -> Vector3:
+	for i in 20:
+		var p := Vector3(_rng.randf_range(YARD.position.x + 2.0, YARD.end.x - 2.0), 0.05, _rng.randf_range(YARD.position.y + 2.0, Z0 - 3.0))
+		if FIELD.grow(2.0).has_point(Vector2(p.x, p.z)):
+			continue
+		if absf(p.x - DOOR_X) < 6.0 and absf(p.x - DOOR_X) > 1.6:
+			continue
+		return p
+	return Vector3(DOOR_X, 0.05, Z0 - 4.0)
+
+
+func _update_yard_kids(delta: float) -> void:
+	for k in _yard_kids:
+		var mi: MeshInstance3D = k.node
+		if float(k.wait) > 0.0:
+			k.wait = float(k.wait) - delta
+			Villagers.set_walk(mi, _t * 6.0, 0.0)
+			continue
+		var to: Vector3 = k.to
+		var d := to - mi.position
+		d.y = 0.0
+		if d.length() < 0.3:
+			k.to = _yard_spot()
+			k.wait = _rng.randf_range(1.0, 5.0)
+			continue
+		var sp: float = k.speed
+		mi.position += d.normalized() * minf(sp * delta, d.length())
+		mi.rotation.y = lerp_angle(mi.rotation.y, atan2(-d.x, -d.z), minf(delta * 8.0, 1.0))
+		Villagers.set_walk(mi, _t * (3.0 + sp * 2.0), 1.0)
+
+
+## Звонок на урок: в будни каждый час с 8 до 14 — слышно во дворе и рядом.
+func _ring_bell() -> void:
+	var wd := TimeManager.weekday()
+	var h := int(TimeManager.hour())
+	if wd == "сб" or wd == "вс" or h < 8 or h > 14 or h == _bell_hour:
+		return
+	_bell_hour = h
+	SoundLibrary.play_at("bell", at(Vector3(DOOR_X, 3.0, Z0 - 0.5)), 6.0)
+
+
 ## Выпускной: по два урока каждого предмета и средний балл от 3,5.
 func _check_cert() -> void:
 	if Progress.has_doc("school_cert"):
@@ -820,13 +927,23 @@ func _check_cert() -> void:
 	GameManager.notify("Выпускной! Аттестат о среднем образовании, средний балл %.1f. Колхоз дарит %d грн" % [average(), CERT_BONUS])
 
 
-## Днём в классах ребята, во время уроков — учителя.
-func _process(_delta: float) -> void:
+## Днём в классах ребята, во время уроков — учителя; во дворе — дети.
+func _process(delta: float) -> void:
 	if _kids == null:
 		return
+	_t += delta
 	var lt := lesson_time()
 	_kids.visible = lt == "day"
 	_teachers.visible = lt != ""
+	_ring_bell()
+	# Во дворе дети — днём, пока открыта школа; считаем, только если рядом камера
+	var out := is_open() and TimeManager.hour() < 17.0
+	var cam := get_viewport().get_camera_3d()
+	var near := cam != null and cam.global_position.distance_to(at(Vector3(DOOR_X, 0, Z0))) < 110.0
+	for k in _yard_kids:
+		(k.node as Node3D).visible = out
+	if out and near:
+		_update_yard_kids(delta)
 
 
 func save_state() -> Dictionary:

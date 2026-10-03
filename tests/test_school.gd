@@ -77,7 +77,8 @@ func _run() -> void:
 	var meshes := 0
 	var lights := 0
 	for c in S.get_children():
-		if c is MeshInstance3D:
+		# Дети во дворе — снаружи, у них своя дальность (проверка в test_football)
+		if c is MeshInstance3D and not c.name.begins_with("YardKid"):
 			meshes += 1
 			ok((c as MeshInstance3D).visibility_range_end > 0.0 and (c as MeshInstance3D).visibility_range_end <= 50.0, "%s рисуется только вблизи" % c.name)
 		if c is Light3D: lights += 1

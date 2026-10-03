@@ -50,6 +50,7 @@ func _ready() -> void:
 	_makers["chicken"] = func() -> AudioStreamWAV: return _make(_chicken(), false)
 	_makers["horn"] = func() -> AudioStreamWAV: return _make(_horn(), false)
 	_makers["siren"] = func() -> AudioStreamWAV: return _make(_siren(), true)
+	_makers["bell"] = func() -> AudioStreamWAV: return _make(_bell(), false)
 	_makers["hammer"] = func() -> AudioStreamWAV: return _make(_hammer(), false)
 	_makers["splash"] = func() -> AudioStreamWAV: return _make(_splash(), false)
 	_makers["skid"] = func() -> AudioStreamWAV: return _make(_skid(), true)
@@ -552,6 +553,19 @@ func _horn() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		var env := minf(t * 30.0, 1.0) * minf((0.6 - t) * 20.0, 1.0)
 		a[i] = (signf(sin(TAU * 400.0 * t)) * 0.15 + signf(sin(TAU * 500.0 * t)) * 0.15) * env
+	return a
+
+
+## Школьный звонок: электрический, дребезжащий, две секунды.
+func _bell() -> PackedFloat32Array:
+	var a := _buf(2.2)
+	for i in a.size():
+		var t := float(i) / RATE
+		# Молоточек бьёт по чашке ~25 раз в секунду: звон с дребезгом
+		var strike := exp(-fmod(t, 0.04) * 60.0)
+		var ring := sin(TAU * 1250.0 * t) + 0.5 * sin(TAU * 2610.0 * t) + 0.3 * sin(TAU * 3900.0 * t)
+		var env := minf(t * 30.0, 1.0) * minf((2.2 - t) * 4.0, 1.0)
+		a[i] = ring * (0.25 + 0.75 * strike) * env * 0.2
 	return a
 
 
