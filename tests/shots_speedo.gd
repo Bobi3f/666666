@@ -27,6 +27,7 @@ func _run() -> void:
 		if c.get_script() and c.get_script().resource_path.ends_with("speedometer.gd"): sp = c
 	print("пешком спидометр виден: ", sp.visible)
 	var p: String = OS.get_environment("PFX")
+	root.get_node("Progress").add_category("A"); root.get_node("Progress").buy_car("moto")
 	for kind in ["Car", "Moto"]:
 		var V = W.get_node(kind)
 		V.global_position = Vector3(-150, 0.1, 2.0 if kind == "Car" else -2.0); V.rotation.y = -PI / 2.0

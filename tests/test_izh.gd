@@ -70,6 +70,13 @@ func _run() -> void:
 	var wb: float = absf(C._wheels[2].position.z - C._wheels[0].position.z)
 	ok(absf(wb - 2.42) < 0.03 and box.size.z > 4.1 and box.size.z < 4.26 and box.end.y > 1.4 and box.end.y < 1.5, "«Жигули» по чертежу: база %.2f, длина %.2f, высота %.2f м" % [wb, box.size.z, box.end.y])
 
+	# «Ява 350»: надписи «JAWA» и «350», два прибора на руле
+	var JV: Vehicle = W.get_node("Moto")
+	var jl := []
+	for c in JV._paint_mesh.get_children():
+		if c is Label3D: jl.append(c.text)
+	ok(jl.count("JAWA") == 3 and jl.count("350") == 2 and JV._gauge_spots().size() == 2, "«Ява 350»: JAWA на баке и брызговике, 350 на крышках, спидометр и тахометр")
+
 	print("== Купил и поехал")
 	PR.buy_car("izh")
 	ok(I.owned() and not I.may_drive(), "купил, но без категории A не поедет")
