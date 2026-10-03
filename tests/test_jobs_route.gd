@@ -55,25 +55,50 @@ func _run() -> void:
 	QM.quests.m_wheels.state = 0
 	QM.quests.m_wheels.step = 0
 
-	print("== Почта: посылки на мопеде")
+	print("== Почта: посылки по домам на мопеде")
+	var PS = W.post
+	ok(PS.offices.size() == 6, "почты: %s" % ", ".join(PS.offices.map(func(o): return o.name)))
 	var PJ = W.post_job
-	P.global_position = W.POST_POS + Vector3(0, 0.1, 0.3)
+	P.global_position = PJ.giver + Vector3(0, 0.1, 0.3)
 	await frames(4)
-	ok(PJ._sign.visible, "над окошком почты — «РАБОТА»")
-	ok(P.current_prompt().contains("посылки"), "подсказка: " + P.current_prompt())
+	ok(PJ._sign.visible and PJ._sign.text == "ПО ДОМАМ", "над окошком почты — «ПО ДОМАМ»")
+	ok(P.current_prompt().contains("посылки по домам") and P.current_prompt().contains("грн"), "подсказка с заказом: " + P.current_prompt())
+	var offered: Array = PJ.offer()
 	PJ.start()
-	ok(PJ.active and PJ.stops.size() == 2 and PJ.pay >= 100, "взял 2 посылки, плата %d грн" % PJ.pay)
-	ok(GM.nav_target == PJ.stops[0][1] and PJ._beacon.visible, "столб света и стрелка — к первой точке")
-	ok(GM.challenge_line.contains("Почта"), "в строке задания: " + GM.challenge_line)
+	ok(PJ.active and PJ.stops == offered and PJ.stops.size() == 3 and PJ.pay >= 100, "взял тот же заказ: 3 адреса, %d грн" % PJ.pay)
+	ok(GM.nav_target == PJ.stops[0][1] and PJ._beacon.visible, "столб света и стрелка — к первому дому")
+	ok(GM.challenge_line.contains("Почта") and GM.challenge_line.contains("дом"), "в строке задания: " + GM.challenge_line)
 	ok(W.hitch_job.prompt().contains("сначала закончи"), "вторую работу сразу не взять")
 	M._on_enter()
 	await frames(3)
+	var cargo: Node = M.get_node_or_null("Cargo")
+	ok(cargo != null, "коробки — на багажнике мопеда")
 	var money0: int = GM.money
 	await arrive(M, PJ.stops[0][1])
-	ok(PJ.idx == 1 and GM.nav_target == PJ.stops[1][1], "первая посылка вручена — дальше вторая")
+	ok(PJ.idx == 1 and PJ._load == 2 and GM.nav_target == PJ.stops[1][1], "первую посылку вручил — осталось 2")
+	var dropped: Array = PJ.get_children().filter(func(c): return c.name.begins_with("Dropped"))
+	ok(dropped.size() == 1 and (dropped[0] as Node3D).global_position.distance_to(PJ.stops[0][2]) < 0.5, "коробка лежит у калитки")
 	await arrive(M, PJ.stops[1][1])
-	ok(not PJ.active and GM.money == money0 + PJ.pay and GM.nav_target == Vector3.INF, "обе посылки — +%d грн, стрелка погасла" % PJ.pay)
+	await arrive(M, PJ.stops[2][1])
+	for i in 2: await process_frame
+	ok(not PJ.active and GM.money == money0 + PJ.pay and GM.nav_target == Vector3.INF, "все три — +%d грн, стрелка погасла" % PJ.pay)
+	ok(M.get_node_or_null("Cargo") == null, "багажник пуст")
 	ok(QM.stats.earned >= PJ.pay, "заработок засчитан в задания")
+
+	print("== Почта: мешок в другое отделение")
+	var BJ = PS.offices[0].bag_job
+	P.global_position = BJ.giver + Vector3(0, 0.1, 0.3)
+	await frames(3)
+	ok(BJ.prompt().contains("мешок посылок") and BJ.prompt().contains("почта"), "подсказка: " + BJ.prompt())
+	BJ.start()
+	await frames(2)
+	for i in 2: await process_frame
+	var bag: Node = M.get_node_or_null("Cargo")
+	ok(BJ.active and BJ.stops.size() == 1 and bag != null, "мешок на мопеде: %s, %d грн" % [BJ.stops[0][0], BJ.pay])
+	money0 = GM.money
+	await arrive(M, BJ.stops[0][1])
+	for i in 2: await process_frame
+	ok(not BJ.active and GM.money == money0 + BJ.pay and BJ._load == 0, "сдал мешок: +%d грн" % BJ.pay)
 	M.speed = 0.0; M.exit_car(); await frames(3)
 
 	print("== Попутчик")

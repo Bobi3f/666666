@@ -2814,7 +2814,7 @@ const CLUB_TOWN := Vector3(125.0, 0, 118.0)
 
 # --- Работы «по точкам» ---------------------------------------------------------
 
-## Окошко почты — в сельсовете, сбоку от входа.
+## Почта Каменки — окошки в сельсовете, сбоку от входа (остальные — PostService).
 const POST_POS := Vector3(Civic.COUNCIL.x - 3.6, 0, Civic.COUNCIL.z + 5.4)
 ## Попутчик голосует у съезда из Каменки на трассу.
 const HITCH_POS := Vector3(-53.0, 0, -7.2)
@@ -2831,12 +2831,13 @@ var JOB_DESTS: Array:
 		return out
 
 var post_job: RouteJob
+var post: PostService
 var hitch_job: RouteJob
 var pump_job: RouteJob
 
 
-## Три работы для начала — все на одном RouteJob, отличаются данными:
-## посылки с почты (на мопеде), попутчик до города или села, заправщик на АЗС.
+## Работы на одном RouteJob, отличаются данными: почта (по домам и между
+## отделениями, PostService), попутчик до города или села, заправщик на АЗС.
 func _build_jobs() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -2847,23 +2848,12 @@ func _build_jobs() -> void:
 			sum += at.distance_to(s[1])
 			at = s[1]
 		return sum
-	post_job = RouteJob.new()
-	post_job.name = "PostJob"
-	post_job.id = "parcel"
-	post_job.title = "Почта"
-	post_job.describe = "развезти 2 посылки по сёлам и городу"
-	post_job.giver = POST_POS
-	post_job.giver_size = Vector3(1.8, 2.2, 1.8)
-	post_job.verb = "Посылку вручил"
-	post_job.stops_fn = func() -> Array:
-		var d: Array = JOB_DESTS.duplicate()
-		d.shuffle()
-		return [d[0], d[1]]
-	post_job.pay_fn = func(stops: Array) -> int:
-		return int(round((80.0 + route_len.call(POST_POS, stops) * 0.25) / 10.0)) * 10
-	post_job.open_from = 8.0
-	post_job.open_to = 18.0
-	add_child(post_job)
+	post = PostService.new()
+	post.name = "Post"
+	add_child(post)
+	post.build(self)
+	# Окошко «по домам» в Каменке — первая работа на мопеде
+	post_job = post.offices[0].home_job
 	_post_office()
 	hitch_job = RouteJob.new()
 	hitch_job.name = "HitchJob"

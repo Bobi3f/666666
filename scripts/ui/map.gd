@@ -535,7 +535,6 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Дискотека", _world.CLUB_TOWN + Vector3(0, 0, -8), Color(0.85, 0.3, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
 		["Вокзал", Vector3(97, 0, 186), Color(0.3, 0.6, 0.9)],
-		["Почта", _world.POST_POS, Color(0.2, 0.4, 0.85)],
 		["Попутчик", _world.HITCH_POS, Color(1.0, 0.8, 0.3)],
 		["Колонка", _world.PUMP_POS, Color(0.3, 0.75, 0.85)],
 		["Рынок", Vector3(64, 0, 144), Color(0.95, 0.55, 0.2)],
@@ -545,6 +544,11 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Завод", Vector3(178, 0, 228), Color(0.7, 0.3, 0.25)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
+	# Почта: отделения в Каменке, городе и ближних сёлах (если мир построен)
+	var post := _world.get_node_or_null("Post")
+	if post:
+		for o in post.offices:
+			places.append(["Почта", o.window, Color(0.2, 0.4, 0.85)])
 	for s in Landmarks.sites():
 		places.append([s[3], Vector3((s[0] as Vector2).x, 0, (s[0] as Vector2).y), Color(0.75, 0.55, 0.35)])
 	for i in Region.VILLAGES.size():

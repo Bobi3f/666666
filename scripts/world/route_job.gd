@@ -8,7 +8,10 @@ extends Node3D
 ##
 ## Что за работа — задаётся данными: title, describe, giver, stops_fn,
 ## pay_fn, mode (ride — на любом своём транспорте, foot — пешком) и
-## необязательные make_prop / passenger.
+## необязательные make_prop / passenger / cargo (посылки на транспорте).
+##
+## Заказ выбирается заранее — подсказка у раздатчика сразу говорит, куда
+## и за сколько (describe_fn), а не «что-то куда-то».
 
 signal finished(ok: bool)
 
@@ -21,7 +24,7 @@ var title := ""
 var describe := ""
 var giver := Vector3.ZERO
 var giver_size := Vector3(2.4, 2.2, 2.4)
-## () -> Array: [[имя точки, Vector3], …]
+## () -> Array: [[имя точки, Vector3, (куда положить посылки)], …]
 var stops_fn: Callable
 ## (точки) -> int: сколько заплатят
 var pay_fn: Callable
@@ -36,6 +39,15 @@ var make_prop: Callable
 ## Пассажир: стоит у раздатчика, едет с игроком, выходит в конце.
 var passenger := false
 var verb := "Готово"
+## Табличка над раздатчиком и её размер (у соседних окошек — помельче).
+var sign_text := "РАБОТА"
+var sign_pixel := 0.006
+## (точки, плата) -> String: описание готового заказа в подсказке.
+var describe_fn: Callable
+## Посылки: сколько коробок везём (видно на мопеде или в машине) и сколько
+## оставляем у каждой точки; 0 — оставляем всё на последней.
+var cargo := 0
+var drop_each := 0
 
 var active := false
 var stops: Array = []
@@ -49,6 +61,11 @@ var _rider_sit: MeshInstance3D
 var _zone: InteractZone
 var _sign: Label3D
 var _drop_t := 0.0
+## Следующий заказ — выбран заранее, чтобы показать его в подсказке.
+var _offer: Array = []
+var _load := 0
+var _cargo_mi: MeshInstance3D
+var _cargo_shown := -1
 
 
 func _ready() -> void:
@@ -58,9 +75,9 @@ func _ready() -> void:
 	_zone.activated.connect(start)
 	add_child(_zone)
 	_sign = Label3D.new()
-	_sign.text = "РАБОТА"
+	_sign.text = sign_text
 	_sign.font_size = 64
-	_sign.pixel_size = 0.006
+	_sign.pixel_size = sign_pixel
 	_sign.outline_size = 12
 	_sign.modulate = Color(1.0, 0.8, 0.3)
 	_sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -123,16 +140,29 @@ func prompt() -> String:
 		return "%s: сначала закончи «%s»" % [title, current.title]
 	if not is_open():
 		return "%s: работа с %d:00 до %d:00" % [title, int(open_from), int(open_to)]
+	if describe_fn.is_valid():
+		var o := offer()
+		if not o.is_empty():
+			return "E — %s: %s" % [title, describe_fn.call(o, int(pay_fn.call(o)))]
 	return "E — %s: %s" % [title, describe]
+
+
+## Заказ, который возьмёт игрок, если нажмёт E.
+func offer() -> Array:
+	if _offer.is_empty():
+		_offer = stops_fn.call()
+	return _offer
 
 
 func start() -> void:
 	if active or (current != null and current != self) or not is_open():
 		return
-	stops = stops_fn.call()
+	stops = offer()
+	_offer = []
 	if stops.is_empty():
 		return
 	pay = int(pay_fn.call(stops))
+	_load = cargo
 	idx = 0
 	active = true
 	current = self
@@ -153,6 +183,8 @@ func cancel() -> void:
 	GameManager.nav_label = ""
 	GameManager.challenge_line = ""
 	_clear_prop()
+	_load = 0
+	_show_cargo()
 	if passenger:
 		_reset_rider()
 
@@ -207,6 +239,7 @@ func _process(delta: float) -> void:
 	if not active:
 		return
 	_line()
+	_show_cargo()
 	var m := _mover()
 	# Пассажир едет с игроком: на мопеде — сзади на сиденье, в машине не виден
 	if passenger and GameManager.vehicle:
@@ -232,6 +265,12 @@ func _reach() -> void:
 	if minutes_each > 0.0:
 		TimeManager.advance(minutes_each)
 		NeedsManager.rest(-1.5)
+	if cargo > 0:
+		var n := drop_each if drop_each > 0 and idx < stops.size() - 1 else _load
+		# Третий элемент точки — где оставить коробки (у калитки, у окошка)
+		_drop_boxes(stops[idx][2] if stops[idx].size() > 2 else stops[idx][1], mini(n, _load))
+		_load -= mini(n, _load)
+		_show_cargo()
 	idx += 1
 	SoundLibrary.play("click", -4.0, 1.4)
 	if idx < stops.size():
@@ -254,3 +293,67 @@ func _reach() -> void:
 	QuestManager.event("job")
 	GameManager.notify("%s: работа сделана, +%d грн" % [title, pay])
 	finished.emit(true)
+
+
+# --- Посылки ------------------------------------------------------------------
+
+## Стопка коробок разного размера: n штук, одним мешем.
+static func boxes_mesh(n: int) -> MeshInstance3D:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var cols := [Color(0.72, 0.55, 0.34), Color(0.66, 0.5, 0.3), Color(0.78, 0.62, 0.4)]
+	# Много коробок — по три в ряд, чтобы стопка не росла столбом
+	var cols_n := 3 if n > 4 else 2
+	for i in n:
+		var w := 0.34 if i % 2 == 0 else 0.28
+		var h := 0.22 if i % 3 != 1 else 0.18
+		var x := (float(i % cols_n) - (cols_n - 1) * 0.5) * 0.36
+		var y := float(i / cols_n) * 0.23
+		var c: Color = cols[i % 3]
+		b.box(Vector3(x - w * 0.5, y, -0.17), Vector3(x + w * 0.5, y + h, 0.17), c)
+		# Бечёвка крест-накрест
+		b.box(Vector3(x - 0.012, y, -0.175), Vector3(x + 0.012, y + h + 0.004, 0.175), c.darkened(0.45))
+		b.box(Vector3(x - w * 0.5 - 0.004, y, -0.012), Vector3(x + w * 0.5 + 0.004, y + h + 0.004, 0.012), c.darkened(0.45))
+	var mi := b.build_mesh()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+## Коробки едут на транспорте игрока: на мопеде — на багажнике, на машине —
+## на крыше. Пересел — переезжают следом.
+func _show_cargo() -> void:
+	var v := GameManager.vehicle as Vehicle if active else null
+	var n := _load if v else 0
+	if n == _cargo_shown and (_cargo_mi == null or _cargo_mi.get_parent() == v):
+		return
+	_cargo_shown = n
+	if _cargo_mi and is_instance_valid(_cargo_mi):
+		_cargo_mi.queue_free()
+	_cargo_mi = null
+	if n <= 0:
+		return
+	_cargo_mi = boxes_mesh(n)
+	_cargo_mi.name = "Cargo"
+	v.add_child(_cargo_mi)
+	_cargo_mi.position = cargo_spot(v)
+
+
+## Где на транспорте стоят коробки (в его координатах).
+static func cargo_spot(v: Vehicle) -> Vector3:
+	var seat: Vector3 = v.spec.seat
+	if v.spec.two_wheels:
+		return Vector3(0, seat.y - 0.38, seat.z + 0.5)
+	var box := v._paint_mesh.get_aabb()
+	return Vector3(0, box.end.y + 0.02, box.get_center().z + 0.6)
+
+
+## Оставить коробки у точки: лежат у калитки, потом их забирают в дом.
+func _drop_boxes(p: Vector3, n: int) -> void:
+	if n <= 0:
+		return
+	var mi := boxes_mesh(n)
+	mi.name = "Dropped"
+	add_child(mi)
+	mi.global_position = p + Vector3(0.0, 0.02, 0.0)
+	mi.visibility_range_end = 80.0
+	get_tree().create_timer(40.0).timeout.connect(mi.queue_free)
