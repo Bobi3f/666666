@@ -57,7 +57,9 @@ func _run() -> void:
 	gai.request_stop()
 	await frames(5)
 	ok(not gai.stop_wanted and GM.money == 700 and last().contains("Счастливого"), "с правами — счастливого пути")
-	# Уехал от инспектора без денег — в долг
+	# Уехал от инспектора без денег — в долг (погоня сегодня уже была —
+	# сразу штраф; сама погоня — в test_chase)
+	W.get_node("Chase")._done_day = root.get_node("TimeManager").day
 	GM.money = 0
 	gai.request_stop()
 	C.global_position = Vector3(-20, 0.1, 2.0)

@@ -45,6 +45,8 @@ func _run() -> void:
 	await process_frame; await process_frame
 	ok(GM.money == 800, "в споре с Колькой не штрафуют")
 	W._race.state = 0
+	# Спор кончился — останавливаемся, иначе 108 км/ч у поста — уже погоня
+	C.speed = 0.0
 	print("== Дым и приветствие")
 	C.condition = 20.0; C.engine_on = true
 	await frames(3)
