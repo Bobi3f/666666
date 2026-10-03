@@ -27,7 +27,7 @@ func _vehicle() -> Vehicle:
 
 
 func _max_speed(v: Vehicle) -> float:
-	return {"moto": 140.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(v.kind, 160.0)
+	return {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(v.kind, 160.0)
 
 
 func _process(delta: float) -> void:
@@ -41,7 +41,7 @@ func _process(delta: float) -> void:
 	# «Ява» — два прибора рядом и пульт лампочек между ними
 	if _jawa(v):
 		r = _jawa_r()
-		size = Vector2(r * 4.0 + r * 0.9 + 8.0, r * 2.0 + 26.0)
+		size = Vector2(r * 4.0 + r * 0.9 + 12.0, r * 2.0 + 34.0)
 	elif v.kind == "izh":
 		r = _jawa_r()
 		size = Vector2(r * 2.0 + r * 2.5 + 16.0, r * 2.0 + 26.0)
@@ -155,70 +155,110 @@ func _draw() -> void:
 	draw_rect(Rect2(c.x - w * 0.5, fy, w * fuel, 5.0), Color(0.95, 0.3, 0.2) if fuel < 0.15 else Color(0.4, 0.8, 0.45))
 
 
-## Приборы «Явы 350», как настоящие: слева спидометр, справа тахометр —
-## чёрные циферблаты в хромированных ободках, белые цифры, белые стрелки с
-## большой белой серединой; у тахометра зелёный сектор «ECONOMIC» и красная
-## риска на отсечке. Между ними пульт «JAWA» с лампочками: зарядка (мотор
-## заглушён), дальний свет, нейтраль, поворот. Внизу — передача и бензин.
+## Приборы «Явы 350», как настоящие: два круглых прибора в хромированных
+## стаканах — спидометр до 180 (одометр вверху) и тахометр с зелёным
+## сектором «ECONOMIC» и красной риской на 6; белые стрелки с большой белой
+## серединой. Между ними чуть ниже — чёрный пульт с табличкой «JAWA» и
+## четырьмя лампочками в хромированных ободках: DYNAMO (зарядка, мотор
+## заглушён), HIGH BEAM, NEUTRAL, TURN; под ним — замок зажигания с ключом.
+## Внизу — передача и бензин (на руле, on_bike, — без них).
+var on_bike := false
+
+
 func _draw_jawa(v: Vehicle) -> void:
 	var r := _jawa_r()
 	var gapw := r * 0.9
-	var cs := Vector2(4.0 + r, 4.0 + r)
-	var ct := Vector2(4.0 + r * 3.0 + gapw, 4.0 + r)
+	var cs := Vector2(6.0 + r, 6.0 + r)
+	var ct := Vector2(6.0 + r * 3.0 + gapw, 6.0 + r)
 	var white := Color(0.96, 0.96, 0.94)
-	var fs := 10 if r < 50.0 else 13
-	# Спидометр 0–140 км/ч, цифры через 20 и одометр
+	var fs := 9 if r < 50.0 else 12
+	var pc := Vector2((cs.x + ct.x) * 0.5, cs.y)
+	# Пульт — за приборами, ниже их, с замком зажигания внизу
+	var pw := gapw + r * 0.5
+	var panel := PackedVector2Array([pc + Vector2(-pw * 0.5, -r * 0.45), pc + Vector2(pw * 0.5, -r * 0.45),
+		pc + Vector2(pw * 0.42, r * 1.05), pc + Vector2(-pw * 0.42, r * 1.05)])
+	draw_colored_polygon(panel, Color(0.07, 0.07, 0.08, 0.97))
+	var plate := Rect2(pc + Vector2(-gapw * 0.42, -r * 0.4), Vector2(gapw * 0.84, r * 0.2))
+	draw_rect(plate, Color(0.22, 0.22, 0.24))
+	draw_rect(plate, Color(0.45, 0.45, 0.47), false, 1.0)
+	var jt := "JAWA"
+	var jf := fs + 1
+	draw_string(_font, Vector2(plate.get_center().x - _font.get_string_size(jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf).x * 0.5, plate.get_center().y + jf * 0.35), jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf, Color(0.62, 0.62, 0.65))
+	var on := [not v.engine_on, v.headlights_on(), v.gear == 0, v.blink_on()]
+	var cols := [Color(0.95, 0.15, 0.15), Color(0.2, 0.45, 1.0), Color(0.15, 0.85, 0.4), Color(0.1, 0.85, 0.75)]
+	var names := ["DYNAMO", "HIGH BEAM", "NEUTRAL", "TURN"]
+	var lr := r * 0.12
+	for i in 4:
+		var lp := pc + Vector2((-1.0 if i % 2 == 0 else 1.0) * gapw * 0.24, r * 0.05 + (i / 2) * r * 0.42)
+		draw_circle(lp, lr + 4.0, Color(0.7, 0.71, 0.73))
+		draw_circle(lp, lr + 2.0, Color(0.1, 0.1, 0.11))
+		var col: Color = cols[i]
+		draw_circle(lp, lr, col if on[i] else col.darkened(0.7))
+		if on[i]:
+			draw_circle(lp + Vector2(-lr * 0.3, -lr * 0.3), lr * 0.3, Color(1, 1, 1, 0.6))
+		# Подпись над лампочкой — не шире своей половины пульта
+		var nf := maxi(fs - 4, 5)
+		var t: String = names[i]
+		var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, nf).x
+		while tw > gapw * 0.46 and nf > 4:
+			nf -= 1
+			tw = _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, nf).x
+		draw_string(_font, Vector2(lp.x - tw * 0.5, lp.y - lr - 5.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, nf, Color(0.75, 0.75, 0.78))
+	# Замок зажигания: хромированное кольцо и ключ
+	var kp := pc + Vector2(0, r * 0.88)
+	draw_circle(kp, r * 0.14, Color(0.72, 0.73, 0.75))
+	draw_circle(kp, r * 0.09, Color(0.15, 0.15, 0.16))
+	draw_line(kp + Vector2(0, -r * 0.07), kp + Vector2(0, r * 0.07), Color(0.8, 0.8, 0.82) if v.engine_on else Color(0.35, 0.35, 0.37), 2.0)
+	# Спидометр 0–180: деления через 10, цифры через 20, одометр вверху
 	_jawa_face(cs, r)
-	var top := 140.0
+	var top := 180.0
 	var s := 0
 	while s <= int(top):
 		var a := START + SWEEP * s / top
 		var big := s % 20 == 0
-		draw_line(_at(cs, a, r - (9.0 if big else 5.0)), _at(cs, a, r - 3.0), white, 2.0 if big else 1.2)
+		draw_line(_at(cs, a, r - (9.0 if big else 5.0)), _at(cs, a, r - 2.0), white, 2.0 if big else 1.2)
 		if big:
 			var txt := str(s)
-			var p := _at(cs, a, r - (17.0 if r < 50.0 else 22.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5, -fs * 0.35)
+			var p := _at(cs, a, r - (16.0 if r < 50.0 else 21.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5, -fs * 0.35)
 			draw_string(_font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, white)
 		s += 10
+	var small := maxi(fs - 3, 6)
+	draw_string(_font, cs + Vector2(-_font.get_string_size("km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, small).x * 0.5, r * 0.42), "km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, small, white)
 	var km := int(float(Achievements.counts.get("drive_m", 0.0)) / 1000.0) % 100000
-	var odo := "%05d" % km
-	var ow := _font.get_string_size(odo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	draw_rect(Rect2(cs + Vector2(-ow * 0.5 - 3.0, r * 0.18), Vector2(ow + 6.0, fs + 4.0)), Color(0.85, 0.85, 0.82))
-	draw_string(_font, cs + Vector2(-ow * 0.5, r * 0.18 + fs), odo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.05, 0.05, 0.05))
-	draw_string(_font, cs + Vector2(-_font.get_string_size("km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 2).x * 0.5, -r * 0.3), "km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 2, white)
+	_izh_counter(cs + Vector2(0, -r * 0.3), "%05d" % km, false, maxi(small - 1, 6))
+	var cz := "CZECHOSLOVAKIA"
+	var czf := maxi(fs - 6, 5)
+	for c in [cs, ct]:
+		draw_string(_font, (c as Vector2) + Vector2(-_font.get_string_size(cz, HORIZONTAL_ALIGNMENT_LEFT, -1, czf).x * 0.5, r * 0.62), cz, HORIZONTAL_ALIGNMENT_LEFT, -1, czf, Color(0.8, 0.8, 0.8))
 	_jawa_needle(cs, r, clampf(_shown / top, 0.0, 1.02))
-	# Тахометр 0–10 ×1000: зелёный «ECONOMIC», красная риска на 6
+	# Тахометр 0–10 ×1000: зелёный «ECONOMIC» 2,5–4, красная риска на 6
 	_jawa_face(ct, r)
-	draw_arc(ct, r * 0.62, START + SWEEP * 0.26, START + SWEEP * 0.4, 12, Color(0.2, 0.75, 0.35), r * 0.5)
-	for i in 11:
-		var a := START + SWEEP * i / 10.0
-		draw_line(_at(ct, a, r - 9.0), _at(ct, a, r - 3.0), white, 2.0)
-		var txt := str(i)
-		var p := _at(ct, a, r - (17.0 if r < 50.0 else 22.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5, -fs * 0.35)
-		draw_string(_font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, white)
-	var red := clampf(float(v.spec.redline) / 10000.0, 0.0, 1.0)
-	draw_line(_at(ct, START + SWEEP * red, r - 12.0), _at(ct, START + SWEEP * red, r - 2.0), Color(0.95, 0.2, 0.15), 3.0)
+	draw_arc(ct, r * 0.66, START + SWEEP * 0.25, START + SWEEP * 0.4, 12, Color(0.2, 0.75, 0.35), r * 0.42)
+	var eco := "ECONOMIC"
+	var ef := maxi(fs - 6, 5)
+	var ea := START + SWEEP * 0.325
+	draw_set_transform(_at(ct, ea, r * 0.66), ea + PI * 0.5, Vector2.ONE)
+	draw_string(_font, Vector2(-_font.get_string_size(eco, HORIZONTAL_ALIGNMENT_LEFT, -1, ef).x * 0.5, ef * 0.35), eco, HORIZONTAL_ALIGNMENT_LEFT, -1, ef, Color(0.05, 0.25, 0.1))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for i in 21:
+		var a := START + SWEEP * i / 20.0
+		var big := i % 2 == 0
+		draw_line(_at(ct, a, r - (9.0 if big else 5.0)), _at(ct, a, r - 2.0), white, 2.0 if big else 1.2)
+		if big:
+			var txt := str(i / 2)
+			var p := _at(ct, a, r - (16.0 if r < 50.0 else 21.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5, -fs * 0.35)
+			draw_string(_font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, white)
+	draw_line(_at(ct, START + SWEEP * 0.6, r - 14.0), _at(ct, START + SWEEP * 0.6, r - 1.0), Color(0.95, 0.2, 0.15), 4.0)
 	var rpmt := "r.p.m. ×1000"
-	draw_string(_font, ct + Vector2(-_font.get_string_size(rpmt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 3).x * 0.5, r * 0.42), rpmt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 3, white)
+	var rf := maxi(small - 1, 5)
+	draw_string(_font, ct + Vector2(-_font.get_string_size(rpmt, HORIZONTAL_ALIGNMENT_LEFT, -1, rf).x * 0.5, r * 0.42), rpmt, HORIZONTAL_ALIGNMENT_LEFT, -1, rf, white)
 	_jawa_needle(ct, r, clampf(_shown_rpm / 10000.0, 0.0, 1.0))
-	# Пульт между приборами: «JAWA» и четыре лампочки
-	var pc := Vector2(4.0 + r * 2.0 + gapw * 0.5, 4.0 + r)
-	var pw := gapw * 0.95
-	draw_rect(Rect2(pc - Vector2(pw * 0.5, r * 0.75), Vector2(pw, r * 1.5)), Color(0.07, 0.07, 0.08, 0.92))
-	var jt := "JAWA"
-	draw_string(_font, pc + Vector2(-_font.get_string_size(jt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 1).x * 0.5, -r * 0.48), jt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 1, Color(0.75, 0.75, 0.78))
-	var on := [not v.engine_on, v.headlights_on(), v.gear == 0, v.blink_on()]
-	var cols := [Color(0.95, 0.15, 0.12), Color(0.2, 0.45, 1.0), Color(0.15, 0.85, 0.35), Color(0.15, 0.85, 0.6)]
-	var lr := r * 0.13
-	for i in 4:
-		var lp := pc + Vector2((-1.0 if i % 2 == 0 else 1.0) * pw * 0.24, -r * 0.08 + (i / 2) * r * 0.42)
-		draw_circle(lp, lr + 2.0, Color(0.25, 0.25, 0.27))
-		var col: Color = cols[i]
-		draw_circle(lp, lr, col if on[i] else col.darkened(0.75))
+	if on_bike:
+		return
 	# Передача и бензин — под приборами
 	var gear := v.gear_name()
-	var gy := r * 2.0 + 20.0
-	draw_string(_font, Vector2(pc.x - _font.get_string_size(gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, gy), gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.95, 0.7, 0.24))
+	var gy := r * 2.0 + 22.0
+	draw_string(_font, Vector2(pc.x - _font.get_string_size(gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, gy + 4.0), gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.95, 0.7, 0.24))
 	var fuel := clampf(v.fuel / v.tank(), 0.0, 1.0)
 	var fw := r * 1.4
 	draw_rect(Rect2(ct.x - fw * 0.5, gy - 9.0, fw, 5.0), Color(1, 1, 1, 0.15))
@@ -227,16 +267,19 @@ func _draw_jawa(v: Vehicle) -> void:
 	draw_string(_font, Vector2(cs.x - _font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, gy), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, white)
 
 
+## Хромированный стакан и чёрный циферблат.
 func _jawa_face(c: Vector2, r: float) -> void:
-	draw_circle(c, r + 3.0, Color(0.55, 0.56, 0.58))
-	draw_circle(c, r + 1.0, Color(0.82, 0.83, 0.85))
-	draw_circle(c, r - 1.0, Color(0.03, 0.03, 0.035, 0.96))
+	draw_circle(c, r + 6.0, Color(0.4, 0.41, 0.43))
+	draw_circle(c, r + 4.5, Color(0.86, 0.87, 0.89))
+	draw_circle(c, r + 1.5, Color(0.55, 0.56, 0.58))
+	draw_circle(c, r, Color(0.02, 0.02, 0.025))
 
 
+## Белая стрелка с большой белой серединой, как на «Яве».
 func _jawa_needle(c: Vector2, r: float, k: float) -> void:
 	var a := START + SWEEP * k
-	draw_line(_at(c, a + PI, r * 0.1), _at(c, a, r - 8.0), Color(0.97, 0.97, 0.95), 3.0)
-	draw_circle(c, r * 0.17, Color(0.97, 0.97, 0.95))
+	draw_line(_at(c, a + PI, r * 0.1), _at(c, a, r - 8.0), Color(0.97, 0.97, 0.93), 3.0)
+	draw_circle(c, r * 0.2, Color(0.97, 0.97, 0.93))
 
 
 ## Схема коробки для механики: у машины — «H» (1 и 2, 3 и 4, 5 и R по

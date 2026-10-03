@@ -1313,7 +1313,7 @@ func _school_marks() -> void:
 ## Живой щиток на руле: вид → [картинка (точки), табличка (м), центр, наклон]
 const DASH := {
 	"izh": [Vector2i(288, 132), Vector2(0.36, 0.165), Vector3(0.0, 1.277, -0.6), 1.15],
-	"moto": [Vector2i(304, 132), Vector2(0.37, 0.16), Vector3(0.0, 1.25, -0.74), 1.1],
+	"moto": [Vector2i(306, 143), Vector2(0.37, 0.173), Vector3(0.0, 1.25, -0.74), 1.1],
 }
 var _dash_vp: SubViewport
 var _dash_quad: MeshInstance3D
@@ -1578,7 +1578,7 @@ func _process(_delta: float) -> void:
 	for g in _gauge_holders:
 		g.visible = inside
 	if driver != null and not _needles.is_empty():
-		var top: float = {"moto": 140.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+		var top: float = {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
 		var k_rpm := clampf(rpm / float(spec.redline) * 0.85, 0.0, 1.0)
 		for i in _needles.size():

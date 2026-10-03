@@ -363,13 +363,15 @@ static func java(b: MeshBuilder, paint: Color) -> void:
 	for sx in [-1.0, 1.0]:
 		tube(b, hp + Vector3(0.09 * sx, -0.04, 0.06), hp + Vector3(0.2 * sx, -0.04, 0.06), 0.01, frame)
 		disc(b, hp + Vector3(0.23 * sx, -0.04, 0.04), Vector3.FORWARD, 0.035, 0.08, amber)
-	# Приборы над фарой: корпус из трёх частей — спидометр, пульт «JAWA» с
-	# лампочками, тахометр. Сами приборы — живой экранчик (Vehicle._build_dash_screen)
+	# Приборы над рулём: два хромированных стакана (спидометр, тахометр) и
+	# пульт «JAWA» с лампочками и замком зажигания. Сами приборы — живой экранчик (Vehicle._build_dash_screen)
 	var tilt := Basis(Vector3.RIGHT, -1.1)
 	var saved := b.xf
 	b.xf = saved * Transform3D(tilt, Vector3(0.0, 1.25, -0.74))
-	for p in [[-0.185, -0.06], [-0.055, 0.055], [0.06, 0.185]]:
-		b.box(Vector3(p[0], -0.08, -0.05), Vector3(p[1], 0.08, 0.0), frame)
+	# Хромированные стаканы приборов и чёрный пульт между ними, ниже
+	for x in [-0.111, 0.111]:
+		disc(b, Vector3(x, 0.011, -0.035), Vector3.BACK, 0.074, 0.06, Color(0.75, 0.76, 0.78))
+	b.box(Vector3(-0.05, -0.08, -0.04), Vector3(0.05, 0.035, -0.005), frame)
 	b.xf = saved
 	# Кронштейны щитка к рулевой колонке
 	for sx in [-1.0, 1.0]:

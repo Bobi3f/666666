@@ -10,6 +10,7 @@ var vehicle: Vehicle
 
 
 func _ready() -> void:
+	on_bike = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = ThemeDB.fallback_font
 
@@ -26,7 +27,7 @@ func _process(delta: float) -> void:
 	if vehicle == null or vehicle.driver == null:
 		return
 	position = Vector2.ZERO
-	size = Vector2(R * 4.5 + 16.0, R * 2.0 + 10.0)
+	size = Vector2(R * 4.9 + 12.0, R * 2.15 + 14.0)
 	_shown = lerpf(_shown, vehicle.speed_kmh(), minf(delta * 8.0, 1.0))
 	_shown_rpm = lerpf(_shown_rpm, vehicle.rpm, minf(delta * 10.0, 1.0))
 	queue_redraw()
