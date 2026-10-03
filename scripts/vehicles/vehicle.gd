@@ -45,7 +45,7 @@ const SPECS := {
 		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
 	},
 	"moto": {
-		"title": "Ява", "ratios": {-1: 0.0, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
+		"title": "Ява", "ratios": {-1: -2.9, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
 		"final": 6.0, "wheel_r": 0.31, "mass": 210.0, "idle": 1300.0, "redline": 7800.0,
 		"torque": 34.0, "peak_rpm": 5000.0, "inertia": 0.035, "wheelbase": 1.35, "max_steer": 0.55,
 		"tank": 14.0, "fuel_k": 0.35, "grip": 11.0, "drag": 0.22, "brake": 8.0,
@@ -56,7 +56,7 @@ const SPECS := {
 	# Мопед «Карпаты» — первый транспорт: прав не нужно, медленный (до 50),
 	# бака на 6 литров хватает надолго, зато в горку тянет еле-еле.
 	"moped": {
-		"title": "Карпаты", "ratios": {-1: 0.0, 0: 0.0, 1: 3.0, 2: 1.8, 3: 1.25},
+		"title": "Карпаты", "ratios": {-1: -3.0, 0: 0.0, 1: 3.0, 2: 1.8, 3: 1.25},
 		"final": 11.0, "wheel_r": 0.28, "mass": 95.0, "idle": 1400.0, "redline": 6500.0,
 		"torque": 6.0, "peak_rpm": 4500.0, "inertia": 0.02, "wheelbase": 1.2, "max_steer": 0.6,
 		"tank": 6.0, "fuel_k": 0.12, "grip": 10.0, "drag": 0.3, "brake": 6.0,
@@ -559,8 +559,8 @@ func _auto_inputs(dt: float, w: bool, s: bool) -> Vector2:
 		if w and absf(speed) < 0.3:
 			gear = 1
 			return Vector2(1.0, 0.0)
-		# Назад больше ~20 км/ч автомат не разгоняет
-		var gas := 1.0 if s and speed > -5.5 else 0.0
+		# Назад автомат не разгоняет больше ~20 км/ч (мотоцикл — шагом)
+		var gas := 1.0 if s and speed > -rev_max() else 0.0
 		return Vector2(gas, 1.0 if w else 0.0)
 	# Стоим и держим тормоз — через полсекунды включится задний
 	if s and speed < 0.3 and has_reverse:
@@ -589,13 +589,24 @@ func _pedal_inputs(dt: float, gas: bool, brake: bool) -> Vector2:
 			gear = want
 		else:
 			return Vector2(0.0, 1.0 if gas or brake else 0.0)
-	# Назад больше ~20 км/ч не разгоняемся
-	var g := gas and (want == 1 or speed > -5.5)
+	# Назад больше ~20 км/ч не разгоняемся (мотоцикл — шагом)
+	var g := gas and (want == 1 or speed > -rev_max())
 	return Vector2(1.0 if g else 0.0, 1.0 if brake else 0.0)
+
+
+## Предел скорости назад, м/с. Заднего хода у мотоцикла и мопеда нет —
+## назад откатываются, отталкиваясь ногами, шагом (около 5 км/ч).
+func rev_max() -> float:
+	return 1.4 if spec.two_wheels else 5.5
 
 
 ## Один шаг симуляции. Вынесено отдельно, чтобы гонять в тестах без клавиатуры.
 func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bool, steer_in: float) -> void:
+	if gear == -1 and speed < -rev_max():
+		throttle = 0.0
+		# Ногами быстрее не оттолкнёшься
+		if spec.two_wheels:
+			speed = -rev_max()
 	var auto: bool = SettingsManager.auto_gearbox
 	var idle: float = spec.idle
 	var redline: float = spec.redline

@@ -215,7 +215,10 @@ func _run() -> void:
 	key(KEY_S, true)
 	await frames(60 * 6)
 	await frames(60)
-	ok(M.gear >= 0 and absf(M.speed) < 0.3, "у Явы нет заднего: стоит на месте (%s)" % M.gear_name())
+	ok(M.speed > -M.rev_max() - 0.3, "Ява тормозом встала, назад — только шагом (%s, %.1f км/ч)" % [M.gear_name(), M.speed * 3.6])
+	key(KEY_S, false)
+	M.speed = 0.0
+	M.gear = 1
 	key(KEY_S, false)
 	# Вид сзади. После разгона Ява улетает с трассы к площади и может
 	# влететь в клумбу — для проверки вида сажаем заново на дороге
@@ -276,6 +279,37 @@ func _run() -> void:
 	await frames(3)
 	ok((v0.head as StandardMaterial3D).albedo_color.r > 0.95, "ночью у трафика горят фары")
 	TM.minutes = 12 * 60.0
+	place(M, Vector3(-130, 0.1, -41.6), -PI / 2.0)
+
+	print("== Задний ход на мотоцикле и мопеде — шагом, ногами")
+	for bike in [M, W.get_node("Moped")]:
+		# Каждый на своём месте — мопед не упрётся задом в Яву
+		var p0 := Vector3(-130.0 if bike == M else -112.0, 0.1, -41.6)
+		place(bike, p0, -PI / 2.0)
+		if root.get_node("GameManager").vehicle != bike:
+			if root.get_node("GameManager").vehicle: root.get_node("GameManager").vehicle.speed = 0.0; root.get_node("GameManager").vehicle.exit_car()
+			await frames(3)
+			bike._on_enter()
+		bike.engine_on = true
+		bike.fuel = 5.0
+		bike.gear = 1
+		await frames(3)
+		key(KEY_S, true)
+		await frames(150)
+		var back: float = bike.speed
+		var moved: float = (bike.global_position - p0).dot(bike.global_transform.basis.z)
+		key(KEY_S, false)
+		await frames(30)
+		ok(bike.gear == -1 and back < -0.6 and back > -bike.rev_max() - 0.3 and moved > 0.8,
+			"%s: назад %.1f км/ч, откатился на %.1f м" % [bike.spec.title, -back * 3.6, moved])
+		key(KEY_W, true)
+		await frames(40)
+		key(KEY_W, false)
+		await frames(5)
+		ok(bike.gear >= 1, "%s: W — снова вперёд (%s)" % [bike.spec.title, bike.gear_name()])
+		bike.speed = 0.0
+		bike.exit_car()
+		await frames(3)
 	place(M, Vector3(-130, 0.1, -41.6), -PI / 2.0)
 
 	print("== Сохранение")
