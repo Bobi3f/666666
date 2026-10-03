@@ -32,7 +32,8 @@ func _max_speed(v: Vehicle) -> float:
 
 func _process(delta: float) -> void:
 	var v := _vehicle()
-	visible = v != null
+	# «ИЖ» и «Ява» с видом из глаз: приборы видно на руле — на экране не дублируем
+	visible = v != null and not (Vehicle.DASH.has(v.kind) and not v.chase_view)
 	if v == null:
 		_shown = 0.0
 		return

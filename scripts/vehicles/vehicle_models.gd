@@ -574,8 +574,14 @@ static func izh(b: MeshBuilder, paint: Color) -> void:
 	var tilt := Basis(Vector3.RIGHT, -1.15)
 	var saved := b.xf
 	b.xf = saved * Transform3D(tilt, head + Vector3(0.0, 0.097, -0.1) + up)
-	b.box(Vector3(-0.19, -0.086, -0.04), Vector3(-0.004, 0.086, 0.0), frame)
-	b.box(Vector3(0.004, -0.086, -0.04), Vector3(0.19, 0.086, 0.0), frame)
+	# Корпуса — чёрные трапеции под приборами: сверху шире, снизу уже
+	var black := Color(0.05, 0.05, 0.06)
+	for sx in [-1.0, 1.0]:
+		var x0: float = 0.004 * sx
+		var x1: float = 0.176 * sx
+		b.box(Vector3(minf(x0, x1), 0.0, -0.04), Vector3(maxf(x0, x1), 0.082, -0.002), black)
+		var x2: float = (0.176 - 0.014) * sx
+		b.box(Vector3(minf(x0, x2), -0.082, -0.04), Vector3(maxf(x0, x2), 0.0, -0.002), black)
 	b.xf = saved
 	# Передние поворотники на стойках у фары
 	for sx in [-1.0, 1.0]:

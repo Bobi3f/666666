@@ -20,7 +20,7 @@ func _run() -> void:
 	I.global_position = Vector3(-150, 0.3, -2.0); I.rotation.y = -PI / 2.0
 	for i in 5: await physics_frame
 	I._on_enter()
-	I.chase_view = true
+	I.chase_view = false
 	I._update_camera(1.0)
 	I.engine_on = true
 	I.speed = 17.0
