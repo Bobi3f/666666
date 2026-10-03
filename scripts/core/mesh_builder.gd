@@ -363,13 +363,18 @@ static func set_surface(wet: float, quality: float) -> void:
 		m.set_shader_parameter("quality", quality)
 
 
-static var _grain: ImageTexture
+static var _grain: Texture2D
 
 
-## Общая для всех текстура-зерно: крупные пятна + мелкая крупка, яркость 0.8–1.05.
-static func grain() -> ImageTexture:
-	if _grain:
-		return _grain
+## Общая для всех текстура-зерно — textures/world/grain.png (см. Assets).
+static func grain() -> Texture2D:
+	if _grain == null:
+		_grain = Assets.texture("world/grain", grain_image, true)
+	return _grain
+
+
+## Зерно: крупные пятна + мелкая крупка, яркость 0.8–1.05.
+static func grain_image() -> Image:
 	var big := FastNoiseLite.new()
 	big.seed = 7
 	big.frequency = 0.04
@@ -389,8 +394,7 @@ static func grain() -> ImageTexture:
 			var k := clampf(0.93 + v * 0.22, 0.78, 1.06)
 			img.set_pixel(x, y, Color(k, k, k))
 	img.generate_mipmaps()
-	_grain = ImageTexture.create_from_image(img)
-	return _grain
+	return img
 
 
 ## Одно статическое тело со всеми коллизиями.

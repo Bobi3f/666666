@@ -1000,25 +1000,18 @@ func _box(surf: int, mn: Vector3, mx: Vector3, color: Color, shade_bottom := tru
 
 # --- Текстуры -------------------------------------------------------------
 
+## Материалы одни на все дома одного достатка: картинки — готовые файлы
+## textures/interior/ (см. Assets), раньше каждый дом рисовал их заново.
+static var _mat_cache := {}
+
+
 func _make_materials() -> Array[StandardMaterial3D]:
-	var walls: Callable
-	var floor_tex: Callable
-	match wealth:
-		Wealth.POOR:
-			walls = _tex_logs
-			floor_tex = _tex_boards.bind(4, Color(0.85, 0.72, 0.55))
-		Wealth.RICH:
-			walls = _tex_damask
-			floor_tex = _tex_parquet
-		_:
-			walls = _tex_wallpaper
-			floor_tex = _tex_boards.bind(6, Color(1.05, 0.72, 0.45))
+	if _mat_cache.has(wealth):
+		return _mat_cache[wealth]
 	var list: Array[StandardMaterial3D] = []
-	for g in [walls, floor_tex, _tex_plaster, _tex_wood, _tex_fabric]:
-		var img: Image = g.call()
-		img.generate_mipmaps()
+	for t in texture_makers(wealth):
 		var m := StandardMaterial3D.new()
-		m.albedo_texture = ImageTexture.create_from_image(img)
+		m.albedo_texture = Assets.texture("interior/" + t[0], t[1], true)
 		m.vertex_color_use_as_albedo = true
 		m.roughness = 0.9
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -1029,7 +1022,20 @@ func _make_materials() -> Array[StandardMaterial3D]:
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.roughness = 0.1
 	list.append(glass)
+	_mat_cache[wealth] = list
 	return list
+
+
+## Картинки интерьера по достатку: [[имя файла, () -> Image], …] в порядке
+## поверхностей WALLS, FLOOR, PLASTER, WOOD, FABRIC.
+func texture_makers(w: int) -> Array:
+	var walls := [["walls_middle", _tex_wallpaper], ["floor_middle", _tex_boards.bind(6, Color(1.05, 0.72, 0.45))]]
+	match w:
+		Wealth.POOR:
+			walls = [["walls_poor", _tex_logs], ["floor_poor", _tex_boards.bind(4, Color(0.85, 0.72, 0.55))]]
+		Wealth.RICH:
+			walls = [["walls_rich", _tex_damask], ["floor_rich", _tex_parquet]]
+	return walls + [["plaster", _tex_plaster], ["wood", _tex_wood], ["fabric", _tex_fabric]]
 
 
 func _rng() -> RandomNumberGenerator:

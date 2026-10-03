@@ -908,12 +908,17 @@ func _make_dust() -> CPUParticles3D:
 	return d
 
 
-static var _puff: ImageTexture
+static var _puff: Texture2D
 
 
-static func _puff_texture() -> ImageTexture:
-	if _puff:
-		return _puff
+## Клуб пыли — textures/vehicles/dust.png (см. Assets).
+static func _puff_texture() -> Texture2D:
+	if _puff == null:
+		_puff = Assets.texture("vehicles/dust", puff_image)
+	return _puff
+
+
+static func puff_image() -> Image:
 	var n := 32
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	for y in n:
@@ -921,8 +926,7 @@ static func _puff_texture() -> ImageTexture:
 			var r := Vector2(x - n * 0.5 + 0.5, y - n * 0.5 + 0.5).length() / (n * 0.5)
 			var a := clampf(1.0 - r, 0.0, 1.0)
 			img.set_pixel(x, y, Color(1, 1, 1, a * a))
-	_puff = ImageTexture.create_from_image(img)
-	return _puff
+	return img
 
 
 func _update_dust() -> void:
@@ -1255,7 +1259,7 @@ func _gauge_spots() -> Array:
 var _needles: Array[Node3D] = []
 ## Циферблаты рисуем, только когда сидишь в салоне — снаружи их не видно
 var _gauge_holders: Array[Node3D] = []
-static var _dial_tex: ImageTexture
+static var _dial_tex: Texture2D
 
 
 func _build_gauges() -> void:
@@ -1306,9 +1310,13 @@ func _build_gauges() -> void:
 
 
 ## Циферблат: тёмный круг, белые риски через 30°, красная зона в конце.
-static func _dial_texture() -> ImageTexture:
-	if _dial_tex:
-		return _dial_tex
+static func _dial_texture() -> Texture2D:
+	if _dial_tex == null:
+		_dial_tex = Assets.texture("vehicles/dial", dial_image, true)
+	return _dial_tex
+
+
+static func dial_image() -> Image:
 	var n := 64
 	var img := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var c := Vector2(n, n) * 0.5
@@ -1333,8 +1341,7 @@ static func _dial_texture() -> ImageTexture:
 						col = Color(0.75, 0.15, 0.1)
 			img.set_pixel(x, y, col)
 	img.generate_mipmaps()
-	_dial_tex = ImageTexture.create_from_image(img)
-	return _dial_tex
+	return img
 
 
 # --- Сохранение -------------------------------------------------------------

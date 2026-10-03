@@ -61,7 +61,7 @@ func _ready() -> void:
 	_moon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_moon_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	_moon_mat.disable_fog = true
-	_moon_mat.albedo_texture = _moon_texture()
+	_moon_mat.albedo_texture = Assets.texture("sky/moon", moon_image)
 	_moon.material_override = _moon_mat
 	_moon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_moon.extra_cull_margin = RADIUS * 2.0
@@ -96,7 +96,7 @@ func _build_clouds(rng: RandomNumberGenerator) -> void:
 	_cloud_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_cloud_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_cloud_mat.disable_fog = true
-	_cloud_mat.albedo_texture = _cloud_texture()
+	_cloud_mat.albedo_texture = Assets.texture("sky/clouds", cloud_image, true)
 	var mesh := st.commit()
 	mesh.surface_set_material(0, _cloud_mat)
 	_clouds = MeshInstance3D.new()
@@ -106,7 +106,8 @@ func _build_clouds(rng: RandomNumberGenerator) -> void:
 	add_child(_clouds)
 
 
-func _cloud_texture() -> ImageTexture:
+## Облака — textures/sky/clouds.png; без файла рисуются тут.
+static func cloud_image() -> Image:
 	var n := 128
 	var img := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var noise := FastNoiseLite.new()
@@ -124,10 +125,11 @@ func _cloud_texture() -> ImageTexture:
 			var shade := lerpf(0.82, 1.0, v)
 			img.set_pixel(x, y, Color(shade, shade, shade, a))
 	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
+	return img
 
 
-func _moon_texture() -> ImageTexture:
+## Луна — textures/sky/moon.png.
+static func moon_image() -> Image:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var noise := FastNoiseLite.new()
@@ -142,7 +144,7 @@ func _moon_texture() -> ImageTexture:
 			var k := 0.9 + noise.get_noise_2d(x, y) * 0.25
 			var a := clampf((1.0 - d) * 12.0, 0.0, 1.0)
 			img.set_pixel(x, y, Color(k, k, k * 0.95, a))
-	return ImageTexture.create_from_image(img)
+	return img
 
 
 func _process(delta: float) -> void:

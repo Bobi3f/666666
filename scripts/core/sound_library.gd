@@ -1,5 +1,7 @@
 extends Node
-## Все звуки игры синтезируются кодом при запуске — файлов со звуком нет.
+## Все звуки игры — готовые файлы в sounds/ (effects/, music/), их заранее
+## синтезирует tools/bake_assets.gd этим же кодом. Нет файла — звук
+## синтезируется при запуске, как раньше (см. Assets).
 ##
 ## play(name) — звук интерфейса или «в голове» игрока (шаги, касса);
 ## play_at(name, pos) — звук в мире, тише с расстоянием;
@@ -8,6 +10,8 @@ extends Node
 const RATE := 22050
 
 var _streams := {}
+## Как синтезировать каждый звук: имя → () -> AudioStreamWAV.
+var _makers := {}
 var _rng := RandomNumberGenerator.new()
 
 # --- Фоновая музыка ---------------------------------------------------------
@@ -29,34 +33,36 @@ var _ducked := false
 func _ready() -> void:
 	_rng.seed = 7
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_streams["step"] = _make(_step(), false)
-	_streams["land"] = _make(_thud(0.18, 70.0), false)
-	_streams["jump"] = _make(_thud(0.1, 110.0), false)
-	_streams["engine"] = _make(_engine(), true)
-	_streams["starter"] = _make(_starter(), false)
-	_streams["stall"] = _make(_stall(), false)
-	_streams["grind"] = _make(_grind(), false)
-	_streams["crash"] = _make(_crash(), false)
-	_streams["cash"] = _make(_cash(), false)
-	_streams["click"] = _make(_tone(1200.0, 0.04, 0.3), false)
-	_streams["bird"] = _make(_bird(), false)
-	_streams["crickets"] = _make(_crickets(), true)
-	_streams["bark"] = _make(_bark(), false)
-	_streams["rain"] = _make(_rain(), true)
-	_streams["chicken"] = _make(_chicken(), false)
-	_streams["horn"] = _make(_horn(), false)
-	_streams["hammer"] = _make(_hammer(), false)
-	_streams["splash"] = _make(_splash(), false)
-	_streams["skid"] = _make(_skid(), true)
-	_streams["quest"] = _make(_quest(), false)
-	_streams["moo"] = _make(_moo(), false)
-	_streams["gravel"] = _make(_gravel(), true)
-	_streams["step_grass"] = _make(_step_grass(), false)
-	_streams["rooster"] = _make(_rooster(), false)
-	_streams["thunder"] = _make(_thunder(), false)
-	_streams["whistle"] = _make(_whistle(), false)
-	_streams["step_snow"] = _make(_step_snow(), false)
-	_streams["grass"] = _make(_grass(), true)
+	_makers["step"] = func() -> AudioStreamWAV: return _make(_step(), false)
+	_makers["land"] = func() -> AudioStreamWAV: return _make(_thud(0.18, 70.0), false)
+	_makers["jump"] = func() -> AudioStreamWAV: return _make(_thud(0.1, 110.0), false)
+	_makers["engine"] = func() -> AudioStreamWAV: return _make(_engine(), true)
+	_makers["starter"] = func() -> AudioStreamWAV: return _make(_starter(), false)
+	_makers["stall"] = func() -> AudioStreamWAV: return _make(_stall(), false)
+	_makers["grind"] = func() -> AudioStreamWAV: return _make(_grind(), false)
+	_makers["crash"] = func() -> AudioStreamWAV: return _make(_crash(), false)
+	_makers["cash"] = func() -> AudioStreamWAV: return _make(_cash(), false)
+	_makers["click"] = func() -> AudioStreamWAV: return _make(_tone(1200.0, 0.04, 0.3), false)
+	_makers["bird"] = func() -> AudioStreamWAV: return _make(_bird(), false)
+	_makers["crickets"] = func() -> AudioStreamWAV: return _make(_crickets(), true)
+	_makers["bark"] = func() -> AudioStreamWAV: return _make(_bark(), false)
+	_makers["rain"] = func() -> AudioStreamWAV: return _make(_rain(), true)
+	_makers["chicken"] = func() -> AudioStreamWAV: return _make(_chicken(), false)
+	_makers["horn"] = func() -> AudioStreamWAV: return _make(_horn(), false)
+	_makers["hammer"] = func() -> AudioStreamWAV: return _make(_hammer(), false)
+	_makers["splash"] = func() -> AudioStreamWAV: return _make(_splash(), false)
+	_makers["skid"] = func() -> AudioStreamWAV: return _make(_skid(), true)
+	_makers["quest"] = func() -> AudioStreamWAV: return _make(_quest(), false)
+	_makers["moo"] = func() -> AudioStreamWAV: return _make(_moo(), false)
+	_makers["gravel"] = func() -> AudioStreamWAV: return _make(_gravel(), true)
+	_makers["step_grass"] = func() -> AudioStreamWAV: return _make(_step_grass(), false)
+	_makers["rooster"] = func() -> AudioStreamWAV: return _make(_rooster(), false)
+	_makers["thunder"] = func() -> AudioStreamWAV: return _make(_thunder(), false)
+	_makers["whistle"] = func() -> AudioStreamWAV: return _make(_whistle(), false)
+	_makers["step_snow"] = func() -> AudioStreamWAV: return _make(_step_snow(), false)
+	_makers["grass"] = func() -> AudioStreamWAV: return _make(_grass(), true)
+	for n in _makers:
+		_streams[n] = Assets.sound("effects/" + n, _makers[n])
 	SettingsManager.changed.connect(_apply_music_volume)
 
 
@@ -65,6 +71,9 @@ func start_music() -> void:
 	if _music_wanted:
 		return
 	_music_wanted = true
+	if Assets.has_sound("music/music"):
+		_start_player(Assets.sound("music/music", Callable()))
+		return
 	_plan_music()
 
 
@@ -90,19 +99,40 @@ func _process(_delta: float) -> void:
 			_music_bytes.encode_s16(i * 2, int(clampf(_music_buf[i], -1.0, 1.0) * 32000.0))
 		_enc_i = end
 	if _enc_i >= _music_buf.size():
-		var s := AudioStreamWAV.new()
-		s.format = AudioStreamWAV.FORMAT_16_BITS
-		s.mix_rate = MUSIC_RATE
-		s.stereo = false
-		s.data = _music_bytes
-		s.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		s.loop_begin = 0
-		s.loop_end = _music_buf.size()
-		music_player = AudioStreamPlayer.new()
-		music_player.stream = s
-		add_child(music_player)
-		_apply_music_volume()
-		music_player.play()
+		_start_player(_music_stream())
+
+
+## Готовая петля музыки из собранного буфера.
+func _music_stream() -> AudioStreamWAV:
+	var s := AudioStreamWAV.new()
+	s.format = AudioStreamWAV.FORMAT_16_BITS
+	s.mix_rate = MUSIC_RATE
+	s.stereo = false
+	s.data = _music_bytes
+	s.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	s.loop_begin = 0
+	s.loop_end = _music_buf.size()
+	return s
+
+
+func _start_player(s: AudioStream) -> void:
+	music_player = AudioStreamPlayer.new()
+	music_player.stream = s
+	add_child(music_player)
+	_apply_music_volume()
+	music_player.play()
+
+
+## Собрать музыку целиком сразу — для tools/bake_assets.gd.
+func render_music_now() -> AudioStreamWAV:
+	_music_events.clear()
+	_plan_music()
+	for e in _music_events:
+		_render_event(e)
+	_music_bytes.resize(_music_buf.size() * 2)
+	for i in _music_buf.size():
+		_music_bytes.encode_s16(i * 2, int(clampf(_music_buf[i], -1.0, 1.0) * 32000.0))
+	return _music_stream()
 
 
 func _apply_music_volume() -> void:
@@ -180,7 +210,7 @@ func _render_event(e: Array) -> void:
 		_music_buf[idx] += v * vol
 
 
-func stream(sound: String) -> AudioStreamWAV:
+func stream(sound: String) -> AudioStream:
 	return _streams.get(sound)
 
 

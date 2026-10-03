@@ -2,8 +2,8 @@ extends Node
 ## Радио в машине: B (на телефоне — кнопка «Радио», на геймпаде — вправо
 ## на крестовине) переключает: выкл → «Ретро FM» → «Эстрада» → выкл.
 ##
-## Песни синтезируются кодом, как и вся музыка игры: по кусочку за кадр,
-## чтобы не подвисало. Пока радио играет, фоновая музыка притихает. Вышел
+## Песни — готовые файлы sounds/music/radio_<номер>.wav (их синтезирует
+## tools/bake_assets.gd); нет файла — синтезируются тут по кусочку за кадр. Пока радио играет, фоновая музыка притихает. Вышел
 ## из машины — радио молчит, сел обратно — играет та же станция.
 
 const RATE := 16000
@@ -30,7 +30,7 @@ const STATIONS := [
 ## Какая станция выбрана: −1 — выключено
 var station := -1
 var _player: AudioStreamPlayer
-var _streams := {}  # номер станции → AudioStreamWAV
+var _streams := {}  # номер станции → AudioStream
 ## Что собираем сейчас: номер станции, события, буфер, байты
 var _build := -1
 var _events: Array = []
@@ -60,6 +60,9 @@ func _ready() -> void:
 	_rng.seed = 91
 	_player = AudioStreamPlayer.new()
 	add_child(_player)
+	for i in STATIONS.size():
+		if Assets.has_sound("music/radio_%d" % i):
+			_streams[i] = Assets.sound("music/radio_%d" % i, Callable())
 	SettingsManager.changed.connect(_apply_volume)
 
 
@@ -185,6 +188,14 @@ func _start_build(i: int) -> void:
 				if int(tune[k]) >= 0:
 					var n := root + 12 + int(tune[k]) + (12 if rep == 1 and st.drums else 0)
 					_events.append([t0 + k * beat * 0.5, beat * 0.48, _midi(n), st.lead, 0.1])
+
+
+## Собрать станцию целиком сразу — для tools/bake_assets.gd.
+func render_now(i: int) -> AudioStreamWAV:
+	_start_build(i)
+	while _build >= 0:
+		_step_build()
+	return _streams[i]
 
 
 func _step_build() -> void:

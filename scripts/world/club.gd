@@ -406,12 +406,18 @@ func _process(delta: float) -> void:
 
 ## Танцевальная петля на два такта: бочка на каждую долю, хэт между ними,
 ## бас по нотам ля минор — фа — до — соль, аккорд-«стаб» на слабые доли.
-static var _loop: AudioStreamWAV
+## Готовая петля — sounds/music/disco.wav (собрать её здесь же — заметная
+## пауза на телефоне при входе на дискотеку).
+static var _loop: AudioStream
 
 
-static func _disco_loop() -> AudioStreamWAV:
-	if _loop:
-		return _loop
+static func _disco_loop() -> AudioStream:
+	if _loop == null:
+		_loop = Assets.sound("music/disco", make_disco_loop)
+	return _loop
+
+
+static func make_disco_loop() -> AudioStreamWAV:
 	var rate := 16000
 	var beat := 60.0 / BPM
 	var beats := 8
@@ -453,7 +459,6 @@ static func _disco_loop() -> AudioStreamWAV:
 	s.data = bytes
 	s.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	s.loop_end = n
-	_loop = s
 	return s
 
 

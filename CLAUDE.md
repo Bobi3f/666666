@@ -20,8 +20,12 @@ Godot ставит хук `.claude/hooks/session-start.sh` в `~/.local/bin/godo
 - `scenes/World.tscn` + `scripts/world/world.gd` — весь мир строится кодом.
   Неподвижная геометрия копится в `MeshBuilder` (цвет в вершинах) и режется
   на куски 100×100 м — так мало вызовов отрисовки.
-- Автозагрузки (`project.godot`): SettingsManager, SoundLibrary (звук и музыка
-  синтезируются кодом, файлов нет), GameManager, TimeManager, NeedsManager,
+- Текстуры и звуки — готовые файлы в `textures/` и `sounds/` (загружает
+  `Assets`, без файла — создаёт кодом). Их делает тем же кодом
+  `tools/bake_assets.gd`, настройки импорта — `tools/import_assets.sh`.
+  Синтез прямо в игре на телефоне подвешивал её — новые картинки и звуки
+  тоже запекать в файлы.
+- Автозагрузки (`project.godot`): SettingsManager, SoundLibrary, GameManager, TimeManager, NeedsManager,
   WeatherManager (погода и сезоны), Progress (дом, машины, огород), QuestManager
   (задания, событие `fired`), Daily (поручения, своё дело, вклад),
   Achievements, SaveManager, ControlsHelp.
