@@ -42,6 +42,9 @@ func _process(delta: float) -> void:
 	if _jawa(v):
 		r = _jawa_r()
 		size = Vector2(r * 4.0 + r * 0.9 + 8.0, r * 2.0 + 26.0)
+	elif v.kind == "izh":
+		r = _jawa_r()
+		size = Vector2(r * 2.0 + r * 2.5 + 16.0, r * 2.0 + 26.0)
 	var vs := get_viewport_rect().size
 	if GameManager.touch_mode:
 		# Между рулём (слева до ~300) и педалями (справа от ~600 до края)
@@ -82,6 +85,9 @@ func _draw() -> void:
 		_draw_gearbox(v)
 	if _jawa(v):
 		_draw_jawa(v)
+		return
+	if v.kind == "izh":
+		_draw_izh(v)
 		return
 	var r := _radius()
 	var c := size * 0.5
@@ -295,3 +301,133 @@ func _gear_dot(p: Vector2, label: String, on: bool, amber: Color, dim: Color, r 
 	var fs := 13
 	var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(_font, p + Vector2(-w * 0.5, fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.05, 0.05, 0.05) if on else Color.WHITE)
+
+
+## Приборы «ИЖ Юпитер-5», как настоящий щиток: два чёрных корпуса. Слева
+## блок лампочек с подписями — ПОВОРОТ (мигает), ЗАЖИГАНИЕ (мотор не
+## заведён), ДАЛЬНИЙ СВЕТ, НЕЙТРАЛЬ, МАСЛО (мотор стоит — давления нет)
+## и значок «ИЖ»; справа спидометр до 160 с одометром и суточным счётчиком.
+func _draw_izh(v: Vehicle) -> void:
+	var r := _jawa_r()
+	var white := Color(0.96, 0.96, 0.94)
+	var bw := r * 2.5
+	var lb := Rect2(Vector2(4, 4), Vector2(bw, r * 2.0))
+	var cs := Vector2(lb.end.x + 8.0 + r, 4.0 + r)
+	# Корпуса: скруглённые, чёрные, с серым краем
+	var body := StyleBoxFlat.new()
+	body.bg_color = Color(0.06, 0.06, 0.07, 0.95)
+	body.border_color = Color(0.35, 0.35, 0.37)
+	body.set_border_width_all(2)
+	body.set_corner_radius_all(int(r * 0.35))
+	draw_style_box(body, lb)
+	draw_style_box(body, Rect2(cs - Vector2(r + 3.0, r + 3.0), Vector2(r * 2.0 + 6.0, r * 2.0 + 6.0)))
+	# Лампочки: верхний ряд — поворот и зажигание, нижний — дальний, нейтраль, масло
+	var fs := 7 if r < 50.0 else 9
+	var q := r * 0.36
+	var lamps := [
+		["ПОВОРОТ", Color(0.95, 0.5, 0.15), v.blink_on(), "turn"],
+		["ЗАЖИГАНИЕ", Color(0.85, 0.15, 0.2), not v.engine_on, "battery"],
+		["ДАЛЬН. СВЕТ", Color(0.25, 0.45, 1.0), v.headlights_on(), "beam"],
+		["НЕЙТРАЛЬ", Color(0.2, 0.75, 0.4), v.gear == 0, "N"],
+		["МАСЛО", Color(0.85, 0.15, 0.2), not v.engine_on, "oil"],
+	]
+	for i in lamps.size():
+		var L: Array = lamps[i]
+		var row := 0 if i < 2 else 1
+		var col: float = 0.0 if row == 0 else (i - 2.0)
+		var cx := lb.position.x + bw * (0.3 + i * 0.4) if row == 0 else lb.position.x + bw * (1.0 / 6.0 + col / 3.0)
+		var cy := lb.position.y + r * (0.42 if row == 0 else 1.02)
+		var c: Color = L[1]
+		var on: bool = L[2]
+		var sq := Rect2(Vector2(cx - q * 0.5, cy - q * 0.5), Vector2(q, q))
+		draw_rect(sq, c if on else c.darkened(0.72))
+		draw_rect(sq, Color(0.6, 0.6, 0.62), false, 1.0)
+		_izh_icon(String(L[3]), sq, Color.WHITE if on else Color(1, 1, 1, 0.55))
+		# Подпись — не шире своей колонки: шрифт мельче, пока не влезет
+		var t: String = L[0]
+		var tf := fs
+		var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf).x
+		var room := bw * (0.4 if row == 0 else 1.0 / 3.0) - 3.0
+		while tw > room and tf > 5:
+			tf -= 1
+			tw = _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf).x
+		draw_string(_font, Vector2(cx - tw * 0.5, sq.end.y + tf + 1.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf, Color(0.9, 0.85, 0.7))
+	var logo := "ИЖ"
+	var lw := _font.get_string_size(logo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 5).x
+	draw_string(_font, Vector2(lb.get_center().x - lw * 0.5, lb.end.y - 6.0), logo, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 5, Color(0.4, 0.4, 0.42))
+	# Спидометр 0–160: деления через 10, цифры через 20, одометр и суточный
+	draw_circle(cs, r - 1.0, Color(0.03, 0.03, 0.035))
+	var top := 160.0
+	var sfs := 10 if r < 50.0 else 13
+	var s := 0
+	while s <= int(top):
+		var a := START + SWEEP * s / top
+		var big := s % 20 == 0
+		draw_line(_at(cs, a, r - (9.0 if big else 5.0)), _at(cs, a, r - 2.0), white, 2.0 if big else 1.2)
+		if big:
+			var txt := str(s)
+			var p := _at(cs, a, r - (17.0 if r < 50.0 else 22.0)) - Vector2(_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x * 0.5, -sfs * 0.35)
+			draw_string(_font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, white)
+		s += 10
+	var km := int(float(Achievements.counts.get("drive_m", 0.0)) / 1000.0) % 100000
+	# Счётчики — внизу, в просвете шкалы между 0 и 160: суточный выше,
+	# общий ниже; надпись km/h — над осью стрелки
+	var cf := maxi(sfs - 3, 6)
+	if r >= 50.0:
+		_izh_counter(cs + Vector2(0, r * 0.46), "%04d" % (int(float(Achievements.counts.get("drive_m", 0.0)) / 100.0) % 10000), true, cf)
+		_izh_counter(cs + Vector2(0, r * 0.74), "%05d" % km, false, cf)
+	else:
+		# На маленьком приборе (телефон) — только общий пробег
+		_izh_counter(cs + Vector2(0, r * 0.66), "%05d" % km, false, cf)
+	var unit := "km/h"
+	draw_string(_font, cs + Vector2(-_font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf).x * 0.5, -r * 0.26), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf, white)
+	_jawa_needle(cs, r, clampf(_shown / top, 0.0, 1.02))
+	# Передача и бензин
+	var gy := r * 2.0 + 20.0
+	var gear := v.gear_name()
+	draw_string(_font, Vector2(lb.get_center().x - _font.get_string_size(gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, gy), gear, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.95, 0.7, 0.24))
+	var fuel := clampf(v.fuel / v.tank(), 0.0, 1.0)
+	var fw := r * 1.4
+	draw_rect(Rect2(cs.x - fw * 0.5, gy - 9.0, fw, 5.0), Color(1, 1, 1, 0.15))
+	draw_rect(Rect2(cs.x - fw * 0.5, gy - 9.0, fw * fuel, 5.0), Color(0.95, 0.3, 0.2) if fuel < 0.15 else Color(0.4, 0.8, 0.45))
+
+
+## Счётчик километров: белые цифры в чёрных окошках; у суточного последняя
+## цифра — на красном.
+func _izh_counter(c: Vector2, digits: String, trip: bool, fs: int) -> void:
+	var dw := _font.get_string_size("0", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 2.0
+	var w := dw * digits.length()
+	var x0 := c.x - w * 0.5
+	draw_rect(Rect2(Vector2(x0 - 2.0, c.y - fs * 0.85), Vector2(w + 4.0, fs + 3.0)), Color(0.75, 0.75, 0.72))
+	for i in digits.length():
+		var red := trip and i == digits.length() - 1
+		var cell := Rect2(Vector2(x0 + i * dw, c.y - fs * 0.8), Vector2(dw - 1.0, fs + 1.0))
+		draw_rect(cell, Color(0.75, 0.12, 0.1) if red else Color(0.04, 0.04, 0.05))
+		draw_string(_font, Vector2(cell.position.x + 1.0, c.y + fs * 0.15), digits[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+
+
+## Значки на лампочках: стрелки поворота, аккумулятор, фара, «N», маслёнка.
+func _izh_icon(kind: String, sq: Rect2, col: Color) -> void:
+	var c := sq.get_center()
+	var u := sq.size.x * 0.32
+	match kind:
+		"turn":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-u * 1.2, 0), c + Vector2(-u * 0.3, -u * 0.6), c + Vector2(-u * 0.3, u * 0.6)]), col)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(u * 1.2, 0), c + Vector2(u * 0.3, -u * 0.6), c + Vector2(u * 0.3, u * 0.6)]), col)
+		"battery":
+			draw_rect(Rect2(c - Vector2(u, u * 0.6), Vector2(u * 2.0, u * 1.3)), col, false, 1.5)
+			draw_line(c + Vector2(-u * 0.6, -u * 0.6), c + Vector2(-u * 0.6, -u * 0.85), col, 2.0)
+			draw_line(c + Vector2(u * 0.6, -u * 0.6), c + Vector2(u * 0.6, -u * 0.85), col, 2.0)
+		"beam":
+			draw_arc(c + Vector2(-u * 0.2, 0), u * 0.7, PI * 0.5, PI * 1.5, 10, col, 1.5)
+			for k in 3:
+				var y := -u * 0.5 + k * u * 0.5
+				draw_line(c + Vector2(u * 0.1, y), c + Vector2(u * 1.1, y), col, 1.5)
+		"N":
+			var fsz := int(sq.size.y * 0.8)
+			var w := _font.get_string_size("N", HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x
+			draw_string(_font, Vector2(c.x - w * 0.5, c.y + fsz * 0.35), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, fsz, col)
+		"oil":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-u, 0), c + Vector2(u * 0.5, 0), c + Vector2(u * 0.5, u * 0.7), c + Vector2(-u, u * 0.7)]), col)
+			draw_line(c + Vector2(u * 0.5, u * 0.1), c + Vector2(u * 1.2, -u * 0.4), col, 2.0)
+			draw_circle(c + Vector2(u * 1.25, -u * 0.1), u * 0.12, col)

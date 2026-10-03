@@ -77,6 +77,8 @@ func _run() -> void:
 		if c is Label3D: jl.append(c.text)
 	ok(jl.count("JAWA") == 3 and jl.count("350") == 2 and JV._gauge_spots().size() == 2, "«Ява 350»: JAWA на баке и брызговике, 350 на крышках, спидометр и тахометр")
 
+	ok(I._gauge_spots().size() == 1, "у «ИЖа» на щитке спидометр, лампочки — в блоке рядом")
+
 	print("== Купил и поехал")
 	PR.buy_car("izh")
 	ok(I.owned() and not I.may_drive(), "купил, но без категории A не поедет")
