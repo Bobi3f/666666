@@ -35,8 +35,8 @@ func _run() -> void:
 	if pfx == "pc":
 		var cam := Camera3D.new(); cam.fov = 35.0; W.add_child(cam)
 		var xf := I.global_transform
-		cam.global_position = xf * Vector3(0.0, 1.55, -0.2)
-		cam.look_at(xf * Vector3(0.0, 1.15, -0.62))
+		cam.global_position = xf * Vector3(0.9, 1.5, -1.3)
+		cam.look_at(xf * Vector3(0.0, 1.2, -0.6))
 		cam.make_current()
 		for i in 8: await process_frame
 		root.get_viewport().get_texture().get_image().save_png("%s/izh_panel3d.png" % OS.get_environment("SHOTS"))
