@@ -21,6 +21,9 @@ var _card: PanelContainer
 const GOAL_TEXT := "Каменка. У тебя старый мопед «Карпаты» и 1500 грн.\n\nЦель — первая своя машина:\n1. Подработай: почта, склад, колхоз, АЗС.\n2. Сделай паспорт и медсправку, сдай на права.\n3. Купи «Жигули» у соседа и езжай дальше!"
 
 
+## Где сел на мопед — от этого места считаем «выехал».
+var _start_pos := Vector3.ZERO
+
 func _ready() -> void:
 	layer = 15
 	_panel = PanelContainer.new()
@@ -130,7 +133,7 @@ func _texts() -> Array:
 		["Осмотрись", "Проведи пальцем по правой половине экрана", "Подвигай мышью — осмотрись вокруг"],
 		["Иди к мопеду", "Джойстик слева — иди к мопеду «Карпаты» во дворе", "W A S D — иди к мопеду «Карпаты» во дворе, Shift — бегом"],
 		["Садись", "Подойди к мопеду и нажми «E»", "Подойди к мопеду и нажми E"],
-		["Поехали", "Жми «Газ», крути руль пальцем", "W — газ, A и D — руль"],
+		["Поехали", "Жми «Газ», крути руль пальцем — выезжай за калитку", "W — газ, A и D — руль, выезжай за калитку"],
 		["Тормози", "«Тормоз» — остановись", "S — тормоз, остановись"],
 		["Готово!", "Задание — слева вверху, все дела — в «Журнале». Удачи в Каменке!", "Задание — слева вверху, все дела — в журнале (J). Удачи в Каменке!"],
 	]
@@ -180,9 +183,12 @@ func _process(delta: float) -> void:
 				_next()
 		2:
 			if GameManager.vehicle != null:
+				_start_pos = (GameManager.vehicle as Node3D).global_position
 				_next()
 		3:
-			if GameManager.vehicle != null and (GameManager.vehicle as Vehicle).speed_kmh() > 15.0:
+			# Мопед во дворе: разогнаться негде — хватит выехать за калитку
+			var v := GameManager.vehicle as Vehicle
+			if v != null and (v.speed_kmh() > 15.0 or v.global_position.distance_to(_start_pos) > 6.0):
 				_next()
 		4:
 			if GameManager.vehicle == null or (GameManager.vehicle as Vehicle).speed_kmh() < 2.0:

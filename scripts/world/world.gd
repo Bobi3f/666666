@@ -2949,8 +2949,8 @@ func _build_clubs() -> void:
 # --- Игрок и машина ---------------------------------------------------------
 
 ## Где стоит мопед игрока в начале: в своём дворе слева от дорожки, носом
-## к калитке.
-const MOPED_SPOT := Vector3(PLAYER_HOUSE.x - 5.0, 0, -47.0)
+## к калитке (поворот считается в _spawn_player_and_car).
+const MOPED_SPOT := Vector3(PLAYER_HOUSE.x - 6.0, 0, -46.5)
 ## Ява продаётся у соседа: во дворе дома слева (западнее), у дорожки.
 const MOTO_SPOT := Vector3(PLAYER_HOUSE.x - 30.5, 0, -47.5)
 ## Первая машина: соседские «Жигули» и «Ява» — продаются.
@@ -2962,9 +2962,9 @@ func _spawn_player_and_car() -> void:
 	var player := Player.new()
 	player.name = "Player"
 	add_child(player)
-	# На дорожке у калитки: первым делом видно свой старый мопед во дворе —
+	# На дорожке у крыльца: первым делом видно свой старый мопед во дворе —
 	# с него всё и начинается
-	player.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 10.0)
+	player.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 6.0)
 	var to_moped := MOPED_SPOT - player.global_position
 	player.rotation.y = atan2(-to_moped.x, -to_moped.z)
 	var moped := Vehicle.new()
@@ -2974,7 +2974,9 @@ func _spawn_player_and_car() -> void:
 	add_child(moped)
 	GameManager.moped = moped
 	moped.global_position = MOPED_SPOT + Vector3(0, 0.1, 0)
-	moped.rotation.y = PI
+	# Носом к калитке: выехать — газ и чуть руля
+	var to_gate := Vector3(PLAYER_HOUSE.x + _home_door_x, 0, PLAYER_HOUSE.y + 12.0) - MOPED_SPOT
+	moped.rotation.y = atan2(-to_gate.x, -to_gate.z)
 	# Соседские «Жигули» напротив дома — продаются: первая машина, когда
 	# будут права и деньги
 	var car := Vehicle.new()
