@@ -15,7 +15,7 @@ done
 for f in textures/*/*.png; do
 	sed -i 's/^detect_3d\/compress_to=.*/detect_3d\/compress_to=0/' "$f.import"
 done
-LOOPS="effects/engine effects/crickets effects/rain effects/skid effects/gravel effects/grass music/music music/disco music/radio_0 music/radio_1"
+LOOPS="effects/siren effects/engine effects/crickets effects/rain effects/skid effects/gravel effects/grass music/music music/disco music/radio_0 music/radio_1"
 for n in $LOOPS; do
 	sed -i 's/^edit\/loop_mode=.*/edit\/loop_mode=2/' "sounds/$n.wav.import"
 done

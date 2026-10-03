@@ -216,6 +216,9 @@ func _ready() -> void:
 	var gai := preload("res://scripts/world/gai_post.gd").new()
 	gai.name = "GaiPost"
 	add_child(gai)
+	var chase := Chase.new()
+	chase.name = "Chase"
+	add_child(chase)
 	var birds := preload("res://scripts/world/birds.gd").new()
 	birds.name = "Birds"
 	add_child(birds)

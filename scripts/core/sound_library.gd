@@ -49,6 +49,7 @@ func _ready() -> void:
 	_makers["rain"] = func() -> AudioStreamWAV: return _make(_rain(), true)
 	_makers["chicken"] = func() -> AudioStreamWAV: return _make(_chicken(), false)
 	_makers["horn"] = func() -> AudioStreamWAV: return _make(_horn(), false)
+	_makers["siren"] = func() -> AudioStreamWAV: return _make(_siren(), true)
 	_makers["hammer"] = func() -> AudioStreamWAV: return _make(_hammer(), false)
 	_makers["splash"] = func() -> AudioStreamWAV: return _make(_splash(), false)
 	_makers["skid"] = func() -> AudioStreamWAV: return _make(_skid(), true)
@@ -551,6 +552,19 @@ func _horn() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		var env := minf(t * 30.0, 1.0) * minf((0.6 - t) * 20.0, 1.0)
 		a[i] = (signf(sin(TAU * 400.0 * t)) * 0.15 + signf(sin(TAU * 500.0 * t)) * 0.15) * env
+	return a
+
+
+## Сирена милиции: два тона по полсекунды, петлёй — «уа-уа».
+func _siren() -> PackedFloat32Array:
+	var a := _buf(2.0)
+	var phase := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var f := 660.0 if fmod(t, 1.0) < 0.5 else 880.0
+		phase += TAU * f / RATE
+		# Мягкий «квадрат»: основной тон и две нечётные гармоники
+		a[i] = (sin(phase) + sin(phase * 3.0) / 3.0 + sin(phase * 5.0) / 5.0) * 0.22
 	return a
 
 
