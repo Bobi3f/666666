@@ -12,7 +12,8 @@ extends CharacterBody3D
 ##     низких оборотах и схватывает на высоких, передачи переключаются сами,
 ##     мотор не глохнет. W — газ (заглушенный мотор заведётся сам),
 ##     S — тормоз, а стоя на месте — задний ход.
-##   * МЕХАНИКА — Shift — сцепление, ] [ — передачи, R — зажигание:
+##   * МЕХАНИКА — Shift — сцепление, ] [ или цифры 1–5 (0 — нейтраль, − —
+##     задняя) — передачи, R — зажигание:
 ##     бросил сцепление — заглох, переключил без сцепления — скрежет.
 ##
 ## Машина едет не по рельсам: скорость — вектор, боковое скольжение гасится
@@ -421,7 +422,7 @@ func _on_enter() -> void:
 	if SettingsManager.auto_gearbox:
 		GameManager.notify("%s. Автомат: W — газ, S — тормоз и назад. T — механика, V — вид" % spec.title)
 	else:
-		GameManager.notify("%s. Механика: Shift — сцепление, R — зажигание, ] [ — передачи. T — автомат" % spec.title)
+		GameManager.notify("%s. Механика: Shift — сцепление, 1–5 или ] [ — передачи, 0 — нейтраль, − — задняя. T — автомат" % spec.title)
 
 
 func exit_car() -> void:
@@ -467,6 +468,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_BRACKETLEFT:
 			if not SettingsManager.auto_gearbox:
 				_shift(gear - 1)
+		# Механика: передачу сразу цифрой — 1…5, 0 — нейтраль, «−» — задняя
+		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5:
+			if not SettingsManager.auto_gearbox:
+				_shift(key.physical_keycode - KEY_0)
+		KEY_0:
+			if not SettingsManager.auto_gearbox:
+				_shift(0)
+		KEY_MINUS:
+			if not SettingsManager.auto_gearbox:
+				_shift(-1)
 		KEY_H:
 			SoundLibrary.play_at("horn", global_position, 2.0, 1.0 if spec.roof else 1.35)
 		KEY_Z:
@@ -482,7 +493,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				clutch = 1.0
 				if gear == 0 and engine_on:
 					gear = 1
-			GameManager.notify("Коробка: %s" % ("АВТОМАТ — W газ, S тормоз и назад" if SettingsManager.auto_gearbox else "МЕХАНИКА — Shift сцепление, ] [ передачи"))
+			GameManager.notify("Коробка: %s" % ("АВТОМАТ — W газ, S тормоз и назад" if SettingsManager.auto_gearbox else "МЕХАНИКА — Shift сцепление, 1–5 / ] [ передачи, 0 нейтраль, − задняя"))
 		KEY_V:
 			chase_view = not chase_view
 			_update_camera(1.0)

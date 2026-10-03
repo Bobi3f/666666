@@ -86,6 +86,48 @@ func _run() -> void:
 		if lit(M, 1) == 2: moto_on = true
 	ok(M.turn == 1 and moto_on and M._turn_lamps.size() == 4, "на «Яве» мигают правые — передний и задний")
 
+	print("== Механика на компьютере")
+	var SM = root.get_node("SettingsManager")
+	M.exit_car()
+	await frames(3)
+	C.global_position = Vector3(60, 0.3, 6.0)
+	C.rotation.y = -PI / 2.0
+	await frames(5)
+	SM.set_auto_gearbox(false)
+	C._on_enter()
+	await frames(3)
+	C.engine_on = true
+	C.rpm = 900.0
+	C.gear = 0
+	await tap(KEY_3)
+	ok(C.gear == 0, "без сцепления 3 не включается — скрежет")
+	key(KEY_SHIFT, true)
+	await frames(20)
+	await tap(KEY_1)
+	ok(C.gear == 1, "Shift + 1 — первая")
+	await tap(KEY_3)
+	ok(C.gear == 3, "Shift + 3 — сразу третья")
+	await tap(KEY_0)
+	ok(C.gear == 0, "0 — нейтраль")
+	await tap(KEY_MINUS)
+	ok(C.gear == -1, "«−» с места — задняя")
+	SM.bind_key(KEY_2, KEY_U)
+	await tap(KEY_U)
+	ok(C.gear == 2, "своя клавиша U на 2-ю передачу")
+	SM.reset_keys()
+	key(KEY_SHIFT, false)
+	await frames(3)
+	var sp = null
+	for c in W.get_children():
+		if c.get_script() and c.get_script().resource_path.ends_with("hud.gd"):
+			for h in c.get_children():
+				if h.get_script() and h.get_script().resource_path.ends_with("speedometer.gd"): sp = h
+	for i in 3: await process_frame
+	ok(sp != null and sp.visible, "схема коробки и сцепление рисуются у спидометра")
+	SM.set_auto_gearbox(true)
+	C.exit_car()
+	await frames(3)
+
 	print("== Кнопки на телефоне")
 	var tc = null
 	for c in W.get_children():

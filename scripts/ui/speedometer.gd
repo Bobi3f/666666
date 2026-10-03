@@ -77,6 +77,9 @@ func _draw() -> void:
 	var v := _vehicle()
 	if v == null:
 		return
+	# Механика на компьютере — слева от приборов схема рычага и сцепление
+	if not SettingsManager.auto_gearbox and not GameManager.touch_mode:
+		_draw_gearbox(v)
 	if _jawa(v):
 		_draw_jawa(v)
 		return
@@ -228,3 +231,67 @@ func _jawa_needle(c: Vector2, r: float, k: float) -> void:
 	var a := START + SWEEP * k
 	draw_line(_at(c, a + PI, r * 0.1), _at(c, a, r - 8.0), Color(0.97, 0.97, 0.95), 3.0)
 	draw_circle(c, r * 0.17, Color(0.97, 0.97, 0.95))
+
+
+## Схема коробки для механики: у машины — «H» (1 и 2, 3 и 4, 5 и R по
+## колонкам, посередине нейтраль), у мотоцикла — столбик 1-N-2-3-4.
+## Включённая передача горит янтарём. Справа — полоска сцепления (насколько
+## выжато), внизу — подсказка, какими клавишами переключать.
+func _draw_gearbox(v: Vehicle) -> void:
+	var pw := 150.0
+	var ph := 128.0
+	var o := Vector2(-pw - 10.0, size.y - ph - 4.0)
+	draw_rect(Rect2(o, Vector2(pw, ph)), Color(0.05, 0.05, 0.06, 0.75))
+	draw_rect(Rect2(o, Vector2(pw, ph)), Color(0.55, 0.55, 0.58, 0.9), false, 2.0)
+	var amber := Color(0.95, 0.7, 0.24)
+	var dim := Color(0.85, 0.85, 0.82, 0.8)
+	var top: int = v._top_gear()
+	var has_r := float(v.spec.ratios.get(-1, 0.0)) != 0.0
+	var slots: Array = []
+	for g in range(1, top + 1):
+		slots.append(g)
+	if has_r:
+		slots.append(-1)
+	var area := Rect2(o + Vector2(12, 12), Vector2(pw - 50, ph - 44))
+	if v.spec.two_wheels:
+		# Мотоцикл: вниз — первая, вверх — вторая и дальше, между ними нейтраль
+		var order: Array = [1, 0]
+		for g in range(2, top + 1):
+			order.append(g)
+		order.reverse()
+		var step := area.size.y / maxf(order.size() - 1, 1)
+		var x := area.get_center().x
+		draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), dim, 3.0)
+		for i in order.size():
+			var g: int = order[i]
+			_gear_dot(Vector2(x, area.position.y + i * step), "N" if g == 0 else str(g), v.gear == g, amber, dim)
+	else:
+		var cols := int(ceil(slots.size() / 2.0))
+		var cw := area.size.x / maxf(cols - 1, 1)
+		var mid := area.get_center().y
+		draw_line(Vector2(area.position.x, mid), Vector2(area.position.x + cw * (cols - 1), mid), dim, 3.0)
+		for c in cols:
+			var x := area.position.x + c * cw
+			draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), dim, 3.0)
+		for i in slots.size():
+			var g: int = slots[i]
+			var p := Vector2(area.position.x + (i / 2) * cw, area.position.y if i % 2 == 0 else area.end.y)
+			_gear_dot(p, "R" if g == -1 else str(g), v.gear == g, amber, dim)
+		# Нейтраль — точка посередине
+		_gear_dot(Vector2(area.get_center().x, mid), "N", v.gear == 0, amber, dim, 9.0)
+	# Сцепление: полоска справа, заполнена настолько, насколько выжато
+	var cb := Rect2(o + Vector2(pw - 26, 12), Vector2(12, ph - 44))
+	draw_rect(cb, Color(1, 1, 1, 0.15))
+	var k := clampf(1.0 - v.clutch, 0.0, 1.0)
+	draw_rect(Rect2(cb.position + Vector2(0, cb.size.y * (1.0 - k)), Vector2(cb.size.x, cb.size.y * k)), Color(0.4, 0.8, 1.0))
+	draw_string(_font, cb.position + Vector2(-6, cb.size.y + 14), "сц.", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, dim)
+	var hint := "%s сц. · 1–5 · 0 N · %s R" % [KeyRemap.key_name(KeyRemap.key_for(KEY_SHIFT)), KeyRemap.key_name(KeyRemap.key_for(KEY_MINUS))]
+	draw_string(_font, o + Vector2(6, ph - 8), hint, HORIZONTAL_ALIGNMENT_LEFT, pw - 8, 10, dim)
+
+
+func _gear_dot(p: Vector2, label: String, on: bool, amber: Color, dim: Color, r := 11.0) -> void:
+	draw_circle(p, r, amber if on else Color(0.15, 0.15, 0.17))
+	draw_arc(p, r, 0.0, TAU, 20, dim, 1.5)
+	var fs := 13
+	var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	draw_string(_font, p + Vector2(-w * 0.5, fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.05, 0.05, 0.05) if on else Color.WHITE)
