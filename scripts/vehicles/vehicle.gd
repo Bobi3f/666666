@@ -1439,7 +1439,7 @@ func _gauge_spots() -> Array:
 		"moto":
 			return [[Vector3(0.0, 1.122, -0.89), 0.042, -1.1]]
 		"izh":
-			return [[Vector3(0.0, 1.212, -0.8), 0.045, -1.1]]
+			return [[Vector3(0.0, 1.173, -0.62), 0.045, -1.3]]
 		"moped":
 			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
 		"tractor":
