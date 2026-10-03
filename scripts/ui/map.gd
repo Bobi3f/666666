@@ -601,6 +601,12 @@ func _draw_dynamic(font: Font) -> void:
 			var cp := _p(v.global_position.x, v.global_position.z)
 			var r: float = pair[2]
 			_canvas.draw_rect(Rect2(cp - Vector2(r, r), Vector2(r, r) * 2.0), pair[1])
+	# Оля — розовое сердечко-точка, когда её видно
+	var girl := get_tree().get_first_node_in_group("girl") as Girl
+	if girl and girl.doll and girl.doll.is_visible_in_tree():
+		var gp := _p(girl.doll.global_position.x, girl.doll.global_position.z)
+		_canvas.draw_circle(gp, 5.0, Color(1, 1, 1))
+		_canvas.draw_circle(gp, 3.6, Color(0.95, 0.35, 0.6))
 	var pos := _player_pos()
 	var yaw := _player_yaw()
 	var at := _p(pos.x, pos.z)

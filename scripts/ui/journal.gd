@@ -122,6 +122,9 @@ func _journal_text() -> String:
 		var veh := v as Vehicle
 		if veh and veh.owned() and veh.kind != "tractor":
 			t += "  %s: бензин %d / %d л, состояние %d%%\n" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition)]
+	var girl := get_tree().get_first_node_in_group("girl") as Girl
+	if girl and girl.met:
+		t += "  Оля — %s, симпатия %d/100 (разговор, подарки, катание, танцы)\n" % [girl.level(), girl.rel]
 	t += "\n" + _achievements_text()
 	t += "\n" + _stats_text()
 	return t
