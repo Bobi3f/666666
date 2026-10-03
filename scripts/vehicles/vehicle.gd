@@ -1156,11 +1156,12 @@ func _paint_body() -> void:
 		lb.text = l[0]
 		lb.position = l[1]
 		lb.rotation.y = l[2]
-		lb.pixel_size = l[3]
 		lb.modulate = l[4]
 		lb.font_size = 64
 		lb.outline_size = 0
 		lb.double_sided = false
+		# Строго в своей рамке (эмблема, табличка)
+		Plates.fit(lb, l[3])
 		_paint_mesh.add_child(lb)
 	if school and not _body.has_node("SchoolMarks"):
 		_school_marks()
@@ -1258,6 +1259,8 @@ func _school_marks() -> void:
 	u.outline_size = 0
 	u.modulate = Color(0.05, 0.05, 0.05)
 	u.double_sided = false
+	# Буква — внутри белого треугольника
+	Plates.fit(u, Vector2(0.13, 0.13))
 	u.position = Vector3(0, top + 0.27, zc - 0.03)
 	u.rotation.y = PI
 	m.add_child(u)
@@ -1270,12 +1273,13 @@ func _school_marks() -> void:
 			var l := Label3D.new()
 			l.text = "УЧЕБНАЯ\nавтошкола «Каменка»"
 			l.font_size = 64
-			l.pixel_size = 0.0028
 			l.outline_size = 0
+			# На дверях: между полосой и окнами, от передней двери до задней
+			Plates.fit(l, Vector2(1.3, 0.27))
 			l.modulate = Color(0.97, 0.97, 0.97)
 			# Только снаружи — иначе просвечивает сквозь стёкла с другого борта
 			l.double_sided = false
-			l.position = Vector3((box.end.x + 0.012) * sx, 0.82, 0.05)
+			l.position = Vector3((box.end.x + 0.012) * sx, 0.73, 0.2)
 			l.rotation.y = PI / 2.0 * sx
 			m.add_child(l)
 

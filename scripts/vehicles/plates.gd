@@ -97,19 +97,26 @@ static func _plate_mesh(root: Node3D, spots: Array) -> void:
 	root.add_child(mi)
 
 
+## Подогнать размер надписи под рамку w×h (метры): ни одна строка не
+## шире, все строки вместе не выше. Для номеров, эмблем, надписей на бортах.
+static func fit(l: Label3D, size: Vector2) -> void:
+	var font: Font = l.font if l.font else ThemeDB.fallback_font
+	var w := 1.0
+	for line in l.text.split("\n"):
+		w = maxf(w, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, l.font_size).x)
+	var lines := l.text.count("\n") + 1
+	var h := font.get_height(l.font_size) * lines + l.line_spacing * (lines - 1)
+	l.pixel_size = minf(size.x / w, size.y / maxf(h, 1.0))
+
+
 ## Надпись номера: чёрная, размером точно по табличке.
 static func _label(root: Node3D, text: String, pos: Vector3, yaw: float, size: Vector2) -> void:
 	var l := Label3D.new()
 	l.text = text
 	l.font_size = 48
-	var font := ThemeDB.fallback_font
-	var w := 1.0
-	for line in text.split("\n"):
-		w = maxf(w, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 48).x)
-	var lines := text.count("\n") + 1
-	l.pixel_size = minf(size.x * 0.88 / w, size.y * 0.8 / (48.0 * 1.25 * lines))
 	l.outline_size = 0
 	l.line_spacing = -6.0
+	fit(l, Vector2(size.x * 0.88, size.y * 0.8))
 	l.modulate = Color(0.05, 0.05, 0.05)
 	l.double_sided = false
 	l.shaded = false

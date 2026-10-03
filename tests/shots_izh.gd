@@ -32,6 +32,7 @@ func _run() -> void:
 	# Сбоку слева, перед — влево (как на плакате)
 	var xf := I.global_transform
 	await shot("izh_side", xf * Vector3(-3.4, 0.75, -0.05), xf * Vector3(0, 0.62, -0.05))
+	await shot("izh_badge", xf * Vector3(-1.2, 0.85, -0.1), xf * Vector3(0, 0.78, -0.05))
 	await shot("izh_front", xf * Vector3(-1.8, 1.2, -2.8), xf * Vector3(0, 0.7, 0))
 	await shot("izh_rear", xf * Vector3(1.8, 1.3, 2.8), xf * Vector3(0, 0.7, 0))
 	quit()
