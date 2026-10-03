@@ -31,6 +31,13 @@ var minimap := true
 var third_person := true
 ## Ячейка сохранения 1–3.
 var slot := 1
+## Свои клавиши: клавиша действия в игре → какой её жмёт игрок (только
+## изменённые). См. KeyRemap.
+var key_map := {}
+## Свои места кнопок на телефоне: "подпись|режим" или "wheel" →
+## [x и y центра долей экрана, размер]. См. touch_controls.gd.
+var touch_layout := {}
+var remap: KeyRemap
 var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
 	else (1 if OS.has_feature("web") else 2)
 
@@ -78,6 +85,13 @@ func _ready() -> void:
 		minimap = bool(cfg.get_value("ui", "minimap", true))
 		third_person = bool(cfg.get_value("ui", "third_person", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
+		var km: Variant = cfg.get_value("controls", "keys", {})
+		key_map = (km as Dictionary).duplicate() if km is Dictionary else {}
+		var tl: Variant = cfg.get_value("controls", "touch", {})
+		touch_layout = (tl as Dictionary).duplicate(true) if tl is Dictionary else {}
+	remap = KeyRemap.new()
+	remap.name = "KeyRemap"
+	get_tree().root.add_child.call_deferred(remap)
 	_apply()
 
 
@@ -146,6 +160,38 @@ func set_vibration(v: bool) -> void:
 	changed.emit()
 
 
+## Назначить клавишу user действию game_key. Если она уже у другого
+## действия — меняются местами.
+func bind_key(game_key: int, user: int) -> void:
+	var old := KeyRemap.key_for(game_key)
+	for a in KeyRemap.ACTIONS:
+		var other: int = a[0]
+		if other != game_key and KeyRemap.key_for(other) == user:
+			_set_bind(other, old)
+	_set_bind(game_key, user)
+	_save()
+	changed.emit()
+
+
+func _set_bind(game_key: int, user: int) -> void:
+	if user == game_key:
+		key_map.erase(game_key)
+	else:
+		key_map[game_key] = user
+
+
+func reset_keys() -> void:
+	key_map = {}
+	_save()
+	changed.emit()
+
+
+func set_touch_layout(d: Dictionary) -> void:
+	touch_layout = d.duplicate(true)
+	_save()
+	changed.emit()
+
+
 func set_slot(v: int) -> void:
 	slot = clampi(v, 1, 3)
 	_save()
@@ -208,4 +254,6 @@ func _save() -> void:
 	cfg.set_value("ui", "minimap", minimap)
 	cfg.set_value("ui", "third_person", third_person)
 	cfg.set_value("save", "slot", slot)
+	cfg.set_value("controls", "keys", key_map)
+	cfg.set_value("controls", "touch", touch_layout)
 	cfg.save(PATH)

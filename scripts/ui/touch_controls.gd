@@ -11,6 +11,10 @@ extends CanvasLayer
 ## и тормоза, рычаг D/R — вперёд или назад, ручник, выход и вид — всё можно
 ## жать одновременно разными пальцами. Сверху справа всегда меню, карта, журнал.
 ##
+## Кнопки и руль можно расставить под себя: меню → «Управление» → «Настроить
+## кнопки под себя». Игра встаёт на паузу, кнопки таскают пальцем, «−» и «+»
+## меняют размер выбранной; места хранятся долями экрана (SettingsManager).
+##
 ## Кнопки и джойстик не управляют игрой напрямую: они «нажимают» те же
 ## клавиши, что и клавиатура (Input.parse_input_event), поэтому вся
 ## остальная игра о телефоне ничего не знает. Камеру крутим через Player._look.
@@ -43,11 +47,24 @@ var _horn_index := -1
 const SPLIT_HINT_S := 10.0
 var _split_hint: Control
 var _split_left := SPLIT_HINT_S
+## Редактор раскладки
+var editing := false
+var _edit_drive := false  # какой набор настраиваем: пешком или в машине
+var _lay := {}  # раскладка, пока редактируем
+var _sel := ""  # что выбрано: "подпись|режим" или "wheel"
+var _drag_index := -1
+var _grab := Vector2.ZERO
+var _wheel_k := 1.0
+var _edit_bar: PanelContainer
+var _edit_label: Label
+var _edit_mode_btn: Button
+var _edit_overlay: Control
 
 
 func _ready() -> void:
 	layer = 20
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("touch_controls")
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -87,6 +104,7 @@ func _ready() -> void:
 	_add_button("Меню", KEY_ESCAPE, "all", "tr", Vector2(-50, 130), 30)
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)
+	_build_editor(root)
 	get_viewport().size_changed.connect(_layout)
 	SettingsManager.changed.connect(_layout)
 	_layout()
@@ -134,6 +152,8 @@ func _add_button(text: String, key: int, mode: String, anchor: String, offset: V
 	add_child(b)
 	var entry := {"node": b, "label": label, "text": text, "key": key, "mode": mode, "anchor": anchor, "offset": offset, "half": half, "down": false}
 	b.pressed.connect(func() -> void:
+		if editing:
+			return
 		if entry.key < 0:
 			_toggle_reverse()
 			return
@@ -234,7 +254,14 @@ func _layout() -> void:
 	_base.position = _stick_center - Vector2(STICK_R, STICK_R)
 	_base.modulate.a = 0.55
 	_set_knob(Vector2.ZERO)
-	_wheel.position = _wheel_center - Vector2(WHEEL_R, WHEEL_R)
+	var lay: Dictionary = _lay if editing else SettingsManager.touch_layout
+	_wheel_k = 1.0
+	if lay.has("wheel"):
+		var w: Array = lay["wheel"]
+		_wheel_center = Vector2(float(w[0]) * size.x, float(w[1]) * size.y)
+		_wheel_k = float(w[2])
+	_wheel.scale = Vector2(_wheel_k, _wheel_k)
+	_wheel.position = _wheel_center - Vector2(WHEEL_R, WHEEL_R) * _wheel_k
 	for e in _buttons:
 		var half: Vector2 = e.half
 		var base := Vector2(size.x, 0.0)
@@ -253,8 +280,19 @@ func _layout() -> void:
 				var mid := (310.0 + size.x - 400.0) * 0.5
 				base = Vector2(size.x - mid if lefty else mid, size.y)
 		var center: Vector2 = base + off
-		(e.node as TouchScreenButton).position = center - half
-		e["rect"] = Rect2(center - half, half * 2.0)
+		# Своё место и размер, если игрок переставил кнопку
+		var k := 1.0
+		var id := _id(e)
+		if lay.has(id):
+			var v: Array = lay[id]
+			center = Vector2(float(v[0]) * size.x, float(v[1]) * size.y)
+			k = float(v[2])
+		e["center"] = center
+		(e.node as TouchScreenButton).scale = Vector2(k, k)
+		(e.node as TouchScreenButton).position = center - half * k
+		e["rect"] = Rect2(center - half * k, half * 2.0 * k)
+	if _edit_overlay:
+		_edit_overlay.queue_redraw()
 
 
 ## Где кончается половина для ходьбы (по X): ровно середина экрана.
@@ -296,7 +334,7 @@ func _driving() -> bool:
 
 ## Пешком — джойстик и свои кнопки, в машине — руль и педали.
 func _apply_mode() -> void:
-	var drive := _driving()
+	var drive := _edit_drive if editing else _driving()
 	for e in _buttons:
 		var on: bool = e.mode == "all" or (e.mode == "drive") == drive
 		# Рычаг D/R — только с автоматом, на механике передачи свои
@@ -306,7 +344,7 @@ func _apply_mode() -> void:
 	_base.visible = not drive
 	_knob.visible = not drive
 	_wheel.visible = drive
-	_split_hint.visible = not drive
+	_split_hint.visible = not drive and not editing
 	# Сели в машину — рычаг на D
 	GameManager.pedal_reverse = false
 	_update_lever()
@@ -322,6 +360,9 @@ func button(text: String) -> TouchScreenButton:
 func _process(delta: float) -> void:
 	# Сели в машину или вышли — меняем набор кнопок. Всё зажатое
 	# отпускаем, иначе «Газ» останется нажатым уже пешком
+	if editing:
+		visible = true
+		return
 	var drive := _driving()
 	if drive != _was_driving:
 		_was_driving = drive
@@ -349,6 +390,9 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if editing:
+		_edit_input(event)
+		return
 	if get_tree().paused:
 		return
 	var touch := event as InputEventScreenTouch
@@ -359,11 +403,11 @@ func _input(event: InputEvent) -> void:
 			# В машине: палец на руле крутит его, в центре — сигнал
 			if _driving():
 				var d := touch.position.distance_to(_wheel_center)
-				if d < HUB_R and _horn_index < 0:
+				if d < HUB_R * _wheel_k and _horn_index < 0:
 					_horn_index = touch.index
 					_hold(KEY_H, true)
 					_wheel.queue_redraw()
-				elif d < WHEEL_R + 40.0 and _wheel_index < 0:
+				elif d < WHEEL_R * _wheel_k + 40.0 and _wheel_index < 0:
 					_wheel_index = touch.index
 					_wheel_last = (touch.position - _wheel_center).angle()
 					_wheel.queue_redraw()
@@ -484,3 +528,189 @@ func _key(key: int, down: bool) -> void:
 	e.keycode = key
 	e.pressed = down
 	Input.parse_input_event(e)
+
+
+# --- Редактор раскладки --------------------------------------------------------
+
+func _id(e: Dictionary) -> String:
+	return "%s|%s" % [e.text, e.mode]
+
+
+## Начать настройку: пауза, видны кнопки нынешнего набора и полоса редактора.
+func start_edit() -> void:
+	_release_all()
+	editing = true
+	_lay = SettingsManager.touch_layout.duplicate(true)
+	_edit_drive = _driving()
+	_sel = ""
+	get_tree().paused = true
+	visible = true
+	_edit_bar.visible = true
+	_edit_overlay.visible = true
+	_split_hint.visible = false
+	_apply_mode()
+	_layout()
+	_update_edit_label()
+
+
+## Готово: сохранить раскладку и вернуться в игру.
+func finish_edit(save := true) -> void:
+	if save:
+		SettingsManager.set_touch_layout(_lay)
+	editing = false
+	_drag_index = -1
+	_edit_bar.visible = false
+	_edit_overlay.visible = false
+	_apply_mode()
+	_layout()
+	get_tree().paused = false
+
+
+func reset_layout() -> void:
+	_lay = {}
+	_sel = ""
+	_layout()
+	_update_edit_label()
+
+
+## Поменять размер выбранного: шаг 0.1, от 0.6 до 1.8.
+func resize_selected(step: float) -> void:
+	if _sel == "":
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var c := _sel_center()
+	var k := clampf(_sel_scale() + step, 0.6, 1.8)
+	_lay[_sel] = [c.x / vs.x, c.y / vs.y, k]
+	_layout()
+	_update_edit_label()
+
+
+func _sel_center() -> Vector2:
+	if _sel == "wheel":
+		return _wheel_center
+	for e in _buttons:
+		if _id(e) == _sel:
+			return e.center
+	return Vector2.ZERO
+
+
+func _sel_scale() -> float:
+	if _sel == "wheel":
+		return _wheel_k
+	for e in _buttons:
+		if _id(e) == _sel:
+			return (e.node as TouchScreenButton).scale.x
+	return 1.0
+
+
+## Передвинуть выбранное: центр в точку p (в пределах экрана).
+func move_selected(p: Vector2) -> void:
+	if _sel == "":
+		return
+	var vs := get_viewport().get_visible_rect().size
+	p = Vector2(clampf(p.x, 20.0, vs.x - 20.0), clampf(p.y, 20.0, vs.y - 20.0))
+	_lay[_sel] = [p.x / vs.x, p.y / vs.y, _sel_scale()]
+	_layout()
+
+
+## Что под пальцем: видимая кнопка или руль (в машине).
+func _pick(pos: Vector2) -> String:
+	for e in _buttons:
+		if (e.node as TouchScreenButton).visible and (e.rect as Rect2).grow(6.0).has_point(pos):
+			return _id(e)
+	if _edit_drive and pos.distance_to(_wheel_center) < WHEEL_R * _wheel_k:
+		return "wheel"
+	return ""
+
+
+func _edit_input(event: InputEvent) -> void:
+	var touch := event as InputEventScreenTouch
+	if touch:
+		if touch.pressed:
+			if _edit_bar.get_global_rect().has_point(touch.position):
+				return
+			var id := _pick(touch.position)
+			if id != "":
+				_sel = id
+				_drag_index = touch.index
+				_grab = _sel_center() - touch.position
+				_update_edit_label()
+				_edit_overlay.queue_redraw()
+		elif touch.index == _drag_index:
+			_drag_index = -1
+		return
+	var drag := event as InputEventScreenDrag
+	if drag and drag.index == _drag_index:
+		move_selected(drag.position + _grab)
+
+
+func _update_edit_label() -> void:
+	var what := "ничего — нажми на кнопку или руль" if _sel == "" else ("руль" if _sel == "wheel" else "«%s»" % _sel.get_slice("|", 0))
+	_edit_label.text = "Таскай кнопки пальцем. Выбрано: %s" % what
+	_edit_mode_btn.text = "Кнопки: в машине" if _edit_drive else "Кнопки: пешком"
+
+
+func _build_editor(root: Control) -> void:
+	_edit_overlay = Control.new()
+	_edit_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_edit_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_edit_overlay.visible = false
+	_edit_overlay.draw.connect(_draw_edit_overlay)
+	root.add_child(_edit_overlay)
+	_edit_bar = PanelContainer.new()
+	_edit_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_edit_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_edit_bar.position.y = 4.0
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.08, 0.1, 0.9)
+	sb.border_color = Color(0.95, 0.7, 0.25)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(6)
+	_edit_bar.add_theme_stylebox_override("panel", sb)
+	_edit_bar.visible = false
+	root.add_child(_edit_bar)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	_edit_bar.add_child(v)
+	_edit_label = Label.new()
+	_edit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_edit_label.add_theme_font_size_override("font_size", 15)
+	v.add_child(_edit_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	v.add_child(row)
+	var mk := func(text: String, fn: Callable) -> Button:
+		var b := Button.new()
+		b.text = text
+		b.custom_minimum_size = Vector2(56, 40)
+		b.add_theme_font_size_override("font_size", 17)
+		b.pressed.connect(fn)
+		row.add_child(b)
+		return b
+	mk.call("−", func() -> void: resize_selected(-0.1))
+	mk.call("+", func() -> void: resize_selected(0.1))
+	_edit_mode_btn = mk.call("", func() -> void:
+		_edit_drive = not _edit_drive
+		_sel = ""
+		_apply_mode()
+		_layout()
+		_update_edit_label())
+	mk.call("Сбросить", reset_layout)
+	mk.call("Готово", func() -> void: finish_edit(true))
+
+
+## Рамки вокруг всего, что можно двигать; выбранное — жёлтой.
+func _draw_edit_overlay() -> void:
+	if not editing:
+		return
+	var items: Array = []
+	for e in _buttons:
+		if (e.node as TouchScreenButton).visible:
+			items.append([_id(e), e.rect])
+	if _edit_drive:
+		var r := WHEEL_R * _wheel_k
+		items.append(["wheel", Rect2(_wheel_center - Vector2(r, r), Vector2(r, r) * 2.0)])
+	for it in items:
+		var sel: bool = it[0] == _sel
+		_edit_overlay.draw_rect((it[1] as Rect2).grow(3.0), Color(1.0, 0.8, 0.2, 0.95) if sel else Color(1, 1, 1, 0.5), false, 3.0 if sel else 1.5)

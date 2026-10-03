@@ -29,6 +29,9 @@ var _scroll: ScrollContainer
 var _pages := {}  # имя → VBoxContainer
 var _page := "main"
 var _controls_text: RichTextLabel
+## Свои клавиши: кнопки «действие — клавиша»; ждём нажатия для game_key
+var _key_buttons := {}  # клавиша действия → Button
+var _waiting := -1
 var _back: Button
 
 
@@ -294,6 +297,53 @@ func _build_controls(box: VBoxContainer) -> void:
 	_controls_text.add_theme_font_size_override("normal_font_size", 16)
 	_controls_text.add_theme_font_size_override("bold_font_size", 17)
 	box.add_child(_controls_text)
+	if GameManager.touch_mode:
+		_button(box, "Настроить кнопки под себя", _edit_touch, true)
+		return
+	# Свои клавиши: жми на клавишу у действия, потом — новую клавишу
+	var head := Label.new()
+	head.text = "Свои клавиши — нажми на клавишу и потом новую (Esc — отмена)"
+	head.modulate = AMBER
+	box.add_child(head)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 4)
+	box.add_child(grid)
+	for a in KeyRemap.ACTIONS:
+		var gk: int = a[0]
+		var l := Label.new()
+		l.text = a[1]
+		l.add_theme_font_size_override("font_size", 14)
+		grid.add_child(l)
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(110, 32)
+		b.add_theme_font_size_override("font_size", 14)
+		b.pressed.connect(func() -> void:
+			_waiting = gk
+			SettingsManager.remap.capturing = true
+			_refresh_keys())
+		grid.add_child(b)
+		_key_buttons[gk] = b
+	_button(box, "Вернуть клавиши как было", func() -> void:
+		SettingsManager.reset_keys()
+		_refresh_keys())
+
+
+func _refresh_keys() -> void:
+	for gk in _key_buttons:
+		var b: Button = _key_buttons[gk]
+		b.text = "Нажми клавишу…" if gk == _waiting else KeyRemap.key_name(KeyRemap.key_for(gk))
+		b.modulate = AMBER if gk == _waiting else (Color(0.7, 1.0, 0.75) if SettingsManager.key_map.has(gk) else Color.WHITE)
+
+
+## Редактор кнопок на телефоне: закрываем меню, кнопки — таскать пальцем.
+func _edit_touch() -> void:
+	var tc := get_tree().get_first_node_in_group("touch_controls")
+	if tc == null:
+		return
+	_close()
+	tc.start_edit()
 
 
 func _build_confirm(box: VBoxContainer) -> void:
@@ -405,6 +455,7 @@ func _controls_bbcode() -> String:
 		t += "  M — карта (ещё раз — весь район), J — журнал, F5 — сохранить, F9 — загрузить, F1 — подсказка\n"
 	else:
 		t += "  «Карта» и «Журнал» — справа вверху; «Карта» ещё раз — весь район\n"
+		t += "  Кнопки и руль можно переставить и сделать крупнее — «Настроить кнопки под себя» ниже\n"
 	return t
 
 
@@ -412,6 +463,16 @@ func _controls_bbcode() -> String:
 
 func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
+	# Ждём новую клавишу для действия
+	if _waiting >= 0 and key and key.pressed and not key.echo:
+		get_viewport().set_input_as_handled()
+		if key.physical_keycode != KEY_ESCAPE:
+			SettingsManager.bind_key(_waiting, key.physical_keycode)
+			SoundLibrary.play("click", -6.0)
+		_waiting = -1
+		SettingsManager.remap.capturing = false
+		_refresh_keys()
+		return
 	if key and key.pressed and not key.echo and key.physical_keycode == KEY_ESCAPE:
 		if _panel.visible and _page != "main":
 			_show("main")
@@ -453,6 +514,7 @@ func _show(page: String) -> void:
 		_refresh()
 	if page == "controls":
 		_controls_text.text = _controls_bbcode()
+		_refresh_keys()
 	for pn in _pages:
 		(_pages[pn] as Control).visible = pn == page
 	_back.visible = page == "settings" or page == "controls"
