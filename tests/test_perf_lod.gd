@@ -126,6 +126,20 @@ func _run() -> void:
 	tr._vehicles[0].head.albedo_color = Color.RED
 	ok(lights.mesh.surface_get_material(0).albedo_color == Color.RED, "цвет фар по-прежнему меняется на ходу")
 
+	print("== Дальние попутки молчат")
+	await frames(3)
+	var cam := root.get_viewport().get_camera_3d().global_position
+	var near_on := true
+	var far_off := true
+	var heard := 0
+	for v in tr._vehicles:
+		var d: float = absf((v.body as Node3D).global_position.x - cam.x)
+		var playing: bool = (v.snd as AudioStreamPlayer3D).playing
+		if playing: heard += 1
+		if d > tr.SOUND_RANGE + 20.0 and playing: far_off = false
+		if d < tr.SOUND_RANGE - 20.0 and absf(cam.z) < 40.0 and not playing: near_on = false
+	ok(far_off and near_on and heard < tr._vehicles.size(), "мотор слышно только у ближних: %d из %d" % [heard, tr._vehicles.size()])
+
 	print("== Телефон: 3D — постоянное число строк")
 	var GM = root.get_node("GameManager")
 	GM.touch_mode = true

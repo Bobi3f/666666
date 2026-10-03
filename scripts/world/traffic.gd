@@ -17,6 +17,8 @@ const WORLD_X := Region.HALF - 10.0
 ## +X — южная (город); остановки на съездах к сёлам добавляются в _ready.
 const STOPS := {-1: -68.5, 1: 32.0}
 const STOP_WAIT := 8.0
+## Дальше этого мотор попутки не слышно — звук выключаем.
+const SOUND_RANGE := 80.0
 ## Какие машины едут по трассе (по кругу).
 const KINDS := ["car", "moskvich", "zaz", "volga", "car", "niva", "uaz", "truck", "moskvich", "kamaz", "car", "zaz"]
 
@@ -68,13 +70,12 @@ func _spawn(dir: int, x: float, color: Color, kind: String) -> void:
 	var snd := AudioStreamPlayer3D.new()
 	snd.stream = SoundLibrary.stream("engine")
 	snd.unit_size = 5.0
-	snd.max_distance = 70.0
+	snd.max_distance = SOUND_RANGE - 10.0
 	snd.volume_db = -6.0 if bus else -10.0
 	snd.pitch_scale = 0.7 if bus else 1.4
 	body.add_child(snd)
 	add_child(body)
 	_place(body, x, dir)
-	snd.play()
 	var cruise := BUS_CRUISE if bus else (CRUISE * 0.75 if kind in ["truck", "kamaz", "zaz", "uaz"] else CRUISE)
 	_vehicles.append({"body": body, "dir": dir, "speed": cruise, "cruise": cruise, "bus": bus, "kind": kind,
 		"wait": 0.0, "left_stop": INF, "at_stop": INF, "stopped": 0.0, "snd": snd, "len": size.z, "head": lights[1], "tail": lights[2]})
@@ -123,6 +124,11 @@ func _build_lights(size: Vector3) -> Array:
 func _physics_process(delta: float) -> void:
 	var h := TimeManager.hour()
 	var dark := h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
+	# Помехи для всех машин — один список на кадр, а не на каждую машину
+	var others: Array = [GameManager.player]
+	others.append_array(get_tree().get_nodes_in_group("vehicles"))
+	var cam3 := get_viewport().get_camera_3d()
+	var cam := cam3.global_position if cam3 else Vector3.ZERO
 	for v in _vehicles:
 		var body: AnimatableBody3D = v.body
 		var dir: int = v.dir
@@ -163,7 +169,7 @@ func _physics_process(delta: float) -> void:
 				target = minf(target, sqrt(maxf(to_line - 1.0, 0.0) * 6.0))
 
 		# Препятствие впереди в своей полосе
-		var gap := _gap_ahead(v)
+		var gap := _gap_ahead(v, others)
 		var need: float = v.len * 0.5 + 3.0
 		if gap < need + 12.0:
 			target = minf(target, maxf(0.0, (gap - need) * 1.2))
@@ -171,15 +177,29 @@ func _physics_process(delta: float) -> void:
 		var sp: float = v.speed
 		var accel := 3.0 if target > sp else 8.0
 		var slowing := target < sp - 0.5 or sp < 0.3
-		(v.head as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.8) if dark else Color(0.75, 0.75, 0.7)
-		(v.tail as StandardMaterial3D).albedo_color = Color(1.0, 0.1, 0.05) if slowing else (Color(0.6, 0.06, 0.04) if dark else Color(0.35, 0.05, 0.04))
+		# Цвет фар — только когда поменялся: иначе материал обновляется каждый кадр
+		var lamps := int(dark) + 2 * int(slowing)
+		if lamps != int(v.get("lamps", -1)):
+			v.lamps = lamps
+			(v.head as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.8) if dark else Color(0.75, 0.75, 0.7)
+			(v.tail as StandardMaterial3D).albedo_color = Color(1.0, 0.1, 0.05) if slowing else (Color(0.6, 0.06, 0.04) if dark else Color(0.35, 0.05, 0.04))
 		sp = move_toward(sp, target, accel * delta)
 		v.speed = sp
 		x += sp * dir * delta
 		if x * dir > WORLD_X:
 			x = -WORLD_X * dir
 		_place(body, x, dir)
-		(v.snd as AudioStreamPlayer3D).pitch_scale = (0.6 if v.bus or v.kind in ["truck", "kamaz"] else 1.0) + sp / CRUISE * 0.8
+		# Мотор слышно только вблизи: дальние машины молчат и не тратят
+		# время на смешивание звука (в браузере его считает тот же процессор)
+		var snd := v.snd as AudioStreamPlayer3D
+		var hear := absf(x - cam.x) < SOUND_RANGE and absf(dir * LANE_Z - cam.z) < SOUND_RANGE
+		if hear != snd.playing:
+			if hear:
+				snd.play()
+			else:
+				snd.stop()
+		if hear:
+			snd.pitch_scale = (0.6 if v.bus or v.kind in ["truck", "kamaz"] else 1.0) + sp / CRUISE * 0.8
 
 		# Стоят из-за игрока — сигналят
 		if sp < 0.5 and v.wait <= 0.0 and gap < need + 4.0:
@@ -192,7 +212,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## Расстояние до ближайшей помехи впереди по полосе.
-func _gap_ahead(v: Dictionary) -> float:
+func _gap_ahead(v: Dictionary, others: Array) -> float:
 	var body: AnimatableBody3D = v.body
 	var dir: int = v.dir
 	var x := body.global_position.x
@@ -204,8 +224,6 @@ func _gap_ahead(v: Dictionary) -> float:
 		var d: float = ((other.body as Node3D).global_position.x - x) * dir - other.len * 0.5
 		if d > 0.0:
 			best = minf(best, d)
-	var others: Array = [GameManager.player]
-	others.append_array(get_tree().get_nodes_in_group("vehicles"))
 	for n in others:
 		var node := n as Node3D
 		if node == null or not node.is_inside_tree() or not node.visible:
