@@ -114,6 +114,8 @@ func _refresh() -> void:
 	for id in Girl.GIFTS:
 		var g: Array = Girl.GIFTS[id]
 		_add("Подарить %s — %d грн" % [g[0], g[1]], Color(0.55, 0.25, 0.4), func() -> void: _say(girl.gift(id)))
+	if Progress.has_item("ring") and not girl.engaged and not girl.married:
+		_add("Сделать предложение (кольцо)", Color(0.7, 0.55, 0.15), func() -> void: _say(girl.propose()))
 	if girl.state == Girl.State.LIFE:
 		_add("Пойдём гулять / покатаемся", Color(0.25, 0.45, 0.3), func() -> void:
 			_say(girl.invite())

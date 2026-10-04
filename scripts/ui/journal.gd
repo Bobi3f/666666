@@ -84,7 +84,7 @@ func is_open() -> bool:
 
 func _open(victory: bool) -> void:
 	_victory = victory
-	_title.text = "Ты — хозяин Каменки!" if victory else "Журнал"
+	_title.text = "Ты — хозяин района!" if victory else "Журнал"
 	_close_btn.text = "Играть дальше" if victory else "Закрыть (J)"
 	_text.text = _victory_text() if victory else _journal_text()
 	_license_btn.visible = not victory
@@ -188,7 +188,8 @@ func _stats_text() -> String:
 
 func _victory_text() -> String:
 	var t := "[center]Из покосившейся избы — в кирпичный дом под черепицей.\n"
-	t += "Вся Каменка знает: этот своего добьётся.[/center]\n\n"
+	t += "Своё СТО с Васьком, ларьки, автопарк, рейсовый автобус —\n"
+	t += "и Оля рядом. Весь район знает: этот своего добьётся.[/center]\n\n"
 	t += _stats_text()
 	t += "\n[color=#9a9a9a]Игра продолжается: рыбачь, помогай соседям, катайся на Яве. Журнал — J.[/color]"
 	return t

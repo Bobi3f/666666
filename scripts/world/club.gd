@@ -28,6 +28,8 @@ var close_hour := 1.0
 var days: Array = []
 var fee := 20
 var prize := 0
+## Столик на двоих у стены (0 — нет): ужин с девушкой, раз за вечер.
+var date_price := 0
 ## Площадка перед входом (в координатах клуба, вход — в +Z)
 var plaza := Rect2()
 
@@ -38,6 +40,7 @@ var _hits := 0
 var _pressed_beat := -1
 var _paid_day := -99
 var _prize_day := -99
+var _date_day := -99
 var _tiles: Array[StandardMaterial3D] = []
 var _ball: MeshInstance3D
 var _dancers: Array[MeshInstance3D] = []
@@ -123,6 +126,16 @@ func _build() -> void:
 	b.box(bar + Vector3(-0.6, 1.1, -2.6), bar + Vector3(0.6, 1.16, 2.6), Color(0.5, 0.35, 0.25))
 	for k in 5:
 		b.box(bar + Vector3(0.7, 1.4, -2.0 + k * 0.9), bar + Vector3(0.85, 1.75, -1.8 + k * 0.9), [Color(0.3, 0.6, 0.3), Color(0.7, 0.5, 0.2), Color(0.5, 0.2, 0.2)][k % 3])
+	if date_price > 0:
+		# Столик при свечке — без освещения сцены (в углу темно), свой меш
+		var tb := MeshBuilder.new()
+		tb.ground_shade = false
+		tb.xf = _xf
+		_date_table(tb, Vector3(-hx + 1.8, 0, 1.0))
+		var tm := tb.build_mesh(true)
+		tm.visibility_range_end = 60.0
+		add_child(tm)
+		add_child(tb.build_body())
 	if plaza.size != Vector2.ZERO:
 		b.box(Vector3(plaza.position.x, 0, plaza.position.y), Vector3(plaza.end.x, 0.045, plaza.end.y), Color(0.34, 0.34, 0.35))
 	add_child(b.build_mesh())
@@ -266,6 +279,13 @@ func _build() -> void:
 		return "E — лимонад «Буратино» (20 грн)" if is_open() else ""
 	drink.activated.connect(_drink)
 	add_child(drink)
+	if date_price > 0:
+		var table := InteractZone.create("", Vector3(2.6, 2.2, 2.6))
+		table.name = "DateTable"
+		table.transform = _xf * Transform3D(Basis.IDENTITY, Vector3(-hx + 1.8, 0, 1.0))
+		table.prompt_fn = _date_prompt
+		table.activated.connect(date)
+		add_child(table)
 	_music = AudioStreamPlayer3D.new()
 	_music.unit_size = 7.0
 	_music.max_distance = 70.0
@@ -462,10 +482,53 @@ static func make_disco_loop() -> AudioStreamWAV:
 	return s
 
 
+## Столик: скатерть, свеча, бутылка шампанского, два стула. Цвета —
+## как в тёплом свете свечи (меш без освещения).
+func _date_table(b: MeshBuilder, p: Vector3) -> void:
+	b.box(p + Vector3(-0.05, 0, -0.05), p + Vector3(0.05, 0.72, 0.05), Color(0.2, 0.18, 0.18), true)
+	b.box(p + Vector3(-0.45, 0.72, -0.45), p + Vector3(0.45, 0.76, 0.45), Color(0.82, 0.7, 0.54))
+	b.box(p + Vector3(-0.47, 0.6, -0.47), p + Vector3(0.47, 0.76, -0.45), Color(0.82, 0.7, 0.54))
+	b.box(p + Vector3(-0.03, 0.76, -0.03), p + Vector3(0.03, 0.9, 0.03), Color(1.0, 0.95, 0.7))
+	b.box(p + Vector3(0.15, 0.76, 0.1), p + Vector3(0.23, 1.05, 0.18), Color(0.15, 0.35, 0.18))
+	for s in [-1.0, 1.0]:
+		var c := p + Vector3(0, 0, s * 0.75)
+		b.box(c + Vector3(-0.22, 0.42, -0.22), c + Vector3(0.22, 0.47, 0.22), Color(0.42, 0.12, 0.14))
+		b.box(c + Vector3(-0.22, 0.47, s * 0.18), c + Vector3(0.22, 1.0, s * 0.22), Color(0.42, 0.12, 0.14))
+		b.box(c + Vector3(-0.03, 0, -0.03), c + Vector3(0.03, 0.42, 0.03), Color(0.2, 0.18, 0.18))
+
+
+func _date_prompt() -> String:
+	if not is_open() or _paid_day != _night():
+		return ""
+	if _date_day == _night():
+		return "Столик ваш до закрытия — танцуйте!"
+	var g := get_tree().get_first_node_in_group("girl") as Girl
+	if g == null or not g.with_player(12.0):
+		return "Столик на двоих — приходи с девушкой"
+	return "E — столик на двоих: ужин и шампанское (%d грн)" % date_price
+
+
+## Ужин за столиком с Олей: симпатия, сытость, задание «Свадьба».
+func date() -> void:
+	var g := get_tree().get_first_node_in_group("girl") as Girl
+	if not is_open() or _date_day == _night() or g == null or not g.with_player(12.0):
+		return
+	if not GameManager.spend(date_price):
+		return
+	_date_day = _night()
+	TimeManager.advance(60.0)
+	NeedsManager.eat(40.0)
+	g.like(10)
+	SoundLibrary.play("cash", -4.0)
+	QuestManager.event("metelitsa_table")
+	GameManager.notify("Ужин при свечах в %s. Оля: «Как в кино… Спасибо тебе!»" % title)
+
+
 func save_state() -> Dictionary:
-	return {"paid": _paid_day, "prize": _prize_day}
+	return {"paid": _paid_day, "prize": _prize_day, "date": _date_day}
 
 
 func load_state(d: Dictionary) -> void:
 	_paid_day = int(d.get("paid", -99))
 	_prize_day = int(d.get("prize", -99))
+	_date_day = int(d.get("date", -99))

@@ -77,7 +77,35 @@ func _run() -> void:
 	ok(shift_zone.text().contains("корочки"), "без курсов на СТО не берут: " + shift_zone.text())
 	GM.money = 1000
 	east.take_course()
-	ok(PR.has_item("mechanic") and GM.money == 1000 - east.COURSE_PRICE, "выучился на автослесаря")
+	var LP = east.lesson_panel
+	ok(LP.visible and GM.money == 1000 - east.COURSE_PRICE and LP._items.size() == 3, "курсы оплачены, урок 1 — три вопроса")
+	for i in 3: LP.answer(LP.right_index())
+	ok(east.course_lessons == 1 and not LP.visible and not PR.has_item("mechanic"), "урок пройден: 1 из 3")
+	east.take_course()
+	ok(not LP.visible and course.text().contains("завтра"), "второй урок за день — нет: " + course.text())
+	var day0: int = TM.day
+	for d in 2:
+		TM.day += 1; TM.minutes = 10 * 60.0
+		east.take_course()
+		for i in 3: LP.answer(LP.right_index())
+	ok(east.course_lessons == 3 and GM.money == 1000 - east.COURSE_PRICE, "три урока, платил один раз")
+	TM.day += 1; TM.minutes = 10 * 60.0
+	ok(course.text().contains("экзамен"), "дальше экзамен: " + course.text())
+	east.take_course()
+	ok(LP._items.size() == 5, "на экзамене пять вопросов")
+	for i in 5: LP.answer((LP.right_index() + 1) % 3)
+	ok(not PR.has_item("mechanic") and last().contains("не сдан"), "двойка на экзамене — пересдача: " + last())
+	TM.day += 1; TM.minutes = 10 * 60.0
+	east.take_course()
+	for i in 4: LP.answer(LP.right_index())
+	LP.answer((LP.right_index() + 1) % 3)
+	ok(PR.has_item("mechanic") and last().contains("Экзамен сдан"), "4 из 5 — корочка автослесаря")
+	var st0: Dictionary = east.save_state()
+	east.load_state({})
+	ok(east.course_lessons == 0, "старое сохранение — курсы с нуля")
+	east.load_state(st0)
+	ok(east.course_lessons == 3 and east.course_paid, "курсы сохраняются")
+	TM.day = day0
 	TM.minutes = 10 * 60.0
 	NM.energy = 80.0
 	var m0: int = GM.money

@@ -12,6 +12,11 @@ const HOME := {
 	"fridge": ["Холодильник «ЗИЛ»", 600, "каждое утро +1 еды в запас"],
 	"chair": ["Кресло-качалка", 250, "у телевизора, само покачивается"],
 }
+## К свадьбе — для Оли (сюжет «Свадьба»)
+const WEDDING := {
+	"ring": ["Золотое кольцо", 1500, "для предложения — сделать в разговоре с Олей"],
+	"dress": ["Свадебное платье с фатой", 1200, "без него в ЗАГСе не распишут"],
+}
 const PARTS := {
 	"speedo": ["Спидометр с подсветкой", 200, "зелёные приборы, хромовый обод"],
 	"exhaust": ["Прямоточный глушак", 350, "громче, ниже и +6% тяги"],
@@ -117,7 +122,7 @@ func open(m: String, vehicles: Array = []) -> void:
 	visible = true
 	get_tree().paused = true
 	_status.text = ""
-	_title.text = "Базар — для дома" if mode == "home" else "Базар — автозапчасти"
+	_title.text = {"home": "Базар — для дома", "wedding": "Базар — к свадьбе"}.get(mode, "Базар — автозапчасти")
 	_cars_label.visible = mode == "parts"
 	_cars_box.visible = mode == "parts"
 	for c in _cars_box.get_children():
@@ -146,7 +151,7 @@ func _refresh() -> void:
 		return
 	if mode == "parts":
 		_goods.add_child(_label("Ставим на: %s" % _car.spec.title, 18, Color.WHITE))
-	var list: Dictionary = HOME if mode == "home" else PARTS
+	var list := _list()
 	for id in list:
 		var it: Array = list[id]
 		var row := HBoxContainer.new()
@@ -168,15 +173,19 @@ func _refresh() -> void:
 
 
 ## Куплено ли уже (диски можно брать снова — другой цвет).
+func _list() -> Dictionary:
+	return {"home": HOME, "wedding": WEDDING}.get(mode, PARTS)
+
+
 func _has(id: String) -> bool:
-	if mode == "home":
+	if mode == "home" or mode == "wedding":
 		return Progress.has_item(id)
 	return id != "rims" and _car != null and _car.has_part(id)
 
 
 ## Купить товар id. true — получилось.
 func buy(id: String) -> bool:
-	var list: Dictionary = HOME if mode == "home" else PARTS
+	var list := _list()
 	if not list.has(id) or _has(id) or (mode == "parts" and _car == null):
 		return false
 	var it: Array = list[id]
@@ -184,9 +193,11 @@ func buy(id: String) -> bool:
 		_status.text = "Не хватает денег: «%s» стоит %d грн" % [it[0], it[1]]
 		return false
 	SoundLibrary.play("cash")
-	if mode == "home":
+	if mode == "home" or mode == "wedding":
 		Progress.add_item(id)
 		_status.text = "«%s» уже у тебя дома" % it[0]
+		if Progress.has_item("ring") and Progress.has_item("dress"):
+			QuestManager.event("wedding_set")
 	else:
 		_car.fit_part(id)
 		_status.text = "На «%s» поставили: %s" % [_car.spec.title, it[0]]

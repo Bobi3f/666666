@@ -26,6 +26,24 @@ const WHEEL := Vector3(-14.0, 0, 176.0)
 const WHEEL_R := 10.0
 const WHEEL_PRICE := 20
 const COURSE_PRICE := 600
+## Курсы: три урока (по одному в день, 2 часа), потом экзамен.
+const COURSE_LESSONS := 3
+const LESSON_MIN := 120.0
+## Вопросы автослесаря: [вопрос, верный, неверный, неверный].
+const MECHANIC_QUIZ := [
+	["Что смазывает мотор изнутри?", "Моторное масло", "Тосол", "Тормозная жидкость"],
+	["Мотор перегрелся, стрелка в красной зоне — что сделать первым?", "Остановиться и дать остыть", "Долить холодной воды в горячий радиатор", "Газовать сильнее"],
+	["Педаль тормоза проваливается — что проверить?", "Тормозную жидкость и колодки", "Масло в моторе", "Давление в шинах"],
+	["Зачем нужно сцепление?", "Отсоединить мотор от коробки при переключении", "Чтобы машина светила фарами", "Охлаждать мотор"],
+	["Свечи зажигания нужны, чтобы…", "Поджигать смесь в цилиндрах", "Светить в салоне", "Заряжать аккумулятор"],
+	["Машина плохо заводится в мороз. Что виновато чаще всего?", "Слабый аккумулятор", "Грязные стёкла", "Новые колодки"],
+	["Карбюратор…", "Готовит смесь бензина с воздухом", "Охлаждает тормоза", "Крутит колёса"],
+	["Стук в подвеске на кочках — это обычно…", "Изношенные амортизаторы", "Пустой бак", "Громкое радио"],
+	["Какое давление в шинах «Жигулей»?", "Около двух атмосфер", "Десять атмосфер", "Полатмосферы"],
+	["Ремень генератора свистит — значит…", "Ослаб или изношен", "Мотор новый", "Бензин хороший"],
+	["Масло в моторе меняют примерно каждые…", "10 тысяч километров", "100 километров", "Никогда"],
+	["Синий дым из выхлопной трубы — признак того, что…", "Мотор ест масло", "Бак полный", "Колёса накачаны"],
+]
 const SHIFT_PAY := 250
 const GARAGE_PRICE := 2500
 ## Детские площадки во дворах пятиэтажек.
@@ -33,6 +51,12 @@ const PLAYGROUNDS := [Rect2(52, 85, 30, 13), Rect2(126, 85, 20, 13)]
 
 var sto_day := -1
 var master_panel: StoPanel
+## Курсы автослесаря: оплачены ли, сколько уроков пройдено, в какой день был
+## последний урок или экзамен.
+var course_paid := false
+var course_lessons := 0
+var course_day := -1
+var lesson_panel: LessonPanel
 var _rotor: Node3D
 var _cabins: Array[MeshInstance3D] = []
 var _garage_label: Label3D
@@ -42,6 +66,7 @@ var _glow: MeshBuilder
 
 func _ready() -> void:
 	add_to_group("persist")
+	add_to_group("town_east")
 
 
 func _process(delta: float) -> void:
@@ -72,6 +97,27 @@ func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) ->
 	_park(b, glow, veg)
 	for p in PLAYGROUNDS:
 		_playground(b, p)
+	_town_people()
+
+
+## Горожане с просьбами (QuestManager, t_*): мастер у СТО, продавщица
+## у рынка, лейтенант у милиции, дворник во дворе, студент у бурсы.
+## Точки — в координатах города (узел стоит на Town.SHIFT).
+func _town_people() -> void:
+	var people := [
+		["Мастер Николаич", Vector3(STO.end.x + 2.2, 0, STO.position.y + 8.0), -PI / 2.0, Color(0.55, 0.3, 0.15), false,
+			["Машина — она как человек: не лечишь — ломается.", "Покраска полчаса, колодки — минут сорок. Подгоняй к воротам.", "Корочку автослесаря в бурсе получишь — бери смены, мне руки нужны."]],
+		["Продавщица Зоя", Vector3(88.5, 0, 137.5), -PI / 2.0, Color(0.7, 0.3, 0.45), true,
+			["Свежее сало, молоко с утра! Рынок до четырёх.", "В лавке «К свадьбе» кольца — золото настоящее, не сомневайся.", "Ярмарка у нас по выходным — урожай везут со всего района."]],
+		["Лейтенант Сидоренко", Police.STATION + Vector3(-11.0, 0, 1.0), PI / 2.0, Color(0.3, 0.36, 0.3), false,
+			["Права при себе? Документы — первое дело.", "В патруль берём с правами. Смена — триста гривен.", "Гоняешь — штрафуем. Ездишь аккуратно — уважаем."]],
+		["Дворник Степаныч", Vector3(50.0, 0, 91.5), -PI / 2.0, Color(0.35, 0.4, 0.3), false,
+			["Двор мету с шести утра. Чисто, как в Москве!", "Детвора с площадки мячом окна побила — опять.", "В пятиэтажках лифтов нет, а на пятый этаж — пешком."]],
+		["Студент Димка", Vector3(COLLEGE.end.x + 6.0, 0, COLLEGE.position.y + 28.0), PI / 2.0, Color(0.2, 0.4, 0.65), false,
+			["Бурса — это сила! После курсов — сразу на СТО.", "Экзамен у нас строгий: пять вопросов, надо четыре.", "Колька из Каменки, говорят, на мопеде до моста быстрее всех."]],
+	]
+	for p in people:
+		Villagers.talker(self, p[0], p[1], p[2], p[3], p[4], p[5])
 
 
 # --- Улицы ----------------------------------------------------------------------
@@ -398,21 +444,59 @@ func _course_prompt() -> String:
 		return "Бурса: корочка автослесаря у тебя есть — на СТО «Автосервис» берут на смену"
 	var h := TimeManager.hour()
 	if h < 8.0 or h >= 17.0:
-		return "Бурса: приём на курсы с 8:00 до 17:00"
-	return "E — курсы автослесаря в бурсе: %d грн, 4 часа — потом можно работать на СТО" % COURSE_PRICE
+		return "Бурса: занятия курсов с 8:00 до 17:00"
+	if course_day == TimeManager.day:
+		return "Бурса: «На сегодня всё, приходи завтра»"
+	if course_lessons >= COURSE_LESSONS:
+		return "E — экзамен на автослесаря: 5 вопросов, нужно 4 верных"
+	if not course_paid:
+		return "E — курсы автослесаря: %d грн за всё, %d урока по 2 часа и экзамен" % [COURSE_PRICE, COURSE_LESSONS]
+	return "E — урок на курсах автослесаря: %d из %d (2 часа)" % [course_lessons + 1, COURSE_LESSONS]
 
 
+## Урок или экзамен в бурсе — вопросы в окне урока (как в школе).
 func take_course() -> void:
 	var h := TimeManager.hour()
-	if Progress.has_item("mechanic") or h < 8.0 or h >= 17.0:
+	if Progress.has_item("mechanic") or h < 8.0 or h >= 17.0 or course_day == TimeManager.day:
 		return
-	if not GameManager.spend(COURSE_PRICE):
+	if lesson_panel == null:
+		lesson_panel = LessonPanel.new()
+		add_child(lesson_panel)
+	if lesson_panel.visible:
 		return
-	TimeManager.advance(240.0)
-	Progress.add_item("mechanic")
-	SoundLibrary.play("quest", -6.0)
-	QuestManager.event("course")
-	GameManager.notify("Получил корочку автослесаря! Теперь на СТО «Автосервис» берут на смену (+%d грн)" % SHIFT_PAY)
+	if not course_paid:
+		if not GameManager.spend(COURSE_PRICE):
+			return
+		course_paid = true
+	var exam := course_lessons >= COURSE_LESSONS
+	var pool := MECHANIC_QUIZ.duplicate()
+	pool.shuffle()
+	var title := "Бурса — экзамен на автослесаря" if exam else "Бурса — урок %d из %d: устройство автомобиля" % [course_lessons + 1, COURSE_LESSONS]
+	if lesson_panel.done.is_connected(_course_done):
+		lesson_panel.done.disconnect(_course_done)
+	lesson_panel.done.connect(_course_done.bind(exam), CONNECT_ONE_SHOT)
+	lesson_panel.start_quiz(title, pool.slice(0, 5 if exam else 3))
+
+
+func _course_done(grade: int, comment: String, exam: bool) -> void:
+	course_day = TimeManager.day
+	TimeManager.advance(60.0 if exam else LESSON_MIN)
+	if exam:
+		if grade >= 4:
+			Progress.add_item("mechanic")
+			SoundLibrary.play("quest", -6.0)
+			QuestManager.event("course")
+			GameManager.notify("Экзамен сдан (%s)! Корочка автослесаря — на СТО «Автосервис» берут на смену (+%d грн)" % [comment, SHIFT_PAY])
+		else:
+			GameManager.notify("Экзамен не сдан: %s, нужно 4 из 5. Пересдача завтра" % comment)
+		return
+	if grade >= 3:
+		course_lessons += 1
+		QuestManager.event("college_lesson")
+		var next := "дальше экзамен" if course_lessons >= COURSE_LESSONS else "следующий урок завтра"
+		GameManager.notify("Урок в бурсе: оценка %d (%s). Пройдено %d из %d — %s" % [grade, comment, course_lessons, COURSE_LESSONS, next])
+	else:
+		GameManager.notify("Урок не засчитан: двойка (%s). Приходи завтра" % comment)
 
 
 # --- Новые дома и участки ----------------------------------------------------------
@@ -618,6 +702,9 @@ func _ferris_wheel(b: MeshBuilder) -> void:
 		var h := TimeManager.hour()
 		if h < 10.0 or h >= 22.0:
 			return "Колесо обозрения работает с 10:00 до 22:00"
+		var g := get_tree().get_first_node_in_group("girl") as Girl
+		if g and g.with_player(20.0):
+			return "E — прокатиться с Олей на колесе обозрения (%d грн за двоих, 15 мин)" % (WHEEL_PRICE * 2)
 		return "E — прокатиться на колесе обозрения (%d грн, 15 мин): весь город как на ладони" % WHEEL_PRICE
 	zone.activated.connect(ride_wheel)
 	add_child(zone)
@@ -625,11 +712,19 @@ func _ferris_wheel(b: MeshBuilder) -> void:
 
 func ride_wheel() -> void:
 	var h := TimeManager.hour()
-	if h < 10.0 or h >= 22.0 or not GameManager.spend(WHEEL_PRICE):
+	var g := get_tree().get_first_node_in_group("girl") as Girl
+	var with_girl := g != null and g.with_player(20.0)
+	var price := WHEEL_PRICE * (2 if with_girl else 1)
+	if h < 10.0 or h >= 22.0 or not GameManager.spend(price):
 		return
 	TimeManager.advance(15.0)
 	NeedsManager.rest(10.0)
 	QuestManager.event("park_ride")
+	if with_girl:
+		g.like(8)
+		QuestManager.event("wheel_olya")
+		GameManager.notify("Прокатились с Олей на колесе обозрения. На самом верху она взяла тебя за руку: «Смотри, вон наша Каменка!»")
+		return
 	GameManager.notify("Прокатился на колесе обозрения: видно и Каменку, и реку, и завод. Отдохнул")
 
 
@@ -748,9 +843,12 @@ func _label(text: String, p: Vector3, yaw: float, px: float, color: Color) -> La
 
 
 func save_state() -> Dictionary:
-	return {"sto_day": sto_day}
+	return {"sto_day": sto_day, "course_paid": course_paid, "lessons": course_lessons, "course_day": course_day}
 
 
 func load_state(d: Dictionary) -> void:
 	sto_day = int(d.get("sto_day", -1))
+	course_paid = bool(d.get("course_paid", false))
+	course_lessons = int(d.get("lessons", 0))
+	course_day = int(d.get("course_day", -1))
 	_update_garage()

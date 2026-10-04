@@ -99,17 +99,17 @@ func _run() -> void:
 	print("== Своё дело")
 	GM.money = 6000
 	var biz = child("business_spots.gd")
-	ok(biz._prompt("kiosk").contains("5000") and biz._prompt("kiosk").contains("+100"), "табличка: " + biz._prompt("kiosk"))
+	ok(biz._prompt("kiosk").contains("5000") and biz._prompt("kiosk").contains("+250"), "табличка: " + biz._prompt("kiosk"))
 	ok(DL.buy("kiosk") and DL.owns("kiosk") and GM.money == 1000, "выкупил ларёк за 5000")
 	ok(not DL.buy("sto"), "на СТО (15000) не хватает")
 	GM.money = 0
 	TM.day = 5; TM.minutes = 7.2 * 60.0
 	await frames(3)
-	ok(GM.money == 100, "утром доход с ларька: %d грн" % GM.money)
+	ok(GM.money == 250, "утром доход с ларька: %d грн" % GM.money)
 	var money: int = GM.money
 	await frames(10)
 	ok(GM.money == money, "доход — раз в день")
-	ok(DL.rival == DL.Rival.ACTIVE and DL.income("kiosk") == 50, "в Озерцово открылся ларёк Жоры — свой даёт вдвое меньше")
+	ok(DL.rival == DL.Rival.ACTIVE and DL.income("kiosk") == 125, "в Озерцово открылся ларёк Жоры — свой даёт вдвое меньше")
 	ok(biz._rival.visible and biz._rival_label.text == "ЛАРЁК ЖОРЫ", "ларёк Жоры стоит в Озерцово")
 	print("== Конкурент: разорить акциями")
 	GM.money = 1000
@@ -118,21 +118,24 @@ func _run() -> void:
 		TM.day = d; TM.minutes = 9 * 60.0
 		await frames(2)
 		DL.dump()
-	ok(DL.rival == DL.Rival.RUINED and DL.income("kiosk") == 100 and biz._rival_label.text == "ЗАКРЫТО", "три дня акций — Жора закрылся, доход снова полный")
+	ok(DL.rival == DL.Rival.RUINED and DL.income("kiosk") == 250 and biz._rival_label.text == "ЗАКРЫТО", "три дня акций — Жора закрылся, доход снова полный")
 	print("== Конкурент: перекупить")
 	DL.rival = DL.Rival.ACTIVE
 	GM.money = 7500
-	ok(DL.buy_rival() and DL.owns("kiosk2") and GM.money == 500 and DL.income("kiosk") == 100, "перекупил ларёк Жоры за 7000: +100 в день и свой — полный")
+	ok(DL.buy_rival() and DL.owns("kiosk2") and GM.money == 500 and DL.income("kiosk") == 250 and DL.income("kiosk2") == 300, "перекупил ларёк Жоры за 7000: +300 в день и свой — полный")
 	print("== СТО и автопарк")
 	GM.money = 15000
-	ok(DL.buy("sto") and GM.money == 0 and DL.income("sto") == 300, "СТО у трассы — 15000, +300 в день")
+	ok(DL.buy("sto") and GM.money == 0 and DL.income("sto") == 600, "СТО у трассы — 15000, +600 в день")
+	DL.hire("vasya")
+	ok(DL.income("sto") == 900 and DL.save_state().hired == ["vasya"], "нанял Васька — СТО даёт +900")
+	DL.hired.clear()
 	for n in ["Car", "Niva", "Volga"]:
 		var v = W.get_node(n)
 		PR.owned_cars.erase(v.kind)
 	ok(not DL.buy("fleet") and biz._prompt("fleet").contains("нужно 3"), "без трёх машин автопарка нет: " + biz._prompt("fleet"))
 	for k in ["car", "niva", "volga"]:
 		PR.buy_car(k)
-	ok(DL.own_cars() >= 3 and DL.buy("fleet") and DL.income("fleet") == 500, "три своих машины — автопарк, +500 в день")
+	ok(DL.own_cars() >= 3 and DL.buy("fleet") and DL.income("fleet") == 800, "три своих машины — автопарк, +800 в день")
 	PR.owned_cars.erase("volga"); PR.owned_cars.erase("niva")
 	ok(DL.income("fleet") == 0, "продал машины — автопарк простаивает")
 	for k in ["niva", "volga"]:

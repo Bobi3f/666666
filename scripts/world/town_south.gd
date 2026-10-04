@@ -140,8 +140,8 @@ func _label(text: String, p: Vector3, yaw: float, size: int) -> void:
 ## продавцы. Большинство торгует едой, но есть лавки «Для дома» и
 ## «Автозапчасти» (окно MarketPanel). Вокруг — забор: кирпичные столбы,
 ## зелёные решётки, вход — ворота со стороны улицы.
-const STALLS := ["food", "home", "food", "parts", "food", "food", "parts", "food", "home", "food"]
-const STALL_SIGN := {"home": "ДЛЯ ДОМА", "parts": "АВТОЗАПЧАСТИ"}
+const STALLS := ["food", "home", "food", "parts", "food", "food", "parts", "wedding", "home", "food"]
+const STALL_SIGN := {"home": "ДЛЯ ДОМА", "parts": "АВТОЗАПЧАСТИ", "wedding": "К СВАДЬБЕ"}
 
 var market_panel: MarketPanel
 
@@ -158,6 +158,8 @@ func _market(b: MeshBuilder) -> void:
 			var a: Color = awn[k % awn.size()]
 			if kind == "home":
 				a = Color(0.85, 0.45, 0.65)
+			elif kind == "wedding":
+				a = Color(0.95, 0.75, 0.3)
 			elif kind == "parts":
 				a = Color(0.2, 0.22, 0.26)
 			# Прилавок, стойки, полосатый навес
@@ -173,6 +175,8 @@ func _market(b: MeshBuilder) -> void:
 			match kind:
 				"home":
 					_home_goods(b, x, row)
+				"wedding":
+					_wedding_goods(b, x, row)
 				"parts":
 					_parts_goods(b, x, row, k)
 				_:
@@ -277,6 +281,28 @@ func _home_goods(b: MeshBuilder, x: float, row: float) -> void:
 	b.box(Vector3(x + 3.7, 1.55, row + 0.28), Vector3(x + 4.15, 1.8, row + 0.68), Color(0.95, 0.75, 0.35))
 
 
+## К свадьбе: манекен в белом платье с фатой, витринка с кольцами, букеты.
+func _wedding_goods(b: MeshBuilder, x: float, row: float) -> void:
+	var white := Color(0.97, 0.97, 0.95)
+	# Манекен с платьем — у края прилавка
+	b.box(Vector3(x + 0.5, 1.0, row + 0.5), Vector3(x + 0.6, 1.3, row + 0.6), Color(0.3, 0.3, 0.3))
+	b.box(Vector3(x + 0.2, 1.3, row + 0.25), Vector3(x + 0.9, 1.9, row + 0.85), white)
+	b.box(Vector3(x + 0.35, 1.9, row + 0.4), Vector3(x + 0.75, 2.3, row + 0.7), white)
+	b.box(Vector3(x + 0.45, 2.3, row + 0.48), Vector3(x + 0.65, 2.45, row + 0.62), Color(0.92, 0.78, 0.66))
+	b.box(Vector3(x + 0.4, 2.35, row + 0.6), Vector3(x + 0.7, 2.4, row + 0.95), Color(1.0, 1.0, 1.0, 1.0))
+	# Витринка с кольцами
+	b.box(Vector3(x + 1.6, 1.0, row + 0.25), Vector3(x + 2.9, 1.2, row + 0.85), Color(0.25, 0.1, 0.15))
+	for i in 5:
+		var gx := x + 1.75 + i * 0.24
+		b.box(Vector3(gx, 1.2, row + 0.5), Vector3(gx + 0.08, 1.26, row + 0.58), Color(0.95, 0.78, 0.25))
+	b.box(Vector3(x + 1.58, 1.2, row + 0.23), Vector3(x + 2.92, 1.4, row + 0.25), Color(0.75, 0.85, 0.9))
+	# Букеты в вёдрах
+	for i in 3:
+		var gx := x + 3.3 + i * 0.5
+		b.box(Vector3(gx, 1.0, row + 0.4), Vector3(gx + 0.3, 1.25, row + 0.7), Color(0.6, 0.6, 0.62))
+		b.box(Vector3(gx - 0.05, 1.25, row + 0.35), Vector3(gx + 0.35, 1.5, row + 0.75), [Color(0.95, 0.3, 0.4), white, Color(0.95, 0.8, 0.3)][i])
+
+
 ## Автозапчасти: стопки покрышек, диски, глушители, канистра-бак, спидометры.
 func _parts_goods(b: MeshBuilder, x: float, row: float, k: int) -> void:
 	var tyre := Color(0.08, 0.08, 0.09)
@@ -314,6 +340,8 @@ func _stall_prompt(kind: String) -> String:
 			return "E — товары для дома: ковёр, магнитофон, холодильник, кресло"
 		"parts":
 			return "E — запчасти: спидометр, глушак, бак, колёса, диски"
+		"wedding":
+			return "E — к свадьбе: золотое кольцо, свадебное платье"
 	return "E — купить овощи, сало и молоко (%d грн)" % MARKET_PRICE
 
 

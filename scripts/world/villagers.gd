@@ -217,18 +217,39 @@ static func _greeting() -> String:
 
 ## Есть ли у жителя что сказать по заданию: новая просьба или ждёт отчёта.
 func _has_quest_for(npc: String) -> bool:
-	for id in QuestManager.QUESTS:
-		var def: Dictionary = QuestManager.QUESTS[id]
-		if def.get("giver", "") != npc:
-			continue
-		var q: Dictionary = QuestManager.quests[id]
-		if q.state == 0:
-			return true
-		if q.state == 1:
-			var step: Dictionary = def.steps[q.step]
-			if step.get("talk", false):
-				return true
-	return false
+	return QuestManager.has_line_for(npc)
+
+
+## Житель на месте (в сёлах района и в городе): стоит, поворачивается к
+## игроку, сначала говорит про задания, потом — свои фразы по очереди.
+static func talker(parent: Node3D, who: String, p: Vector3, yaw: float, shirt: Color, woman: bool, lines: Array) -> MeshInstance3D:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	person_model(b, shirt, Color(0.3, 0.25, 0.2), false, woman)
+	var mi := b.build_mesh()
+	mi.position = p
+	mi.rotation.y = yaw
+	mi.visibility_range_end = 150.0
+	parent.add_child(mi)
+	var zone := InteractZone.create("", Vector3(2.4, 2.0, 2.4))
+	zone.position = p
+	var n := [0]
+	zone.prompt_fn = func() -> String:
+		return "E — поговорить: %s%s" % [who, "  (!)" if QuestManager.has_line_for(who) else ""]
+	zone.activated.connect(func() -> void:
+		var pl := GameManager.player as Node3D
+		if pl:
+			var to := pl.global_position - mi.global_position
+			mi.rotation.y = atan2(to.x, to.z)
+		var q := QuestManager.talk(who)
+		if q != "":
+			GameManager.notify("%s: «%s»" % [who, q])
+		else:
+			GameManager.notify("%s: «%s %s»" % [who, _greeting(), lines[n[0] % lines.size()]])
+			n[0] += 1
+		QuestManager.event("talk"))
+	parent.add_child(zone)
+	return mi
 
 
 ## Что сказать про перемены у игрока, "" — нечего. Каждое — один раз.

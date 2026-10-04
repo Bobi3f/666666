@@ -25,12 +25,16 @@ const ERRANDS := [
 ## Своё дело: название, цена, доход в день. Автопарк не покупается —
 ## открывается, когда своих машин три (cars), и платит, пока они есть.
 ## kiosk2 — ларёк конкурента в Озерцово, если его перекупить.
+## Доход — чтобы дело окупалось за две-три игровые недели (вклад в банке
+## за это время даёт меньше 10%): иначе покупать его нет смысла.
 const BUSINESSES := {
-	"kiosk": {"title": "ларёк у склада", "price": 5000, "income": 100},
-	"sto": {"title": "СТО у трассы", "price": 15000, "income": 300},
-	"fleet": {"title": "автопарк", "price": 0, "income": 500, "cars": 3},
-	"kiosk2": {"title": "ларёк Жоры в Озерцово", "price": 7000, "income": 100},
+	"kiosk": {"title": "ларёк у склада", "price": 5000, "income": 250},
+	"sto": {"title": "СТО у трассы", "price": 15000, "income": 600},
+	"fleet": {"title": "автопарк", "price": 0, "income": 800, "cars": 3},
+	"kiosk2": {"title": "ларёк Жоры в Озерцово", "price": 7000, "income": 300},
 }
+## Работники: кто к какому делу и сколько добавляет в день.
+const WORKERS := {"vasya": {"title": "механик Васёк", "biz": "sto", "income": 300}}
 ## Конкурент: Жора из Озерцово открывает ларёк на другой день после того,
 ## как выкупишь свой, и половина покупателей уходит к нему. Перекупить его
 ## ларёк (RIVAL_BUYOUT) или разорить: три дня акции у своего ларька.
@@ -50,6 +54,8 @@ var done_total := 0
 ## Выкупленное дело и в какой день последний раз получен доход
 var owned: Array = []
 var paid_day := 0
+## Нанятые работники (id из WORKERS)
+var hired: Array = []
 ## Вклад в банке: 10% годовых, год — четыре времени года (28 игровых
 ## дней); проценты капают каждое утро (с копейками — вниз).
 var deposit := 0
@@ -155,7 +161,20 @@ func income(id: String) -> int:
 		return int(b.income) / 2
 	if id == "fleet" and own_cars() < int(b.cars):
 		return 0
-	return int(b.income)
+	var sum := int(b.income)
+	for w in hired:
+		if WORKERS[w].biz == id:
+			sum += int(WORKERS[w].income)
+	return sum
+
+
+## Нанять работника к своему делу (Васёк — на СТО).
+func hire(id: String) -> void:
+	if hired.has(id) or not WORKERS.has(id):
+		return
+	hired.append(id)
+	GameManager.notify("%s теперь работает у тебя: +%d грн в день к доходу" % [String(WORKERS[id].title).capitalize(), int(WORKERS[id].income)])
+	changed.emit()
 
 
 ## Своих машин (не мотоциклов, не учебных и не колхозного трактора).
@@ -179,6 +198,7 @@ func buy_rival() -> bool:
 	SoundLibrary.play("cash")
 	GameManager.notify("Жора продал свой ларёк! Теперь в Озерцово тоже твоя торговля: +%d грн в день" % int(BUSINESSES.kiosk2.income))
 	QuestManager.event("business")
+	QuestManager.event("rival_done")
 	changed.emit()
 	return true
 
@@ -193,6 +213,7 @@ func dump() -> bool:
 		rival = Rival.RUINED
 		GameManager.notify("Жора не выдержал акций и закрыл ларёк — покупатели снова у тебя!")
 		QuestManager.event("rival_ruined")
+		QuestManager.event("rival_done")
 	else:
 		GameManager.notify("Акция «дешевле, чем у Жоры»: день %d из %d" % [dump_days.size(), DUMP_DAYS])
 	changed.emit()
@@ -212,6 +233,7 @@ func buy(id: String) -> bool:
 	SoundLibrary.play("cash")
 	GameManager.notify("Теперь %s — твоё! Каждое утро +%d грн дохода" % [b.title, income(id)])
 	QuestManager.event("business")
+	QuestManager.event("business_" + id)
 	changed.emit()
 	return true
 
@@ -239,7 +261,7 @@ func take_money() -> int:
 
 func save_state() -> Dictionary:
 	return {"deposit": deposit, "errand": errand, "day": errand_day, "n": progress, "done": done, "total": done_total, "owned": owned, "paid": paid_day,
-		"rival": rival, "dump": dump_days}
+		"rival": rival, "dump": dump_days, "hired": hired}
 
 
 func load_state(d: Dictionary) -> void:
@@ -253,4 +275,5 @@ func load_state(d: Dictionary) -> void:
 	deposit = int(d.get("deposit", 0))
 	rival = int(d.get("rival", Rival.NONE))
 	dump_days = (d.get("dump", []) as Array).duplicate()
+	hired = (d.get("hired", []) as Array).duplicate()
 	changed.emit()

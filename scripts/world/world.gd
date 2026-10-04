@@ -3157,6 +3157,7 @@ func _build_clubs() -> void:
 	t.close_hour = 3.0
 	t.fee = 50
 	t.prize = 150
+	t.date_price = 300
 	t.plaza = Rect2(-25.0, 7.0, 54.0, 10.0)
 	add_child(t)
 	# Водительское удостоверение — карточка из журнала

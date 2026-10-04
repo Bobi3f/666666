@@ -10,11 +10,15 @@ extends Node3D
 ## дискотеке, подарки и разговоры растят симпатию: знакомая → подруга →
 ## твоя девушка. Девушка печёт пирожки. Поздно вечером её надо проводить
 ## домой — бросишь, обидится.
+## Дальше — кольцо, предложение и свадьба в сельсовете: жена живёт в доме
+## игрока, встречает во дворе и кормит обедом.
 
 const Villagers := preload("res://scripts/world/villagers.gd")
 
 const NAME := "Оля"
 const HOME := Vector3(-100.0, 0, -35.2)
+## Жена — во дворе игрока, у дорожки к крыльцу (будка — правее).
+const WIFE_HOME := Vector3(-127.0, 0, -47.5)
 const SHOP := Vector3(-52.5, 0, -26.5)
 const CLUB := Vector3(-21.5, 0, -10.5)
 ## Улица, по которой она ходит между местами.
@@ -45,6 +49,8 @@ var dance_day := 0
 var ride_day := 0
 var ride_today := 0
 var met := false
+var engaged := false
+var married := false
 
 var _walk: MeshInstance3D
 var _sit: MeshInstance3D
@@ -92,7 +98,7 @@ func _ready() -> void:
 	panel.girl = self
 	add_child(panel)
 	QuestManager.fired.connect(_on_event)
-	doll.global_position = HOME
+	doll.global_position = home_pos()
 	_spot = ""
 
 
@@ -164,7 +170,22 @@ static func model(b: MeshBuilder, sit: bool) -> void:
 	b.box(Vector3(-0.09, h + 0.17, 0.12), Vector3(0.09, h + 0.24, 0.16), Color(0.95, 0.95, 1.0))
 
 
+## Где она живёт: у себя через улицу, а после свадьбы — у тебя.
+func home_pos() -> Vector3:
+	return WIFE_HOME if married else HOME
+
+
+## Рядом ли она с игроком — гуляет с ним или едет в его машине.
+func with_player(dist := 25.0) -> bool:
+	var p := _player()
+	return state != State.LIFE and p != null and doll.global_position.distance_to(p.global_position) < dist
+
+
 func level() -> String:
+	if married:
+		return "жена"
+	if engaged:
+		return "невеста"
 	if rel >= LOVE:
 		return "твоя девушка"
 	if rel >= FRIEND:
@@ -201,7 +222,11 @@ func like(n: int) -> void:
 func talk() -> String:
 	var d: int = TimeManager.day
 	var lines: Array
-	if rel >= LOVE:
+	if married:
+		lines = ["Как хорошо, что мы теперь вместе!", "Я на огороде полила, не переживай.", "Не задерживайся сегодня, ладно?"]
+	elif engaged:
+		lines = ["Мама уже платье примеряла — говорит, красивое!", "Скорее бы свадьба!", "Когда в сельсовет пойдём?"]
+	elif rel >= LOVE:
 		lines = ["Я по тебе соскучилась!", "Ты у меня самый лучший.", "Поедем вечером кататься? Только не гони!"]
 	elif rel >= FRIEND:
 		lines = ["С тобой весело! Покатаешь ещё?", "В пятницу в клубе дискотека — пойдём?", "Мама спрашивала, кто это меня подвозил…"]
@@ -217,7 +242,36 @@ func talk() -> String:
 		NeedsManager.snacks += 2
 		NeedsManager.changed.emit()
 		t += " Держи пирожки — сама пекла! (+2 еды в запас)"
+		if married:
+			NeedsManager.eat(50.0)
+			t += " И садись обедать — борщ сварила!"
 	return t
+
+
+## Предложение: нужно кольцо и чтобы она была твоей девушкой.
+func propose() -> String:
+	if engaged or married:
+		return "Я уже сказала «да»!"
+	if not Progress.has_item("ring"):
+		return "Ты что-то хотел сказать?.. (сначала купи кольцо — рынок в городе)"
+	if rel < LOVE:
+		return "Ой… давай не будем торопиться. Узнаем друг друга получше."
+	engaged = true
+	like(10)
+	SoundLibrary.play("quest")
+	QuestManager.event("proposal")
+	return "Да! Да, конечно да! Какое кольцо красивое… Пойдём в сельсовет — пусть распишут!"
+
+
+## Свадьба в сельсовете: она становится женой и переезжает к тебе.
+func wed() -> void:
+	if married or not engaged:
+		return
+	married = true
+	rel = 100
+	SoundLibrary.play("quest")
+	QuestManager.event("wedding")
+	GameManager.notify("Свадьба! Вся Каменка гуляет, гости надарили денег. Оля теперь твоя жена и живёт у тебя")
 
 
 ## Подарок раз в день. Возвращает, что она сказала.
@@ -236,7 +290,8 @@ func gift(id: String) -> String:
 
 func invite() -> String:
 	var h := TimeManager.hour()
-	if h >= 22.0 or h < 7.0:
+	# Своей девушке мама разрешает гулять подольше — до «Метелицы» успеть
+	if h >= (23.0 if rel >= LOVE else 22.0) or h < 7.0:
 		return "Поздно уже, мама не пустит. Давай завтра!"
 	state = State.FOLLOW
 	_path.clear()
@@ -300,7 +355,7 @@ func _spot_pos(s: String) -> Vector3:
 			return SHOP
 		"club":
 			return CLUB
-	return HOME
+	return home_pos()
 
 
 func _life(delta: float) -> void:
@@ -327,8 +382,9 @@ func _life(delta: float) -> void:
 		if p and p.global_position.distance_to(doll.global_position) < 8.0:
 			_face(p.global_position, delta)
 		else:
-			# Иначе — лицом к улице
-			doll.rotation.y = lerp_angle(doll.rotation.y, 0.0, minf(delta * 2.0, 1.0))
+			# Иначе — лицом к улице (у тебя во дворе улица с другой стороны)
+			var street := PI if married and _spot != "shop" and _spot != "club" else 0.0
+			doll.rotation.y = lerp_angle(doll.rotation.y, street, minf(delta * 2.0, 1.0))
 		return
 	_step_to(_path[0], 1.3, delta)
 	if Vector2(doll.global_position.x - _path[0].x, doll.global_position.z - _path[0].z).length() < 0.3:
@@ -392,7 +448,7 @@ func _check_late(_delta: float) -> void:
 	var p := _player()
 	# Довёз или довёл до калитки поздно вечером — спасибо
 	if p and (h >= 22.5 or h < 6.0):
-		var home_d := Vector2(doll.global_position.x - HOME.x, doll.global_position.z - HOME.z).length()
+		var home_d := Vector2(doll.global_position.x - home_pos().x, doll.global_position.z - home_pos().z).length()
 		if (state == State.FOLLOW and home_d < 8.0) or (state == State.RIDE and home_d < 14.0 and _vehicle.speed_kmh() < 3.0):
 			send_home(true)
 			return
@@ -405,7 +461,7 @@ func _check_late(_delta: float) -> void:
 		state = State.LIFE
 		like(-LEFT_ALONE)
 		GameManager.notify("Оля обиделась, что её не проводили, и ушла домой сама")
-		doll.global_position = HOME
+		doll.global_position = home_pos()
 		_spot = "home"
 
 
@@ -502,7 +558,7 @@ func _ride(delta: float) -> void:
 
 func save_state() -> Dictionary:
 	return {"rel": rel, "talk": talk_day, "gift": gift_day, "pie": pie_day, "dance": dance_day,
-		"ride_day": ride_day, "ride": ride_today, "met": met}
+		"ride_day": ride_day, "ride": ride_today, "met": met, "engaged": engaged, "married": married}
 
 
 func load_state(d: Dictionary) -> void:
@@ -519,3 +575,5 @@ func load_state(d: Dictionary) -> void:
 	ride_day = int(d.get("ride_day", 0))
 	ride_today = int(d.get("ride", 0))
 	met = bool(d.get("met", false))
+	engaged = bool(d.get("engaged", false))
+	married = bool(d.get("married", false))

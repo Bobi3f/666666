@@ -125,6 +125,13 @@ func _build_council() -> void:
 	desk.prompt_fn = _council_prompt
 	desk.activated.connect(_council)
 	add_child(desk)
+	# ЗАГС — у флага: здесь расписывают
+	var zags := InteractZone.create("", Vector3(1.4, 2.2, 1.4))
+	zags.name = "ZagsZone"
+	zags.position = c + Vector3(1.5, 0.4, -2.2)
+	zags.prompt_fn = _zags_prompt
+	zags.activated.connect(wedding)
+	add_child(zags)
 
 
 ## Внутри сельсовета (от COUNCIL, пол на 0.4, вход с +Z): слева — почта
@@ -202,12 +209,35 @@ func _council() -> void:
 	Progress.add_doc(d[0])
 	SoundLibrary.play("quest", -2.0, 1.1)
 	QuestManager.event("document")
+	QuestManager.event("doc_" + String(d[0]))
 	var tips := {
 		"passport": "Паспорт готов! С ним — в больницу на медкомиссию, потом в автошколу",
 		"propiska": "Справка о прописке: теперь ты официально житель Каменки",
 		"work_book": "Трудовая книжка: с категорией D возьмут водителем автобуса",
 	}
 	GameManager.notify(tips[d[0]])
+
+
+## Свадьба: невеста рядом, сельсовет открыт.
+func _zags_prompt() -> String:
+	var g := get_tree().get_first_node_in_group("girl") as Girl
+	if g == null or not g.engaged or g.married:
+		return ""
+	if not office_open():
+		return "ЗАГС: распишут в сельсовете Пн–Сб с 8:00 до 17:00"
+	if not g.with_player(10.0):
+		return "ЗАГС: «А невеста где? Приводи Олю — распишем»"
+	if not Progress.has_item("dress"):
+		return "ЗАГС: «Невеста без платья? Купите на рынке в городе»"
+	return "E — расписаться с Олей: свадьба!"
+
+
+func wedding() -> void:
+	var g := get_tree().get_first_node_in_group("girl") as Girl
+	if _zags_prompt() != "E — расписаться с Олей: свадьба!":
+		return
+	TimeManager.advance(60.0)
+	g.wed()
 
 
 # --- Больница -----------------------------------------------------------------

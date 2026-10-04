@@ -260,14 +260,8 @@ func _run() -> void:
 	GM.money = 30000
 	zone_with("прораб").activate()
 	await frames(3)
-	ok(QM.won and state("m_master") == 2, "кирпичный дом — победа")
-	var t0 := Time.get_ticks_msec()
-	while not journal.is_open() and Time.get_ticks_msec() - t0 < 4000:
-		await process_frame
-	ok(journal.is_open() and journal._title.text.contains("хозяин") and paused, "экран победы с итогами")
-	journal._close()
-	ok(not paused, "«Играть дальше»")
-	ok(hud._goal.text.contains("хозяин Каменки"), "трекер после победы: " + hud._goal.text.split("\n")[0])
+	ok(not QM.won and state("m_master") == 2 and state("m_park") == 1, "кирпичный дом — сюжет идёт в город: «Огни города»")
+	ok(hud._goal.text.contains("Огни города"), "трекер: " + hud._goal.text.split("\n")[0])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://save.json"))
 
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
