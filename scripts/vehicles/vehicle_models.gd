@@ -213,7 +213,7 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 	var chrome := Color(0.75, 0.76, 0.78)
 	var fabric := Color(0.55, 0.64, 0.82)
 	# Потолок — светлый
-	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.78, 0.78, 0.75))
+	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.95, 0.95, 0.93))
 	# Торпедо: основа и верх под лобовым стеклом
 	b.box(Vector3(-0.72, 0.86, -0.6), Vector3(0.72, 1.0, -0.32), black)
 	# Щит под торпедо до пола — тёмный, под ним педали
@@ -267,8 +267,11 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 		tube(b, Vector3(cos(a0) * rr, sin(a0) * rr, 0), Vector3(cos(a1) * rr, sin(a1) * rr, 0), 0.016, black)
 	for sx in [-1.0, 1.0]:
 		tube(b, Vector3(0.06 * sx, -0.02, 0.0), Vector3(rr * sx, -0.04, 0.0), 0.018, black)
-	b.box(Vector3(-0.06, -0.06, -0.02), Vector3(0.06, 0.0, 0.01), black)
-	disc(b, Vector3(0.0, -0.03, 0.012), Vector3.BACK, 0.02, 0.004, chrome)
+	# Широкая накладка-сигнал со значком, как на руле «семёрки»
+	b.box(Vector3(-0.1, -0.07, -0.02), Vector3(0.1, 0.0, 0.012), black)
+	b.box(Vector3(-0.08, -0.06, 0.012), Vector3(0.08, -0.01, 0.016), Color(0.13, 0.13, 0.14))
+	disc(b, Vector3(0.0, -0.035, 0.018), Vector3.BACK, 0.018, 0.004, chrome)
+	disc(b, Vector3(0.07, -0.085, 0.01), Vector3.BACK, 0.008, 0.006, Color(0.85, 0.1, 0.1))
 	b.xf = saved
 	tube(b, wc + Vector3(0, -0.03, -0.02), Vector3(-0.36, 0.88, -0.36), 0.025, black)
 	# Пол — тёмные коврики
@@ -282,19 +285,26 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 		b.box(Vector3(x - 0.2, CABIN_FLOOR, 0.15), Vector3(x + 0.2, 0.6, 0.5), black)
 		b.box(Vector3(x - 0.25, 0.6, 0.1), Vector3(x + 0.25, 0.72, 0.55), fabric)
 		b.box(Vector3(x - 0.25, 0.72, 0.5), Vector3(x + 0.25, 1.2, 0.6), fabric)
-		b.box(Vector3(x - 0.12, 1.2, 0.52), Vector3(x + 0.12, 1.32, 0.58), fabric.darkened(0.1))
 		for k in [-0.12, 0.12]:
 			b.box(Vector3(x + k - 0.004, 0.72, 0.12), Vector3(x + k + 0.004, 0.725, 0.53), fabric.darkened(0.2))
 			b.box(Vector3(x + k - 0.004, 0.74, 0.499), Vector3(x + k + 0.004, 1.18, 0.5), fabric.darkened(0.2))
 		b.box(Vector3(x - 0.26, 0.6, 0.1), Vector3(x + 0.26, 0.62, 0.56), black)
+		# Ткань в мелкую клетку: светлые точки на подушке и спинке
+		for i in 8:
+			for j in 6:
+				var px: float = x - 0.22 + i * 0.063
+				b.box(Vector3(px, 0.721, 0.13 + j * 0.068), Vector3(px + 0.02, 0.723, 0.15 + j * 0.068), fabric.lightened(0.25))
+				b.box(Vector3(px, 0.76 + j * 0.07, 0.4985), Vector3(px + 0.02, 0.78 + j * 0.07, 0.4995), fabric.lightened(0.25))
 	b.box(Vector3(-0.7, CABIN_FLOOR, 0.72), Vector3(0.7, 0.72, 1.02), fabric)
 	b.box(Vector3(-0.7, 0.72, 0.98), Vector3(0.7, 1.12, 1.06), fabric)
 	# Обшивки дверей: чёрные, с подлокотником-ручкой
 	for sx in [-1.0, 1.0]:
 		var x: float = 0.72 * sx
 		b.box(Vector3(minf(x, x - 0.02 * sx), CABIN_FLOOR, -0.5), Vector3(maxf(x, x - 0.02 * sx), 0.88, 0.95), black)
-		b.box(Vector3(minf(x, x - 0.06 * sx), 0.74, -0.25), Vector3(maxf(x, x - 0.06 * sx), 0.77, 0.12), plastic)
-		b.box(Vector3(minf(x, x - 0.04 * sx), 0.77, -0.05), Vector3(maxf(x, x - 0.04 * sx), 0.84, 0.0), plastic)
+		# Изогнутый подлокотник-ручка: вниз вперёд и вверх назад, как на фото
+		var xa: float = x - 0.05 * sx
+		pipe(b, [Vector3(xa, 0.66, -0.35), Vector3(xa, 0.72, -0.2), Vector3(xa, 0.76, 0.0), Vector3(xa, 0.86, 0.12)], 0.022, plastic)
+		b.box(Vector3(minf(x, x - 0.03 * sx), 0.8, -0.45), Vector3(maxf(x, x - 0.03 * sx), 0.83, -0.38), Color(0.6, 0.6, 0.62))
 	# Зеркало заднего вида
 	b.box(Vector3(-0.012, 1.3, -0.33), Vector3(0.012, 1.36, -0.31), black)
 	b.box(Vector3(-0.13, 1.25, -0.33), Vector3(0.13, 1.31, -0.3), black)
