@@ -150,5 +150,10 @@ func _run() -> void:
 	ok(SL.music_player.stream_paused, "ползунок «Музыка» на ноль — тишина")
 	SM.set_music(0.5)
 	ok(not SL.music_player.stream_paused, "вернул — играет")
+	print("== Потребности тают медленно")
+	var NMs = root.get_node("NeedsManager")
+	NMs.food = 100.0; NMs.energy = 100.0; NMs.water = 100.0
+	NMs._on_minutes(12 * 60.0)
+	ok(NMs.food > 70.0 and NMs.water > 75.0 and NMs.energy > 55.0, "за 12 часов: сытость %d, вода %d, бодрость %d" % [int(NMs.food), int(NMs.water), int(NMs.energy)])
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()
