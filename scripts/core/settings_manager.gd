@@ -182,6 +182,14 @@ func _apply_lang() -> void:
 	TranslationServer.set_locale(lang)
 
 
+## Переводчик — скрипт: убрать его из TranslationServer, пока скрипты живы,
+## иначе игра падает при выходе.
+func _exit_tree() -> void:
+	if _english:
+		TranslationServer.remove_translation(_english)
+		_english = null
+
+
 ## Перевести строку для рисования (draw_string) — надписи и кнопки
 ## переводятся сами.
 func t(s: String) -> String:
