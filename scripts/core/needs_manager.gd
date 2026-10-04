@@ -43,7 +43,7 @@ func _on_minutes(m: float) -> void:
 	energy = maxf(energy - tire * m, 0.0)
 	if food < 20.0 and not _warned_food:
 		_warned_food = true
-		GameManager.notify("Хочется есть. Купи еду в ларьке и нажми Q")
+		GameManager.notify("Хочется есть. Еда — в сельмаге или в городском ларьке, съесть — Q")
 	if energy < 15.0 and not _warned_energy:
 		_warned_energy = true
 		GameManager.notify("Слипаются глаза. Пора домой спать — иначе упадёшь где стоишь")
@@ -62,7 +62,7 @@ func _on_minutes(m: float) -> void:
 
 func eat_snack() -> void:
 	if snacks <= 0:
-		GameManager.notify("Еды нет. Купи в ларьке у дороги")
+		GameManager.notify("Еды нет. Купи в сельмаге или в городском ларьке")
 		return
 	snacks -= 1
 	eat(35.0)

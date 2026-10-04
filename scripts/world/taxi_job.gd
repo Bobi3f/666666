@@ -136,7 +136,7 @@ func _process(delta: float) -> void:
 				if not Progress.license:
 					if _nag <= 0.0:
 						_nag = 20.0
-						GameManager.notify("Пассажир: «А права-то у тебя есть?» — сдай на права в автошколе у трассы")
+						GameManager.notify("Пассажир: «А права-то у тебя есть?» — сдай на права в автошколе в городе")
 					return
 				_board(car)
 		State.RIDING:

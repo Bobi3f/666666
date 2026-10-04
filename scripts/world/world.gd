@@ -2469,7 +2469,7 @@ func _spawn_salon_cars() -> void:
 
 # --- Автодром и заезды --------------------------------------------------------
 
-## Площадка автошколы у трассы (x, z, ширина, длина) — к югу от трассы.
+## Площадка автошколы в городе (x, z, ширина, длина) — к югу от трассы.
 const AUTODROME := AutoSchool.AUTODROME
 const Villagers := preload("res://scripts/world/villagers.gd")
 const EXAM_PRICE := 300
