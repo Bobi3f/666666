@@ -204,7 +204,7 @@ func _run() -> void:
 	GM.money = 0; NM.energy = 90.0
 	W.kolkhoz_job.simulate_all()
 	ok(GM.money == 400, "колхоз платит")
-	C.global_position = Vector3(27, 0.1, 22); await frames(2)
+	C.global_position = Town.w(Vector3(27, 0.1, 22)); await frames(2)
 	zone_with("развоз").activate()
 	ok(PR.bread == 100.0, "хлеб целый")
 	PR.damage_bread(30.0)

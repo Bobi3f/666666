@@ -81,7 +81,7 @@ func _run() -> void:
 	print("== Развоз на грузовике")
 	GM.money = 0
 	PR.delivery_active = false
-	T.global_position = Vector3(27, 0.1, 22); T.rotation.y = 0.0; T.speed = 0.0; T.velocity = Vector3.ZERO
+	T.global_position = Town.w(Vector3(27, 0.1, 22)); T.rotation.y = 0.0; T.speed = 0.0; T.velocity = Vector3.ZERO
 	T._on_enter(); await frames(3)
 	for z in W.get_children():
 		if z is InteractZone and z.text().contains("развоз"): z.activate(); break

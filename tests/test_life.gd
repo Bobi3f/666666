@@ -49,7 +49,7 @@ func _run() -> void:
 		if v.dir == 1 and not v.bus: v0 = v; break
 	for v in traffic._vehicles:
 		if v != v0: (v.body as Node3D).global_position.x = -150.0 + randf() * 20.0 * v.dir
-	(v0.body as Node3D).global_position = Vector3(55, 0.05, 2.0); v0.speed = 15.0
+	(v0.body as Node3D).global_position = Vector3(55 + Town.SHIFT.x, 0.05, 2.0); v0.speed = 15.0
 	for i in 60 * 10:
 		L._t = 0.0
 		await physics_frame
@@ -61,7 +61,7 @@ func _run() -> void:
 	# Игрок проскочил на красный
 	L.get_script().highway = "red"; L._t = 0.0
 	GM.money = 1000
-	C.global_position = Vector3(70, 0.1, -2.0); C.rotation.y = -PI / 2.0; C.speed = 14.0; C.velocity = Vector3.ZERO
+	C.global_position = Vector3(70 + Town.SHIFT.x, 0.1, -2.0); C.rotation.y = -PI / 2.0; C.speed = 14.0; C.velocity = Vector3.ZERO
 	C._on_enter(); C.fuel = 30.0
 	for i in 60 * 3:
 		L._t = 0.0

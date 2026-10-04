@@ -86,7 +86,7 @@ func _run() -> void:
 	ok(pol.patrol_active and GM.challenge_line.contains("1 из 5"), "обход начался: " + GM.challenge_line)
 	var P = W.get_node("Player")
 	for pt in Police.PATROL:
-		P.global_position = pt + Vector3(0, 0.2, 0)
+		P.global_position = Town.w(pt) + Vector3(0, 0.2, 0)
 		# Ждём, пока обход засчитает точку (не дольше двух секунд)
 		for i in 120:
 			await frames(1)
