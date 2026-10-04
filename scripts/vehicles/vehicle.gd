@@ -1597,7 +1597,7 @@ func _process(_delta: float) -> void:
 	if driver != null and not _needles.is_empty():
 		var top: float = {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
-		var k_rpm := clampf(rpm / float(spec.redline) * 0.85, 0.0, 1.0)
+		var k_rpm := clampf(rpm / _tach_full(), 0.0, 1.0)
 		for i in _needles.size():
 			var k := k_speed if i == 0 else k_rpm
 			var target := deg_to_rad(135.0 - 270.0 * k)
@@ -1688,9 +1688,38 @@ func _build_gauges() -> void:
 		pivot.add_child(needle)
 		pivot.rotation.z = deg_to_rad(135.0)
 		_needles.append(pivot)
+		_dial_numbers(holder, r, _needles.size() == 1)
 
 
-## Циферблат: тёмный круг, белые риски через 30°, красная зона в конце.
+## Шкала тахометра: до 8 тыс. об/мин, у тихоходных дизелей — до 4 тыс.
+func _tach_full() -> float:
+	return 8000.0 if float(spec.redline) > 4000.0 else 4000.0
+
+
+## Цифры на циферблате — у восьми больших рисок шкалы: спидометр — км/ч
+## (0 … максимум), тахометр — тысячи оборотов.
+func _dial_numbers(holder: Node3D, r: float, speedo: bool) -> void:
+	var top: float = {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+	for i in 9:
+		var v: float = top * i / 8.0 if speedo else _tach_full() * i / 8.0 / 1000.0
+		if not speedo and absf(v - roundf(v)) > 0.01:
+			continue
+		var l := Label3D.new()
+		l.text = str(int(roundf(v)))
+		l.font_size = 48
+		l.outline_size = 0
+		l.pixel_size = r * 0.0062
+		l.modulate = Color(0.95, 0.95, 0.9) if speedo or i < 7 else Color(1.0, 0.35, 0.25)
+		l.double_sided = false
+		l.shaded = false
+		var th := deg_to_rad(135.0 - 270.0 * i / 8.0)
+		l.position = Vector3(-sin(th), cos(th), 0.0) * r * 0.52 + Vector3(0, 0, 0.002)
+		l.visibility_range_end = 6.0
+		holder.add_child(l)
+
+
+## Циферблат: тёмный круг, 8 делений белыми рисками (мелкие посередине),
+## красная зона в конце. Цифры — Label3D (_dial_numbers).
 static func _dial_texture() -> Texture2D:
 	if _dial_tex == null:
 		_dial_tex = Assets.texture("vehicles/dial", dial_image, true)
@@ -1698,7 +1727,7 @@ static func _dial_texture() -> Texture2D:
 
 
 static func dial_image() -> Image:
-	var n := 64
+	var n := 128
 	var img := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var c := Vector2(n, n) * 0.5
 	for y in n:
@@ -1715,9 +1744,14 @@ static func dial_image() -> Image:
 				# Угол от «12 часов» по часовой: шкала от −135° до +135°
 				var ang := rad_to_deg(atan2(d.x, -d.y))
 				if absf(ang) <= 136.0:
-					var tick := fposmod(ang + 135.0, 30.0)
-					if tick < 3.0 or tick > 27.0:
+					# 8 делений, как у цифр: большие риски и мелкие посередине
+					var step := 270.0 / 8.0
+					var tick := fposmod(ang + 135.0, step)
+					var half := fposmod(ang + 135.0, step * 0.5)
+					if tick < 2.5 or tick > step - 2.5:
 						col = Color(0.95, 0.95, 0.9)
+					elif (half < 1.5 or half > step * 0.5 - 1.5) and r > 0.82:
+						col = Color(0.8, 0.8, 0.78)
 					elif ang > 95.0 and r > 0.8:
 						col = Color(0.75, 0.15, 0.1)
 			img.set_pixel(x, y, col)
