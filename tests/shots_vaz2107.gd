@@ -40,6 +40,15 @@ func _run() -> void:
 	C._on_enter()
 	for i in 10: await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/vaz2107_inside.png" % OS.get_environment("SHOTS"))
+	# Салон с заднего сиденья — как на фото
+	var cam3 := Camera3D.new(); cam3.fov = 75.0; W.add_child(cam3)
+	var cx := C.global_transform
+	cam3.global_position = cx * Vector3(0.0, 1.3, 0.85)
+	cam3.look_at(cx * Vector3(0.0, 0.88, -0.45))
+	cam3.make_current()
+	for i in 8: await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/vaz2107_cabin.png" % OS.get_environment("SHOTS"))
+	cam3.current = false
 	C.exit_car()
 	for i in 3: await process_frame
 	cam.current = true
