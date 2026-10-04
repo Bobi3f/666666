@@ -75,6 +75,7 @@ func save_game(quiet := false) -> bool:
 		data[n] = get_node("/root/" + n).save_state()
 	for node in get_tree().get_nodes_in_group("persist"):
 		data[str(node.get_path())] = node.save_state()
+	data["town_moved"] = true
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f == null:
 		GameManager.notify("Не удалось сохранить: " + error_string(FileAccess.get_open_error()))
@@ -119,8 +120,26 @@ func load_game() -> bool:
 		var key := str(node.get_path())
 		if data.has(key):
 			node.load_state(data[key])
+	if not data.has("town_moved"):
+		_move_to_new_town()
 	GameManager.notify("Игра загружена")
 	return true
+
+
+## Сохранение сделано, когда город стоял у самой Каменки: кто остался там
+## (игрок, свои машины), переезжает вместе с городом — иначе окажется в
+## чистом поле на старом месте.
+func _move_to_new_town() -> void:
+	var old_town := Rect2(-45.0, 0.5, 290.0, 250.0)
+	for node in get_tree().get_nodes_in_group("persist"):
+		var n := node as Node3D
+		if n == null or not (n is Vehicle or n is Player):
+			continue
+		var p := n.global_position
+		if old_town.has_point(Vector2(p.x, p.z)):
+			n.global_position = Town.w(p)
+			if n is Player and (n as Player).camera:
+				(n as Player).camera.snap()
 
 
 # --- Помощники для сохранения векторов в JSON ----------------------------
