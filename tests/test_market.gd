@@ -36,7 +36,7 @@ func _run() -> void:
 
 	print("== Забор и лавки")
 	var space := (W as Node3D).get_world_3d().direct_space_state
-	var r: Rect2 = S.MARKET
+	var r: Rect2 = Town.wr(S.MARKET)
 	var hits := 0
 	# Луч поперёк каждой стороны забора упирается в него; в воротах — проход
 	for ray in [[Vector3(r.get_center().x, 1.0, r.position.y - 2), Vector3(r.get_center().x, 1.0, r.position.y + 2)],

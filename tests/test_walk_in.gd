@@ -84,7 +84,7 @@ func _run() -> void:
 	ok((post.road as Vector3).z > c.z + 4.0, "мешок на почту Каменки подвозят к крыльцу, не в стену")
 
 	print("== Милиция")
-	var p: Vector3 = Police.STATION
+	var p: Vector3 = Town.w(Police.STATION)
 	ok(not ray(p + Vector3(-10.0, 1.5, -3.0), p + Vector3(-4.0, 1.5, -3.0)).is_empty(), "стены милиции держат")
 	await walk(P, p + Vector3(-12.0, 0, 0), p + Vector3(-5.0, 0.3, 0))
 	ok(P.global_position.x > p.x - 7.0, "зашёл в дежурную часть: x=%.1f" % (P.global_position.x - p.x))

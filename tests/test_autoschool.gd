@@ -34,7 +34,7 @@ func _run() -> void:
 	var PR = root.get_node("Progress")
 	var TM = root.get_node("TimeManager")
 	var AS: AutoSchool = W.get_node("AutoSchool")
-	var xf: Transform3D = AutoSchool.xf()
+	var xf: Transform3D = AutoSchool.xf().translated(Town.SHIFT)
 	var a: Rect2 = AutoSchool.AUTODROME
 	var y := AutoSchool.FLOOR + 1.0
 
@@ -48,14 +48,14 @@ func _run() -> void:
 	ok(inside, "все точки, конусы и стоянка — на автодроме")
 	var school_rect: Rect2 = TownSouth.SCHOOL
 	ok(not school_rect.intersects(a) and not school_rect.has_point(Vector2(AutoSchool.BUS_SPOT.x, AutoSchool.BUS_SPOT.z + 5.0)), "со школой не пересекается")
-	ok(not ray(Vector3(-29, 1, 8), Vector3(-29, 1, 70)), "автодром от въезда до конца свободен")
-	ok(not ray(Vector3(-9.5, 1.2, 27), Vector3(-9.5, 1.2, 25.5)) and W.get_node("AutoSchool/SchoolCar").global_position.distance_to(AutoSchool.CAR_SPOT) < 1.0, "учебные машины на стоянке за домом")
+	ok(not ray(Town.w(Vector3(-29, 1, 8)), Town.w(Vector3(-29, 1, 70))), "автодром от въезда до конца свободен")
+	ok(not ray(Town.w(Vector3(-9.5, 1.2, 27)), Town.w(Vector3(-9.5, 1.2, 25.5))) and W.get_node("AutoSchool/SchoolCar").global_position.distance_to(Town.w(AutoSchool.CAR_SPOT)) < 1.0, "учебные машины на стоянке за домом")
 
 	print("== Дом")
 	ok(ray(xf * Vector3(3.0, y, 6.0), xf * Vector3(3.0, y, 0.0)), "фасад — стена")
 	ok(not ray(xf * Vector3(-2.0, y, 6.0), xf * Vector3(-2.0, y, 0.5)), "в дверь можно войти")
 	ok(ray(xf * Vector3(0.0, y, 0.0), xf * Vector3(0.0, y, -6.0)), "задняя стена держит")
-	var room := Rect2(AutoSchool.HOUSE.x - 5, AutoSchool.HOUSE.z - 3.75, 10, 7.5)
+	var room := Town.wr(Rect2(AutoSchool.HOUSE.x - 5, AutoSchool.HOUSE.z - 3.75, 10, 7.5))
 	var iz: Node3D = W.get_node("InstructorZone")
 	ok(room.has_point(Vector2(iz.global_position.x, iz.global_position.z)), "инструктор — внутри, у стола")
 	PR.add_doc("passport")
