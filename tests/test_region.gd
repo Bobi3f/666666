@@ -177,7 +177,7 @@ func _run() -> void:
 	ok(NM.snacks == sn + 1, "хлеб в сельском магазине")
 	var talk: InteractZone = null
 	for c in R.get_children():
-		if c is InteractZone and c.prompt.contains("поговорить"): talk = c; break
+		if c is InteractZone and c.prompt_fn.is_valid() and c.text().contains("поговорить"): talk = c; break
 	talk.activated.emit()
 	ok(last().contains("«"), "житель рассказывает: " + last())
 	print("== Рыбалка на озере")
