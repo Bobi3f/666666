@@ -274,34 +274,64 @@ void fragment() {
 		// Рисунок вблизи, издалека — ровный цвет (без ряби)
 		float dist = length(wpos - CAMERA_POSITION_WORLD);
 		float near = 1.0 - smoothstep(22.0, 55.0, dist);
-		float big = texture(grain, wpos.xz * 0.031).r;
-		float fine = texture(grain, wpos.xz * 3.7).r;
+		vec3 big3 = texture(grain, wpos.xz * 0.031).rgb;
+		vec3 fine3 = texture(grain, wpos.xz * 3.7).rgb;
+		// Средний масштаб: кочки и стебли травы, проплешины, пятна на асфальте
+		vec3 mid3 = texture(grain, wpos.xz * 0.27).rgb;
+		float big = big3.r;
+		float fine = fine3.r;
 		// Трава: крупные пятна посветлее и потемнее, выгоревшие места, мелкая крупка
 		float grass = ground_lvl * green;
 		c *= mix(1.0, mix(0.84, 1.16, (big - 0.78) / 0.28), grass);
 		c = mix(c, c * vec3(1.12, 1.06, 0.78), grass * smoothstep(0.98, 1.04, texture(grain, wpos.xz * 0.011).r) * 0.8);
 		c *= mix(1.0, 0.88 + 0.16 * (fine - 0.78) / 0.28, grass * near);
+		// Кочки и стебли: тёмные промежутки между кочками, светлые макушки;
+		// сухие желтоватые проплешины и сочные тёмные пятна
+		c *= mix(1.0, 0.68 + 0.48 * mid3.g, grass * near);
+		c = mix(c, c * vec3(1.16, 1.04, 0.62), grass * smoothstep(0.62, 0.8, mid3.b) * 0.7);
+		c = mix(c, c * vec3(0.78, 0.92, 0.82), grass * (1.0 - smoothstep(0.2, 0.36, mid3.b)) * 0.6);
+		// Цветы в траве: редкие точки — белые, жёлтые, лиловые
+		vec2 fc = wpos.xz * 1.6;
+		float fh = hash(floor(fc));
+		float fdot = 1.0 - smoothstep(0.05, 0.09, length(fract(fc) - 0.5));
+		vec3 flower = fh > 0.995 ? vec3(0.75, 0.55, 0.95) : (fh > 0.985 ? vec3(1.0, 0.9, 0.25) : vec3(0.97, 0.97, 0.92));
+		c = mix(c, flower, grass * fdot * step(0.975, fh) * (1.0 - smoothstep(10.0, 25.0, dist)) * (1.0 - autumn) * (1.0 - snow));
 		// Асфальт: крошка и трещины
-		float asph = ground_lvl * grey * (1.0 - smoothstep(0.26, 0.4, lum));
+		float asph = ground_lvl * grey * (1.0 - smoothstep(0.34, 0.5, lum));
 		float crack_n = texture(grain, wpos.xz * 0.19).r;
 		// Трещины — редкие: тонкая линия шума и только там, где асфальт старый
 		float old = smoothstep(0.99, 1.03, big);
 		float crack = (1.0 - smoothstep(0.0, 0.004, abs(crack_n - 0.925))) * old;
 		c *= mix(1.0, 0.82 + 0.3 * (fine - 0.78) / 0.28, asph * near);
 		c *= 1.0 - asph * crack * 0.35 * near;
+		// Щебёнка в асфальте и тёмные заплатки, где латали ямы
+		c = mix(c, c * 1.28 + 0.02, asph * near * smoothstep(0.82, 0.92, fine3.g) * 0.7);
+		c *= mix(1.0, 0.84 + 0.26 * mid3.g, asph * near);
+		// Масляные пятна и колеи — темнее
+		c *= 1.0 - 0.1 * asph * smoothstep(0.7, 0.85, mid3.b);
+		c *= 1.0 - 0.16 * asph * (1.0 - smoothstep(0.14, 0.2, big3.g));
 		// Грунт и гравий: камешки светлее, выбоины темнее
 		float dirt = ground_lvl * brown * (1.0 - green);
 		float pebble = smoothstep(1.015, 1.045, fine);
 		c = mix(c, c * 1.3 + 0.03, dirt * pebble * near);
 		c *= mix(1.0, mix(0.86, 1.08, (big - 0.78) / 0.28), dirt);
+		// Камешки покрупнее и сырые низинки (темнее, с отливом)
+		c = mix(c, vec3(0.62, 0.6, 0.56), dirt * near * smoothstep(0.88, 0.95, mid3.g) * 0.8);
+		c *= mix(1.0, 0.85 + 0.25 * mid3.r, dirt * near);
+		float damp = dirt * (1.0 - smoothstep(0.25, 0.4, big3.b));
+		c *= 1.0 - 0.18 * damp;
+		rough = mix(rough, 0.6, damp);
 		// Стены из досок: щели между досками и волокна дерева
 		float wood = vert * brown * (1.0 - red) * (1.0 - smoothstep(0.45, 0.6, lum));
 		float along = wpos.x * abs(wnrm.z) + wpos.z * abs(wnrm.x);
 		float fy = fract(wpos.y / 0.19);
 		float gap = smoothstep(0.9, 0.97, fy) + (1.0 - smoothstep(0.0, 0.03, fy));
-		float fibre = texture(grain, vec2(along * 0.35, wpos.y * 7.0)).r;
+		vec3 fib3 = texture(grain, vec2(along * 0.35, wpos.y * 7.0)).rgb;
+		float fibre = fib3.r * 0.5 + (0.78 + fib3.b * 0.28) * 0.5;
+		// Сучки — тёмные пятнышки на досках
+		float knot = smoothstep(0.9, 0.97, fib3.g);
 		float board = hash(vec2(floor(wpos.y / 0.19), floor(along / 2.3)));
-		c *= mix(1.0, (1.0 - 0.45 * gap) * (0.82 + 0.28 * (fibre - 0.78) / 0.28) * (0.9 + 0.2 * board), wood * near);
+		c *= mix(1.0, (1.0 - 0.45 * gap) * (0.82 + 0.28 * (fibre - 0.78) / 0.28) * (0.9 + 0.2 * board) * (1.0 - 0.35 * knot), wood * near);
 		// Кирпич: ряды со сдвигом, светлый шов, кирпичи разного тона
 		float brick = vert * red * smoothstep(0.2, 0.3, lum) * (1.0 - wood);
 		float row = floor(wpos.y / 0.075);
@@ -314,13 +344,24 @@ void fragment() {
 		float plaster = vert * grey * smoothstep(0.4, 0.55, lum) * step(0.9, wpos.y);
 		float pseam = max(1.0 - smoothstep(0.0, 0.012, abs(fract(wpos.y / 2.8) - 0.5) - 0.488),
 			1.0 - smoothstep(0.0, 0.01, abs(fract(along / 3.2) - 0.5) - 0.49));
-		float stain = texture(grain, vec2(along * 0.4, wpos.y * 0.12)).r;
+		vec3 st3 = texture(grain, vec2(along * 0.4, wpos.y * 0.12)).rgb;
+		float stain = st3.r;
 		c *= mix(1.0, (0.9 + 0.14 * (stain - 0.78) / 0.28) * (1.0 - 0.18 * pseam), plaster * near);
+		// Облезлая краска пятнами и потёки от дождя сверху вниз
+		c = mix(c, c * vec3(0.9, 0.88, 0.84), plaster * near * smoothstep(0.86, 0.93, st3.g));
+		float streak = texture(grain, vec2(along * 1.7, wpos.y * 0.03)).b;
+		c *= 1.0 - 0.12 * plaster * near * smoothstep(0.62, 0.8, streak);
 		// Крыши: ряды черепицы или шифера вдоль ската и волна поперёк
 		float fr = fract(wpos.y * 5.0);
 		float wave = 0.5 + 0.5 * sin((wpos.x + wpos.z) * 11.0);
 		c *= mix(1.0, (1.0 - 0.3 * smoothstep(0.82, 0.98, fr)) * (0.9 + 0.12 * wave), slope * near);
 		rough = mix(rough, 0.75, slope);
+		// Шифер серый — с зелёными пятнами мха и лишайника
+		float moss = slope * grey * smoothstep(0.75, 0.9, big3.g) * (0.6 + 0.4 * fine3.g);
+		c = mix(c, vec3(0.38, 0.45, 0.25) * (0.8 + 0.3 * fine), moss * 0.55);
+		// Грязь у низа стен: брызги с земли, тёмная полоса цоколя
+		float base = vert * (1.0 - smoothstep(0.05, 0.55, wpos.y)) * (1.0 - green);
+		c = mix(c, c * vec3(0.7, 0.64, 0.56), base * (0.5 + 0.5 * fine3.g) * 0.8);
 	}
 	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
 	c = mix(c, c * vec3(1.0, 1.12, 0.95), spring * green);
@@ -387,26 +428,43 @@ static func grain() -> Texture2D:
 	return _grain
 
 
-## Зерно: крупные пятна + мелкая крупка, яркость 0.8–1.05.
+## Зерно, 256 × 256, бесшовное. Три узора в каналах (одна выборка в шейдере):
+## R — крупные пятна + мелкая крупка, яркость 0.78–1.06 (общий тон
+## поверхностей); G — ячейки (камешки, щебёнка, кочки травы, пятна мха и
+## заплаток), 0..1; B — вытянутые волокна (доски, потёки на стенах), 0..1.
 static func grain_image() -> Image:
 	var big := FastNoiseLite.new()
 	big.seed = 7
-	big.frequency = 0.04
+	big.frequency = 0.02
 	var fine := FastNoiseLite.new()
 	fine.seed = 11
-	fine.frequency = 0.35
-	var n := 128
+	fine.frequency = 0.175
+	var cells := FastNoiseLite.new()
+	cells.seed = 23
+	cells.noise_type = FastNoiseLite.TYPE_CELLULAR
+	cells.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_DIV
+	cells.frequency = 0.06
+	var fib := FastNoiseLite.new()
+	fib.seed = 31
+	fib.frequency = 0.02
+	fib.fractal_octaves = 3
+	var n := 256
 	var img := Image.create(n, n, true, Image.FORMAT_RGB8)
 	# Бесшовно: шум на торе — четыре угла плитки усредняются
 	for y in n:
 		for x in n:
 			var v := 0.0
+			var cg := 0.0
+			var fb := 0.0
 			for dy in [0, n]:
 				for dx in [0, n]:
 					var w := (1.0 - absf(float(x + dx - n) / n)) * (1.0 - absf(float(y + dy - n) / n))
 					v += w * (big.get_noise_2d(x + dx, y + dy) * 0.55 + fine.get_noise_2d(x + dx, y + dy) * 0.45)
+					cg += w * cells.get_noise_2d(x + dx, y + dy)
+					# Волокна вдоль X: по Y частые, по X редкие
+					fb += w * fib.get_noise_2d((x + dx) * 0.12, (y + dy) * 2.2)
 			var k := clampf(0.93 + v * 0.22, 0.78, 1.06)
-			img.set_pixel(x, y, Color(k, k, k))
+			img.set_pixel(x, y, Color(k, clampf((cg + 0.74) / 0.62, 0.0, 1.0), clampf(fb * 0.9 + 0.5, 0.0, 1.0)))
 	img.generate_mipmaps()
 	return img
 
