@@ -135,7 +135,7 @@ func _draw() -> void:
 	var sp := str(int(round(_shown)))
 	draw_string(_font, c + Vector2(-_font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_big).x * 0.5, r * 0.42),
 		sp, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_big, Color.WHITE)
-	var unit := "км/ч"
+	var unit := SettingsManager.t("км/ч")
 	draw_string(_font, c + Vector2(-_font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x * 0.5, r * 0.58),
 		unit, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.6))
 	var gear := v.gear_name()
@@ -334,8 +334,8 @@ func _draw_gearbox(v: Vehicle) -> void:
 	draw_rect(cb, Color(1, 1, 1, 0.15))
 	var k := clampf(1.0 - v.clutch, 0.0, 1.0)
 	draw_rect(Rect2(cb.position + Vector2(0, cb.size.y * (1.0 - k)), Vector2(cb.size.x, cb.size.y * k)), Color(0.4, 0.8, 1.0))
-	draw_string(_font, cb.position + Vector2(-6, cb.size.y + 14), "сц.", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, dim)
-	var hint := "%s сц. · 1–5 · 0 N · %s R" % [KeyRemap.key_name(KeyRemap.key_for(KEY_SHIFT)), KeyRemap.key_name(KeyRemap.key_for(KEY_MINUS))]
+	draw_string(_font, cb.position + Vector2(-6, cb.size.y + 14), SettingsManager.t("сц."), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, dim)
+	var hint := SettingsManager.t("%s сц. · 1–5 · 0 N · %s R" % [KeyRemap.key_name(KeyRemap.key_for(KEY_SHIFT)), KeyRemap.key_name(KeyRemap.key_for(KEY_MINUS))])
 	draw_string(_font, o + Vector2(6, ph - 8), hint, HORIZONTAL_ALIGNMENT_LEFT, pw - 8, 10, dim)
 
 
@@ -390,7 +390,7 @@ func _draw_izh(v: Vehicle) -> void:
 		draw_rect(sq, c.lightened(0.25) if on else c.darkened(0.45))
 		draw_rect(sq, Color(0.5, 0.5, 0.52), false, 1.0)
 		_izh_icon(String(L[3]), sq, Color.WHITE if on else Color(1, 1, 1, 0.6))
-		var t: String = L[0]
+		var t := SettingsManager.t(L[0])
 		var tf := fs
 		var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tf).x
 		var room := bw * (0.26 if row == 0 else 0.31) - 2.0
@@ -424,7 +424,7 @@ func _draw_izh(v: Vehicle) -> void:
 	var unit := "km/h"
 	draw_string(_font, cs + Vector2(-_font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf).x * 0.5, -r * 0.1), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, cf, white)
 	_izh_counter(cs + Vector2(0, r * 0.38), "%05d" % (int(drive / 1000.0) % 100000), false, cf)
-	var gost := "ГОСТ 1578-76"
+	var gost := SettingsManager.t("ГОСТ 1578-76")
 	var gf := maxi(sfs - 7, 5)
 	draw_string(_font, cs + Vector2(-_font.get_string_size(gost, HORIZONTAL_ALIGNMENT_LEFT, -1, gf).x * 0.5, r * 0.72), gost, HORIZONTAL_ALIGNMENT_LEFT, -1, gf, Color(0.7, 0.7, 0.7))
 	_izh_needle(cs, r, clampf(_shown / top, 0.0, 1.02))

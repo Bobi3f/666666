@@ -124,7 +124,7 @@
     <div class="card">
       <div>
         <h1><span class="gear">1</span>First Gear</h1>
-        <p class="sub">Жизнь в Каменке на первой передаче. От покосившейся избы — до кирпичного дома под черепицей.</p>
+        <p class="sub">Жизнь в Каменке на первой передаче. От покосившейся избы — до хозяина всего района: своё СТО, свадьба с Олей, рейсовый автобус.</p>
       </div>
       <button id="play" type="button">Играть</button>
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
@@ -153,6 +153,26 @@
 
 <script src="index.js"></script>
 <script>
+  // Язык страницы — как у браузера (игра выбирает так же): русский для ru,
+  // uk, be, для остальных — английский. В игре язык меняется в меню.
+  const EN = !/^(ru|uk|be)\b/i.test(navigator.language || "ru");
+  function L(ru, en) { return EN ? en : ru; }
+  if (EN) {
+    document.documentElement.lang = "en";
+    document.querySelector(".sub").textContent = "Life in Kamenka in first gear. From a crooked hut to master of the whole district: your own garage, a wedding with Olya, a route bus.";
+    document.getElementById("play").textContent = "Play";
+    document.getElementById("status").textContent = "Download — about 10 MB. Sound turns on after you tap.";
+    document.querySelector(".touch-only").textContent = "Joystick on the left, swipe on the right to turn the camera, action buttons — bottom right, \"Menu\" — top right. In a car — a steering wheel you turn with your finger and pedals, like in Car Parking. Best played in landscape.";
+    const keys = ["walk, drive", "look", "action, get in", "eat", "task journal", "map", "menu, mouse", "car radio", "all controls"];
+    document.querySelectorAll(".keys li").forEach(function (li, i) {
+      const k = li.querySelector("kbd");
+      if (i === 1) k.textContent = "Mouse";
+      li.lastChild.textContent = " " + keys[i];
+    });
+    const a = document.querySelector(".note a").outerHTML;
+    document.querySelector(".note").innerHTML = "On a computer — keyboard and mouse. On a phone — joystick on the left, camera with your finger on the right, action buttons bottom right. Saves (F5 or \"Menu\") stay in this browser. If the game runs slowly, set detail to \"low\" in the Esc menu. Windows version — " + a + ".";
+    document.getElementById("fs").textContent = "Fullscreen";
+  }
   (function () {
     const cover = document.getElementById("cover");
     const play = document.getElementById("play");
@@ -165,16 +185,16 @@
       status.textContent = text;
       status.classList.add("err");
       play.disabled = false;
-      play.textContent = "Попробовать ещё раз";
+      play.textContent = L("Попробовать ещё раз", "Try again");
     }
 
     if (typeof Engine === "undefined") {
-      fail("Не загрузился движок игры. Обновите страницу.");
+      fail(L("Не загрузился движок игры. Обновите страницу.", "The game engine didn't load. Refresh the page."));
       return;
     }
     const missing = Engine.getMissingFeatures({ threads: false });
     if (missing.length) {
-      fail("Браузеру не хватает: " + missing.join(", ") + ". Откройте в свежем Chrome, Edge или Firefox.");
+      fail(L("Браузеру не хватает: ", "Your browser lacks: ") + missing.join(", ") + L(". Откройте в свежем Chrome, Edge или Firefox.", ". Open it in a recent Chrome, Edge or Firefox."));
       play.disabled = true;
       return;
     }
@@ -209,15 +229,15 @@
     play.addEventListener("click", function () {
       if (touch) goFullscreen();
       play.disabled = true;
-      play.textContent = "Загружаю…";
+      play.textContent = L("Загружаю…", "Loading…");
       status.classList.remove("err");
-      status.textContent = "Скачиваю движок и мир…";
+      status.textContent = L("Скачиваю движок и мир…", "Downloading the engine and the world…");
       engine.startGame({
         onProgress: function (cur, total) {
           if (total > 0) {
             const pct = Math.min(100, Math.round(cur / total * 100));
             fill.style.width = pct + "%";
-            status.textContent = pct < 100 ? "Загрузка: " + pct + "%" : "Строю Каменку…";
+            status.textContent = pct < 100 ? L("Загрузка: ", "Loading: ") + pct + "%" : L("Строю Каменку…", "Building Kamenka…");
           }
         }
       }).then(function () {
@@ -225,7 +245,7 @@
         fs.hidden = !!document.fullscreenElement;
         canvas.focus();
       }).catch(function (err) {
-        fail("Игра не запустилась: " + (err && err.message ? err.message : err));
+        fail(L("Игра не запустилась: ", "The game didn't start: ") + (err && err.message ? err.message : err));
       });
     });
 

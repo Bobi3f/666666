@@ -233,7 +233,7 @@ func _draw_needs() -> void:
 		var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		_needs.draw_string_outline(font, c + Vector2(-w * 0.5, 4.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.8))
 		_needs.draw_string(font, c + Vector2(-w * 0.5, 4.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
-		var cap: String = RINGS[i][0]
+		var cap: String = SettingsManager.t(RINGS[i][0])
 		var cw := font.get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 		_needs.draw_string_outline(font, c + Vector2(-cw * 0.5, RING_R + 11.0), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0, 0, 0, 0.8))
 		_needs.draw_string(font, c + Vector2(-cw * 0.5, RING_R + 11.0), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.85))

@@ -87,7 +87,7 @@ func _layout() -> void:
 
 
 func _text(p: Vector2, t: String, size: int, col: Color) -> void:
-	_card.draw_string(_font, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+	_card.draw_string(_font, p, SettingsManager.t(t), HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 
 func _draw_card() -> void:

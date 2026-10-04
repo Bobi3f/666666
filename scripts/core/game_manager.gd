@@ -25,6 +25,16 @@ const TOUCH_NAMES := [
 	["(W — завести)", "(«Газ» — завести)"],
 	["T — коробка, V — вид", "«Вид» — камера"],
 ]
+## То же по-английски: в английской игре текст сперва переводится, потом
+## клавиши меняются на кнопки.
+const TOUCH_NAMES_EN := [
+	[", journal — J, controls — F1", ", journal — the \"Journal\" button"],
+	[" (Q)", " (the \"Food\" button)"],
+	[" — J)", " — \"Journal\")"],
+	[". Automatic: W — gas, S — brake and reverse. T — manual, V — view", ": turn the wheel with your finger, pedals on the right, D/R lever — forward or reverse"],
+	["(W — start the engine)", "(\"Gas\" — start the engine)"],
+	["T — gearbox, V — view", "\"View\" — camera"],
+]
 
 ## Плавное движение пешком от джойстика телефона или стика геймпада:
 ## x — вбок, y — вперёд(−)/назад(+), длина до 1 — насколько отклонён.
@@ -82,7 +92,10 @@ func vibrate(ms: int) -> void:
 func touch_text(text: String) -> String:
 	if not touch_mode:
 		return text
-	for pair in TOUCH_NAMES:
+	var en := SettingsManager.lang == "en"
+	if en:
+		text = SettingsManager.t(text)
+	for pair in (TOUCH_NAMES_EN if en else TOUCH_NAMES):
 		text = text.replace(pair[0], pair[1])
 	return text
 

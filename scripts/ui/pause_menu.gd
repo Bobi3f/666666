@@ -142,6 +142,8 @@ func _theme() -> Theme:
 const ISSUES_URL := "https://github.com/Bobi3f/666666/issues/new"
 
 var _slot_buttons: Array[Button] = []
+## Кнопки языка в меню и в настройках — горят одинаково
+var _lang_buttons: Array[Button] = []
 
 
 func _build_main(box: VBoxContainer) -> void:
@@ -185,12 +187,38 @@ func _build_main(box: VBoxContainer) -> void:
 	for b in [_button(row, "Настройки", func() -> void: _show("settings")),
 			_button(row, "Управление", func() -> void: _show("controls"))]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lang_row(box)
 	_button(box, "Сообщить об ошибке", _report_bug)
 	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
 	if not OS.has_feature("web"):
 		_button(box, "Выход", func() -> void:
 			SaveManager.autosave()
 			get_tree().quit())
+
+
+## Язык игры: «Русский» и «English» — подписи не переводятся, чтобы свой
+## язык нашёл любой. Переключается сразу, весь текст на экране меняется сам.
+func _lang_row(box: Container) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
+	var g := ButtonGroup.new()
+	for code in ["ru", "en"]:
+		var b := Button.new()
+		b.text = "Русский" if code == "ru" else "English"
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.toggle_mode = true
+		b.button_group = g
+		b.button_pressed = SettingsManager.lang == code
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, _btn_h())
+		b.add_theme_font_size_override("font_size", 14)
+		b.pressed.connect(func() -> void:
+			SoundLibrary.play("click", -6.0)
+			SettingsManager.set_lang(code)
+			_refresh())
+		row.add_child(b)
+		_lang_buttons.append(b)
 
 
 ## Страница «новая проблема» на GitHub: заголовок и сведения об игре уже
@@ -258,6 +286,11 @@ func _build_settings(box: VBoxContainer) -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(380, 0)
 	box.add_child(hint)
+	var lang_label := Label.new()
+	lang_label.text = "Язык · Language"
+	lang_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	box.add_child(lang_label)
+	_lang_row(box)
 	# Размер текста и кнопок
 	var ts_label := Label.new()
 	ts_label.text = "Размер текста"
@@ -574,6 +607,8 @@ func _refresh() -> void:
 	for i in _slot_buttons.size():
 		_slot_buttons[i].text = "%d: %s" % [i + 1, SaveManager.slot_info(i + 1)]
 		_slot_buttons[i].set_pressed_no_signal(SettingsManager.slot == i + 1)
+	for b in _lang_buttons:
+		b.set_pressed_no_signal((b.text == "English") == (SettingsManager.lang == "en"))
 	_resume.text = "Новая игра" if _main_mode and not has else "Продолжить"
 	_continue.visible = _main_mode and has
 	_resume.visible = not (_main_mode and has)

@@ -39,6 +39,10 @@ ControlsHelp="*res://scripts/ui/controls_help.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 
+[internationalization]
+
+locale/fallback="ru"
+
 [physics]
 
 common/physics_interpolation=true

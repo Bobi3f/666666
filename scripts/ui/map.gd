@@ -225,10 +225,10 @@ func _draw_mini() -> void:
 	_mini.draw_colored_polygon(PackedVector2Array([at + fwd * 9.0, at - fwd * 5.0 + sd * 5.0, at - fwd * 5.0 - sd * 5.0]), Color(1, 0.2, 0.2))
 	_mini.draw_rect(Rect2(Vector2.ZERO, Vector2(side, side)), Color(1, 1, 1, 0.5), false, 1.5)
 	var font := ThemeDB.fallback_font
-	_mini.draw_string_outline(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
-	_mini.draw_string(font, Vector2(side * 0.5 - 5, 14), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	_mini.draw_string_outline(font, Vector2(side * 0.5 - 5, 14), SettingsManager.t("С"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
+	_mini.draw_string(font, Vector2(side * 0.5 - 5, 14), SettingsManager.t("С"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 	# В селе — его название под мини-картой
-	var here := Region.village_at(pos.x, pos.z)
+	var here := SettingsManager.t(Region.village_at(pos.x, pos.z))
 	if here != "":
 		var w := font.get_string_size(here, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		_mini.draw_string_outline(font, Vector2((side - w) * 0.5, side + 15), here, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
@@ -311,6 +311,7 @@ func _blob(r: Rect2, c: Color, seed: int, edge := Color(0, 0, 0, 0)) -> void:
 
 
 func _label_at(font: Font, text: String, at: Vector2, size: int, italic := false) -> void:
+	text = SettingsManager.t(text)
 	var p := _p(at.x, at.y)
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var col := Color(0.12, 0.1, 0.08) if not italic else Color(0.28, 0.33, 0.24)
@@ -325,7 +326,7 @@ func _compass(font: Font) -> void:
 	_t.draw_circle(c, 18, Color(1, 1, 1, 0.6))
 	_t.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -16), c + Vector2(6, 2), c + Vector2(-6, 2)]), Color(0.7, 0.15, 0.1))
 	_t.draw_colored_polygon(PackedVector2Array([c + Vector2(0, 16), c + Vector2(6, 2), c + Vector2(-6, 2)]), Color(0.3, 0.28, 0.26))
-	_t.draw_string(font, c + Vector2(-5, -20), "С", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
+	_t.draw_string(font, c + Vector2(-5, -20), SettingsManager.t("С"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
 
 
 ## Масштаб: полоска на 100 метров (на карте района — на 500) в левом нижнем углу.
@@ -335,7 +336,7 @@ func _scale_bar(font: Font) -> void:
 	var bar := _m(meters)
 	_t.draw_rect(Rect2(a, Vector2(bar, 5)), Color(0.12, 0.1, 0.08))
 	_t.draw_rect(Rect2(a + Vector2(bar * 0.5, 1), Vector2(bar * 0.5 - 1, 3)), Color(1, 1, 1))
-	_t.draw_string(font, a + Vector2(bar + 6, 7), "%d м" % int(meters), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
+	_t.draw_string(font, a + Vector2(bar + 6, 7), SettingsManager.t("%d м" % int(meters)), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
 
 
 ## Видно ли прямоугольник мира (с учётом сдвига _sh) на рисуемом куске.
@@ -667,8 +668,9 @@ func _draw_places(labels: bool, font: Font) -> void:
 		elif pl[0] == "Автобус" and absf(v.x) > 200.0:
 			# В сёлах остановка рядом с магазином — подпись ниже
 			off = Vector2(8, 18)
-		_t.draw_string_outline(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.9))
-		_t.draw_string(font, at + off, pl[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
+		var caption := SettingsManager.t(pl[0])
+		_t.draw_string_outline(font, at + off, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.9))
+		_t.draw_string(font, at + off, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.12, 0.1, 0.08))
 
 
 func _draw_dynamic(font: Font) -> void:
@@ -698,7 +700,7 @@ func _draw_dynamic(font: Font) -> void:
 	var side := Vector2(fwd.y, -fwd.x)
 	_canvas.draw_colored_polygon(PackedVector2Array([at + fwd * 11.0, at - fwd * 6.0 + side * 6.0, at - fwd * 6.0 - side * 6.0]), Color(1, 0.2, 0.2))
 	var key := "Карта" if GameManager.touch_mode else "M"
-	var hint := ("%s — весь район" if mode != 2 else "%s — закрыть карту") % key
+	var hint := SettingsManager.t(("%s — весь район" if mode != 2 else "%s — закрыть карту") % key)
 	var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	_canvas.draw_string_outline(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(1, 1, 1, 0.8))
 	_canvas.draw_string(font, Vector2(SIZE - w - 10, SIZE - 12), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.3, 0.26, 0.22))

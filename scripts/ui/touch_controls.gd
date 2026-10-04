@@ -224,7 +224,7 @@ func _draw_wheel() -> void:
 	_wheel.draw_circle(c, HUB_R, Color(0.95, 0.7, 0.25, 0.75) if horn else Color(0.15, 0.15, 0.16, 0.85))
 	_wheel.draw_arc(c, HUB_R - 1.5, 0.0, TAU, 40, Color(1, 1, 1, 0.5), 2.5, true)
 	var font := ThemeDB.fallback_font
-	var txt := "Бип"
+	var txt := SettingsManager.t("Бип")
 	var ts := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
 	_wheel.draw_string_outline(font, c + Vector2(-ts.x * 0.5, 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.BLACK)
 	_wheel.draw_string(font, c + Vector2(-ts.x * 0.5, 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
@@ -317,8 +317,8 @@ func _draw_split_hint() -> void:
 		_split_hint.draw_line(Vector2(x, y), Vector2(x, y + 14.0), Color(1, 1, 1, 0.35 * a), 2.0)
 		y += 26.0
 	var font := ThemeDB.fallback_font
-	var walk := "ХОДИТЬ — веди пальцем"
-	var look := "КАМЕРА — веди пальцем"
+	var walk := SettingsManager.t("ХОДИТЬ — веди пальцем")
+	var look := SettingsManager.t("КАМЕРА — веди пальцем")
 	var lx := x * 0.5 if not SettingsManager.left_hand else x * 1.5
 	var rx := x * 1.5 if not SettingsManager.left_hand else x * 0.5
 	for t in [[walk, lx], [look, rx]]:
