@@ -227,6 +227,9 @@ static func village_at(x: float, z: float) -> String:
 
 ## Где можно сажать лес: не на дорогах, не в реке, не в сёлах, полях и озере.
 static func tree_ok(x: float, z: float) -> bool:
+	# Трасса с обочинами — через весь район, и там, где через лес
+	if absf(z) < 9.0:
+		return false
 	if road_dist(x, z) < ROAD_HALF + 3.0 or river_dist(x, z) < RIVER_HALF + 6.0:
 		return false
 	var p := Vector2(x, z)
