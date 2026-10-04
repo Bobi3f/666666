@@ -164,6 +164,15 @@ const PAINTS := [Color(0.78, 0.72, 0.52), Color(0.55, 0.09, 0.09), Color(0.13, 0
 const PAINT_NAMES := ["бежевый", "вишнёвый", "синий", "зелёный", "белый", "чёрный"]
 const MOTO_PAINTS := [Color(0.7, 0.12, 0.1), Color(0.13, 0.3, 0.55), Color(0.1, 0.1, 0.11)]
 const MOTO_PAINT_NAMES := ["красный", "синий", "чёрный"]
+## Узлы, что изнашиваются с пробегом: [название, сколько % ресурса уходит
+## за километр, цена новой для легковой]. Меняют на СТО в городе (StoPanel).
+const WEAR := {
+	"engine": ["Мотор (капремонт)", 0.25, 2400],
+	"clutch": ["Сцепление", 0.35, 600],
+	"brakes": ["Тормозные колодки", 0.6, 300],
+	"suspension": ["Амортизаторы", 0.4, 800],
+	"tyres": ["Резина", 0.5, 1000],
+}
 
 ## Вид сзади (V) — общий для всего транспорта.
 static var chase_view := false
@@ -187,6 +196,10 @@ var clutch := 1.0
 var locked := false
 var fuel := 25.0
 var condition := 100.0
+## Ресурс узлов, % (WEAR): нет ключа — узел новый.
+var health := {}
+var _odo := 0.0
+var _warned_parts := {}
 ## Тюнинг в СТО: всесезонная резина (держит на грунте и в грязи),
 ## форсированный мотор (+20% тяги), цвет кузова.
 var tires := false
@@ -720,7 +733,7 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 	if absf(speed) < 0.05 and absf(force) < rolling:
 		speed = 0.0
 	if brake:
-		speed = move_toward(speed, 0.0, (spec.brake as float) * surf.grip * dt)
+		speed = move_toward(speed, 0.0, (spec.brake as float) * surf.grip * _part_k("brakes", 0.55) * dt)
 	if handbrake:
 		speed = move_toward(speed, 0.0, 6.0 * dt)
 
@@ -746,6 +759,7 @@ func _update(dt: float, throttle: float, brake: bool, handbrake: bool, pedal: bo
 
 	_steering(dt, steer_in, handbrake, surf.grip)
 	_move(dt, handbrake)
+	_wear_parts(absf(speed) * dt)
 	# Пройденный путь — для заданий и статистики
 	if driver:
 		var d := absf(speed) * dt
@@ -812,7 +826,7 @@ func _steering(dt: float, steer_in: float, handbrake: bool, grip: float) -> void
 func _move(dt: float, handbrake: bool) -> void:
 	var fwd := -global_transform.basis.z
 	var right := global_transform.basis.x
-	var grip: float = (spec.grip as float) * surface().grip
+	var grip: float = (spec.grip as float) * surface().grip * _part_k("tyres", 0.8) * _part_k("suspension", 0.9)
 	# Всесезонка: на грунте, траве и в грязи держит заметно лучше
 	if tires:
 		grip *= 1.08 if on_asphalt() else 1.35
@@ -908,6 +922,50 @@ func _stall(text: String) -> void:
 
 func _wear(amount: float) -> void:
 	condition = maxf(condition - amount, 0.0)
+	# Удары бьют и по подвеске
+	health["suspension"] = maxf(part_health("suspension") - amount * 0.4, 0.0)
+
+
+## Ресурс узла n, % (100 — новый).
+func part_health(n: String) -> float:
+	return float(health.get(n, 100.0))
+
+
+## Насколько узел ещё работает: от low (стёрт) до 1 (новый).
+func _part_k(n: String, low: float) -> float:
+	return lerpf(low, 1.0, part_health(n) / 100.0)
+
+
+## Цена нового узла: мотоцикл — дешевле, грузовик и автобус — дороже.
+func part_price(n: String) -> int:
+	var k := 0.4 if spec.two_wheels else (1.6 if kind in ["truck", "bus", "tractor"] else 1.0)
+	return int(round(float(WEAR[n][2]) * k / 10.0)) * 10
+
+
+## Поставить новый узел.
+func renew_part(n: String) -> void:
+	health.erase(n)
+	_warned_parts.erase(n)
+
+
+## Километр пробега — узлы понемногу изнашиваются; по грунту подвеска
+## и резина — быстрее. Стёрся узел — предупреждаем один раз.
+func _wear_parts(dist: float) -> void:
+	_odo += dist
+	if _odo < 1000.0:
+		return
+	_odo -= 1000.0
+	var rough := 1.0 if on_asphalt() else 1.8
+	for n in WEAR:
+		var rate: float = WEAR[n][1]
+		if n == "suspension" or n == "tyres":
+			rate *= rough
+		if n == "clutch" and SettingsManager.auto_gearbox:
+			rate *= 0.6
+		health[n] = maxf(part_health(n) - rate, 0.0)
+		if part_health(n) < 25.0 and not _warned_parts.has(n) and driver:
+			_warned_parts[n] = true
+			GameManager.notify("%s: %s — износ, поменяй на СТО в городе" % [spec.title, String(WEAR[n][0]).to_lower()])
 
 
 func _update_sound() -> void:
@@ -1254,7 +1312,12 @@ func _attach_plates() -> void:
 
 
 func repaint() -> void:
-	paint = (paint + 1) % paints().size()
+	set_paint((paint + 1) % paints().size())
+
+
+## Перекрасить в цвет i из paints().
+func set_paint(i: int) -> void:
+	paint = clampi(i, 0, paints().size() - 1)
 	_paint_body()
 
 
@@ -1452,7 +1515,8 @@ func _build_turn_lamps() -> void:
 
 ## Тяга мотора с учётом форсировки.
 func _torque() -> float:
-	return (spec.torque as float) * (1.2 if engine_tuned else 1.0) * (1.06 if has_part("exhaust") else 1.0)
+	return (spec.torque as float) * (1.2 if engine_tuned else 1.0) * (1.06 if has_part("exhaust") else 1.0) \
+		* _part_k("engine", 0.75) * _part_k("clutch", 0.85)
 
 
 func has_part(n: String) -> bool:
@@ -1778,6 +1842,7 @@ func save_state() -> Dictionary:
 		"paint": paint,
 		"plate": plate_text,
 		"parts": parts.duplicate(),
+		"health": health.duplicate(),
 	}
 
 
@@ -1791,6 +1856,8 @@ func load_state(d: Dictionary) -> void:
 	condition = float(d.get("condition", 100.0))
 	tires = bool(d.get("tires", false))
 	engine_tuned = bool(d.get("engine_tuned", false))
+	var he: Variant = d.get("health", {})
+	health = (he as Dictionary).duplicate() if he is Dictionary else {}
 	var pa: Variant = d.get("parts", {})
 	parts = (pa as Dictionary).duplicate() if pa is Dictionary else {}
 	if parts.has("rims"):

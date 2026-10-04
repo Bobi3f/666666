@@ -96,6 +96,35 @@ func _run() -> void:
 	fix.activated.emit()
 	ok(C.condition > 99.0, "машину починили в городе")
 
+	print("== Мастер СТО: покраска и запчасти")
+	TM.minutes = 11 * 60.0
+	C.global_position = Town.w(Vector3(248, 0.1, 67))
+	await frames(3)
+	var mz := zone_named("StoMasterZone")
+	ok(mz != null and mz.text().contains("покраска"), "у СТО мастер: " + (mz.text() if mz else ""))
+	east.open_master()
+	var SP: StoPanel = east.master_panel
+	ok(SP.visible and SP._car == C, "окно мастера открыто для «Жигулей»")
+	GM.money = 10000
+	ok(SP.paint(3) and C.paint == 3 and GM.money == 10000 - SP.PAINT_PRICE[0], "перекрасил в %s" % C.paint_name())
+	ok(not SP.paint(3), "в тот же цвет не красят")
+	C.health = {"brakes": 10.0, "engine": 40.0}
+	var t_old: float = C._torque()
+	ok(not SP.renew("clutch"), "новое сцепление не меняют")
+	var m1: int = GM.money
+	ok(SP.renew("brakes") and C.part_health("brakes") == 100.0 and GM.money == m1 - C.part_price("brakes"), "поставили новые колодки")
+	ok(SP.renew("engine") and C._torque() > t_old * 1.1, "после капремонта мотор тянет сильнее")
+	var st: Dictionary = C.save_state()
+	C.health = {"tyres": 5.0}
+	C.load_state(st)
+	ok(C.part_health("tyres") == 100.0 and C.part_health("engine") == 100.0, "ресурс узлов сохраняется")
+	C.health = {}
+	C._odo = 0.0
+	C._wear_parts(1000.0)
+	ok(C.part_health("brakes") < 100.0 and C.part_health("tyres") < 100.0, "за километр узлы чуть изнашиваются")
+	SP.close_panel()
+	C.health = {}
+
 	print("== Гараж")
 	PR.home_items.erase("garage")
 	east._update_garage()

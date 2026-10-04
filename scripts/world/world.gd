@@ -2538,7 +2538,7 @@ func _exam_result(r: Dictionary) -> void:
 
 
 ## Сколько даётся на заезд с Колькой.
-const RACE_TIME := 26.0
+const RACE_TIME := 22.0
 
 
 func _race_prompt() -> String:

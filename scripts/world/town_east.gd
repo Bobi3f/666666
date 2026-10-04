@@ -32,6 +32,7 @@ const GARAGE_PRICE := 2500
 const PLAYGROUNDS := [Rect2(52, 85, 30, 13), Rect2(126, 85, 20, 13)]
 
 var sto_day := -1
+var master_panel: StoPanel
 var _rotor: Node3D
 var _cabins: Array[MeshInstance3D] = []
 var _garage_label: Label3D
@@ -197,6 +198,21 @@ func _sto(b: MeshBuilder, glow: MeshBuilder) -> void:
 	fix.prompt_fn = func() -> String: return w._repair_prompt(at)
 	fix.activated.connect(func() -> void: w._repair(at))
 	add_child(fix)
+	# Мастер у стеллажа: покраска и новые запчасти
+	var master := InteractZone.create("", Vector3(1.8, 2.2, 1.8))
+	master.name = "StoMasterZone"
+	master.position = Vector3(r.position.x - 1.5, 0, r.position.y + 4.0)
+	master.prompt_fn = func() -> String:
+		var h := TimeManager.hour()
+		if h < 8.0 or h >= 20.0:
+			return "СТО «Автосервис» работает с 8:00 до 20:00"
+		return "E — мастер: покраска и замена запчастей на новые"
+	master.activated.connect(open_master)
+	add_child(master)
+	_person(Vector3(r.position.x - 2.2, 0, r.position.y + 4.0), PI / 2.0, Color(0.55, 0.3, 0.15), false)
+	b.box(Vector3(r.position.x - 1.2, 0, r.position.y + 5.2), Vector3(r.position.x - 0.1, 2.0, r.position.y + 7.4), Color(0.4, 0.3, 0.22))
+	for i in 4:
+		b.box(Vector3(r.position.x - 1.1, 0.4 + i * 0.4, r.position.y + 5.4), Vector3(r.position.x - 0.8, 0.7 + i * 0.4, r.position.y + 7.2), [Color(0.6, 0.1, 0.1), Color(0.15, 0.3, 0.6), Color(0.9, 0.9, 0.85), Color(0.2, 0.4, 0.22)][i])
 	var job := InteractZone.create("", Vector3(1.6, 2.2, 1.6))
 	job.name = "StoShiftZone"
 	job.position = Vector3(r.end.x + 1.5, 0, r.position.y + 4.0)
@@ -204,6 +220,28 @@ func _sto(b: MeshBuilder, glow: MeshBuilder) -> void:
 	job.activated.connect(_shift)
 	add_child(job)
 	_person(Vector3(r.end.x + 2.2, 0, r.position.y + 4.0), -PI / 2.0, Color(0.2, 0.3, 0.55), false)
+
+
+## Своя техника у ворот СТО — для окна мастера.
+func sto_vehicles() -> Array:
+	var at := Town.w(Vector3(STO.get_center().x, 0, STO.get_center().y))
+	var out := []
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var car := v as Vehicle
+		if car and car.owned() and not car.school and car.global_position.distance_to(at) < 18.0:
+			out.append(car)
+	return out
+
+
+func open_master() -> void:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 20.0:
+		return
+	if master_panel == null:
+		master_panel = StoPanel.new()
+		add_child(master_panel)
+	SoundLibrary.play("click", -4.0)
+	master_panel.open("sto", sto_vehicles())
 
 
 func _shift_prompt() -> String:

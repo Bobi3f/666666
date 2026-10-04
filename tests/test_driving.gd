@@ -146,11 +146,11 @@ func _run() -> void:
 	ez.activate()
 	var EX = W.get_node("Exam")
 	ok(EX.state == 1 and GM.money == 700 and GM.challenge_line.contains("старт"), "экзамен взведён: " + GM.challenge_line)
-	C.global_position = Vector3(-29, 0.1, 8); C.rotation.y = PI
+	C.global_position = Town.w(Vector3(-29, 0.1, 8)); C.rotation.y = PI
 	C._on_enter(); C.fuel = 30.0
 	await frames(3)
 	var t0 := Time.get_ticks_msec()
-	var r: Dictionary = await run_course(C, EX, 28.0, AutoSchool.PARK + Vector3(0, 0, 12))
+	var r: Dictionary = await run_course(C, EX, 28.0, Town.w(AutoSchool.PARK + Vector3(0, 0, 12)))
 	print("     экзамен: ", r, " за %.0f с настоящего времени" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	ok(r.get("ok", false) and PR.license, "автопилот сдал экзамен: %.0f с, конусов %d" % [r.get("time", 0.0), r.get("cones", -1)])
 	ok(last().contains("Права") and PR.delivery_pay() == 650, "права: развоз платит %d грн" % PR.delivery_pay())
@@ -158,7 +158,7 @@ func _run() -> void:
 	C.exit_car(); await frames(3)
 	P.global_position = W.get_node("InstructorZone").global_position + Vector3(0, 0.2, 0); await frames(3)
 	zone_with("потренироваться").activate()
-	C.global_position = Vector3(-29, 0.1, 8); C.rotation.y = PI; C.speed = 0.0; C.velocity = Vector3.ZERO
+	C.global_position = Town.w(Vector3(-29, 0.1, 8)); C.rotation.y = PI; C.speed = 0.0; C.velocity = Vector3.ZERO
 	C._on_enter()
 	await frames(3)
 	var fail := {}
@@ -168,7 +168,7 @@ func _run() -> void:
 	# Прямо по конусам змейки
 	for i in 60 * 12:
 		if not fail.is_empty(): break
-		drive_to(C, Vector3(-29, 0, 64), 25.0)
+		drive_to(C, Town.w(Vector3(-29, 0, 64)), 25.0)
 		await physics_frame
 	release_all()
 	ok(not fail.is_empty() and not fail.ok and fail.why.contains("конус") and last().contains("Не сдал"), "по конусам — не сдал: " + last())
