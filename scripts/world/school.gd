@@ -180,6 +180,7 @@ func build(b: MeshBuilder, glow: MeshBuilder) -> void:
 	glow.xf = g_xf
 	football = Football.new()
 	football.name = "Football"
+	football.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	add_child(football)
 	var corner := at(Vector3(FIELD.position.x, 0, FIELD.position.y))
 	football.setup(Rect2(Vector2(corner.x, corner.z), FIELD.size))

@@ -37,6 +37,7 @@ const TP_DISTANCE := 3.4
 const TP_HEIGHT := 0.25
 
 var camera: SmoothCamera
+var _last_pos := Vector3.ZERO
 ## Точка глаз: к ней плавно тянется камера (см. SmoothCamera).
 var _eye: Node3D
 var car: Node3D  # машина, в которой сидим; null — пешком
@@ -69,6 +70,8 @@ var _mark_t := 0.0
 
 func _ready() -> void:
 	add_to_group("persist")
+	# Ходит в физике — рисуется между её шагами
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	GameManager.player = self
 	_shape = CollisionShape3D.new()
 	_capsule = CapsuleShape3D.new()
@@ -240,6 +243,10 @@ func toggle_view() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Перенесли разом (автобус, сон, загрузка) — не размазывать перелёт
+	if global_position.distance_to(_last_pos) > 6.0:
+		reset_physics_interpolation()
+	_last_pos = global_position
 	if car != null:
 		_turn_with_keys(delta)
 		return

@@ -30,6 +30,8 @@ var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	# Машины едут в физике — рисуются между её шагами
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	_rng.seed = 404
 	var colors := [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3), Color(0.45, 0.45, 0.47),
 		Color(0.85, 0.7, 0.3), Color(0.55, 0.2, 0.3), Color(0.3, 0.55, 0.6), Color(0.15, 0.15, 0.17)]

@@ -121,6 +121,10 @@ var _sky_horizon: Color
 
 
 func _ready() -> void:
+	# Плавность: всё, что движется в физике (машины, игрок, трафик, прохожие),
+	# рисуется между её шагами — на экране 90–144 Гц и при просадке кадров
+	# не дёргается. Остальной мир — как есть: он двигается каждый кадр сам.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_rng.seed = 20260925
 	_vrng.seed = 1986
 	_drng.seed = 1991
@@ -225,6 +229,7 @@ func _ready() -> void:
 	add_child(gai)
 	var chase := Chase.new()
 	chase.name = "Chase"
+	chase.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	add_child(chase)
 	var birds := preload("res://scripts/world/birds.gd").new()
 	birds.name = "Birds"

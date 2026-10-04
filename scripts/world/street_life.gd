@@ -37,6 +37,8 @@ var _shout_cool := 0.0
 
 
 func _ready() -> void:
+	# Прохожие и коровы ходят в физике — рисуются между её шагами
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	highway = "green"
 	_build_lights()
 	_build_walkers()

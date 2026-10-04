@@ -245,6 +245,7 @@ var _seat_mark: Node3D
 var look_yaw := 0.0
 var look_pitch := 0.0
 var _look_idle := 0.0
+var _last_pos := Vector3.ZERO
 const SEAT_PITCH := -0.06
 const LOOK_YAW_CABIN := 2.4
 var _chase_mark: Node3D
@@ -279,6 +280,8 @@ var _auto_start_cool := 0.0
 
 
 func _ready() -> void:
+	# Едет в физике — рисуется между её шагами (плавно на любом экране)
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	spec = SPECS[kind]
 	if spec.has("paint") and paint == 0:
 		paint = int(spec.paint)
@@ -604,6 +607,7 @@ func gear_name() -> String:
 # --- Физика -----------------------------------------------------------------
 
 func _physics_process(dt: float) -> void:
+	_skip_teleport()
 	var drv := driver != null
 	var w := drv and Input.is_physical_key_pressed(KEY_W)
 	var s := drv and Input.is_physical_key_pressed(KEY_S)
@@ -622,6 +626,14 @@ func _physics_process(dt: float) -> void:
 	if drv:
 		_return_look(dt)
 		_update_camera(dt)
+
+
+## Перенесли разом (салон, автобус, загрузка, эвакуатор) — не размазывать
+## перелёт по экрану: сглаживание начинается с нового места.
+func _skip_teleport() -> void:
+	if global_position.distance_to(_last_pos) > 6.0:
+		reset_physics_interpolation()
+	_last_pos = global_position
 
 
 ## Оглядеться: yaw — влево-вправо, pitch — вверх-вниз (рад).
