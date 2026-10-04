@@ -122,7 +122,12 @@ func load_game() -> bool:
 			node.load_state(data[key])
 	if not data.has("town_moved"):
 		_move_to_new_town()
-	GameManager.notify("Игра загружена")
+	# Просыпаемся дома, своя техника — во дворе (после отложенной посадки
+	# в машину из загрузки)
+	var world: Node = GameManager.player.get_parent() if GameManager.player else get_tree().current_scene
+	if world and world.has_method("park_home"):
+		world.park_home.call_deferred()
+	GameManager.notify("Игра загружена — ты дома, техника во дворе")
 	return true
 
 

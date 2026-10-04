@@ -554,7 +554,7 @@ func _build_roads(b: MeshBuilder) -> void:
 
 ## Городские дороги, тротуар с бордюром вдоль трассы, переход у ларька,
 ## люки (координаты города — см. _build_town_all).
-func _town_roads(b: MeshBuilder) -> void:
+func _town_roads(b: MeshBuilder, glow: MeshBuilder) -> void:
 	var asphalt := Color(0.24, 0.24, 0.25)
 	var white := Color(0.92, 0.92, 0.9)
 	b.box(Vector3(94, 0, 4), Vector3(100, 0.05, 100), asphalt)
@@ -570,6 +570,20 @@ func _town_roads(b: MeshBuilder) -> void:
 	for p in [Vector3(97, 0.051, 20), Vector3(97, 0.051, 45), Vector3(60, 0.051, 58), Vector3(120, 0.051, 58), Vector3(160, 0.051, 58)]:
 		for k in 4:
 			b.box_rot(p, Vector3(0.7, 0.01, 0.29), k * PI / 4.0, Color(0.2, 0.2, 0.2))
+	# Тротуары с бордюром вдоль главной и поперечной улиц, осевая разметка
+	for r in [[Rect2(92, 7.6, 2, 47.4), "x1"], [Rect2(100, 7.6, 2, 47.4), "x0"], [Rect2(92, 61, 2, 39), "x1"], [Rect2(100, 61, 2, 39), "x0"],
+			[Rect2(40, 53.6, 52, 1.4), "z1"], [Rect2(102, 53.6, 61, 1.4), "z1"], [Rect2(40, 61, 52, 1.4), "z0"], [Rect2(102, 61, 88, 1.4), "z0"]]:
+		RoadDetails.sidewalk(b, r[0], r[1])
+	RoadDetails.center_line(b, Vector2(97, 8), Vector2(97, 54.5))
+	RoadDetails.center_line(b, Vector2(97, 61.5), Vector2(97, 100))
+	RoadDetails.center_line(b, Vector2(40, 58), Vector2(93.5, 58))
+	RoadDetails.center_line(b, Vector2(100.5, 58), Vector2(190, 58))
+	# Фонари вдоль трассы по городу — на тротуаре, кронштейном к дороге
+	var lx := 14.0
+	while lx < 262.0:
+		if absf(lx - STOP_TOWN.x) > 5.0 and absf(lx - 97.0) > 5.0:
+			RoadDetails.lamp(b, glow, Vector3(lx, 0, 7.1), 0.0)
+		lx += 32.0
 	# Въезд в город: указатель с названием и ограничение 60
 	_sign(b, Vector3(-60.0, 0, -6.2), 0.0, "ГОРОД", 1.2)
 	_round_sign(b, Vector3(-58.0, 0, -6.6), 0.0, "60")
@@ -1088,6 +1102,7 @@ func _kennel(b: MeshBuilder, p: Vector3) -> void:
 
 func _build_village_life(b: MeshBuilder, glow: MeshBuilder) -> void:
 	_street_ruts(b)
+	_village_paths(b, glow)
 	for x in LAMP_X:
 		_street_lamp(b, glow, Vector3(x, 0, LAMP_Z))
 	_village_shop(b, glow)
@@ -1096,6 +1111,27 @@ func _build_village_life(b: MeshBuilder, glow: MeshBuilder) -> void:
 	_pond(b, POND_POS)
 	for p in [Vector3(-42, 0, -62), Vector3(-33, 0, -70), Vector3(-26, 0, -57)]:
 		_haystack(b, p)
+
+
+## Трава между колеями и неровный край деревенской улицы и съезда, тропинки
+## к пруду, колхозу и остановке, фонари вдоль трассы у Каменки.
+func _village_paths(b: MeshBuilder, glow: MeshBuilder) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 5511
+	var dirt := Color(0.46, 0.39, 0.28)
+	RoadDetails.dirt(b, Vector2(-165, -40), Vector2(-57, -40), 2.5, dirt, r)
+	RoadDetails.dirt(b, Vector2(-59.5, -42.5), Vector2(-59.5, -5.5), 2.5, dirt, r)
+	# Тропинки: от конца улицы к мосткам пруда, с улицы напрямик к
+	# остановке, за огородами — вдоль леса
+	RoadDetails.path(b, [Vector2(-165, -40.5), Vector2(-170, -42.5), Vector2(-174, -44.0)], 0.9, r)
+	RoadDetails.path(b, [Vector2(-66, -37.5), Vector2(-68, -24.0), Vector2(-70, -12.0), Vector2(-68.5, -9.0)], 0.8, r)
+	RoadDetails.path(b, [Vector2(-160, -70.5), Vector2(-140, -71.0), Vector2(-112, -70.0), Vector2(-90, -71.5), Vector2(-62, -70.0)], 0.8, r)
+	# Фонари вдоль трассы у Каменки — с южной стороны, кронштейном к дороге
+	var x := -195.0
+	while x < 0.0:
+		if not (x > -124.0 and x < -74.0):
+			RoadDetails.lamp(b, glow, Vector3(x, 0, 7.6), PI)
+		x += 38.0
 
 
 ## Колеи и лужи на грунтовке — видно, что по ней ездят.
@@ -1544,7 +1580,7 @@ func _build_town_all(b: MeshBuilder, glow: MeshBuilder) -> void:
 	glow.shift = Town.SHIFT
 	_veg.shift = Town.SHIFT
 	_veg.areas.append(Town.wr(Rect2(-50, 7.6, 345, 192)))
-	_town_roads(b)
+	_town_roads(b, glow)
 	_build_town(b, glow)
 	_town_details(b, glow)
 	_build_town_center(b, glow)
@@ -1582,6 +1618,9 @@ func _build_meadow(b: MeshBuilder) -> void:
 				continue
 			var kind := Vegetation.TreeKind.BIRCH if r.randf() < 0.7 else (Vegetation.TreeKind.BUSH if r.randf() < 0.6 else Vegetation.TreeKind.SPRUCE)
 			_tree(b, p, r.randf() * TAU, kind)
+	# Тропинка через луг: от трассы к берёзовым колкам и к железной дороге
+	RoadDetails.path(b, [Vector2(60, 7), Vector2(72, 30), Vector2(95, 62), Vector2(118, 95), Vector2(130, 130), Vector2(150, 165), Vector2(160, 199)], 0.9, r)
+	RoadDetails.path(b, [Vector2(95, 62), Vector2(60, 80), Vector2(20, 95), Vector2(-15, 110)], 0.8, r)
 	# Вдоль трассы — редкие кусты и одинокие берёзы
 	var x := -30.0
 	while x < 195.0:
@@ -2058,10 +2097,13 @@ func _tune(what: String) -> void:
 # --- Загородные дороги: полевое кольцо, лесная дорога, речка с мостом --------
 
 func _build_country_roads(b: MeshBuilder) -> void:
-	var gravel := Color(0.58, 0.55, 0.49)
+	var gravel := Color(0.53, 0.48, 0.39)
 	var forest_dirt := Color(0.42, 0.34, 0.24)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
+	# Мелочь на дорогах — своим генератором: ямы и лужи на прежних местах
+	var det := RandomNumberGenerator.new()
+	det.seed = 4321
 	for r in Roads.FIELD:
 		var rr: Rect2 = r
 		b.box(Vector3(rr.position.x, 0, rr.position.y), Vector3(rr.end.x, 0.035, rr.end.y), gravel)
@@ -2069,6 +2111,7 @@ func _build_country_roads(b: MeshBuilder) -> void:
 		for i in int(rr.get_area() / 6.0):
 			var p := Vector3(rng.randf_range(rr.position.x, rr.end.x), 0.035, rng.randf_range(rr.position.y, rr.end.y))
 			b.box_rot(p, Vector3(0.12, 0.012, 0.09), rng.randf() * TAU, gravel.darkened(rng.randf_range(0.1, 0.3)))
+		_rect_details(b, rr, gravel, det)
 	for r in Roads.FOREST:
 		var rr: Rect2 = r
 		b.box(Vector3(rr.position.x, 0, rr.position.y), Vector3(rr.end.x, 0.035, rr.end.y), forest_dirt)
@@ -2079,6 +2122,7 @@ func _build_country_roads(b: MeshBuilder) -> void:
 				continue
 			b.box_rot(p + Vector3(0, 0.036, 0), Vector3(rng.randf_range(0.6, 1.2), 0.005, rng.randf_range(0.5, 1.0)), rng.randf() * TAU, Color(0.22, 0.17, 0.12))
 			_potholes.append(p)
+		_rect_details(b, rr, forest_dirt, det)
 	# Лужи после дождя — на грунте и гравии; видны, только когда мокро
 	for r in Roads.all_rects() + [Rect2(-165, -42.5, 108, 5), Rect2(-62, -42.5, 5, 37)]:
 		var rr: Rect2 = r
@@ -2088,6 +2132,20 @@ func _build_country_roads(b: MeshBuilder) -> void:
 				_puddle_spots.append(p)
 	_build_stream(b)
 	_road_signs(b)
+
+
+## Грунтовка-прямоугольник (Roads): колеи, трава посередине, осыпь по краю.
+func _rect_details(b: MeshBuilder, rr: Rect2, col: Color, rng: RandomNumberGenerator) -> void:
+	var along_x := rr.size.x > rr.size.y
+	var a := Vector2(rr.position.x + 1.0, rr.get_center().y) if along_x else Vector2(rr.get_center().x, rr.position.y + 1.0)
+	var c := Vector2(rr.end.x - 1.0, rr.get_center().y) if along_x else Vector2(rr.get_center().x, rr.end.y - 1.0)
+	var half := (rr.size.y if along_x else rr.size.x) * 0.5
+	# Колеи
+	for off in [-0.85, 0.85]:
+		var o := Vector2(0, off) if along_x else Vector2(off, 0)
+		var m := (a + c) * 0.5 + o
+		b.box_rot(Vector3(m.x, 0.037, m.y), Vector3(0.38, 0.004, a.distance_to(c)), atan2(c.x - a.x, c.y - a.y), col.darkened(0.16))
+	RoadDetails.dirt(b, a, c, half, col, rng)
 
 
 func _build_stream(b: MeshBuilder) -> void:
@@ -3118,6 +3176,46 @@ const MOTO_SPOT := Vector3(PLAYER_HOUSE.x - 30.5, 0, -47.5)
 ## Первая машина: соседские «Жигули» и «Ява» — продаются.
 const CAR_PRICE := 2500
 const MOTO_PRICE := 1800
+
+
+## Где дома стоит своя техника: мотоциклы и мопед — во дворе у дорожки,
+## машины — вдоль улицы у калитки, носом вдоль улицы.
+const HOME_BIKES := [Vector3(-6.0, 0, 9.5), Vector3(-8.6, 0, 9.5), Vector3(-6.0, 0, 7.0), Vector3(-8.6, 0, 7.0)]
+const HOME_CARS := [4.0, -3.5, 11.5, -11.0, 19.0, -18.5, 26.5]
+
+
+## После загрузки игрок — дома, у крыльца, а вся своя техника — во дворе
+## и у калитки (что бы где ни бросил). Вызывается после всех загрузок.
+func park_home() -> void:
+	var p := GameManager.player as Player
+	if p and p.car:
+		(p.car as Vehicle).exit_car()
+	var bikes := 0
+	var cars := 0
+	for n in get_tree().get_nodes_in_group("vehicles"):
+		var v := n as Vehicle
+		if v == null or not v.owned() or v.school or v.kind in ["tractor", "bus"]:
+			continue
+		v.speed = 0.0
+		v.lateral = 0.0
+		v.velocity = Vector3.ZERO
+		v.engine_on = false
+		if v.spec.two_wheels and bikes < HOME_BIKES.size():
+			v.global_position = Vector3(PLAYER_HOUSE.x, 0.1, PLAYER_HOUSE.y) + (HOME_BIKES[bikes] as Vector3)
+			v.rotation = Vector3(0, PI, 0)
+			bikes += 1
+		else:
+			v.global_position = Vector3(PLAYER_HOUSE.x + float(HOME_CARS[cars % HOME_CARS.size()]), 0.1, -38.4)
+			v.rotation = Vector3(0, -PI / 2.0, 0)
+			cars += 1
+		v.reset_physics_interpolation()
+	if p:
+		p.global_position = Vector3(PLAYER_HOUSE.x + _home_door_x, 0.05, PLAYER_HOUSE.y + 6.0)
+		p.velocity = Vector3.ZERO
+		p.rotation.y = PI
+		p.reset_physics_interpolation()
+		if p.camera:
+			p.camera.snap()
 
 
 func _spawn_player_and_car() -> void:

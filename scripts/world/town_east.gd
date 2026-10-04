@@ -37,6 +37,7 @@ var _rotor: Node3D
 var _cabins: Array[MeshInstance3D] = []
 var _garage_label: Label3D
 var _world: Node3D
+var _glow: MeshBuilder
 
 
 func _ready() -> void:
@@ -55,6 +56,7 @@ func _process(delta: float) -> void:
 ## b, glow — общий меш мира (со сдвигом на город), veg — деревья и трава.
 func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 	_world = world
+	_glow = glow
 	for r in [EAST_STREET, EAST_ROAD, BANK, CAR_MARKET, STO, COLLEGE, MY_GARAGES, FLATS[0], FLATS[1]]:
 		var g := (r as Rect2).grow(1.5)
 		veg.block(g.position.x, g.position.y, g.end.x, g.end.y)
@@ -83,16 +85,21 @@ func _roads(b: MeshBuilder) -> void:
 	# Тротуары вдоль восточной улицы
 	b.box(Vector3(EAST_STREET.position.x - 2.0, 0, 8.0), Vector3(EAST_STREET.position.x, 0.12, 198.0), curb.darkened(0.15))
 	b.box(Vector3(EAST_STREET.end.x, 0, 8.0), Vector3(EAST_STREET.end.x + 2.0, 0.12, 198.0), curb.darkened(0.15))
-	var z := 12.0
-	while z < 196.0:
-		b.box(Vector3(264.9, 0.05, z), Vector3(265.1, 0.06, z + 3.0), Color(0.92, 0.92, 0.9))
-		z += 6.0
+	RoadDetails.center_line(b, Vector2(265, 58), Vector2(265, 198))
 	# Тротуар вдоль трассы дальше на восток
 	b.box(Vector3(190, 0, 5), Vector3(262, 0.12, 7.5), Color(0.5, 0.5, 0.49))
 	var x := 190.0
 	while x < 262.0:
 		b.box(Vector3(x, 0, 4.85), Vector3(x + 0.95, 0.19, 5.05), curb)
 		x += 1.0
+	# Фонари по восточной улице и проезду к ней
+	var lz := 20.0
+	while lz < 196.0:
+		RoadDetails.lamp(b, _glow, Vector3(EAST_STREET.end.x + 1.5, 0, lz), PI / 2.0)
+		lz += 30.0
+	for lx in [215.0, 245.0]:
+		RoadDetails.lamp(b, _glow, Vector3(lx, 0, EAST_ROAD.end.y + 1.0), 0.0)
+	RoadDetails.center_line(b, Vector2(265, 8), Vector2(265, 52))
 	_label("ул. Заводская", Vector3(EAST_STREET.position.x - 2.2, 2.6, 10.0), -PI / 2.0, 0.004, Color(1, 1, 1))
 	b.box(Vector3(EAST_STREET.position.x - 2.25, 0, 9.9), Vector3(EAST_STREET.position.x - 2.15, 2.4, 10.1), Color(0.35, 0.35, 0.37))
 	b.box(Vector3(EAST_STREET.position.x - 2.3, 2.4, 9.0), Vector3(EAST_STREET.position.x - 2.25, 2.8, 11.0), Color(0.15, 0.3, 0.6))

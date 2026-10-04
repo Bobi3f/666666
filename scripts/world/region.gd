@@ -539,6 +539,9 @@ func _bridge(b: MeshBuilder, br: Array) -> void:
 ## Грунтовки: полосы вдоль отрезков, ямы и лужи — как на лесной дороге.
 func _roads(b: MeshBuilder, veg: Vegetation) -> void:
 	var dirt := Color(0.46, 0.39, 0.28)
+	# Свой генератор для мелочи — ямы и лужи остаются на прежних местах
+	var det := RandomNumberGenerator.new()
+	det.seed = 9090
 	for s in segments():
 		var a: Vector2 = s[0]
 		var c: Vector2 = s[1]
@@ -560,6 +563,8 @@ func _roads(b: MeshBuilder, veg: Vegetation) -> void:
 			var side: Vector2 = Vector2(d.y, -d.x).normalized() * off
 			var m2: Vector2 = mid + side
 			b.box_rot(Vector3(m2.x, 0.036, m2.y), Vector3(0.35, 0.004, d.length()), atan2(d.x, d.y), dirt.darkened(0.15))
+		# Трава посередине, осыпь и камешки по краю — в ближнем меше
+		RoadDetails.dirt(_d, a, c, ROAD_HALF, dirt, det)
 		# Ямы и места для луж
 		for i in int(d.length() / 45.0):
 			var p := a.lerp(c, _rng.randf())
@@ -652,7 +657,7 @@ func _village(i: int, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> voi
 	_d.quad(Vector3(0.9, 1.9, -0.8), Vector3(-0.9, 1.9, -0.8), Vector3(-0.9, 2.3, 0), Vector3(0.9, 2.3, 0), Color(0.45, 0.25, 0.18), true)
 	_d.xf = Transform3D.IDENTITY
 	# Фонари на улице
-	for lx in [-33.0, 10.0]:
+	for lx in [-52.0, -33.0, -10.0, 10.0, 30.0, 52.0]:
 		var lp := Vector3(c.x + lx * e, 0, c.y + 4.0)
 		_d.box(lp + Vector3(-0.08, 0, -0.08), lp + Vector3(0.08, 5.0, 0.08), Color(0.4, 0.4, 0.42), true)
 		_d.box(lp + Vector3(-0.05, 4.9, -0.05), lp + Vector3(0.05, 5.0, -1.2), Color(0.4, 0.4, 0.42))
