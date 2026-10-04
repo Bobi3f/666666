@@ -198,11 +198,11 @@ func _run() -> void:
 	await frames(2)
 	ok(step.call("m_bus") == 2, "категория D и трудовая есть")
 	var school = W.get_node("AutoSchool")
-	for d in 2:
-		TM.day += 1; TM.minutes = 8 * 60.0; NM.energy = 90.0
-		school._bus_shift()
+	TM.day += 1; TM.minutes = 8 * 60.0; NM.energy = 90.0
+	GM.money = 0
+	school._bus_shift(); school._bus_shift()
 	await frames(2)
-	ok(state.call("m_bus") == 2 and state.call("m_district") == 1, "две смены на автобусе — «Хозяин района»")
+	ok(state.call("m_bus") == 2 and state.call("m_district") == 1 and GM.money == 2000, "два рейса по 500 (+1000 за главу) — «Хозяин района»")
 
 	print("== Глава 15: хозяин района и финал")
 	GM.money = 5000

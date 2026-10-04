@@ -1,7 +1,7 @@
 extends SceneTree
 ## Документы и права: сельсовет (паспорт, прописка, трудовая), больница
 ## (медкомиссия, процедуры), автошкола (категории A, C, D, учебные машины),
-## ГАИ проверяет категорию под машину, смена водителем автобуса.
+## ГАИ проверяет категорию под машину, рейсы водителем автобуса.
 var fails := 0
 var W
 func ok(c: bool, w: String) -> void:
@@ -113,11 +113,14 @@ func _run() -> void:
 	TM.minutes = 8 * 60.0
 	NM.energy = 100.0
 	GM.money = 0
-	var shift := zone_in(AS, "рейсового")
+	var shift := zone_in(AS, "рейс Каменка")
 	ok(shift != null, "с D и трудовой — берут водителем")
 	shift.activate()
-	ok(GM.money == AutoSchool.BUS_SHIFT_PAY and TM.hour() >= 13.9, "смена 6 часов: +%d" % AutoSchool.BUS_SHIFT_PAY)
-	ok(zone_in(AS, "уже отъездил") != null, "вторая смена за день — нет")
+	ok(GM.money == 500 and TM.hour() >= 9.9, "рейс 2 часа: +500")
+	shift.activate(); NM.energy = 100.0; shift.activate()
+	ok(GM.money == 1500, "три рейса за день — 1500 грн")
+	shift.activate()
+	ok(GM.money == 1500 and zone_in(AS, "завтра") != null, "четвёртый рейс — нет")
 
 	print("== Сохранение")
 	var st: Dictionary = PR.save_state()

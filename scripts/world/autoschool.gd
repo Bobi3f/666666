@@ -5,7 +5,7 @@ extends Node3D
 ## Для любого экзамена нужны паспорт (сельсовет) и медсправка (больница).
 ##
 ## С категорией D и трудовой книжкой берут водителем рейсового автобуса:
-## смена у городской остановки.
+## рейс Каменка — город — Каменка от городской остановки, до трёх в день.
 ##
 ## Стоит к югу от трассы, между Дубравой и школой: кирпичный дом с классом
 ## (внутрь можно зайти — парты, плакаты со знаками, стол инструктора, стенд
@@ -44,7 +44,11 @@ const CATS := [
 	["C", "грузовик", 500, "truck"],
 	["D", "автобус", 700, "bus"],
 ]
-const BUS_SHIFT_PAY := 900
+## Рейс: плата, сколько идёт, сколько рейсов в день и когда ходят.
+const BUS_TRIP_PAY := 500
+const BUS_TRIP_MIN := 120.0
+const BUS_TRIPS_DAY := 3
+const BUS_HOURS := Vector2(6.0, 20.0)
 const BUS_STOP := Vector3(32.0, 0, 13.0)
 
 var truck: Vehicle
@@ -55,6 +59,7 @@ var car: Vehicle
 var exam_cat := ""
 var _exams := {}
 var _bus_day := -1
+var _bus_trips := 0
 
 
 ## Перевод из координат дома (фасад +Z, пол класса на FLOOR) в мир.
@@ -510,24 +515,30 @@ func _bus_prompt() -> String:
 		return "Автопарк: «Водителем автобуса — с категорией D и трудовой книжкой»"
 	if not Progress.has_doc("work_book"):
 		return "Автопарк: «Категория D есть — неси трудовую книжку из сельсовета»"
-	if _bus_day == TimeManager.day:
-		return "Автопарк: «Сегодня ты уже отъездил смену»"
-	if h < 6.0 or h > 14.0:
-		return "Автопарк: «Смены водителей — с 6:00 до 14:00»"
-	return "E — смена водителем рейсового автобуса: 6 часов, +%d грн" % BUS_SHIFT_PAY
+	if trips_today() >= BUS_TRIPS_DAY:
+		return "Автопарк: «Три рейса за день — хватит, завтра приходи»"
+	if h < BUS_HOURS.x or h > BUS_HOURS.y:
+		return "Автопарк: «Рейсы — с 6:00 до 20:00»"
+	return "E — рейс Каменка — город — Каменка: 2 часа, +%d грн (сегодня %d из %d)" % [BUS_TRIP_PAY, trips_today(), BUS_TRIPS_DAY]
+
+
+## Сколько рейсов уже сделано сегодня.
+func trips_today() -> int:
+	return _bus_trips if _bus_day == TimeManager.day else 0
 
 
 func _bus_shift() -> void:
 	var h := TimeManager.hour()
-	if not Progress.has_category("D") or not Progress.has_doc("work_book") or _bus_day == TimeManager.day or h < 6.0 or h > 14.0:
+	if not Progress.has_category("D") or not Progress.has_doc("work_book") or trips_today() >= BUS_TRIPS_DAY or h < BUS_HOURS.x or h > BUS_HOURS.y:
 		return
-	if NeedsManager.energy < 30.0:
+	if NeedsManager.energy < 20.0:
 		GameManager.notify("Автопарк: «Сонный водитель автобуса — беда. Выспись»")
 		return
+	_bus_trips = trips_today() + 1
 	_bus_day = TimeManager.day
-	TimeManager.advance(360.0)
-	NeedsManager.rest(-25.0)
-	GameManager.add_money(BUS_SHIFT_PAY)
+	TimeManager.advance(BUS_TRIP_MIN)
+	NeedsManager.rest(-8.0)
+	GameManager.add_money(BUS_TRIP_PAY)
 	SoundLibrary.play("cash")
 	QuestManager.event("bus_shift")
-	GameManager.notify("Отъездил смену на рейсовом: Каменка — город — Каменка. +%d грн. %s" % [BUS_SHIFT_PAY, TimeManager.clock_text()])
+	GameManager.notify("Рейс Каменка — город — Каменка: +%d грн. Сегодня %d из %d. %s" % [BUS_TRIP_PAY, _bus_trips, BUS_TRIPS_DAY, TimeManager.clock_text()])
