@@ -51,9 +51,21 @@ enum Wealth { POOR, MIDDLE, RICH }
 
 enum { WALLS, FLOOR, PLASTER, WOOD, FABRIC, GLASS }
 
+## Ближе этого интерьер и двери рисуются целиком; дальше — только фасад:
+## тёмные окна и входная дверь одним простым мешем (вместо десятка вызовов
+## отрисовки на дом). Снаружи интерьер виден лишь вблизи через окна.
+const INSIDE_RANGE := 28.0
+const FACADE_RANGE := 70.0
+## Слой интерьера (бит слоя 2): лампы в доме светят только на него. Иначе в
+## Compatibility каждая лампа заново рисует весь кусок мира 100×100 м вокруг
+## дома — днём и ночью, на каждый дом рядом.
+const INSIDE_LAYER := 2
+
 var _tools: Array[SurfaceTool] = []
 var _mats: Array[StandardMaterial3D] = []
 var _body: StaticBody3D
+## Проёмы наружных стен для фасада: [a, dir, across, inward, s0, s1, низ, верх].
+var _openings: Array = []
 
 
 func _ready() -> void:
@@ -65,6 +77,7 @@ func build() -> void:
 		c.queue_free()
 	_mats = _make_materials()
 	_tools = _new_tools()
+	_openings.clear()
 
 	if build_collision:
 		_body = StaticBody3D.new()
@@ -89,9 +102,59 @@ func build() -> void:
 	mi.name = "InteriorMesh"
 	mi.mesh = _commit(_tools)
 	# Издалека интерьер не рисуется — его всё равно не видно
-	mi.visibility_range_end = 70.0
+	mi.visibility_range_end = INSIDE_RANGE
+	mi.layers = 1 | INSIDE_LAYER
 	add_child(mi)
 	_tools.clear()
+	_build_facade()
+
+
+## Фасад издали: в окнах — тёмная комната и переплёт, в проёме — дверь.
+func _build_facade() -> void:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var paint := _trim_color() if wealth == Wealth.POOR else Color(0.93, 0.93, 0.9)
+	var room := Color(0.2, 0.18, 0.16)
+	for o in _openings:
+		var a: Vector3 = o[0]
+		var dir: Vector3 = o[1]
+		var across: Vector3 = o[2]
+		var inward: Vector3 = o[3]
+		var s0: float = o[4]
+		var s1: float = o[5]
+		var y0: float = o[6]
+		var y1: float = o[7]
+		if y0 > 0.0:
+			var back := a + inward * wall_thickness * 0.3
+			_facade_box(b, back, dir, across * 0.1, s0, s1, y0, y1, room)
+			var mid := (s0 + s1) * 0.5
+			var ty := y0 + (y1 - y0) * 0.66
+			# Тюль на нижней части окна
+			_facade_box(b, a + inward * wall_thickness * 0.2, dir, across * 0.05, s0, s1, y0, ty, Color(0.62, 0.62, 0.6))
+			_facade_box(b, a, dir, across * 0.4, mid - 0.025, mid + 0.025, y0, y1, paint)
+			_facade_box(b, a, dir, across * 0.4, s0, s1, ty - 0.025, ty + 0.025, paint)
+		else:
+			# Тоньше настоящей створки: на границе дальностей та её закрывает
+			_facade_box(b, a, dir, across * 0.05, s0, s1, 0.0, y1, _door_color())
+	var mi := b.build_mesh()
+	mi.name = "Facade"
+	mi.visibility_range_begin = INSIDE_RANGE
+	mi.visibility_range_end = FACADE_RANGE
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+
+func _facade_box(b: MeshBuilder, a: Vector3, dir: Vector3, across: Vector3, s0: float, s1: float, y0: float, y1: float, color: Color) -> void:
+	var p0 := a + dir * s0
+	var p1 := a + dir * s1
+	b.box(Vector3(minf(p0.x, p1.x), y0, minf(p0.z, p1.z)) - across, Vector3(maxf(p0.x, p1.x), y1, maxf(p0.z, p1.z)) + across, color)
+
+
+## Цвет входной двери — как у настоящей створки (см. _door).
+func _door_color() -> Color:
+	if wealth == Wealth.POOR:
+		return Color(0.45, 0.35, 0.25)
+	return Color(0.3, 0.14, 0.09)
 
 
 func _new_tools() -> Array[SurfaceTool]:
@@ -217,6 +280,8 @@ func _wall(a: Vector3, b: Vector3, openings: Array) -> void:
 		var bottom: float = o[3]
 		_wall_piece(a, dir, across, cursor, o0, 0.0, h)
 		_wall_piece(a, dir, across, o0, o1, top, h)
+		if inward != Vector3.ZERO:
+			_openings.append([a, dir, across, inward, o0, o1, bottom, top])
 		if bottom > 0.0:
 			_wall_piece(a, dir, across, o0, o1, 0.0, bottom)
 			_window(a, dir, across, inward, o0, o1, bottom, top)
@@ -624,7 +689,8 @@ func _door(hinge: Vector3, dir: Vector3, swing: Vector3, width: float, height: f
 		_box(PLASTER, Vector3(w - 0.14, 0.98, hz - 0.012), Vector3(w - 0.04, 1.01, hz + 0.012), handle, false)
 	var leaf := MeshInstance3D.new()
 	leaf.mesh = _commit(_tools)
-	leaf.visibility_range_end = 70.0
+	leaf.visibility_range_end = INSIDE_RANGE
+	leaf.layers = 1 | INSIDE_LAYER
 	pivot.add_child(leaf)
 	_tools = main_tools
 
@@ -855,6 +921,7 @@ func _build_lamps() -> void:
 		light.light_color = Color(1.0, 0.85, 0.65)
 		light.omni_range = maxf(inner_size.x, inner_size.z) * 0.6
 		light.shadow_enabled = false
+		light.light_cull_mask = INSIDE_LAYER
 		light.distance_fade_enabled = true
 		light.distance_fade_begin = 30.0
 		light.distance_fade_length = 10.0
@@ -933,25 +1000,18 @@ func _box(surf: int, mn: Vector3, mx: Vector3, color: Color, shade_bottom := tru
 
 # --- Текстуры -------------------------------------------------------------
 
+## Материалы одни на все дома одного достатка: картинки — готовые файлы
+## textures/interior/ (см. Assets), раньше каждый дом рисовал их заново.
+static var _mat_cache := {}
+
+
 func _make_materials() -> Array[StandardMaterial3D]:
-	var walls: Callable
-	var floor_tex: Callable
-	match wealth:
-		Wealth.POOR:
-			walls = _tex_logs
-			floor_tex = _tex_boards.bind(4, Color(0.85, 0.72, 0.55))
-		Wealth.RICH:
-			walls = _tex_damask
-			floor_tex = _tex_parquet
-		_:
-			walls = _tex_wallpaper
-			floor_tex = _tex_boards.bind(6, Color(1.05, 0.72, 0.45))
+	if _mat_cache.has(wealth):
+		return _mat_cache[wealth]
 	var list: Array[StandardMaterial3D] = []
-	for g in [walls, floor_tex, _tex_plaster, _tex_wood, _tex_fabric]:
-		var img: Image = g.call()
-		img.generate_mipmaps()
+	for t in texture_makers(wealth):
 		var m := StandardMaterial3D.new()
-		m.albedo_texture = ImageTexture.create_from_image(img)
+		m.albedo_texture = Assets.texture("interior/" + t[0], t[1], true)
 		m.vertex_color_use_as_albedo = true
 		m.roughness = 0.9
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -962,7 +1022,20 @@ func _make_materials() -> Array[StandardMaterial3D]:
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.roughness = 0.1
 	list.append(glass)
+	_mat_cache[wealth] = list
 	return list
+
+
+## Картинки интерьера по достатку: [[имя файла, () -> Image], …] в порядке
+## поверхностей WALLS, FLOOR, PLASTER, WOOD, FABRIC.
+func texture_makers(w: int) -> Array:
+	var walls := [["walls_middle", _tex_wallpaper], ["floor_middle", _tex_boards.bind(6, Color(1.05, 0.72, 0.45))]]
+	match w:
+		Wealth.POOR:
+			walls = [["walls_poor", _tex_logs], ["floor_poor", _tex_boards.bind(4, Color(0.85, 0.72, 0.55))]]
+		Wealth.RICH:
+			walls = [["walls_rich", _tex_damask], ["floor_rich", _tex_parquet]]
+	return walls + [["plaster", _tex_plaster], ["wood", _tex_wood], ["fabric", _tex_fabric]]
 
 
 func _rng() -> RandomNumberGenerator:
