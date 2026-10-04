@@ -87,8 +87,12 @@ func _run() -> void:
 	zone_in(AS, "категорию D").activate()
 	(AS._exams["D"] as DrivingChallenge).finished.emit({"ok": true, "time": 150.0, "cones": 1, "why": ""})
 	ok(PR.has_category("D") and PR.categories_text() == "C, D", "категории: " + PR.categories_text())
-	# Без экзамена из учебного автобуса высаживают
+	# После экзамена автобус отгоняют на стоянку; без экзамена из учебного
+	# автобуса высаживают
 	var P = W.get_node("Player")
+	AS._park(AS.bus)
+	await frames(2)
+	ok(P.car == null and AS.bus.global_position.distance_to(Town.w(AS.BUS_SPOT)) < 1.0, "после экзамена ПАЗ на стоянке")
 	AS.bus._on_enter()
 	await frames(3)
 	ok(AS.bus.driver == null and last().contains("только на экзамене"), "учебный ПАЗ без экзамена — высадили")
