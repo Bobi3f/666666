@@ -125,7 +125,14 @@ func _journal_text() -> String:
 	t += "\n[b][color=#f0d890]ВЕЩИ[/color][/b]\n"
 	t += "  Деньги: %d грн   Еда в запасе: %d   Рыба: %d\n" % [GameManager.money, NeedsManager.snacks, NeedsManager.fish]
 	if Daily.deposit > 0:
-		t += "  На вкладе в сберкассе: %d грн (+1%% в день)\n" % Daily.deposit
+		t += "  На вкладе в банке: %d грн (10%% годовых)\n" % Daily.deposit
+	if not Daily.owned.is_empty():
+		var parts: Array[String] = []
+		for id in Daily.owned:
+			parts.append("%s +%d" % [Daily.BUSINESSES[id].title, Daily.income(id)])
+		t += "  Своё дело (грн в день): %s\n" % ", ".join(parts)
+	if Daily.rival == Daily.Rival.ACTIVE:
+		t += "  Конкурент Жора в Озерцово переманивает покупателей: перекупи его ларёк (%d грн) или акции у своего ларька — %d из %d\n" % [Daily.RIVAL_BUYOUT, Daily.dump_days.size(), Daily.DUMP_DAYS]
 	var extra: Array[String] = []
 	if QuestManager.items.has("medicine"):
 		extra.append("лекарство для тёти Люды")

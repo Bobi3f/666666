@@ -604,6 +604,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Авторынок", Town.w(Vector3(237, 0, 30)), Color(0.85, 0.55, 0.95)],
 		["СТО", Town.w(Vector3(248, 0, 67)), Color(0.5, 0.65, 1.0)],
 		["Гараж", Town.w(Vector3(278, 0, 185)), Color(0.6, 0.4, 0.3)],
+		["Автопарк", Town.w(Vector3(271, 0, 169)), Color(0.3, 0.5, 0.85)],
 		["Парк", Town.w(Vector3(-2, 0, 165)), Color(0.35, 0.7, 0.35)],
 		["Милиция", Town.w(Police.STATION + Vector3(-8, 0, 0)), Color(0.2, 0.35, 0.8)],
 		["Кафе у трассы", Roadside.CAFE + Vector3(0, 0, 6), Color(0.95, 0.6, 0.45)],
@@ -623,6 +624,9 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Завод", Town.w(Vector3(178, 0, 228)), Color(0.7, 0.3, 0.25)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
+	# Конкурент — ларёк Жоры в Озерцово, пока торгует
+	if Daily.rival == Daily.Rival.ACTIVE:
+		places.append(["Ларёк Жоры", Vector3(-409.0, 0, -308.0), Color(0.85, 0.55, 0.2)])
 	# Почта: отделения в Каменке, городе и ближних сёлах (если мир построен)
 	var post := _world.get_node_or_null("Post")
 	if post:
