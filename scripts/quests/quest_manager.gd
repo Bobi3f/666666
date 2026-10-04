@@ -243,7 +243,7 @@ func _complete(id: String) -> void:
 
 ## Есть ли своя машина (не мопед и не мотоцикл).
 func _owns_car() -> bool:
-	for k in ["car", "niva", "volga", "truck"]:
+	for k in ["car", "vaz2107", "niva", "volga", "truck"]:
 		if Progress.owns(k):
 			return true
 	return false

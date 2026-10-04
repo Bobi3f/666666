@@ -45,6 +45,16 @@ const SPECS := {
 		"seat": Vector3(-0.36, 1.16, 0.4), "exit": Vector3(-1.6, 0.2, 0.2),
 		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
 	},
+	# «Семёрка» ВАЗ-2107 из автосалона: та же база, мотор чуть сильнее.
+	"vaz2107": {
+		"title": "ВАЗ-2107", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
+		"final": 4.1, "wheel_r": 0.29, "mass": 1050.0, "idle": 850.0, "redline": 6200.0,
+		"torque": 190.0, "peak_rpm": 3500.0, "inertia": 0.18, "wheelbase": 2.4, "max_steer": 0.6,
+		"tank": 40.0, "fuel_k": 1.0, "grip": 9.0, "drag": 0.42, "brake": 9.0,
+		"shape": Vector3(1.66, 1.1, 4.15), "shape_y": 0.72,
+		"seat": Vector3(-0.36, 1.16, 0.4), "exit": Vector3(-1.6, 0.2, 0.2),
+		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
+	},
 	"moto": {
 		"title": "Ява", "ratios": {-1: -2.9, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
 		"final": 6.0, "wheel_r": 0.31, "mass": 210.0, "idle": 1300.0, "redline": 7800.0,
@@ -1172,6 +1182,8 @@ func _paint_body() -> void:
 			VehicleModels.bus(b, col, Vector3(2.5, 3.0, 9.0))
 		"tractor":
 			VehicleModels.tractor(b, col, glass)
+		"vaz2107":
+			VehicleModels.zhiguli(b, col, true, glass, true)
 		_:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
@@ -1400,6 +1412,11 @@ func _build_turn_lamps() -> void:
 		_turn_mat.albedo_color = Color(1.0, 0.62, 0.1)
 	var spots: Array = []  # [центр, размер, сторона]
 	match kind:
+		"vaz2107":
+			for sx in [-1.0, 1.0]:
+				spots.append([Vector3(0.73 * sx, 0.635, -2.035), Vector3(0.07, 0.17, 0.012), sx])
+				spots.append([Vector3(0.6 * sx, 0.682, 1.998), Vector3(0.37, 0.05, 0.012), sx])
+				spots.append([Vector3(0.812 * sx, 0.74, -1.58), Vector3(0.012, 0.045, 0.11), sx])
 		"car":
 			for sx in [-1.0, 1.0]:
 				spots.append([Vector3(0.55 * sx, 0.49, -2.0), Vector3(0.19, 0.045, 0.012), sx])
@@ -1593,7 +1610,7 @@ func _process(_delta: float) -> void:
 ## спидометр, второй — тахометр. У мотоцикла один спидометр на фаре.
 func _gauge_spots() -> Array:
 	match kind:
-		"car":
+		"car", "vaz2107":
 			return [[Vector3(-0.41, 1.04, -0.327), 0.03, 0.0], [Vector3(-0.28, 1.04, -0.327), 0.03, 0.0]]
 		"moto":
 			# Приборы «Явы» — живой экранчик на руле (_build_dash_screen)

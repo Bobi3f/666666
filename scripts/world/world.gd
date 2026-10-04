@@ -2294,6 +2294,7 @@ const SALON_CARS := [
 	["volga", 36000, "быстрая и мягкая, в такси платят больше", Vector3(60, 0.1, 17)],
 	["truck", 28000, "грузовик — развоз хлеба вдвое дороже", Vector3(68.5, 0.1, 18.5)],
 	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Явы», два глушителя", Vector3(52, 0.1, 23.0)],
+	["vaz2107", 12000, "«семёрка»: хромированная решётка, мотор сильнее, чем у «шестёрки»", Vector3(61, 0.1, 23.4), PI / 2.0],
 ]
 
 
@@ -2323,9 +2324,11 @@ func _spawn_salon_cars() -> void:
 		v.kind = entry[0]
 		v.price = entry[1]
 		v.blurb = entry[2]
-		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh"}[entry[0]]
+		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh", "vaz2107": "Vaz2107"}[entry[0]]
 		add_child(v)
 		v.global_position = entry[3]
+		if entry.size() > 4:
+			v.rotation.y = entry[4]
 		v.fuel = v.tank() * 0.5
 
 

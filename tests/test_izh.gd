@@ -79,6 +79,11 @@ func _run() -> void:
 
 	ok(I._dash_vp != null and I._dash_quad != null and I._gauge_spots().is_empty(), "у «ИЖа» на руле — живой щиток (лампочки и спидометр)")
 
+	var V7: Vehicle = W.get_node("Vaz2107")
+	ok(V7.spec.title == "ВАЗ-2107" and V7.price == 12000 and V7.category() == "B" and not V7.owned(), "«семёрка» ВАЗ-2107 в салоне за 12000, категория B")
+	var b7: AABB = V7._paint_mesh.get_aabb()
+	ok(b7.size.z > 4.1 and b7.size.z < 4.3 and V7._turn_lamps.size() == 6, "по чертежу: длина %.2f м, поворотники в углах фар" % b7.size.z)
+
 	print("== Купил и поехал")
 	PR.buy_car("izh")
 	ok(I.owned() and not I.may_drive(), "купил, но без категории A не поедет")
