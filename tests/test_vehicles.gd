@@ -66,6 +66,11 @@ func _run() -> void:
 	for v in tr.vehicles():
 		v.body.global_position.y = -50.0
 	ST.auto_gearbox = true
+	# Пост ГАИ и погоню выключаем: на разгоне мимо поста быстрее 100 км/ч
+	# милиция встаёт сзади и мешает проверить задний ход
+	for n in ["GaiPost", "Chase"]:
+		var node := W.get_node_or_null(n)
+		if node: node.process_mode = Node.PROCESS_MODE_DISABLED
 	# Машину — на трассу, носом на +X
 	place(C, Vector3(-150, 0.1, 2.0), -PI / 2.0)
 	C.fuel = 40.0
