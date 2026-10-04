@@ -21,7 +21,10 @@ const ENTRY := Rect2(-32, 1.5, 6, 12.5)
 ## Весь асфальт автошколы: автодром, въезд, дорожка к крыльцу, стоянка
 ## учебных машин и проезд к ней (Roads.on_asphalt — по нему сцепление).
 const ASPHALT := [Rect2(-40, 14, 22, 57), Rect2(-32, 1.5, 6, 12.5), Rect2(-26, 13, 16, 2),
-	Rect2(-13, 26, 7, 37), Rect2(-18, 26, 5, 4)]
+	Rect2(-13, 26, 7, 45), Rect2(-18, 26, 5, 4)]
+## Территория автошколы за забором: дом, автодром, стоянка учебных машин.
+## Ворота — у въезда с трассы и калитка к крыльцу.
+const GROUNDS := Rect2(-42.0, 12.5, 40.5, 60.5)
 ## Экзамен для любой категории: старт, змейка между конусами, разворот,
 ## в конце — встать в разметку «P».
 const EXAM_START := Vector3(-29, 0, 18.5)
@@ -33,6 +36,8 @@ const TRUCK_SPOT := Vector3(-9.5, 0.1, 42.0)
 const BUS_SPOT := Vector3(-9.5, 0.1, 57.0)
 ## Учебные «Жигули» — экзамен на права (категория B) сдают на них.
 const CAR_SPOT := Vector3(-9.5, 0.1, 31.0)
+## Учебная «Ява» — экзамен на категорию A.
+const MOTO_SPOT := Vector3(-9.5, 0.1, 66.5)
 ## [категория, на чём, цена, kind машины]
 const CATS := [
 	["A", "мотоцикл", 200, "moto"],
@@ -43,6 +48,7 @@ const BUS_SHIFT_PAY := 900
 const BUS_STOP := Vector3(32.0, 0, 13.0)
 
 var truck: Vehicle
+var moto: Vehicle
 var bus: Vehicle
 var car: Vehicle
 ## Какая категория сейчас сдаётся ("" — никакая)
@@ -97,6 +103,8 @@ func _ready() -> void:
 	truck = _school_vehicle("truck", TRUCK_SPOT, "SchoolTruck")
 	bus = _school_vehicle("bus", BUS_SPOT, "SchoolBus")
 	car = _school_vehicle("car", CAR_SPOT, "SchoolCar")
+	moto = _school_vehicle("moto", MOTO_SPOT, "SchoolMoto")
+	_build_grounds()
 	# На учебных «Жигулях» — только экзамен на права (он в world.gd)
 	car.allowed = func() -> bool:
 		var ex = get_parent().get("_exam")
@@ -339,8 +347,8 @@ func _start(i: int) -> void:
 	exam_cat = cat[0]
 	Vehicle.exam_category = exam_cat
 	(_exams[exam_cat] as DrivingChallenge).arm()
-	var on := "на своём мотоцикле" if cat[3] == "moto" else "на учебном «%s» у края автодрома" % Vehicle.SPECS[cat[3]].title
-	GameManager.notify("Инструктор: «Категория %s. Заезжай %s на старт — жёлтый круг. Конусы не сбивай»" % [cat[0], on])
+	seat_for_exam(school_vehicle(cat[3]))
+	GameManager.notify("Инструктор: «Категория %s. Ты на старте, на учебном «%s». Змейка, разворот, в конце — в разметку «P». Конусы не сбивай»" % [cat[0], Vehicle.SPECS[cat[3]].title])
 
 
 func _result(i: int, r: Dictionary) -> void:
@@ -355,9 +363,109 @@ func _result(i: int, r: Dictionary) -> void:
 	else:
 		GameManager.notify("Категория %s не сдана: %s. Пересдача — у стенда автошколы" % [cat[0], r.why])
 	# Учебную машину — на место
-	var v: Vehicle = truck if cat[3] == "truck" else (bus if cat[3] == "bus" else null)
-	if v:
-		get_tree().create_timer(4.0).timeout.connect(func() -> void: _park(v))
+	var v: Vehicle = school_vehicle(cat[3])
+	get_tree().create_timer(4.0).timeout.connect(func() -> void: _park(v))
+
+
+## Территория: сетчатый забор на столбах вокруг автодрома, дома и стоянки,
+## ворота у въезда с трассы и калитка, вывеска; на стоянке — разметка мест
+## и таблички с категорией у каждой учебной машины.
+func _build_grounds() -> void:
+	var b := MeshBuilder.new()
+	var g := GROUNDS
+	var gaps := [Vector2(-32.5, -25.5), Vector2(-9.5, -6.5)]
+	_fence(b, Vector2(g.position.x, g.position.y), Vector2(g.position.x, g.end.y), [])
+	_fence(b, Vector2(g.end.x, g.position.y), Vector2(g.end.x, g.end.y), [])
+	_fence(b, Vector2(g.position.x, g.end.y), Vector2(g.end.x, g.end.y), [])
+	_fence(b, Vector2(g.position.x, g.position.y), Vector2(g.end.x, g.position.y), gaps)
+	# Ворота: столбы и арка с вывеской над въездом
+	for x in [-32.7, -25.3]:
+		b.box(Vector3(x - 0.15, 0, g.position.y - 0.15), Vector3(x + 0.15, 3.6, g.position.y + 0.15), Color(0.3, 0.42, 0.32), true)
+	b.box(Vector3(-32.7, 3.1, g.position.y - 0.08), Vector3(-25.3, 3.7, g.position.y + 0.08), Color(0.15, 0.32, 0.6))
+	var sign := Label3D.new()
+	sign.text = "АВТОШКОЛА ДОСААФ"
+	sign.font_size = 96
+	sign.pixel_size = 0.004
+	sign.outline_size = 0
+	sign.position = Vector3(-29.0, 3.4, g.position.y - 0.1)
+	sign.rotation.y = PI
+	add_child(sign)
+	# Стоянка учебных машин: белые линии мест, таблички категорий
+	var white := Color(0.9, 0.9, 0.86)
+	for spot in [[CAR_SPOT, "B", 5.2], [TRUCK_SPOT, "C", 7.5], [BUS_SPOT, "D", 10.5], [MOTO_SPOT, "A", 3.0]]:
+		var c: Vector3 = spot[0]
+		var hl: float = float(spot[2]) * 0.5
+		for sx in [-1.6, 1.6]:
+			b.box(Vector3(c.x + sx - 0.06, 0.04, c.z - hl), Vector3(c.x + sx + 0.06, 0.045, c.z + hl), white)
+		b.box(Vector3(c.x + 2.3, 0, c.z - 0.04), Vector3(c.x + 2.38, 1.8, c.z + 0.04), Color(0.4, 0.4, 0.42))
+		b.box(Vector3(c.x + 2.2, 1.4, c.z - 0.4), Vector3(c.x + 2.25, 2.0, c.z + 0.4), Color(0.95, 0.95, 0.92))
+		var l := Label3D.new()
+		l.text = "%s\nучебная" % spot[1]
+		l.font_size = 64
+		l.pixel_size = 0.004
+		l.outline_size = 0
+		l.modulate = Color(0.1, 0.15, 0.4)
+		l.position = Vector3(c.x + 2.19, 1.7, c.z)
+		l.rotation.y = -PI / 2.0
+		add_child(l)
+	add_child(b.build_mesh())
+	add_child(b.build_body())
+
+
+## Сетчатый забор от a до c (по X или по Z), gaps — пропуски [от, до] по оси.
+func _fence(b: MeshBuilder, a: Vector2, c: Vector2, gaps: Array) -> void:
+	var post := Color(0.3, 0.42, 0.32)
+	var net := Color(0.55, 0.62, 0.55)
+	var along_x := absf(c.x - a.x) > absf(c.y - a.y)
+	var t0 := minf(a.x, c.x) if along_x else minf(a.y, c.y)
+	var t1 := maxf(a.x, c.x) if along_x else maxf(a.y, c.y)
+	var fixed := a.y if along_x else a.x
+	var cuts: Array = [t0]
+	for gp in gaps:
+		cuts.append((gp as Vector2).x)
+		cuts.append((gp as Vector2).y)
+	cuts.append(t1)
+	for i in range(0, cuts.size(), 2):
+		var s0: float = cuts[i]
+		var s1: float = cuts[i + 1]
+		if s1 - s0 < 0.2:
+			continue
+		var mn := Vector3(s0, 0, fixed - 0.03) if along_x else Vector3(fixed - 0.03, 0, s0)
+		var mx := Vector3(s1, 1.8, fixed + 0.03) if along_x else Vector3(fixed + 0.03, 1.8, s1)
+		b.box(mn + Vector3(0, 0.1, 0), mx, net)
+		b.box(mn + Vector3(0, 1.75, 0) - (Vector3(0, 0, 0.02) if along_x else Vector3(0.02, 0, 0)), mx + Vector3(0, 0.05, 0) + (Vector3(0, 0, 0.02) if along_x else Vector3(0.02, 0, 0)), post)
+		b.add_collider(mn, mx)
+		var t := s0
+		while t <= s1 + 0.01:
+			var p := Vector3(t, 0, fixed) if along_x else Vector3(fixed, 0, t)
+			b.box(p + Vector3(-0.06, 0, -0.06), p + Vector3(0.06, 1.95, 0.06), post)
+			t += 2.5
+
+
+## Учебная машина для экзамена: kind — «moto», «car», «truck», «bus».
+func school_vehicle(kind: String) -> Vehicle:
+	return {"moto": moto, "car": car, "truck": truck, "bus": bus}[kind]
+
+
+## Экзамен начался — сразу за руль учебной машины на старте автодрома,
+## носом к змейке.
+func seat_for_exam(v: Vehicle) -> void:
+	var p := GameManager.player as Player
+	if p and p.car and p.car != v:
+		(p.car as Vehicle).exit_car()
+	if v.driver:
+		v.exit_car()
+	v.speed = 0.0
+	v.lateral = 0.0
+	v.velocity = Vector3.ZERO
+	v.condition = 100.0
+	v.fuel = float(v.spec.tank)
+	# В начале стартового круга: до первого конуса — место на разгон
+	v.global_position = Town.w(EXAM_START) + Vector3(0, 0.1, -3.0)
+	v.rotation = Vector3(0, PI, 0)
+	v.reset_physics_interpolation()
+	v.set_meta("exam", true)
+	v._on_enter()
 
 
 ## Учебные «Жигули» — на место после экзамена на права.
@@ -368,13 +476,15 @@ func park_school_car() -> void:
 ## Вернуть учебную машину на её место (если из неё вышли).
 func _park(v: Vehicle) -> void:
 	if v.driver != null:
-		if exam_cat == "":
-			v.exit_car()
-		else:
+		# Идёт новый экзамен на этой машине — не высаживать
+		if v.allowed.call() as bool:
 			return
+		v.exit_car()
+	v.remove_meta("exam")
 	v.speed = 0.0
 	v.velocity = Vector3.ZERO
-	v.global_position = Town.w(TRUCK_SPOT if v == truck else (BUS_SPOT if v == bus else CAR_SPOT))
+	v.global_position = Town.w({truck: TRUCK_SPOT, bus: BUS_SPOT, moto: MOTO_SPOT}.get(v, CAR_SPOT))
+	v.reset_physics_interpolation()
 	v.rotation = Vector3.ZERO
 	v.condition = 100.0
 	v.fuel = float(v.spec.tank)
@@ -382,9 +492,12 @@ func _park(v: Vehicle) -> void:
 
 func _process(_delta: float) -> void:
 	# Без экзамена на учебной машине не покатаешься — инструктор высадит
-	for v in [truck, bus, car]:
+	for v in [truck, bus, car, moto]:
 		var veh: Vehicle = v
 		if veh.driver != null and not (veh.allowed.call() as bool):
+			# Только что сдавал — машину отгонят сами, без окрика
+			if veh.has_meta("exam"):
+				continue
 			GameManager.notify("Инструктор: «Учебная машина — только на экзамене!»")
 			_park(veh)
 

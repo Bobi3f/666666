@@ -114,5 +114,26 @@ func _run() -> void:
 	PR.load_state(sd)
 	ok(int(PR.category_days.get("C", 0)) == 6, "дни категорий сохраняются")
 
+	print("== Территория и экзамены по категориям")
+	var grounds: Rect2 = Town.wr(AutoSchool.GROUNDS)
+	var inside_all := true
+	for v in [AS.car, AS.truck, AS.bus, AS.moto]:
+		inside_all = inside_all and grounds.has_point(Vector2(v.global_position.x, v.global_position.z)) and v.school
+	ok(inside_all and AS.moto.kind == "moto", "все учебные машины с «У», и «Ява» для A, — на стоянке за забором автошколы")
+	ok(ray(Town.w(Vector3(-36, 1, 10)), Town.w(Vector3(-36, 1, 15))) and not ray(Town.w(Vector3(-29, 1, 8)), Town.w(Vector3(-29, 1, 16))), "забор вокруг, ворота у въезда открыты")
+	PR.categories.erase("A"); PR.categories.erase("C"); PR.categories.erase("D")
+	root.get_node("GameManager").money = 5000
+	if P.car: P.car.exit_car()
+	for k in [[0, AS.moto], [1, AS.truck], [2, AS.bus]]:
+		AS._start(k[0])
+		await frames(3)
+		var v: Vehicle = k[1]
+		ok(P.car == v and v.global_position.distance_to(Town.w(AutoSchool.EXAM_START)) < 3.6, "категория %s — сразу на учебном «%s» на старте" % [AS.CATS[k[0]][0], v.spec.title])
+		# Сдаём «понарошку» и возвращаемся: машина уезжает на стоянку
+		(AS._exams[AS.CATS[k[0]][0]] as DrivingChallenge).cancel()
+		AS._result(k[0], {"ok": false, "why": "тест", "time": 0.0})
+		AS._park(v)
+		await frames(3)
+		ok(P.car == null and v.global_position.distance_to(Town.w(AS.MOTO_SPOT if v == AS.moto else (AS.TRUCK_SPOT if v == AS.truck else AS.BUS_SPOT))) < 1.0, "после экзамена «%s» — обратно на стоянку" % v.spec.title)
 	print("\nИТОГО: " + ("всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ, провалов: %d" % fails))
 	quit(1 if fails else 0)

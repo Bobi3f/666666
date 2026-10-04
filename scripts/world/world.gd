@@ -2567,7 +2567,7 @@ func _exam_prompt() -> String:
 	if Progress.license:
 		return "Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»" % EXAM_PRICE if not _exam.active() else ""
 	if _exam.active():
-		return "Инструктор: «Садись в учебные «Жигули» у края автодрома и заезжай на старт — жёлтый круг»"
+		return "Инструктор: «Экзамен идёт — учебные «Жигули» на старте автодрома»"
 	if not Progress.has_doc("passport") or not Progress.has_doc("med"):
 		return "Инструктор: «На права нужны паспорт (сельсовет) и медсправка (больница)»"
 	return "E — сдать на права: змейка, разворот, стоянка (%d грн)" % EXAM_PRICE
@@ -2580,7 +2580,10 @@ func _exam_start() -> void:
 	if _exam.active() or not GameManager.spend(EXAM_PRICE):
 		return
 	_exam.arm()
-	GameManager.notify("Инструктор: «Учебные «Жигули» — у края автодрома. На старт — жёлтый круг у въезда. Конусы не сбивай, в конце — встань в разметку «P»»")
+	var school := get_node_or_null("AutoSchool") as AutoSchool
+	if school:
+		school.seat_for_exam(school.car)
+	GameManager.notify("Инструктор: «Ты за рулём учебных «Жигулей» на старте. Змейка, разворот, в конце — встань в разметку «P». Конусы не сбивай»")
 
 
 func _exam_result(r: Dictionary) -> void:
