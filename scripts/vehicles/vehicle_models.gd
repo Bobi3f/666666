@@ -174,6 +174,8 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 	if v7:
 		_cabin_2107(b)
 		return
+	_cabin_2106(b)
+	return
 	# Салон: потолок, торпедо с приборами, руль, рычаги, сиденья с подголовниками
 	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.85, 0.82, 0.75))
 	var panel := Color(0.26, 0.22, 0.19)
@@ -199,6 +201,98 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 		b.box(Vector3(x - 0.12, 1.2, 0.52), Vector3(x + 0.12, 1.34, 0.58), seat.darkened(0.1))
 	b.box(Vector3(-0.7, CABIN_FLOOR, 0.72), Vector3(0.7, 0.72, 1.02), seat)
 	b.box(Vector3(-0.7, 0.72, 0.98), Vector3(0.7, 1.12, 1.06), seat)
+
+
+## Салон «шестёрки» как на фото: серое торпедо, сверху два круглых
+## дефлектора в решётку, слева колодец с двумя круглыми приборами, по
+## центру часы, ниже консоль с клавишами и пепельницей, справа бардачок;
+## серый руль с широкой накладкой и овальным значком; рычаг КПП в кожаном
+## чехле, ручник; серые сиденья в клетку; серые обшивки с изогнутыми ручками.
+static func _cabin_2106(b: MeshBuilder) -> void:
+	var grey := Color(0.36, 0.35, 0.34)
+	var dark := Color(0.16, 0.16, 0.17)
+	var black := Color(0.07, 0.07, 0.08)
+	var chrome := Color(0.75, 0.76, 0.78)
+	var fabric := Color(0.55, 0.53, 0.5)
+	# Потолок и пол
+	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.9, 0.88, 0.84))
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.6), Vector3(0.72, CABIN_FLOOR + 0.012, 1.1), Color(0.1, 0.1, 0.1))
+	# Торпедо: серое, мягкий верх с козырьком над приборами, щит до пола
+	b.box(Vector3(-0.72, 0.84, -0.6), Vector3(0.72, 1.0, -0.33), grey)
+	b.box(Vector3(-0.72, 1.0, -0.62), Vector3(0.72, 1.03, -0.42), grey.darkened(0.1))
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.62), Vector3(0.72, 0.84, -0.56), dark)
+	b.box(Vector3(-0.56, 1.0, -0.4), Vector3(-0.16, 1.07, -0.3), grey.darkened(0.08))
+	b.box(Vector3(-0.54, 0.895, -0.335), Vector3(-0.18, 1.0, -0.33), black)
+	# Два круглых дефлектора сверху, в решётку
+	for x in [-0.07, 0.15]:
+		var c := Vector3(x, 1.033, -0.48)
+		disc(b, c, Vector3.UP, 0.055, 0.008, dark)
+		for k in 5:
+			var dz := -0.04 + k * 0.02
+			b.box(c + Vector3(-0.045, 0.004, dz - 0.003), c + Vector3(0.045, 0.007, dz + 0.003), Color(0.5, 0.5, 0.5))
+	# Часы по центру
+	disc(b, Vector3(0.04, 0.96, -0.329), Vector3.BACK, 0.04, 0.008, black)
+	disc(b, Vector3(0.04, 0.96, -0.324), Vector3.BACK, 0.032, 0.003, Color(0.8, 0.75, 0.55))
+	# Консоль: решётка, клавиши, пепельница в хромированной рамке
+	b.box(Vector3(-0.08, 0.6, -0.36), Vector3(0.16, 0.9, -0.3), dark)
+	b.box(Vector3(-0.07, 0.86, -0.3), Vector3(0.15, 0.89, -0.296), Color(0.25, 0.25, 0.26))
+	for k in 4:
+		var kx := -0.05 + k * 0.05
+		b.box(Vector3(kx, 0.79, -0.3), Vector3(kx + 0.03, 0.82, -0.294), black)
+		disc(b, Vector3(kx + 0.015, 0.805, -0.293), Vector3.BACK, 0.007, 0.003, [Color(0.9, 0.5, 0.1), Color(0.8, 0.8, 0.8), Color(0.8, 0.8, 0.8), Color(0.9, 0.5, 0.1)][k])
+	b.box(Vector3(-0.07, 0.68, -0.302), Vector3(0.15, 0.75, -0.298), chrome)
+	b.box(Vector3(-0.06, 0.69, -0.298), Vector3(0.14, 0.74, -0.294), dark)
+	# Бардачок справа: длинная крышка с ручкой
+	b.box(Vector3(0.22, 0.88, -0.335), Vector3(0.66, 0.99, -0.33), grey.lightened(0.05))
+	b.box(Vector3(0.38, 0.9, -0.33), Vector3(0.46, 0.915, -0.326), dark)
+	# Руль: серый обод, широкая накладка с овальным значком, колонка
+	var wc := Vector3(-0.36, 0.89, -0.2)
+	var saved := b.xf
+	b.xf = saved * Transform3D(Basis(Vector3.RIGHT, -0.4), wc)
+	var rr := 0.19
+	for i in 16:
+		var a0 := TAU * i / 16
+		var a1 := TAU * (i + 1) / 16
+		tube(b, Vector3(cos(a0) * rr, sin(a0) * rr, 0), Vector3(cos(a1) * rr, sin(a1) * rr, 0), 0.016, dark)
+	for sx in [-1.0, 1.0]:
+		tube(b, Vector3(0.08 * sx, 0.0, 0.0), Vector3(rr * sx, 0.02, 0.0), 0.02, dark)
+	b.box(Vector3(-0.11, -0.08, -0.02), Vector3(0.11, 0.03, 0.012), dark)
+	b.box(Vector3(-0.045, -0.035, 0.012), Vector3(0.045, 0.0, 0.016), Color(0.75, 0.76, 0.78))
+	b.box(Vector3(-0.038, -0.03, 0.016), Vector3(0.038, -0.005, 0.018), Color(0.15, 0.2, 0.4))
+	b.xf = saved
+	tube(b, wc + Vector3(0, -0.03, -0.02), Vector3(-0.36, 0.8, -0.36), 0.025, dark)
+	for x in [-0.48, -0.38, -0.27]:
+		b.box(Vector3(x, CABIN_FLOOR + 0.05, -0.5), Vector3(x + 0.06, CABIN_FLOOR + 0.13, -0.48), Color(0.2, 0.2, 0.2))
+	# Тоннель, рычаг КПП в кожаном чехле с шаром, ручник
+	b.box(Vector3(-0.1, CABIN_FLOOR, -0.3), Vector3(0.12, 0.55, 0.6), black)
+	b.box(Vector3(-0.06, 0.55, -0.16), Vector3(0.08, 0.6, -0.04), black)
+	tube(b, Vector3(0.01, 0.6, -0.1), Vector3(0.01, 0.74, -0.16), 0.03, Color(0.12, 0.12, 0.12))
+	tube(b, Vector3(0.01, 0.74, -0.16), Vector3(0.01, 0.82, -0.2), 0.008, chrome)
+	disc(b, Vector3(0.01, 0.84, -0.2), Vector3.UP, 0.026, 0.045, dark)
+	tube(b, Vector3(0.01, 0.56, 0.2), Vector3(0.01, 0.64, 0.42), 0.012, dark)
+	# Сиденья: серые, в клетку, без подголовников
+	for x in [-0.36, 0.36]:
+		b.box(Vector3(x - 0.2, CABIN_FLOOR, 0.15), Vector3(x + 0.2, 0.6, 0.5), black)
+		b.box(Vector3(x - 0.25, 0.6, 0.1), Vector3(x + 0.25, 0.72, 0.55), fabric)
+		b.box(Vector3(x - 0.25, 0.72, 0.5), Vector3(x + 0.25, 1.15, 0.6), fabric)
+		for i in 8:
+			for j in 6:
+				var px: float = x - 0.22 + i * 0.063
+				b.box(Vector3(px, 0.721, 0.13 + j * 0.068), Vector3(px + 0.02, 0.723, 0.15 + j * 0.068), fabric.darkened(0.25))
+				b.box(Vector3(px, 0.76 + j * 0.06, 0.4985), Vector3(px + 0.02, 0.78 + j * 0.06, 0.4995), fabric.darkened(0.25))
+	b.box(Vector3(-0.7, CABIN_FLOOR, 0.72), Vector3(0.7, 0.72, 1.02), fabric)
+	b.box(Vector3(-0.7, 0.72, 0.98), Vector3(0.7, 1.12, 1.06), fabric)
+	# Обшивки дверей: серые, с изогнутой ручкой-подлокотником
+	for sx in [-1.0, 1.0]:
+		var x: float = 0.72 * sx
+		b.box(Vector3(minf(x, x - 0.02 * sx), CABIN_FLOOR, -0.5), Vector3(maxf(x, x - 0.02 * sx), 0.88, 0.95), grey.darkened(0.15))
+		var xa: float = x - 0.05 * sx
+		pipe(b, [Vector3(xa, 0.66, -0.35), Vector3(xa, 0.72, -0.2), Vector3(xa, 0.76, 0.0), Vector3(xa, 0.86, 0.12)], 0.022, dark)
+		b.box(Vector3(minf(x, x - 0.03 * sx), 0.8, -0.45), Vector3(maxf(x, x - 0.03 * sx), 0.83, -0.38), chrome)
+	# Зеркало заднего вида
+	b.box(Vector3(-0.012, 1.3, -0.33), Vector3(0.012, 1.36, -0.31), black)
+	b.box(Vector3(-0.13, 1.25, -0.33), Vector3(0.13, 1.31, -0.3), black)
+	b.box(Vector3(-0.12, 1.258, -0.301), Vector3(0.12, 1.302, -0.298), Color(0.55, 0.62, 0.68))
 
 
 ## Салон «семёрки» как на фото: чёрное торпедо с козырьком над приборами,
