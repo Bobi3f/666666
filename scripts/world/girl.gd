@@ -102,72 +102,10 @@ func _ready() -> void:
 	_spot = ""
 
 
-## Девушка носом в -Z: туфли, гольфы, платье в горошек, кофточка, руки,
-## лицо с ресницами и румянцем, длинные волосы с хвостом и бантом.
-## Альфа — метки для шага (как у жителей): ноги 0.9/0.8, руки 0.7/0.6.
+## Девушка носом в -Z — см. PersonModel.girl. Альфа — метки для шага (как
+## у жителей): ноги 0.9/0.8, руки 0.7/0.6.
 static func model(b: MeshBuilder, sit: bool) -> void:
-	var skin := Color(0.92, 0.74, 0.62)
-	var dress := Color(0.85, 0.2, 0.3)
-	var dots := Color(0.98, 0.95, 0.9)
-	var hair := Color(0.62, 0.42, 0.22)
-	var socks := Color(0.97, 0.97, 0.95)
-	var shoe := Color(0.45, 0.12, 0.12)
-	var base := 0.85
-	if sit:
-		base = 0.5
-		for x in [-0.17, 0.03]:
-			b.box(Vector3(x, 0.42, -0.42), Vector3(x + 0.14, 0.54, 0.0), skin)
-			b.box(Vector3(x + 0.01, 0.06, -0.47), Vector3(x + 0.13, 0.45, -0.35), socks)
-			b.box(Vector3(x, 0.0, -0.54), Vector3(x + 0.14, 0.07, -0.33), shoe)
-		# Подол на коленях
-		b.box(Vector3(-0.22, 0.48, -0.3), Vector3(0.22, 0.6, 0.12), dress)
-	else:
-		for x in [-0.15, 0.03]:
-			b.alpha = 0.9 if x < 0.0 else 0.8
-			b.box(Vector3(x, 0.3, -0.05), Vector3(x + 0.12, 0.6, 0.06), skin)
-			b.box(Vector3(x - 0.005, 0.06, -0.055), Vector3(x + 0.125, 0.32, 0.065), socks)
-			b.box(Vector3(x - 0.01, 0.0, -0.11), Vector3(x + 0.13, 0.07, 0.07), shoe)
-		b.alpha = 1.0
-		# Юбка-колокол чуть выше колен
-		b.box(Vector3(-0.26, 0.55, -0.17), Vector3(0.26, 0.86, 0.17), dress)
-		b.box(Vector3(-0.27, 0.55, -0.18), Vector3(0.27, 0.59, 0.18), dress.darkened(0.2))
-	# Лиф платья, пояс, горошек
-	b.box(Vector3(-0.2, base, -0.12), Vector3(0.2, base + 0.56, 0.12), dress)
-	b.box(Vector3(-0.21, base + 0.02, -0.125), Vector3(0.21, base + 0.07, 0.125), Color(0.2, 0.2, 0.25))
-	for p in [Vector2(-0.12, 0.2), Vector2(0.06, 0.32), Vector2(-0.04, 0.44), Vector2(0.1, 0.14), Vector2(-0.14, 0.38)]:
-		b.box(Vector3(p.x, base + p.y, -0.125), Vector3(p.x + 0.04, base + p.y + 0.04, -0.12), dots)
-	b.box(Vector3(-0.09, base + 0.5, -0.13), Vector3(0.09, base + 0.57, -0.1), dots)
-	# Руки в коротких рукавах
-	for side in [-1.0, 1.0]:
-		var x0 := 0.2 if side > 0.0 else -0.29
-		if sit:
-			b.box(Vector3(x0, base + 0.36, -0.07), Vector3(x0 + 0.09, base + 0.55, 0.07), dress)
-			b.box(Vector3(x0, base + 0.2, -0.3), Vector3(x0 + 0.09, base + 0.36, -0.02), skin)
-		else:
-			b.alpha = 0.7 if side < 0.0 else 0.6
-			b.box(Vector3(x0, base + 0.36, -0.07), Vector3(x0 + 0.09, base + 0.55, 0.07), dress)
-			b.box(Vector3(x0 + 0.01, base + 0.0, -0.05), Vector3(x0 + 0.08, base + 0.37, 0.05), skin)
-			b.alpha = 1.0
-	# Шея и голова
-	b.box(Vector3(-0.045, base + 0.56, -0.045), Vector3(0.045, base + 0.63, 0.045), skin)
-	var h := base + 0.63
-	b.box(Vector3(-0.1, h, -0.11), Vector3(0.1, h + 0.25, 0.1), skin)
-	for x in [-0.06, 0.02]:
-		b.box(Vector3(x, h + 0.12, -0.112), Vector3(x + 0.04, h + 0.15, -0.108), Color(0.97, 0.97, 0.97))
-		b.box(Vector3(x + 0.012, h + 0.122, -0.115), Vector3(x + 0.028, h + 0.148, -0.111), Color(0.2, 0.45, 0.35))
-		b.box(Vector3(x - 0.005, h + 0.15, -0.114), Vector3(x + 0.045, h + 0.158, -0.11), Color(0.1, 0.08, 0.08))
-		# Румянец
-		b.box(Vector3(x - 0.01, h + 0.07, -0.113), Vector3(x + 0.04, h + 0.1, -0.109), Color(0.95, 0.6, 0.58))
-	b.box(Vector3(-0.015, h + 0.08, -0.13), Vector3(0.015, h + 0.13, -0.11), skin.darkened(0.04))
-	b.box(Vector3(-0.035, h + 0.045, -0.113), Vector3(0.035, h + 0.06, -0.108), Color(0.85, 0.25, 0.3))
-	# Волосы: шапка, чёлка, пряди по бокам до плеч, хвост с бантом
-	b.box(Vector3(-0.115, h + 0.17, -0.12), Vector3(0.115, h + 0.29, 0.115), hair)
-	b.box(Vector3(-0.1, h + 0.19, -0.125), Vector3(0.1, h + 0.25, -0.11), hair)
-	b.box(Vector3(-0.125, h - 0.12, -0.08), Vector3(-0.1, h + 0.22, 0.11), hair)
-	b.box(Vector3(0.1, h - 0.12, -0.08), Vector3(0.125, h + 0.22, 0.11), hair)
-	b.box(Vector3(-0.1, h - 0.05, 0.09), Vector3(0.1, h + 0.27, 0.12), hair)
-	b.box(Vector3(-0.05, h - 0.3, 0.11), Vector3(0.05, h + 0.2, 0.17), hair)
-	b.box(Vector3(-0.09, h + 0.17, 0.12), Vector3(0.09, h + 0.24, 0.16), Color(0.95, 0.95, 1.0))
+	PersonModel.girl(b, sit)
 
 
 ## Где она живёт: у себя через улицу, а после свадьбы — у тебя.

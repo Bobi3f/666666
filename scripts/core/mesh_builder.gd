@@ -117,6 +117,17 @@ func quad_vc(pts: Array, cols: Array[Color]) -> void:
 	_quad_raw(pts, cols, n)
 
 
+## Четырёхугольник с нормалью в каждой вершине — гладкие округлые формы
+## (руки, головы людей). Цвет с текущей альфой (метка части тела).
+func smooth_quad(pts: Array, ns: Array, color: Color) -> void:
+	var c := Color(color.r, color.g, color.b, alpha)
+	if chunk_size > 0.0:
+		_pick(xf * ((pts[0] + pts[2]) * 0.5) + shift)
+	for i in [0, 2, 1, 0, 3, 2]:
+		_emit(pts[i], ns[i], c)
+	_count += 2
+
+
 func tri(a: Vector3, b: Vector3, c: Vector3, color: Color, two_sided := false) -> void:
 	var n := (b - a).cross(c - a).normalized()
 	_pick(xf * ((a + b + c) / 3.0) + shift)
