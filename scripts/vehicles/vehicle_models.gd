@@ -12,6 +12,9 @@ extends RefCounted
 ## дворники, номера, салон с торпедо, рулём и сиденьями.
 ## glass_b — куда класть стёкла: у машины игрока они отдельным прозрачным
 ## мешем, иначе из салона дороги не видно; у попуток — вместе с кузовом.
+## Пол салона «Жигулей» — ниже верха кузова, как в настоящей машине.
+const CABIN_FLOOR := 0.42
+
 ## Колёса «Жигулей» по чертежу ВАЗ-2106: база 2424, свес спереди 650,
 ## колея 1365 спереди и 1321 сзади (мм).
 const ZHIGULI_WHEELS := [Vector3(-0.69, 0.29, -1.43), Vector3(0.69, 0.29, -1.43), Vector3(-0.67, 0.29, 0.99), Vector3(0.67, 0.29, 0.99)]
@@ -38,9 +41,22 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 	var rt := 1.04  # верх заднего стекла
 	var rs := 1.3  # низ заднего стекла
 	var roof := 1.38
-	# Низ кузова, капот, крышка багажника
-	b.box(Vector3(-hx, 0.33, zf + 0.04), Vector3(hx, 0.78, zr - 0.04), paint)
-	b.box(Vector3(-hx + 0.03, 0.36, zf), Vector3(hx - 0.03, 0.78, zr), paint)
+	# Низ кузова, капот, крышка багажника. С салоном — кузов полый: пол
+	# внизу (CABIN_FLOOR), борта и моторный отсек с багажником вокруг салона
+	if interior:
+		var ci := 0.72  # внутренняя полуширина салона
+		var c0 := -0.6
+		var c1 := 1.1
+		b.box(Vector3(-hx, 0.33, zf + 0.04), Vector3(hx, CABIN_FLOOR, zr - 0.04), paint)
+		b.box(Vector3(-hx, CABIN_FLOOR, zf + 0.04), Vector3(hx, 0.78, c0), paint)
+		b.box(Vector3(-hx + 0.03, 0.36, zf), Vector3(hx - 0.03, 0.78, c0), paint)
+		b.box(Vector3(-hx, CABIN_FLOOR, c1), Vector3(hx, 0.78, zr - 0.04), paint)
+		b.box(Vector3(-hx + 0.03, 0.36, c1), Vector3(hx - 0.03, 0.78, zr), paint)
+		for sx in [-1.0, 1.0]:
+			b.box(Vector3(minf(ci * sx, hx * sx), CABIN_FLOOR, c0), Vector3(maxf(ci * sx, hx * sx), 0.78, c1), paint)
+	else:
+		b.box(Vector3(-hx, 0.33, zf + 0.04), Vector3(hx, 0.78, zr - 0.04), paint)
+		b.box(Vector3(-hx + 0.03, 0.36, zf), Vector3(hx - 0.03, 0.78, zr), paint)
 	b.box(Vector3(-hx + 0.01, 0.78, zf + 0.02), Vector3(hx - 0.01, 0.82, ws), paint)
 	b.box(Vector3(-0.6, 0.82, zf + 0.12), Vector3(0.6, 0.84, ws - 0.04), paint.lightened(0.03))
 	b.box(Vector3(-hx + 0.01, 0.78, rs - 0.04), Vector3(hx - 0.01, 0.87, zr - 0.02), paint)
@@ -174,11 +190,14 @@ static func zhiguli(b: MeshBuilder, paint: Color, interior := true, glass_b: Mes
 	b.box(Vector3(-0.37, 0.96, -0.32), Vector3(-0.35, 1.05, -0.19), rim)
 	b.box(Vector3(-0.03, 0.7, -0.1), Vector3(0.03, 0.95, -0.04), rim)
 	b.box(Vector3(-0.05, 0.93, -0.12), Vector3(0.05, 0.98, -0.02), Color(0.2, 0.2, 0.2))
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.6), Vector3(0.72, CABIN_FLOOR + 0.012, 1.1), Color(0.12, 0.1, 0.09))
+	b.box(Vector3(-0.1, CABIN_FLOOR, -0.32), Vector3(0.1, 0.62, 0.3), panel)
 	for x in [-0.36, 0.36]:
+		b.box(Vector3(x - 0.2, CABIN_FLOOR, 0.15), Vector3(x + 0.2, 0.6, 0.5), Color(0.1, 0.1, 0.1))
 		b.box(Vector3(x - 0.25, 0.6, 0.1), Vector3(x + 0.25, 0.72, 0.55), seat)
 		b.box(Vector3(x - 0.25, 0.72, 0.5), Vector3(x + 0.25, 1.2, 0.6), seat)
 		b.box(Vector3(x - 0.12, 1.2, 0.52), Vector3(x + 0.12, 1.34, 0.58), seat.darkened(0.1))
-	b.box(Vector3(-0.7, 0.6, 0.72), Vector3(0.7, 0.72, 1.02), seat)
+	b.box(Vector3(-0.7, CABIN_FLOOR, 0.72), Vector3(0.7, 0.72, 1.02), seat)
 	b.box(Vector3(-0.7, 0.72, 0.98), Vector3(0.7, 1.12, 1.06), seat)
 
 
@@ -197,6 +216,9 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 	b.box(Vector3(-0.7, 1.36, -0.36), Vector3(0.7, 1.375, 1.02), Color(0.78, 0.78, 0.75))
 	# Торпедо: основа и верх под лобовым стеклом
 	b.box(Vector3(-0.72, 0.86, -0.6), Vector3(0.72, 1.0, -0.32), black)
+	# Щит под торпедо до пола — тёмный, под ним педали
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.62), Vector3(0.72, 0.86, -0.58), black)
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.6), Vector3(0.72, 0.62, -0.42), Color(0.05, 0.05, 0.06))
 	b.box(Vector3(-0.72, 1.0, -0.62), Vector3(0.72, 1.03, -0.42), black)
 	# Щиток приборов: колодец под козырьком (сами приборы — Vehicle._gauge_spots)
 	b.box(Vector3(-0.55, 0.98, -0.36), Vector3(-0.16, 1.1, -0.34), plastic)
@@ -218,16 +240,18 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 	b.box(Vector3(0.62, 0.92, -0.325), Vector3(0.7, 0.99, -0.318), vent)
 	b.box(Vector3(-0.7, 0.92, -0.325), Vector3(-0.62, 0.99, -0.318), vent)
 	# Консоль вниз: часы, ящичек, рычаг КПП с чёрным набалдашником
-	b.box(Vector3(-0.1, 0.55, -0.32), Vector3(0.12, 0.88, -0.12), black)
+	b.box(Vector3(-0.1, CABIN_FLOOR, -0.32), Vector3(0.12, 0.88, -0.12), black)
 	b.box(Vector3(-0.09, 0.78, -0.12), Vector3(0.11, 0.86, -0.115), plastic)
 	disc(b, Vector3(0.01, 0.82, -0.112), Vector3.BACK, 0.028, 0.006, Color(0.85, 0.85, 0.82))
 	disc(b, Vector3(0.01, 0.82, -0.108), Vector3.BACK, 0.022, 0.003, black)
 	b.box(Vector3(-0.07, 0.7, -0.12), Vector3(0.09, 0.74, -0.115), plastic)
-	tube(b, Vector3(0.01, 0.58, -0.02), Vector3(0.01, 0.8, -0.06), 0.008, black)
-	disc(b, Vector3(0.01, 0.82, -0.06), Vector3.UP, 0.028, 0.05, black)
-	b.box(Vector3(-0.08, 0.55, -0.12), Vector3(0.1, 0.6, 0.12), black)
+	# Тоннель с чехлом рычага, высокий рычаг с чёрным набалдашником
+	b.box(Vector3(-0.1, CABIN_FLOOR, -0.12), Vector3(0.12, 0.56, 0.6), black)
+	b.box(Vector3(-0.04, 0.56, -0.08), Vector3(0.06, 0.6, 0.02), plastic)
+	tube(b, Vector3(0.01, 0.58, -0.03), Vector3(0.01, 0.8, -0.07), 0.008, black)
+	disc(b, Vector3(0.01, 0.82, -0.07), Vector3.UP, 0.028, 0.05, black)
 	# Ручник между сиденьями
-	b.box(Vector3(-0.03, 0.58, 0.15), Vector3(0.05, 0.62, 0.5), black)
+	b.box(Vector3(-0.03, 0.56, 0.15), Vector3(0.05, 0.6, 0.5), black)
 	tube(b, Vector3(0.01, 0.62, 0.2), Vector3(0.01, 0.7, 0.42), 0.012, black)
 	b.box(Vector3(-0.004, 0.66, 0.45), Vector3(0.024, 0.72, 0.5), Color(0.8, 0.1, 0.1))
 	# Руль: большой обод, две спицы вниз-в стороны, ступица со значком, колонка
@@ -248,12 +272,14 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 	b.xf = saved
 	tube(b, wc + Vector3(0, -0.03, -0.02), Vector3(-0.36, 0.88, -0.36), 0.025, black)
 	# Пол — тёмные коврики
-	b.box(Vector3(-0.7, 0.78, -0.6), Vector3(0.7, 0.792, 1.05), Color(0.06, 0.06, 0.07))
+	b.box(Vector3(-0.72, CABIN_FLOOR, -0.6), Vector3(0.72, CABIN_FLOOR + 0.012, 1.1), Color(0.06, 0.06, 0.07))
 	# Педали
 	for x in [-0.48, -0.38, -0.27]:
-		b.box(Vector3(x, 0.42, -0.5), Vector3(x + 0.06, 0.5, -0.48), Color(0.2, 0.2, 0.2))
+		b.box(Vector3(x, CABIN_FLOOR + 0.05, -0.5), Vector3(x + 0.06, CABIN_FLOOR + 0.13, -0.48), Color(0.2, 0.2, 0.2))
 	# Сиденья: голубые, в рубчик; подушка, спинка, подголовник
 	for x in [-0.36, 0.36]:
+		# Салазки и основание сиденья
+		b.box(Vector3(x - 0.2, CABIN_FLOOR, 0.15), Vector3(x + 0.2, 0.6, 0.5), black)
 		b.box(Vector3(x - 0.25, 0.6, 0.1), Vector3(x + 0.25, 0.72, 0.55), fabric)
 		b.box(Vector3(x - 0.25, 0.72, 0.5), Vector3(x + 0.25, 1.2, 0.6), fabric)
 		b.box(Vector3(x - 0.12, 1.2, 0.52), Vector3(x + 0.12, 1.32, 0.58), fabric.darkened(0.1))
@@ -261,12 +287,12 @@ static func _cabin_2107(b: MeshBuilder) -> void:
 			b.box(Vector3(x + k - 0.004, 0.72, 0.12), Vector3(x + k + 0.004, 0.725, 0.53), fabric.darkened(0.2))
 			b.box(Vector3(x + k - 0.004, 0.74, 0.499), Vector3(x + k + 0.004, 1.18, 0.5), fabric.darkened(0.2))
 		b.box(Vector3(x - 0.26, 0.6, 0.1), Vector3(x + 0.26, 0.62, 0.56), black)
-	b.box(Vector3(-0.7, 0.6, 0.72), Vector3(0.7, 0.72, 1.02), fabric)
+	b.box(Vector3(-0.7, CABIN_FLOOR, 0.72), Vector3(0.7, 0.72, 1.02), fabric)
 	b.box(Vector3(-0.7, 0.72, 0.98), Vector3(0.7, 1.12, 1.06), fabric)
 	# Обшивки дверей: чёрные, с подлокотником-ручкой
 	for sx in [-1.0, 1.0]:
 		var x: float = 0.72 * sx
-		b.box(Vector3(minf(x, x - 0.02 * sx), 0.5, -0.5), Vector3(maxf(x, x - 0.02 * sx), 0.88, 0.95), black)
+		b.box(Vector3(minf(x, x - 0.02 * sx), CABIN_FLOOR, -0.5), Vector3(maxf(x, x - 0.02 * sx), 0.88, 0.95), black)
 		b.box(Vector3(minf(x, x - 0.06 * sx), 0.74, -0.25), Vector3(maxf(x, x - 0.06 * sx), 0.77, 0.12), plastic)
 		b.box(Vector3(minf(x, x - 0.04 * sx), 0.77, -0.05), Vector3(maxf(x, x - 0.04 * sx), 0.84, 0.0), plastic)
 	# Зеркало заднего вида

@@ -43,8 +43,8 @@ func _run() -> void:
 	# Салон с заднего сиденья — как на фото
 	var cam3 := Camera3D.new(); cam3.fov = 75.0; W.add_child(cam3)
 	var cx := C.global_transform
-	cam3.global_position = cx * Vector3(0.0, 1.3, 0.85)
-	cam3.look_at(cx * Vector3(0.0, 0.88, -0.45))
+	cam3.global_position = cx * Vector3(0.0, 1.32, 0.95)
+	cam3.look_at(cx * Vector3(0.0, 0.7, -0.3))
 	cam3.make_current()
 	for i in 8: await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/vaz2107_cabin.png" % OS.get_environment("SHOTS"))
