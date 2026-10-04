@@ -31,8 +31,14 @@ var _mini: Control
 var _sh := Vector2.ZERO
 var _tex_vp: SubViewport
 var _near_vp: SubViewport
-var _near_painter: Control
+## Подробная текстура рисуется полосами: при переезде — по одной полосе за
+## кадр, а показывается новая, когда готовы все (иначе на телефоне рывок).
+const BANDS := 4
+var _near_bands: Array[Control] = []
 var _near_c := Vector2(INF, INF)
+## Куда перерисовываем и какая полоса следующая (-1 — не перерисовываем).
+var _pending_c := Vector2(INF, INF)
+var _band := -1
 ## Какой кусок мира сейчас рисуем (X, Z мира) и что открыто: 0 — ничего,
 ## 1 — окрестности, 2 — весь район.
 var _view := Rect2(-WORLD * 0.5, -WORLD * 0.5, WORLD, WORLD)
@@ -76,16 +82,21 @@ func _build_minimap() -> void:
 	_near_vp.size = Vector2i(int(NEAR_TEX), int(NEAR_TEX))
 	_near_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_near_vp.disable_3d = true
-	_near_painter = Control.new()
-	_near_painter.size = Vector2(NEAR_TEX, NEAR_TEX)
-	_near_painter.draw.connect(func() -> void:
-		_t = _near_painter
-		_size = NEAR_TEX
-		_view = _near_rect()
-		_draw_static(false)
-		_t = _canvas
-		_size = SIZE)
-	_near_vp.add_child(_near_painter)
+	for i in BANDS:
+		var band := Control.new()
+		band.size = Vector2(NEAR_TEX, NEAR_TEX / BANDS)
+		band.position = Vector2(0, NEAR_TEX / BANDS * i)
+		band.clip_contents = true
+		band.draw.connect(func() -> void:
+			_t = band
+			_size = NEAR_TEX
+			var h := NEAR_M / BANDS
+			_view = Rect2(_pending_c - Vector2(NEAR_M, NEAR_M) * 0.5 + Vector2(0, h * i), Vector2(NEAR_M, h))
+			_draw_static(false)
+			_t = _canvas
+			_size = SIZE)
+		_near_vp.add_child(band)
+		_near_bands.append(band)
 	add_child(_near_vp)
 	_recenter(_player_pos2())
 	_mini = Control.new()
@@ -118,11 +129,32 @@ func _recenter(p: Vector2) -> void:
 	var h := WORLD * 0.5 - NEAR_M * 0.5
 	var want := Vector2(clampf(snappedf(p.x, 50.0), -h, h), clampf(snappedf(p.y, 50.0), -h, h))
 	# У края района середина упирается в край — лишний раз не перерисовываем
-	if want == _near_c:
+	if want == _near_c or (_band >= 0 and want == _pending_c):
 		return
-	_near_c = want
+	_pending_c = want
+	# Игрок за краем текстуры (перенёсся, загрузил игру) — сразу целиком;
+	# по дороге — полосами, по одной за кадр (_next_band)
+	if maxf(absf(p.x - _near_c.x), absf(p.y - _near_c.y)) > NEAR_M * 0.5 - 20.0:
+		for b in _near_bands:
+			b.queue_redraw()
+		_band = BANDS
+	else:
+		_band = 0
+	_next_band()
+
+
+## Следующая полоса подробной текстуры; все готовы — один раз отрисовать
+## текстуру и показывать её вокруг новой середины.
+func _next_band() -> void:
+	if _band < 0:
+		return
+	if _band < BANDS:
+		_near_bands[_band].queue_redraw()
+		_band += 1
+		return
 	_near_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	_near_painter.queue_redraw()
+	_near_c = _pending_c
+	_band = -1
 
 
 func _player_pos2() -> Vector2:
@@ -133,6 +165,7 @@ func _player_pos2() -> Vector2:
 func _process(_delta: float) -> void:
 	# Отъехал от середины подробной текстуры — перерисовать её вокруг себя
 	if _near_vp:
+		_next_band()
 		var d := _player_pos2() - _near_c
 		if maxf(absf(d.x), absf(d.y)) > NEAR_M * 0.5 - LOCAL_M * 0.5 - 10.0:
 			_recenter(_player_pos2())
@@ -250,6 +283,8 @@ func _line(pts: PackedVector2Array, width_m: float, c: Color) -> void:
 ## Пятно с неровным краем: прямоугольник, засыпанный кругами; у края круги
 ## меньше и со сдвигом. edge — цвет каймы (рисуется чуть шире под пятном).
 func _blob(r: Rect2, c: Color, seed: int, edge := Color(0, 0, 0, 0)) -> void:
+	if not _seen(r.position.x, r.position.y, r.end.x, r.end.y):
+		return
 	var rng := RandomNumberGenerator.new()
 	var step := 9.0
 	for pass_i in (2 if edge.a > 0.0 else 1):
@@ -303,7 +338,17 @@ func _scale_bar(font: Font) -> void:
 	_t.draw_string(font, a + Vector2(bar + 6, 7), "%d м" % int(meters), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.12, 0.1, 0.08))
 
 
+## Видно ли прямоугольник мира (с учётом сдвига _sh) на рисуемом куске.
+## Подробная текстура вокруг игрока перерисовывается на ходу — всё, что за
+## её краем, не рисуем, иначе на телефоне кадр подвисает.
+func _seen(x0: float, z0: float, x1: float, z1: float) -> bool:
+	var r := Rect2(minf(x0, x1) + _sh.x, minf(z0, z1) + _sh.y, absf(x1 - x0), absf(z1 - z0))
+	return r.grow(12.0).intersects(_view)
+
+
 func _rect(x0: float, z0: float, x1: float, z1: float, c: Color) -> void:
+	if not _seen(x0, z0, x1, z1):
+		return
 	var a := _p(x0, z0)
 	var b := _p(x1, z1)
 	_t.draw_rect(Rect2(a, b - a), c)
@@ -478,6 +523,8 @@ func _draw_region() -> void:
 	for h in Landscape.hills:
 		var hc: Vector2 = h[0]
 		var hr: float = h[1]
+		if not _seen(hc.x - hr, hc.y - hr, hc.x + hr, hc.y + hr):
+			continue
 		for k in 3:
 			_t.draw_circle(_p(hc.x, hc.y), _m(hr * (1.0 - k * 0.3)), Color(0.8, 0.74, 0.6, 0.35))
 	for pd in Landscape.ponds:
@@ -522,8 +569,10 @@ func _draw_region() -> void:
 	while t < Railway.length():
 		var a: Vector2 = Railway.at(t)[0]
 		var e: Vector2 = Railway.at(minf(t + 20.0, Railway.length()))[0]
-		_t.draw_line(_p(a.x, a.y), _p(e.x, e.y), Color(0.98, 0.97, 0.94), maxf(_m(2.0), 1.0))
 		t += 40.0
+		if not _seen(a.x, a.y, e.x, e.y):
+			continue
+		_t.draw_line(_p(a.x, a.y), _p(e.x, e.y), Color(0.98, 0.97, 0.94), maxf(_m(2.0), 1.0))
 
 
 func _draw_places(labels: bool, font: Font) -> void:

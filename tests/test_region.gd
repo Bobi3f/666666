@@ -209,6 +209,14 @@ func _run() -> void:
 	P.global_position = Vector3(vfar.x, 0.1, vfar.y)
 	await process_frame; await process_frame
 	ok(map._near_rect().has_point(vfar), "уехал далеко — подробная карта перерисована вокруг: %s" % str(map._near_c))
+	# По дороге текстура перерисовывается полосами, по одной за кадр, и
+	# подменяется, только когда готова вся — без рывка
+	var nc0: Vector2 = map._near_c
+	P.global_position = Vector3(vfar.x + 190.0, 0.1, vfar.y)
+	await process_frame
+	ok(map._band > 0 and map._near_c == nc0, "переезд: рисуется полоса %d из %d, видна старая" % [map._band, map.BANDS])
+	for i in map.BANDS + 2: await process_frame
+	ok(map._band == -1 and map._near_c != nc0 and map._near_rect().has_point(Vector2(P.global_position.x, P.global_position.z)), "все полосы готовы — новая середина %s" % str(map._near_c))
 	map._canvas.visible = false
 	print("== Пейзаж и придорожное")
 	ok(Landscape.hills.size() >= 15 and Landscape.fields.size() >= 25 and Landscape.ponds.size() >= 5,
