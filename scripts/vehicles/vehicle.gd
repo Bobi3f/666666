@@ -1560,6 +1560,8 @@ func _wheel_mesh(moto: bool, r: float, w: float, disc: Variant) -> MeshInstance3
 	wb.ground_shade = false
 	if moto:
 		VehicleModels.moto_wheel(wb, r, disc)
+	elif kind == "tractor" and disc == null:
+		VehicleModels.tractor_wheel(wb, r, w)
 	else:
 		VehicleModels.car_wheel(wb, r, w, disc)
 	return wb.build_mesh()
@@ -1625,7 +1627,8 @@ func _gauge_spots() -> Array:
 		"moped":
 			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
 		"tractor":
-			return [[Vector3(-0.15, 1.72, -0.148), 0.045, 0.0], [Vector3(0.15, 1.72, -0.148), 0.045, 0.0]]
+			# Средние два из четырёх приборов на голубой панели
+			return [[Vector3(-0.1, 1.79, -0.148), 0.045, 0.0], [Vector3(0.1, 1.79, -0.148), 0.045, 0.0]]
 	# Машины из салона: торпедо по _cabin(dz, y, hx)
 	var cab: Array = {"niva": [-0.66, 0.62, 0.72], "volga": [-0.8, 0.5, 0.76], "truck": [-2.05, 1.12, 0.95]}.get(kind, [])
 	if cab.is_empty():
