@@ -32,5 +32,7 @@ func _run() -> void:
 	ok(P.global_position.distance_to(Town.w(Vector3(100, 0.2, 40))) < 1.0, "игрок переехал в город: %s" % str(P.global_position.round()))
 	ok(C.global_position.distance_to(Town.w(Vector3(97, 0.1, 30))) < 1.0, "«Жигули» — тоже")
 	ok(M.global_position.distance_to(Vector3(-131, 0.1, -46.5)) < 1.0, "мопед в Каменке остался на месте")
+	# Не оставлять сохранение — следующие наборы начинают с чистой игры
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SM.PATH))
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()
