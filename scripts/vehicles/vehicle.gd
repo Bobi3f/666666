@@ -240,6 +240,13 @@ var _lean := 0.0
 var _camera: SmoothCamera
 ## Метки, за которыми плавно тянутся камеры: место водителя и точка сзади.
 var _seat_mark: Node3D
+## Куда оглянулся водитель (рад): из салона — головой, сзади — облёт камеры.
+## Едешь и не трогаешь камеру — она сама возвращается вперёд.
+var look_yaw := 0.0
+var look_pitch := 0.0
+var _look_idle := 0.0
+const SEAT_PITCH := -0.06
+const LOOK_YAW_CABIN := 2.4
 var _chase_mark: Node3D
 var _chase: SmoothCamera
 var _chase_yaw := 0.0
@@ -312,7 +319,7 @@ func _ready() -> void:
 	# на телефоне и в браузере картинка при езде подёргивается
 	_seat_mark = Node3D.new()
 	_seat_mark.position = spec.seat
-	_seat_mark.rotation.x = -0.06
+	_seat_mark.rotation.x = SEAT_PITCH
 	_body.add_child(_seat_mark)
 	_camera = SmoothCamera.new()
 	_camera.target = _seat_mark
@@ -439,6 +446,9 @@ func _on_enter() -> void:
 		return
 	driver = p
 	GameManager.vehicle = self
+	look_yaw = 0.0
+	look_pitch = 0.0
+	_apply_look()
 	p.sit_in(self)
 	if _cabin_light:
 		_cabin_light.visible = true
@@ -610,7 +620,36 @@ func _physics_process(dt: float) -> void:
 		var pedal := drv and Input.is_physical_key_pressed(KEY_SHIFT)
 		_update(dt, 1.0 if w else 0.0, s, handbrake, pedal, steer_in)
 	if drv:
+		_return_look(dt)
 		_update_camera(dt)
+
+
+## Оглядеться: yaw — влево-вправо, pitch — вверх-вниз (рад).
+func look(yaw: float, pitch: float) -> void:
+	look_yaw = wrapf(look_yaw + yaw, -PI, PI)
+	look_pitch = clampf(look_pitch + pitch, -0.6, 0.55)
+	_look_idle = 0.0
+	_apply_look()
+
+
+## Голова водителя в салоне: поворот не дальше, чем через плечо.
+func _apply_look() -> void:
+	if _seat_mark:
+		_seat_mark.rotation = Vector3(SEAT_PITCH + look_pitch, clampf(look_yaw, -LOOK_YAW_CABIN, LOOK_YAW_CABIN), 0.0)
+
+
+## На ходу, если камеру не трогали полторы секунды, — плавно вперёд.
+func _return_look(dt: float) -> void:
+	_look_idle += dt
+	if (look_yaw == 0.0 and look_pitch == 0.0) or _look_idle < 1.5 or speed_kmh() < 8.0:
+		return
+	var k := minf(dt * 2.5, 1.0)
+	look_yaw = lerp_angle(look_yaw, 0.0, k)
+	look_pitch = lerpf(look_pitch, 0.0, k)
+	if absf(look_yaw) < 0.005 and absf(look_pitch) < 0.005:
+		look_yaw = 0.0
+		look_pitch = 0.0
+	_apply_look()
 
 
 ## Автомат: педали → газ и тормоз, задний ход и запуск мотора сами.
@@ -1139,7 +1178,10 @@ func _update_camera(dt: float) -> void:
 		_chase_yaw = lerp_angle(_chase_yaw, yaw, minf(dt * 8.0, 1.0))
 		_chase_y = lerpf(_chase_y, y, minf(dt * 6.0, 1.0))
 	var origin := Vector3(global_position.x, _chase_y, global_position.z)
-	var turn := Basis(Vector3.UP, _chase_yaw)
+	# Облёт: оглянулся — камера уходит вбок и выше или ниже, глядя на машину
+	var turn := Basis(Vector3.UP, _chase_yaw + look_yaw)
+	back = Basis(Vector3.RIGHT, look_pitch * 0.9) * back
+	back.y = maxf(back.y, 0.5)
 	_chase_mark.global_position = origin + turn * back
 	_chase_mark.look_at(origin + Vector3(0, 1.0, 0))
 	if dt >= 0.5:

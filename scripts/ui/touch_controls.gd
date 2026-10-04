@@ -411,6 +411,9 @@ func _input(event: InputEvent) -> void:
 					_wheel_index = touch.index
 					_wheel_last = (touch.position - _wheel_center).angle()
 					_wheel.queue_redraw()
+				elif not walk_side(touch.position) and _look_index < 0:
+					# Палец по свободной части экрана — оглядеться
+					_look_index = touch.index
 				return
 			# Левая половина — ходьба, правая — камера (под левую руку наоборот)
 			if walk_side(touch.position) and _stick_index < 0:
@@ -451,7 +454,7 @@ func _input(event: InputEvent) -> void:
 			_update_stick(drag.position)
 		elif drag.index == _look_index:
 			var p := GameManager.player as Player
-			if p and not _driving():
+			if p:
 				p._look(-drag.relative.x * LOOK_SENS * SettingsManager.mouse_sens, -drag.relative.y * LOOK_SENS * SettingsManager.mouse_sens)
 
 

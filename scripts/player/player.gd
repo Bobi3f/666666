@@ -197,9 +197,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_V:
 				if car == null:
 					toggle_view()
-	if car != null:
-		return
-	# На телефоне касания эмулируют мышь — камеру крутит сенсорное управление
+	# На телефоне касания эмулируют мышь — камеру крутит сенсорное управление;
+	# за рулём мышь тоже крутит камеру (_look передаёт её транспорту)
 	var motion := event as InputEventMouseMotion
 	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not GameManager.touch_mode:
 		var k := MOUSE_SENS * SettingsManager.mouse_sens
@@ -209,6 +208,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _look(yaw: float, pitch: float) -> void:
 	if SettingsManager.invert_y:
 		pitch = -pitch
+	# За рулём камеру крутит транспорт: оглядеться из салона или облететь сзади
+	if car != null:
+		if car.has_method("look"):
+			car.look(yaw, pitch)
+		return
 	rotate_y(yaw)
 	# Со спины камера не лезет под землю и не смотрит строго вниз
 	var lo := -1.1 if SettingsManager.third_person else -1.45
@@ -237,6 +241,7 @@ func toggle_view() -> void:
 
 func _physics_process(delta: float) -> void:
 	if car != null:
+		_turn_with_keys(delta)
 		return
 	_turn_with_keys(delta)
 	_update_crouch(delta)

@@ -128,6 +128,44 @@ func _run() -> void:
 	C.exit_car()
 	await frames(3)
 
+	print("== Оглядеться за рулём")
+	var P = W.get_node("Player")
+	root.get_node("Progress").buy_car("car")
+	C.global_position = Vector3(-150, 0.1, 2.0); C.rotation.y = -PI / 2.0; C.speed = 0.0; C.velocity = Vector3.ZERO
+	C._on_enter(); C.fuel = 30.0
+	await frames(3)
+	var yaw0: float = P.rotation.y
+	P._look(0.8, 0.2)
+	ok(absf(C.look_yaw - 0.8) < 0.01 and absf(C._seat_mark.rotation.y - 0.8) < 0.01 and P.rotation.y == yaw0, "из салона голова повернулась на 0.8 рад, игрок на месте")
+	P._look(3.0, 0.0)
+	ok(absf(C._seat_mark.rotation.y) <= C.LOOK_YAW_CABIN + 0.001, "из салона — не дальше, чем через плечо")
+	C.look_yaw = 0.0; C.look_pitch = 0.0
+	Vehicle.chase_view = true
+	C._update_camera(1.0)
+	var m0: Vector3 = C._chase_mark.global_position
+	P._look(PI / 2.0, 0.0)
+	C._update_camera(1.0)
+	var m1: Vector3 = C._chase_mark.global_position
+	ok(m0.distance_to(m1) > 3.0 and absf(m0.distance_to(C.global_position) - m1.distance_to(C.global_position)) < 0.5, "сзади камера облетает машину: %.1f м вбок" % m0.distance_to(m1))
+	# Поехал и не трогаешь камеру — она возвращается вперёд
+	C.speed = 15.0
+	for i in 240:
+		C.speed = 15.0
+		await physics_frame
+	ok(absf(C.look_yaw) < 0.05, "на ходу камера сама вернулась вперёд: %.2f" % C.look_yaw)
+	Vehicle.chase_view = false
+	C.speed = 0.0; C.velocity = Vector3.ZERO
+	C.exit_car()
+	await frames(3)
+	var J = W.get_node("Moto")
+	root.get_node("Progress").buy_car("moto")
+	J.global_position = Vector3(-150, 0.1, 6.0); J._on_enter()
+	await frames(3)
+	P._look(-0.5, 0.0)
+	ok(absf(J.look_yaw + 0.5) < 0.01, "на «Яве» тоже можно оглядеться")
+	J.exit_car()
+	await frames(3)
+
 	print("== Кнопки на телефоне")
 	var tc = null
 	for c in W.get_children():
