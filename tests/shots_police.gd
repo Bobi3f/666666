@@ -25,7 +25,7 @@ func _run() -> void:
 	cam = Camera3D.new(); cam.far = 700.0; W.add_child(cam)
 	W.get_node("GaiPost").request_stop()
 	await view("gai_post", Vector3(-84, 3, 6), Vector3(-98, 2.5, -8))
-	var s: Vector3 = Police.STATION
+	var s: Vector3 = Town.w(Police.STATION)
 	await view("police", s + Vector3(-21, 3.5, 8), s + Vector3(-5, 2.5, -1))
 	root.get_node("TimeManager").minutes = 22 * 60.0
 	await view("police_night", s + Vector3(-21, 3.5, 8), s + Vector3(-5, 2.5, -1))

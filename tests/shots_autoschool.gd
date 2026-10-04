@@ -23,10 +23,10 @@ func _run() -> void:
 	TM.day = 2; TM.minutes = 12 * 60.0
 	cam = Camera3D.new(); cam.far = 700.0; W.add_child(cam)
 	cam.make_current()
-	var h: Vector3 = AutoSchool.HOUSE
+	var h: Vector3 = Town.w(AutoSchool.HOUSE)
 	await shot("autoschool_top", Vector3(-20, 45, -14), Vector3(-22, 0, 30))
 	await shot("autoschool_front", h + Vector3(-6, 3, -13), h + Vector3(0, 1.5, 0))
-	var xf: Transform3D = AutoSchool.xf()
+	var xf: Transform3D = AutoSchool.xf().translated(Town.SHIFT)
 	await shot("autoschool_class", xf * Vector3(3.8, 2.3, 3.2), xf * Vector3(-2.0, 0.8, -3.0))
 	await shot("autoschool_board", xf * Vector3(-0.5, 2.0, 1.5), xf * Vector3(2.7, 1.6, -3.5))
 	var SC: Vehicle = W.get_node("AutoSchool").car

@@ -82,8 +82,11 @@ func _ready() -> void:
 		ex.name = "Exam" + String(cat[0])
 		ex.title = "Экзамен на %s" % cat[0]
 		ex.only_kind = cat[3]
-		ex.start_pos = EXAM_START
-		ex.points.assign(EXAM_POINTS)
+		# Экзамен следит за машиной в мире: точки — со сдвигом города
+		ex.top_level = true
+		ex.start_pos = Town.w(EXAM_START)
+		for p in EXAM_POINTS:
+			ex.points.append(Town.w(p))
 		ex.stage_names = {0: "змейка между конусами", 4: "разворот в конце площадки"}
 		ex.point_radius = 3.5 if cat[0] == "A" else 4.5
 		ex.max_cones = 1 if cat[0] == "A" else 3
@@ -115,7 +118,7 @@ func _school_vehicle(kind: String, at: Vector3, node_name: String) -> Vehicle:
 		v.paint = 2
 	v.allowed = func() -> bool: return exam_cat != "" and (_exams[exam_cat] as DrivingChallenge).only_kind == kind
 	add_child(v)
-	v.global_position = at
+	v.global_position = Town.w(at)
 	v.rotation.y = 0.0
 	return v
 
@@ -371,7 +374,7 @@ func _park(v: Vehicle) -> void:
 			return
 	v.speed = 0.0
 	v.velocity = Vector3.ZERO
-	v.global_position = TRUCK_SPOT if v == truck else (BUS_SPOT if v == bus else CAR_SPOT)
+	v.global_position = Town.w(TRUCK_SPOT if v == truck else (BUS_SPOT if v == bus else CAR_SPOT))
 	v.rotation = Vector3.ZERO
 	v.condition = 100.0
 	v.fuel = float(v.spec.tank)

@@ -48,15 +48,20 @@ static func all_rects() -> Array:
 	return FIELD + FOREST
 
 
-## Асфальт: трасса, заправка и СТО, автодром с въездом, город.
+## Асфальт: трасса, заправка и СТО у Каменки, автодром с въездом, город.
 static func on_asphalt(x: float, z: float) -> bool:
 	if absf(z) < 4.2:
 		return true
 	if x > -120.0 and x < -78.0 and z > 0.0 and z < 21.0:
 		return true
-	# Автошкола к югу от трассы
+	# Город (в своих координатах): автошкола на западе, улицы и дворы
+	x -= Town.SHIFT.x
+	z -= Town.SHIFT.z
 	if x > -41.0 and x < -5.0 and z > 1.0 and z < 72.0:
 		for r in AutoSchool.ASPHALT:
 			if (r as Rect2).has_point(Vector2(x, z)):
 				return true
-	return x > 38.0 and x < 200.0 and z > 0.0 and z < 200.0
+	if x > 38.0 and x < 200.0 and z > 0.0 and z < 200.0:
+		return true
+	# Восточная улица и проезд к ней (TownEast)
+	return TownEast.EAST_STREET.has_point(Vector2(x, z)) or TownEast.EAST_ROAD.has_point(Vector2(x, z))

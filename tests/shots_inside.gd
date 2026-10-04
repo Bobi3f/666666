@@ -31,7 +31,7 @@ func _run() -> void:
 	var c: Vector3 = Civic.COUNCIL
 	await view("in_post", c + Vector3(-0.5, 2.0, 2.8), c + Vector3(-3.0, 1.3, -1.5))
 	await view("in_council", c + Vector3(0.8, 2.0, 2.8), c + Vector3(3.2, 1.2, -2.0))
-	var p: Vector3 = Police.STATION
+	var p: Vector3 = Town.w(Police.STATION)
 	await view("in_police", p + Vector3(-6.4, 2.0, 0.0), p + Vector3(-2.5, 1.4, 0))
 	await view("in_police_cell", p + Vector3(0.0, 2.2, -1.0), p + Vector3(5.0, 1.0, 2.5))
 	quit()

@@ -161,9 +161,10 @@ func progress_text() -> String:
 
 ## b, glow — общий меш города (коробка, окна снаружи, коллизии стен).
 ## Внутреннее — в своих мешах с малой дальностью видимости.
-## Точка в своих координатах школы → в мире.
+## Точка в своих координатах школы → в мире (школа — в городе, а город
+## сдвинут на Town.SHIFT).
 static func at(p: Vector3) -> Vector3:
-	return p + ORIGIN
+	return p + ORIGIN + Town.SHIFT
 
 
 func build(b: MeshBuilder, glow: MeshBuilder) -> void:
@@ -180,7 +181,8 @@ func build(b: MeshBuilder, glow: MeshBuilder) -> void:
 	football = Football.new()
 	football.name = "Football"
 	add_child(football)
-	football.setup(Rect2(FIELD.position + Vector2(ORIGIN.x, ORIGIN.z), FIELD.size))
+	var corner := at(Vector3(FIELD.position.x, 0, FIELD.position.y))
+	football.setup(Rect2(Vector2(corner.x, corner.z), FIELD.size))
 	football.can_play = _football_why
 	football.finished.connect(_on_football)
 	_zone("pe", Vector3(FIELD.get_center().x - 3.0, 0, FIELD.end.y + 2.4), Vector3(1.6, 2.2, 1.6))

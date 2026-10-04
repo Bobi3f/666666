@@ -25,6 +25,6 @@ func _run() -> void:
 	var P = W.get_node("Player"); P.set_physics_process(false); P.global_position = Vector3(0, 0.2, 90)
 	cam = Camera3D.new(); cam.far = 700.0; W.add_child(cam)
 	await view("council", Civic.COUNCIL + Vector3(7, 3, 16), Civic.COUNCIL + Vector3(0, 2, 2))
-	await view("hospital", Civic.HOSPITAL + Vector3(-12, 4, 22), Civic.HOSPITAL + Vector3(0, 3, 3))
+	await view("hospital", Town.w(Civic.HOSPITAL) + Vector3(-12, 4, 22), Town.w(Civic.HOSPITAL) + Vector3(0, 3, 3))
 	await view("autoschool", Vector3(-16, 4, -6), Vector3(6, 1, -32))
 	quit()

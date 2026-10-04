@@ -137,15 +137,12 @@ func _ready() -> void:
 	_build_village(b)
 	_build_village_life(b, glow)
 	_build_roadside(b)
-	_build_town(b, glow)
-	_town_details(b, glow)
-	_build_town_center(b, glow)
-	_build_car_salon(b, glow)
-	_build_shops(b)
+	_build_town_all(b, glow)
 	_water_pump(b)
 	_build_country_roads(b)
 	_build_forest(b)
-	_build_autodrome(b)
+	_build_meadow(b)
+	_build_race(b)
 	_block_grass()
 	# Двор игрока — до сборки растительности: его яблоня и кусты регистрируются
 	# один раз, при перестройке дома они стоят на тех же местах
@@ -157,10 +154,18 @@ func _ready() -> void:
 	var rural := RuralLife.new()
 	rural.name = "RuralLife"
 	add_child(rural)
+	# Южная часть города — в своих координатах, как и весь город
 	var south := TownSouth.new()
 	south.name = "TownSouth"
+	south.position = Town.SHIFT
 	add_child(south)
+	b.shift = Town.SHIFT
+	glow.shift = Town.SHIFT
+	_veg.shift = Town.SHIFT
 	south.build(b, glow, _veg)
+	b.shift = Vector3.ZERO
+	glow.shift = Vector3.ZERO
+	_veg.shift = Vector3.ZERO
 
 	var world_mesh := b.build_chunked()
 	world_mesh.name = "WorldMesh"
@@ -209,9 +214,11 @@ func _ready() -> void:
 	add_child(civic)
 	var school := AutoSchool.new()
 	school.name = "AutoSchool"
+	school.position = Town.SHIFT
 	add_child(school)
 	var police := Police.new()
 	police.name = "Police"
+	police.position = Town.SHIFT
 	add_child(police)
 	var gai := preload("res://scripts/world/gai_post.gd").new()
 	gai.name = "GaiPost"
@@ -230,6 +237,7 @@ func _ready() -> void:
 	add_child(radio)
 	var fair := preload("res://scripts/world/fair.gd").new()
 	fair.name = "Fair"
+	fair.position = Town.SHIFT
 	add_child(fair)
 	_build_clubs()
 	_build_jobs()
@@ -537,17 +545,30 @@ func _build_roads(b: MeshBuilder) -> void:
 	# Деревенская улица и съезд к магистрали
 	b.box(Vector3(-165, 0, -42.5), Vector3(-57, 0.04, -37.5), dirt)
 	b.box(Vector3(-62, 0, -42.5), Vector3(-57, 0.04, -5.5), dirt)
-	# Городские дороги, тротуар с бордюром вдоль магистрали
+
+
+## Городские дороги, тротуар с бордюром вдоль трассы, переход у ларька,
+## люки (координаты города — см. _build_town_all).
+func _town_roads(b: MeshBuilder) -> void:
+	var asphalt := Color(0.24, 0.24, 0.25)
+	var white := Color(0.92, 0.92, 0.9)
 	b.box(Vector3(94, 0, 4), Vector3(100, 0.05, 100), asphalt)
 	b.box(Vector3(40, 0, 55), Vector3(190, 0.05, 61), asphalt)
 	b.box(Vector3(10, 0, 5), Vector3(190, 0.12, 7.5), Color(0.5, 0.5, 0.49))
-	x = 10.0
+	var x := 10.0
 	while x < 190.0:
-		b.box(Vector3(x, 0, 4.85), Vector3(x + 0.95, 0.18 + _rng.randf() * 0.02, 5.05), Color(0.6, 0.6, 0.58))
+		b.box(Vector3(x, 0, 4.85), Vector3(x + 0.95, 0.18 + _drng.randf() * 0.02, 5.05), Color(0.6, 0.6, 0.58))
 		x += 1.0
-	# Пешеходный переход у ларька
 	for i in 7:
 		b.box(Vector3(22 + i * 0.9, 0.05, -3.5), Vector3(22.5 + i * 0.9, 0.06, 3.5), white)
+	_square_sign(b, Vector3(19.0, 0, 6.2), PI, Color(0.15, 0.35, 0.7), "Пеше-\nходный\nпереход")
+	for p in [Vector3(97, 0.051, 20), Vector3(97, 0.051, 45), Vector3(60, 0.051, 58), Vector3(120, 0.051, 58), Vector3(160, 0.051, 58)]:
+		for k in 4:
+			b.box_rot(p, Vector3(0.7, 0.01, 0.29), k * PI / 4.0, Color(0.2, 0.2, 0.2))
+	# Въезд в город: указатель с названием и ограничение 60
+	_sign(b, Vector3(-60.0, 0, -6.2), 0.0, "ГОРОД", 1.2)
+	_round_sign(b, Vector3(-58.0, 0, -6.6), 0.0, "60")
+	_round_sign(b, Vector3(240.0, 0, 6.6), PI, "60")
 
 
 func _build_power_line(b: MeshBuilder) -> void:
@@ -1368,7 +1389,7 @@ func _ride_bus(to_town: bool) -> void:
 		return
 	TimeManager.advance(20.0)
 	var p := GameManager.player as Player
-	var stop := STOP_TOWN if to_town else STOP_VILLAGE
+	var stop := Town.w(STOP_TOWN) if to_town else STOP_VILLAGE
 	# Выходим на обочину перед остановкой, лицом от дороги
 	var out := stop + (Vector3(0, 0.1, -2.2) if to_town else Vector3(0, 0.1, 2.2))
 	p.global_position = out
@@ -1507,6 +1528,63 @@ func _haystack(b: MeshBuilder, p: Vector3) -> void:
 
 
 # --- Город ------------------------------------------------------------------
+
+## Город целиком — в своих координатах (как стоял прежде у Каменки), а в мир
+## встаёт сдвигом Town.SHIFT: геометрия и деревья — через shift построителей,
+## узлы, что поставили строители, — сдвигом позиции. Узлы с логикой в мировых
+## координатах (метка "world") получают точки через Town.w и не сдвигаются.
+func _build_town_all(b: MeshBuilder, glow: MeshBuilder) -> void:
+	var first := get_child_count()
+	b.shift = Town.SHIFT
+	glow.shift = Town.SHIFT
+	_veg.shift = Town.SHIFT
+	_veg.areas.append(Town.wr(Rect2(-50, 7.6, 345, 192)))
+	_town_roads(b)
+	_build_town(b, glow)
+	_town_details(b, glow)
+	_build_town_center(b, glow)
+	_build_car_salon(b, glow)
+	_build_shops(b)
+	_build_autodrome(b)
+	_bus_stop(b, STOP_TOWN, PI, false)
+	_town_grass()
+	# Восточная часть и дворы — свой узел, сразу стоит на месте города
+	var east := TownEast.new()
+	east.name = "TownEast"
+	east.position = Town.SHIFT
+	east.set_meta("world", true)
+	add_child(east)
+	east.build(self, b, glow, _veg)
+	b.shift = Vector3.ZERO
+	glow.shift = Vector3.ZERO
+	_veg.shift = Vector3.ZERO
+	for i in range(first, get_child_count()):
+		var n := get_child(i) as Node3D
+		if n and not n.has_meta("world"):
+			n.position += Town.SHIFT
+
+
+## Где раньше стоял город — луг с берёзовыми колками и кустами: дорога
+## из Каменки в город идёт через природу.
+func _build_meadow(b: MeshBuilder) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 7707
+	for g in 9:
+		var c := Vector2(r.randf_range(-20, 190), r.randf_range(30, 185))
+		for k in r.randi_range(5, 11):
+			var p := Vector3(c.x + r.randf_range(-11, 11), 0, c.y + r.randf_range(-9, 9))
+			if not Roads.tree_ok(p.x, p.z) or p.z < 14.0:
+				continue
+			var kind := Vegetation.TreeKind.BIRCH if r.randf() < 0.7 else (Vegetation.TreeKind.BUSH if r.randf() < 0.6 else Vegetation.TreeKind.SPRUCE)
+			_tree(b, p, r.randf() * TAU, kind)
+	# Вдоль трассы — редкие кусты и одинокие берёзы
+	var x := -30.0
+	while x < 195.0:
+		if r.randf() < 0.45:
+			_tree(b, Vector3(x + r.randf_range(-4, 4), 0, r.randf_range(12, 20)), r.randf() * TAU,
+					Vegetation.TreeKind.BUSH if r.randf() < 0.6 else Vegetation.TreeKind.BIRCH)
+		x += 14.0
+
 
 func _build_town(b: MeshBuilder, glow: MeshBuilder) -> void:
 	# Панельные пятиэтажки, подъездами к дороге
@@ -1669,12 +1747,8 @@ func _road_details(b: MeshBuilder) -> void:
 	# Знаки: ограничение 60 перед селом, пешеходный переход, АЗС, остановка
 	_round_sign(b, Vector3(-40.0, 0, -6.6), 0.0, "60")
 	_round_sign(b, Vector3(-190.0, 0, 6.6), PI, "60")
-	_square_sign(b, Vector3(19.0, 0, 6.2), PI, Color(0.15, 0.35, 0.7), "Пеше-\nходный\nпереход")
+	_sign(b, Vector3(-30.0, 0, 6.2), PI, "← Город 750 м", 1.6)
 	_square_sign(b, Vector3(-135.0, 0, 6.6), PI, Color(0.15, 0.35, 0.7), "АЗС\n200 м")
-	# Люки на городских улицах
-	for p in [Vector3(97, 0.051, 20), Vector3(97, 0.051, 45), Vector3(60, 0.051, 58), Vector3(120, 0.051, 58), Vector3(160, 0.051, 58)]:
-		for k in 4:
-			b.box_rot(p, Vector3(0.7, 0.01, 0.29), k * PI / 4.0, Color(0.2, 0.2, 0.2))
 
 
 ## Столбики не ставим на съездах, у АЗС и остановок.
@@ -1684,8 +1758,6 @@ func _post_clear(x: float, z: float) -> bool:
 	if absf(x - STOP_VILLAGE.x) < 4.0 and z < 0.0:
 		return false
 	if x > -122.0 and x < -76.0 and z > 0.0:
-		return false
-	if x > 10.0 and z > 0.0:
 		return false
 	return true
 
@@ -1782,7 +1854,6 @@ func _town_details(b: MeshBuilder, glow: MeshBuilder) -> void:
 # --- У трассы: АЗС, СТО, городская остановка; колхоз у села ------------------
 
 func _build_roadside(b: MeshBuilder) -> void:
-	_bus_stop(b, STOP_TOWN, PI, false)
 	_fuel_station(b)
 	_repair_garage(b)
 	_kolkhoz_barn(b)
@@ -1875,8 +1946,8 @@ func _repair_garage(b: MeshBuilder) -> void:
 	_label("СТО", c + Vector3(0, 3.5, -1.07), PI, 0.006, Color(1, 1, 1))
 	var zone := InteractZone.create("", Vector3(9.0, 2.4, 8.0))
 	zone.position = c + Vector3(0, 0, 1.0)
-	zone.prompt_fn = _repair_prompt
-	zone.activated.connect(_repair)
+	zone.prompt_fn = func() -> String: return _repair_prompt()
+	zone.activated.connect(func() -> void: _repair())
 	add_child(zone)
 	# Тюнинг — снаружи у правой стены: резина у стопки покрышек, мотор на
 	# поддоне, краска на стеллаже
@@ -1903,8 +1974,9 @@ func _repair_cost(car: Vehicle) -> int:
 	return int(ceilf((100.0 - car.condition) * 25.0))
 
 
-func _repair_prompt() -> String:
-	var car := _car_near(GARAGE_POS, 14.0)
+## at — где СТО: у Каменки (GARAGE_POS) или в городе (TownEast).
+func _repair_prompt(at := GARAGE_POS) -> String:
+	var car := _car_near(at, 14.0)
 	if car == null:
 		return "СТО: загони машину или мотоцикл в гараж"
 	if car.condition >= 99.5:
@@ -1912,8 +1984,8 @@ func _repair_prompt() -> String:
 	return "E — починить: %s (%d%%) за %d грн, 1 час" % [car.spec.title, int(car.condition), _repair_cost(car)]
 
 
-func _repair() -> void:
-	var car := _car_near(GARAGE_POS, 14.0)
+func _repair(at := GARAGE_POS) -> void:
+	var car := _car_near(at, 14.0)
 	if car == null or car.condition >= 99.5:
 		return
 	if not GameManager.spend(_repair_cost(car)):
@@ -2290,9 +2362,9 @@ func _buy_goods(id: String) -> void:
 const SALON := Rect2(46, 11, 28, 21)
 ## Что продают: вид, цена, чем хороша, где стоит на площадке.
 const SALON_CARS := [
-	["niva", 22000, "вездеход — грязь и лес ей нипочём", Vector3(52, 0.1, 17)],
+	["niva", 22000, "с авторынка, на ходу. Вездеход — грязь и лес ей нипочём", Vector3(243, 0.1, 24)],
 	["volga", 36000, "быстрая и мягкая, в такси платят больше", Vector3(60, 0.1, 17)],
-	["truck", 28000, "грузовик — развоз хлеба вдвое дороже", Vector3(68.5, 0.1, 18.5)],
+	["truck", 28000, "с авторынка, после колхоза. Грузовик — развоз хлеба вдвое дороже", Vector3(247, 0.1, 38.5)],
 	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Явы», два глушителя", Vector3(52, 0.1, 23.0)],
 	["vaz2107", 12000, "«семёрка»: хромированная решётка, мотор сильнее, чем у «шестёрки»", Vector3(61, 0.1, 23.4), PI / 2.0],
 ]
@@ -2326,7 +2398,7 @@ func _spawn_salon_cars() -> void:
 		v.blurb = entry[2]
 		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh", "vaz2107": "Vaz2107"}[entry[0]]
 		add_child(v)
-		v.global_position = entry[3]
+		v.global_position = Town.w(entry[3])
 		if entry.size() > 4:
 			v.rotation.y = entry[4]
 		v.fuel = v.tank() * 0.5
@@ -2382,23 +2454,28 @@ func _build_autodrome(b: MeshBuilder) -> void:
 	zone.activated.connect(_exam_start)
 	add_child(zone)
 
+	# Экзамен следит за машиной в мире — его точки сдвинуты на место города
 	_exam = DrivingChallenge.new()
 	_exam.name = "Exam"
+	_exam.set_meta("world", true)
 	_exam.title = "Экзамен"
 	_exam.only_car = true
-	_exam.start_pos = AutoSchool.EXAM_START
-	_exam.points.assign(AutoSchool.EXAM_POINTS)
+	_exam.start_pos = Town.w(AutoSchool.EXAM_START)
+	for p in AutoSchool.EXAM_POINTS:
+		_exam.points.append(Town.w(p))
 	_exam.stage_names = {0: "змейка между конусами", 4: "разворот в конце площадки"}
-	_exam.cone_positions.assign(AutoSchool.EXAM_CONES)
-	_exam.cone_positions.append_array([pc + Vector3(-1.9, 0, -3.3), pc + Vector3(1.9, 0, -3.3), pc + Vector3(-1.9, 0, 3.3), pc + Vector3(1.9, 0, 3.3)])
-	_exam.park_center = pc
+	for p in AutoSchool.EXAM_CONES + [pc + Vector3(-1.9, 0, -3.3), pc + Vector3(1.9, 0, -3.3), pc + Vector3(-1.9, 0, 3.3), pc + Vector3(1.9, 0, 3.3)]:
+		_exam.cone_positions.append(Town.w(p))
+	_exam.park_center = Town.w(pc)
 	_exam.park_size = Vector2(3.4, 6.2)
 	_exam.max_cones = 2
 	_exam.time_limit = 120.0
 	_exam.finished.connect(_exam_result)
 	add_child(_exam)
 
-	# Колька-гонщик у съезда из деревни: заезд до города на время
+
+## Колька-гонщик у съезда из деревни: заезд по трассе до моста на время.
+func _build_race(_b: MeshBuilder) -> void:
 	var racer := MeshBuilder.new()
 	racer.ground_shade = false
 	racer.xf = Transform3D(Basis(Vector3.UP, PI / 2.0), RACE_START + Vector3(5.5, 0, 0))
@@ -2416,8 +2493,8 @@ func _build_autodrome(b: MeshBuilder) -> void:
 	_race.title = "Заезд с Колькой"
 	_race.start_pos = RACE_START
 	_race.point_radius = 5.0
-	_race.points = [Vector3(-59.5, 0, 0.5), Vector3(-38, 0, 2.5), Vector3(30, 0, 2.5), Vector3(80, 0, 2.5), Vector3(97, 0, 18)]
-	_race.stage_names = {0: "на трассу, налево", 1: "по трассе на восток", 4: "финиш — поворот в город"}
+	_race.points = [Vector3(-59.5, 0, 0.5), Vector3(-38, 0, 2.5), Vector3(80, 0, 2.5), Vector3(200, 0, 2.5), Vector3(290, 0, 2.5)]
+	_race.stage_names = {0: "на трассу, налево", 1: "по трассе на восток", 4: "финиш — у моста через Быструю"}
 	_race.time_limit = RACE_TIME
 	_race.finished.connect(_race_result)
 	add_child(_race)
@@ -2461,15 +2538,15 @@ func _exam_result(r: Dictionary) -> void:
 
 
 ## Сколько даётся на заезд с Колькой.
-const RACE_TIME := 20.0
+const RACE_TIME := 26.0
 
 
 func _race_prompt() -> String:
 	if _race.active():
-		return "Колька: «Ну, давай! Старт — жёлтый круг, финиш — первый поворот в город»"
+		return "Колька: «Ну, давай! Старт — жёлтый круг, финиш — у моста через Быструю»"
 	if Progress.race_day == TimeManager.day:
 		return "Колька: «Сегодня уже гоняли. Приходи завтра»"
-	return "E — Колька: «Спорим на %d, что до города за %d с не доедешь?»" % [RACE_BET, int(RACE_TIME)]
+	return "E — Колька: «Спорим на %d, что до моста за %d с не доедешь?»" % [RACE_BET, int(RACE_TIME)]
 
 
 func _race_start() -> void:
@@ -2644,10 +2721,12 @@ func _build_shops(b: MeshBuilder) -> void:
 	warehouse_job.name = "WarehouseJob"
 	warehouse_job.title = "Склад, грузчик"
 	warehouse_job.item_name = "мешок"
-	warehouse_job.pickup = s + Vector3(0, 0, -9.6)
-	warehouse_job.pile_at = s + Vector3(0, 0, -8.2)
-	warehouse_job.drop = TRUCK_POS + Vector3(4.4, 0, 0)
-	warehouse_job.stack_at = TRUCK_POS + Vector3(1.0, 1.12, 0)
+	# Смена грузчика считает по игроку — точки в мире, узел не сдвигается
+	warehouse_job.set_meta("world", true)
+	warehouse_job.pickup = Town.w(s + Vector3(0, 0, -9.6))
+	warehouse_job.pile_at = Town.w(s + Vector3(0, 0, -8.2))
+	warehouse_job.drop = Town.w(TRUCK_POS + Vector3(4.4, 0, 0))
+	warehouse_job.stack_at = Town.w(TRUCK_POS + Vector3(1.0, 1.12, 0))
 	warehouse_job.per_row = 5
 	warehouse_job.total = 10
 	warehouse_job.pay_each = 60
@@ -2709,7 +2788,7 @@ func _take_delivery() -> void:
 	var car: Vehicle = null
 	for v in get_tree().get_nodes_in_group("vehicles"):
 		var vv := v as Vehicle
-		if vv.owned() and not vv.spec.two_wheels and vv.kind != "tractor" and vv.global_position.distance_to(Vector3(27.5, 0, 28.0)) < 25.0:
+		if vv.owned() and not vv.spec.two_wheels and vv.kind != "tractor" and vv.global_position.distance_to(Town.w(Vector3(27.5, 0, 28.0))) < 25.0:
 			car = vv
 			if vv == GameManager.vehicle:
 				break
@@ -2828,17 +2907,6 @@ func _block_grass() -> void:
 	for x in VILLAGE_X:
 		for z in [ROW_A_Z, ROW_B_Z]:
 			v.block(x - 5, z - 4.2, x + 5, z + 4.2)
-	# Город: дороги, тротуар, дома, склад, площадка, гаражи; во дворах — трава
-	v.block(10, 4, 200, 7.6)
-	v.block(93.5, 4, 100.5, 100)
-	v.block(40, 54.5, 190, 61.5)
-	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
-		v.block(c.x - 22, c.y - 8.5, c.x + 22, c.y + 8.5)
-	v.block(163, 52, 180, 98)
-	v.block(14, 26, 41, 45)
-	v.block(22, 8, 29, 13)
-	v.block(59, 49, 74, 55)
-	v.block(146, 16, 186, 29)
 	v.block(STOP_VILLAGE.x - 3, STOP_VILLAGE.z - 1.5, STOP_VILLAGE.x + 3, STOP_VILLAGE.z + 1.5)
 	v.block(FUEL_POS.x - 9, FUEL_POS.z - 7.5, FUEL_POS.x + 9, FUEL_POS.z + 7.5)
 	v.block(GARAGE_POS.x - 7, GARAGE_POS.z - 5.5, GARAGE_POS.x + 7, GARAGE_POS.z + 6.5)
@@ -2853,20 +2921,37 @@ func _block_grass() -> void:
 		v.block(rr.position.x, rr.position.y, rr.end.x, rr.end.y)
 	var st := Roads.STREAM.grow(1.5)
 	v.block(st.position.x, st.position.y, st.end.x, st.end.y)
-	v.block(Police.STATION.x - 13.5, Police.STATION.z - 6.5, Police.STATION.x + 7.5, Police.STATION.z + 6.5)
 	v.block(CLUB_VILLAGE.x - 8.5, CLUB_VILLAGE.z - 6, CLUB_VILLAGE.x + 8.5, -5.5)
-	v.block(CLUB_TOWN.x - 29, 100, CLUB_TOWN.x + 26, CLUB_TOWN.z + 7.5)
 	v.block(Civic.COUNCIL.x - 5.5, Civic.COUNCIL.z - 4, Civic.COUNCIL.x + 5.5, Civic.COUNCIL.z + 5.5)
-	v.block(Civic.HOSPITAL.x - 9.7, Civic.HOSPITAL.z - 5.3, Civic.HOSPITAL.x + 9.7, Civic.HOSPITAL.z + 12)
-	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
-	v.block(76, 10, 93.5, 34)
-	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
-	v.block(AUTODROME.position.x - 1, AutoSchool.ENTRY.position.y, -2.0, AUTODROME.end.y + 1)
 	v.block(POND_POS.x + 9, -40.6, -164, -39.4)
 	# Огороды за домами
 	for x in VILLAGE_X:
 		v.block(x - 10.5, ROW_A_Z - 14, x + 10.5, ROW_A_Z - 9.5)
 		v.block(x - 10.5, ROW_B_Z + 9.5, x + 10.5, ROW_B_Z + 14)
+
+
+## Где травы нет в городе (координаты города, сдвиг — у _veg.shift).
+func _town_grass() -> void:
+	var v := _veg
+	# Дороги, тротуар, дома, склад, площадка, гаражи; во дворах — трава
+	v.block(10, 4, 200, 7.6)
+	v.block(93.5, 4, 100.5, 100)
+	v.block(40, 54.5, 190, 61.5)
+	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
+		v.block(c.x - 22, c.y - 8.5, c.x + 22, c.y + 8.5)
+	v.block(163, 52, 180, 98)
+	v.block(14, 26, 41, 45)
+	v.block(22, 8, 29, 13)
+	v.block(59, 49, 74, 55)
+	v.block(146, 16, 186, 29)
+	v.block(Police.STATION.x - 13.5, Police.STATION.z - 6.5, Police.STATION.x + 7.5, Police.STATION.z + 6.5)
+	v.block(CLUB_TOWN.x - 29, 100, CLUB_TOWN.x + 26, CLUB_TOWN.z + 7.5)
+	v.block(Civic.HOSPITAL.x - 9.7, Civic.HOSPITAL.z - 5.3, Civic.HOSPITAL.x + 9.7, Civic.HOSPITAL.z + 12)
+	v.block(TOWN_SQUARE.position.x - 1, TOWN_SQUARE.position.y - 1, TOWN_SQUARE.end.x + 1, TOWN_SQUARE.end.y + 1)
+	v.block(76, 10, 93.5, 34)
+	v.block(SALON.position.x - 1, SALON.position.y - 1, SALON.end.x + 1, SALON.end.y + 1)
+	v.block(AUTODROME.position.x - 1, AutoSchool.ENTRY.position.y, -2.0, AUTODROME.end.y + 1)
+	v.block(STOP_TOWN.x - 3, STOP_TOWN.z - 1.5, STOP_TOWN.x + 3, STOP_TOWN.z + 1.5)
 
 
 # --- Клубы ------------------------------------------------------------------
@@ -2888,10 +2973,10 @@ var JOB_DESTS: Array:
 		var out := []
 		for i in 4:
 			out.append(["сельмаг в селе %s" % Region.VILLAGES[i].name, Region.shop_pos(i) + Vector3(0, 0, 3.5)])
-		out.append(["больница в городе", Civic.HOSPITAL + Vector3(0, 0, 9.0)])
-		out.append(["рынок в городе", Vector3(90.0, 0, 144.0)])
-		out.append(["вокзал", Vector3(97.0, 0, 180.0)])
-		out.append(["площадь в городе", Vector3(103.0, 0, 14.0)])
+		out.append(["больница в городе", Town.w(Civic.HOSPITAL + Vector3(0, 0, 9.0))])
+		out.append(["рынок в городе", Town.w(Vector3(90.0, 0, 144.0))])
+		out.append(["вокзал", Town.w(Vector3(97.0, 0, 180.0))])
+		out.append(["площадь в городе", Town.w(Vector3(103.0, 0, 14.0))])
 		return out
 
 var post_job: RouteJob
@@ -2997,7 +3082,7 @@ func _build_clubs() -> void:
 	var t := Club.new()
 	t.name = "ClubTown"
 	t.title = "«МЕТЕЛИЦА»"
-	t.center = CLUB_TOWN
+	t.center = Town.w(CLUB_TOWN)
 	t.yaw = PI
 	t.size = Vector2(20, 14)
 	t.wall_color = Color(0.3, 0.32, 0.4)

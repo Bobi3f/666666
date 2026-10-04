@@ -27,6 +27,8 @@ const TEX := 2048.0
 const NEAR_M := 800.0
 const NEAR_TEX := 1024.0
 var _mini: Control
+## Сдвиг точек при рисовании: город рисуется в своих координатах (Town.SHIFT)
+var _sh := Vector2.ZERO
 var _tex_vp: SubViewport
 var _near_vp: SubViewport
 var _near_painter: Control
@@ -218,7 +220,7 @@ func _player_yaw() -> float:
 
 ## Мировые X/Z → точка на карте (север, -Z, — вверху).
 func _p(x: float, z: float) -> Vector2:
-	return (Vector2(x, z) - _view.position) / _view.size.x * _size
+	return (Vector2(x, z) + _sh - _view.position) / _view.size.x * _size
 
 
 const PAPER := Color(0.91, 0.87, 0.77)
@@ -348,7 +350,7 @@ func _draw_static(labels: bool) -> void:
 		# Крупные подписи: сёла, город, леса, река — как на районной карте
 		var big := 16 if whole else 20
 		_label_at(font, "Каменка", Vector2(-110, -60) if whole else Vector2(-140, -70), big)
-		_label_at(font, "Город", Vector2(120, 104), big)
+		_label_at(font, "Город", Town.w2(Vector2(120, 104)), big)
 		for v in Region.VILLAGES:
 			_label_at(font, v.name, (v.c as Vector2) + Vector2(0, -52.0 if whole else -44.0), big)
 		if whole:
@@ -378,9 +380,8 @@ func _draw_terrain() -> void:
 	# Леса: пятнами, край неровный
 	_blob(Rect2(-200, -195, 180, 115), FOREST_COL, 1, FOREST_EDGE)
 	_blob(Rect2(-200, 22, 150, 173), FOREST_COL, 2, FOREST_EDGE)
-	# Село и город — тёплые пятна застройки
+	# Село — тёплое пятно застройки
 	_blob(Rect2(-165, -68, 115, 56), Color(0.93, 0.88, 0.76), 3)
-	_blob(Rect2(42, 8, 150, 94), Color(0.86, 0.84, 0.8), 4)
 	# Вода: речка с чуть неровными берегами, пруд
 	var st: Rect2 = Roads.STREAM
 	var river := PackedVector2Array()
@@ -398,8 +399,6 @@ func _draw_terrain() -> void:
 		[[Vector2(-200, 0), Vector2(200, 0)], 8.0, ROAD_MAIN],
 		[[Vector2(-165, -40), Vector2(-57, -40)], 5.0, ROAD],
 		[[Vector2(-59.5, -40), Vector2(-59.5, -4)], 5.0, ROAD],
-		[[Vector2(97, 4), Vector2(97, 100)], 6.0, ROAD_MAIN],
-		[[Vector2(40, 58), Vector2(190, 58)], 6.0, ROAD_MAIN],
 	]
 	for r in Roads.FIELD + Roads.FOREST:
 		var rr: Rect2 = r
@@ -424,6 +423,20 @@ func _draw_terrain() -> void:
 		for zz in [_world.ROW_A_Z, _world.ROW_B_Z]:
 			var own: bool = Vector2(x, zz) == _world.PLAYER_HOUSE
 			_rect(x - 4.0, zz - 3.0, x + 4.0, zz + 3.0, Color(0.95, 0.72, 0.2) if own else HOUSE)
+	_draw_town()
+
+
+## Город — в своих координатах, на карте сдвинут туда же, где стоит в мире.
+func _draw_town() -> void:
+	_sh = Vector2(Town.SHIFT.x, Town.SHIFT.z)
+	_blob(Rect2(-42, 8, 234, 94), Color(0.86, 0.84, 0.8), 4)
+	_blob(Rect2(40, 100, 160, 92), Color(0.86, 0.84, 0.8), 5)
+	for r in [[[Vector2(97, 4), Vector2(97, 177)], 6.0], [[Vector2(40, 58), Vector2(205, 58)], 6.0]]:
+		var pts := PackedVector2Array()
+		for v in r[0]:
+			pts.append(_p(v.x, v.y))
+		_line(pts, float(r[1]) + 2.5, ROAD_EDGE)
+		_line(pts, float(r[1]), ROAD_MAIN)
 	for c in [Vector2(70, 41), Vector2(125, 41), Vector2(70, 74), Vector2(125, 74)]:
 		_rect(c.x - 21, c.y - 6, c.x + 21, c.y + 6, HOUSE)
 	_rect(165, 54, 177, 96, HOUSE)
@@ -434,6 +447,22 @@ func _draw_terrain() -> void:
 	_rect(ad.position.x, ad.position.y, ad.end.x, ad.end.y, Color(0.72, 0.7, 0.66))
 	var ah := AutoSchool.HOUSE
 	_rect(ah.x - 5.0, ah.z - 3.75, ah.x + 5.0, ah.z + 3.75, HOUSE)
+	for r in [TownSouth.STATION_HALL, TownSouth.SCHOOL, TownSouth.GARAGES, TownSouth.FACTORY]:
+		var rr: Rect2 = r
+		_rect(rr.position.x, rr.position.y, rr.end.x, rr.end.y, HOUSE)
+	_rect(TownSouth.STADIUM.position.x, TownSouth.STADIUM.position.y, TownSouth.STADIUM.end.x - 8.0, TownSouth.STADIUM.end.y - 2.0, Color(0.55, 0.7, 0.45))
+	_rect(TownSouth.MARKET.position.x, TownSouth.MARKET.position.y, TownSouth.MARKET.end.x, TownSouth.MARKET.end.y, Color(0.85, 0.8, 0.7))
+	# Восточная часть: улица, банк, авторынок, СТО, бурса, дома, участки, парк
+	_blob(TownEast.PARK, Color(0.7, 0.8, 0.55), 6)
+	for r in [TownEast.EAST_STREET, TownEast.EAST_ROAD]:
+		var rr: Rect2 = r
+		_rect(rr.position.x, rr.position.y, rr.end.x, rr.end.y, ROAD_MAIN)
+	for r in [TownEast.BANK, TownEast.STO, TownEast.COLLEGE, TownEast.MY_GARAGES] + TownEast.FLATS:
+		var rr: Rect2 = r
+		_rect(rr.position.x, rr.position.y, rr.end.x, rr.end.y, HOUSE)
+	_rect(TownEast.CAR_MARKET.position.x, TownEast.CAR_MARKET.position.y, TownEast.CAR_MARKET.end.x, TownEast.CAR_MARKET.end.y, Color(0.72, 0.7, 0.66))
+	_rect(TownEast.PLOTS.position.x, TownEast.PLOTS.position.y, TownEast.PLOTS.end.x, TownEast.PLOTS.end.y, Color(0.8, 0.85, 0.65))
+	_sh = Vector2.ZERO
 
 
 ## Район вокруг Каменки: поля, леса, озеро, река с мостами, грунтовки, сёла.
@@ -495,12 +524,6 @@ func _draw_region() -> void:
 		var e: Vector2 = Railway.at(minf(t + 20.0, Railway.length()))[0]
 		_t.draw_line(_p(a.x, a.y), _p(e.x, e.y), Color(0.98, 0.97, 0.94), maxf(_m(2.0), 1.0))
 		t += 40.0
-	# Южная часть города
-	for r in [TownSouth.STATION_HALL, TownSouth.SCHOOL, TownSouth.GARAGES, TownSouth.FACTORY]:
-		var rr: Rect2 = r
-		_rect(rr.position.x, rr.position.y, rr.end.x, rr.end.y, HOUSE)
-	_rect(TownSouth.STADIUM.position.x, TownSouth.STADIUM.position.y, TownSouth.STADIUM.end.x - 8.0, TownSouth.STADIUM.end.y - 2.0, Color(0.55, 0.7, 0.45))
-	_rect(TownSouth.MARKET.position.x, TownSouth.MARKET.position.y, TownSouth.MARKET.end.x, TownSouth.MARKET.end.y, Color(0.85, 0.8, 0.7))
 
 
 func _draw_places(labels: bool, font: Font) -> void:
@@ -513,37 +536,42 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["АЗС", _world.FUEL_POS, Color(0.4, 0.85, 0.5)],
 		["СТО", _world.GARAGE_POS, Color(0.5, 0.65, 1.0)],
 		["Автобус", _world.STOP_VILLAGE, Color(1.0, 0.9, 0.3)],
-		["Автобус", _world.STOP_TOWN, Color(1.0, 0.9, 0.3)],
-		["Склад", Vector3(27.5, 0, 37), Color(0.9, 0.9, 0.9)],
-		["Ларёк", Vector3(25, 0, 9), Color(0.5, 0.7, 1.0)],
+		["Автобус", Town.w(_world.STOP_TOWN), Color(1.0, 0.9, 0.3)],
+		["Склад", Town.w(Vector3(27.5, 0, 37)), Color(0.9, 0.9, 0.9)],
+		["Ларёк", Town.w(Vector3(25, 0, 9)), Color(0.5, 0.7, 1.0)],
 		["Пруд", pond, Color(0.6, 0.85, 1.0)],
-		["Автошкола", AutoSchool.HOUSE, Color(0.95, 0.7, 0.25)],
+		["Автошкола", Town.w(AutoSchool.HOUSE), Color(0.95, 0.7, 0.25)],
 		["Колька", _world.RACE_START, Color(0.95, 0.45, 0.35)],
-		["Площадь", Vector3(122, 0, 21), Color(0.95, 0.9, 0.7)],
-		["Кафе", Vector3(84.5, 0, 16.5), Color(0.95, 0.6, 0.45)],
-		["Хозтовары", Vector3(84.5, 0, 28), Color(0.55, 0.85, 0.6)],
+		["Площадь", Town.w(Vector3(122, 0, 21)), Color(0.95, 0.9, 0.7)],
+		["Кафе", Town.w(Vector3(84.5, 0, 16.5)), Color(0.95, 0.6, 0.45)],
+		["Хозтовары", Town.w(Vector3(84.5, 0, 28)), Color(0.55, 0.85, 0.6)],
 		["Мост", Vector3(-110, 0, -86.5), Color(0.8, 0.65, 0.45)],
-		["Такси", Vector3(103, 0, 13), Color(0.95, 0.8, 0.15)],
-		["Автосалон", Vector3(60, 0, 22), Color(0.85, 0.55, 0.95)],
+		["Такси", Town.w(Vector3(103, 0, 13)), Color(0.95, 0.8, 0.15)],
+		["Автосалон", Town.w(Vector3(60, 0, 22)), Color(0.85, 0.55, 0.95)],
 		["Пахота", Vector3(70, 0, -80), Color(0.6, 0.45, 0.3)],
 		["ГАИ", Vector3(-100, 0, -9.2), Color(0.3, 0.45, 0.9)],
-		["Сберкасса", Vector3(137.8, 0, 21), Color(0.3, 0.8, 0.5)],
-		["Милиция", Police.STATION + Vector3(-8, 0, 0), Color(0.2, 0.35, 0.8)],
+		["Банк", Town.w(Vector3(201, 0, 19)), Color(0.3, 0.8, 0.5)],
+		["Бурса", Town.w(Vector3(243, 0, 120)), Color(0.85, 0.6, 0.35)],
+		["Авторынок", Town.w(Vector3(237, 0, 30)), Color(0.85, 0.55, 0.95)],
+		["СТО", Town.w(Vector3(248, 0, 67)), Color(0.5, 0.65, 1.0)],
+		["Гараж", Town.w(Vector3(278, 0, 185)), Color(0.6, 0.4, 0.3)],
+		["Парк", Town.w(Vector3(-2, 0, 165)), Color(0.35, 0.7, 0.35)],
+		["Милиция", Town.w(Police.STATION + Vector3(-8, 0, 0)), Color(0.2, 0.35, 0.8)],
 		["Кафе у трассы", Roadside.CAFE + Vector3(0, 0, 6), Color(0.95, 0.6, 0.45)],
 		["АЗС", Roadside.FUEL2 + Vector3(0, 0, 3), Color(0.4, 0.85, 0.5)],
 		["Сельсовет", Civic.COUNCIL + Vector3(0, 0, 5), Color(0.8, 0.3, 0.25)],
-		["Больница", Civic.HOSPITAL + Vector3(0, 0, 6), Color(0.95, 0.95, 0.95)],
+		["Больница", Town.w(Civic.HOSPITAL + Vector3(0, 0, 6)), Color(0.95, 0.95, 0.95)],
 		["Клуб", _world.CLUB_VILLAGE + Vector3(0, 0, 6), Color(0.85, 0.3, 0.8)],
-		["Дискотека", _world.CLUB_TOWN + Vector3(0, 0, -8), Color(0.85, 0.3, 0.8)],
+		["Дискотека", Town.w(_world.CLUB_TOWN + Vector3(0, 0, -8)), Color(0.85, 0.3, 0.8)],
 		["Районный", _world.STOP_VILLAGE + Vector3(-5, 0, 0), Color(0.3, 0.7, 0.4)],
-		["Вокзал", Vector3(97, 0, 186), Color(0.3, 0.6, 0.9)],
+		["Вокзал", Town.w(Vector3(97, 0, 186)), Color(0.3, 0.6, 0.9)],
 		["Попутчик", _world.HITCH_POS, Color(1.0, 0.8, 0.3)],
 		["Колонка", _world.PUMP_POS, Color(0.3, 0.75, 0.85)],
-		["Рынок", Vector3(64, 0, 144), Color(0.95, 0.55, 0.2)],
-		["Стадион", Vector3(156, 0, 160), Color(0.4, 0.75, 0.35)],
+		["Рынок", Town.w(Vector3(64, 0, 144)), Color(0.95, 0.55, 0.2)],
+		["Стадион", Town.w(Vector3(156, 0, 160)), Color(0.4, 0.75, 0.35)],
 		["Школа", School.at(Vector3(School.DOOR_X, 0, School.Z0 - 6.0)), Color(0.9, 0.75, 0.6)],
-		["Гаражи", Vector3(220, 0, 80), Color(0.6, 0.4, 0.3)],
-		["Завод", Vector3(178, 0, 228), Color(0.7, 0.3, 0.25)],
+		["Гаражи", Town.w(Vector3(220, 0, 80)), Color(0.6, 0.4, 0.3)],
+		["Завод", Town.w(Vector3(178, 0, 228)), Color(0.7, 0.3, 0.25)],
 		["Рыбалка", Vector3(Region.LAKE.x + Region.LAKE_R.x, 0, Region.LAKE.y), Color(0.6, 0.85, 1.0)],
 	]
 	# Почта: отделения в Каменке, городе и ближних сёлах (если мир построен)

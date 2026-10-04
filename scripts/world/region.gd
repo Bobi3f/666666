@@ -230,6 +230,8 @@ static func tree_ok(x: float, z: float) -> bool:
 	if road_dist(x, z) < ROAD_HALF + 3.0 or river_dist(x, z) < RIVER_HALF + 6.0:
 		return false
 	var p := Vector2(x, z)
+	if Town.wr(Rect2(-60, -10, 360, 260)).has_point(p):
+		return false  # город
 	for v in VILLAGES:
 		var c: Vector2 = v.c
 		if Rect2(c.x - 66, c.y - 38, 132, 76).has_point(p):

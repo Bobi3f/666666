@@ -30,7 +30,7 @@ func _run() -> void:
 	ok(Railway.river_crossing() != Vector2.INF, "мост через Быструю")
 	ok(RW.train.size() == Railway.CARS, "электричка из %d вагонов" % RW.train.size())
 	ok(not Region.tree_ok(500.0, 205.0) and not Region.tree_ok(-150.0, 205.5), "на путях деревья не растут")
-	ok(not Region.tree_ok(180.0, 230.0), "на заводе деревья не растут")
+	ok(not Region.tree_ok(180.0 + Town.SHIFT.x, 230.0), "на заводе деревья не растут")
 	for h in Landscape.hills:
 		if Railway.dist((h[0] as Vector2).x, (h[0] as Vector2).y) < float(h[1]):
 			ok(false, "холм на путях: %s" % str(h))
@@ -90,7 +90,7 @@ func _run() -> void:
 	ok(TownSouth.light_state(1.0, true) == "green" and TownSouth.light_state(1.0, false) == "red", "одной улице зелёный — другой красный")
 	ok(TownSouth.light_state(13.0, true) == "yellow" and TownSouth.light_state(20.0, false) == "green", "жёлтый и смена")
 	var P = W.get_node("Player")
-	P.global_position = Vector3(97, 0.2, 120)
+	P.global_position = Town.w(Vector3(97, 0.2, 120))
 	TM.minutes = 17 * 60.0
 	var w0: Vector3 = (TS.walkers[0].mesh as Node3D).position
 	var b0: Vector3 = TS.ball.position

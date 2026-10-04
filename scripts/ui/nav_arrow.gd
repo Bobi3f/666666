@@ -57,7 +57,7 @@ func current() -> Array:
 		return ["", Vector3.INF]
 	var key := "%s:%d" % [id, int(QuestManager.quests[id].step)]
 	if key == "m_license:0":
-		return ["Сельсовет — паспорт", Civic.COUNCIL] if not Progress.has_doc("passport") else ["Больница — медсправка", Civic.HOSPITAL]
+		return ["Сельсовет — паспорт", Civic.COUNCIL] if not Progress.has_doc("passport") else ["Больница — медсправка", Town.w(Civic.HOSPITAL)]
 	if not QUEST_TARGETS.has(key):
 		return ["", Vector3.INF]
 	var t: Array = QUEST_TARGETS[key]

@@ -58,7 +58,8 @@ func _run() -> void:
 	var side: Vector3 = S.at(Vector3(yard.end.x, 0.8, yard.get_center().y))
 	ok(not ray(side + Vector3(3.0, 0, 0), side + Vector3(-3.0, 0, 0)).is_empty(), "забор и сбоку")
 	var ts = W.get_node("TownSouth")
-	ok(ts.SCHOOL.has_point(Vector2(gate.x, gate.z + 1.0)) and not ts.SCHOOL.has_point(Vector2(59.0, 180.0)), "школа переехала: двор у %s" % str(gate.round()))
+	var lg := Town.l(gate)
+	ok(ts.SCHOOL.has_point(Vector2(lg.x, lg.z + 1.0)) and not ts.SCHOOL.has_point(Vector2(59.0, 180.0)), "школа переехала: двор у %s" % str(gate.round()))
 	# От улицы до крыльца — пешком через ворота
 	P.global_position = S.at(Vector3(S.DOOR_X, 0.1, yard.position.y - 4.0))
 	P.rotation.y = PI

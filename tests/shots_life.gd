@@ -29,9 +29,9 @@ func _run() -> void:
 	for i in 60 * 12:
 		L._t = 0.0
 		await physics_frame
-	await view("01_light", Vector3(80, 4, 11), Vector3(95, 1.5, 0))
+	await view("01_light", Town.w(Vector3(80, 4, 11)), Town.w(Vector3(95, 1.5, 0)))
 	for i in 60 * 4: await physics_frame
-	await view("02_walkers", Vector3(112, 3, 36), Vector3(122, 0.5, 18))
+	await view("02_walkers", Town.w(Vector3(112, 3, 36)), Town.w(Vector3(122, 0.5, 18)))
 	# Коровы переходят улицу
 	TM.minutes = 6 * 60.0 + 59.0
 	for i in 3: await physics_frame

@@ -27,7 +27,7 @@ func build(world: Node3D) -> void:
 	# Почта Каменки — в сельсовете, окошки внутри; к крыльцу подъезжать снаружи
 	_add_office("Каменка", "в Каменке", Civic.COUNCIL + Civic.KAMENKA_WINDOW, 0.0, _kamenka_homes(),
 		Civic.COUNCIL + Vector3(0, 0, 7.0))
-	_add_office("Город", "в городе", TOWN_POST, PI / 2.0, _town_homes())
+	_add_office("Город", "в городе", Town.w(TOWN_POST), PI / 2.0, _town_homes())
 	for i in VILLAGE_POSTS:
 		var v: Dictionary = Region.VILLAGES[i]
 		var c: Vector2 = v.c
@@ -155,8 +155,15 @@ func _kamenka_homes() -> Array:
 	return out
 
 
-## Город: пятиэтажки, больница, рынок, вокзал.
+## Город: пятиэтажки, больница, рынок, вокзал (в мире — со сдвигом города).
 func _town_homes() -> Array:
+	var out := []
+	for h in _town_spots():
+		out.append([h[0], Town.w(h[1]), Town.w(h[2])])
+	return out
+
+
+func _town_spots() -> Array:
 	return [
 		["пятиэтажка на Садовой, 1", Vector3(70.0, 0, 57.0), Vector3(70.0, 0, 54.0)],
 		["пятиэтажка на Садовой, 2", Vector3(125.0, 0, 57.0), Vector3(125.0, 0, 54.0)],

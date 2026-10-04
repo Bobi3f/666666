@@ -54,6 +54,8 @@ static func _free(c: Vector2, r: float, road_gap: float) -> bool:
 		return false
 	if absf(c.x) < 230.0 + r and absf(c.y) < 230.0 + r:
 		return false
+	if Town.wr(Rect2(-70, -20, 380, 290)).grow(r).has_point(c):
+		return false  # город
 	if Region.road_dist(c.x, c.y) < r + road_gap or Region.river_dist(c.x, c.y) < r + 25.0:
 		return false
 	if absf(c.y) < r + 15.0:

@@ -30,9 +30,10 @@ var _rng := RandomNumberGenerator.new()
 var _t := 0.0
 
 
-## Занято ли место постройками южной части (для леса и травы района).
+## Занято ли место постройками южной части (для леса и травы района;
+## x, z — в мире, постройки — в координатах города).
 static func occupied(x: float, z: float) -> bool:
-	var p := Vector2(x, z)
+	var p := Vector2(x - Town.SHIFT.x, z - Town.SHIFT.z)
 	return FACTORY.grow(4.0).has_point(p) or GARAGES.grow(2.0).has_point(p)
 
 
@@ -678,7 +679,7 @@ func _update_walker(w: Dictionary, delta: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	var cam3 := get_viewport().get_camera_3d()
-	var cam := cam3.global_position if cam3 else Vector3.ZERO
+	var cam := Town.l(cam3.global_position) if cam3 else Vector3.ZERO
 	var near := Vector2(cam.x, cam.z).distance_to(Vector2(120, 120)) < 350.0
 	if near:
 		for w in walkers:

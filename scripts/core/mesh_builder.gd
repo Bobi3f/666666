@@ -7,6 +7,9 @@ extends RefCounted
 ## Так один и тот же код строит дом, а xf ставит его на место и поворачивает.
 
 var xf := Transform3D.IDENTITY
+## Сдвиг всего, что добавляется, поверх xf — так город строится тем же
+## кодом в своих координатах, а встаёт на своё место в мире (Town.SHIFT).
+var shift := Vector3.ZERO
 ## Затемнять низ коробок: предмет «стоит» на земле, а не парит.
 var ground_shade := true
 ## Метка части тела в альфе цвета вершин: по ней шейдер ходьбы качает
@@ -89,7 +92,7 @@ func box(mn: Vector3, mx: Vector3, color: Color, collide := false) -> void:
 		_quad_raw(pts, cols, n)
 	_small = false
 	if collide:
-		_boxes.append([xf * Transform3D(Basis.IDENTITY, c), mx - mn])
+		_boxes.append([Transform3D(Basis.IDENTITY, shift) * xf * Transform3D(Basis.IDENTITY, c), mx - mn])
 
 
 ## Коробка с поворотом вокруг вертикали — для деревьев, досок, столбов.
@@ -116,7 +119,7 @@ func quad_vc(pts: Array, cols: Array[Color]) -> void:
 
 func tri(a: Vector3, b: Vector3, c: Vector3, color: Color, two_sided := false) -> void:
 	var n := (b - a).cross(c - a).normalized()
-	_pick(xf * ((a + b + c) / 3.0))
+	_pick(xf * ((a + b + c) / 3.0) + shift)
 	_emit(a, n, color)
 	_emit(c, n, color)
 	_emit(b, n, color)
@@ -129,13 +132,13 @@ func tri(a: Vector3, b: Vector3, c: Vector3, color: Color, two_sided := false) -
 
 
 func add_collider(mn: Vector3, mx: Vector3) -> void:
-	_boxes.append([xf * Transform3D(Basis.IDENTITY, (mn + mx) * 0.5), mx - mn])
+	_boxes.append([Transform3D(Basis.IDENTITY, shift) * xf * Transform3D(Basis.IDENTITY, (mn + mx) * 0.5), mx - mn])
 
 
 func _quad_raw(pts: Array, cols: Array, n: Vector3) -> void:
 	# В Godot лицевая сторона — по часовой стрелке, поэтому порядок 0-2-1, 0-3-2
 	if chunk_size > 0.0:
-		_pick(xf * ((pts[0] + pts[2]) * 0.5))
+		_pick(xf * ((pts[0] + pts[2]) * 0.5) + shift)
 	for i in [0, 2, 1, 0, 3, 2]:
 		_emit(pts[i], n, cols[i])
 	_count += 2
@@ -144,7 +147,7 @@ func _quad_raw(pts: Array, cols: Array, n: Vector3) -> void:
 func _emit(p: Vector3, n: Vector3, color: Color) -> void:
 	_cur.set_color(color)
 	_cur.set_normal((xf.basis * n).normalized())
-	_cur.add_vertex(xf * p)
+	_cur.add_vertex(xf * p + shift)
 
 
 ## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size

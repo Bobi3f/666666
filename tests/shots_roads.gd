@@ -23,8 +23,8 @@ func _run() -> void:
 	root.get_node("TimeManager").minutes = 12 * 60.0
 	var P = W.get_node("Player"); P.set_physics_process(false); P.global_position = Vector3(0, 0.2, 60)
 	cam = Camera3D.new(); W.add_child(cam)
-	await view("01_square", Vector3(100, 7, 5), Vector3(122, 0, 22))
-	await view("02_shops", Vector3(100, 3, 8), Vector3(88, 1.5, 24))
+	await view("01_square", Town.w(Vector3(100, 7, 5)), Town.w(Vector3(122, 0, 22)))
+	await view("02_shops", Town.w(Vector3(100, 3, 8)), Town.w(Vector3(88, 1.5, 24)))
 	await view("03_bridge", Vector3(-102, 3.5, -95), Vector3(-112, 0, -86))
 	await view("04_field_road", Vector3(-58, 2.2, -31), Vector3(-20, 0, -38))
 	var PR = root.get_node("Progress")

@@ -213,7 +213,8 @@ func _council() -> void:
 # --- Больница -----------------------------------------------------------------
 
 func _build_hospital() -> void:
-	var c := HOSPITAL
+	# HOSPITAL — в координатах города; узел Civic стоит в начале мира
+	var c := Town.w(HOSPITAL)
 	var b := MeshBuilder.new()
 	_house(b, c, Vector3(18.0, 6.8, 10.0), Color(0.95, 0.95, 0.93), Color(0.45, 0.47, 0.5), Color(0.2, 0.55, 0.55))
 	# Второй этаж окнами, красный крест над входом

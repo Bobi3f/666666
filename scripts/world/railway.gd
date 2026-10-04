@@ -12,7 +12,7 @@ extends Node3D
 ## Ось пути: прямо от западного края до Степного, там обходит поле с юга.
 const LINE := [Vector2(-2000, 205), Vector2(1330, 205), Vector2(1460, 245), Vector2(2000, 245)]
 ## Середина платформы у вокзала (вокзал — town_south.gd, севернее пути).
-const STATION := Vector2(97.0, 205.0)
+const STATION := Vector2(97.0 + Town.SHIFT.x, 205.0)
 const SPEED := 22.0
 const STOP_TIME := 25.0
 const END_WAIT := 30.0

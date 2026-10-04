@@ -33,7 +33,7 @@ func _run() -> void:
 	var pol = W.get_node("Police")
 	P.global_position = pol.get_node("PlateDesk").global_position + Vector3(-1.0, 0.1, 0)
 	P.rotation.y = -PI / 2.0
-	await view("gai_desk", Police.STATION + Vector3(-15.0, 2.2, -5.0), Police.STATION + Vector3(-7.0, 1.5, -2.0))
+	await view("gai_desk", Town.w(Police.STATION) + Vector3(-15.0, 2.2, -5.0), Town.w(Police.STATION) + Vector3(-7.0, 1.5, -2.0))
 	pol.open_plates()
 	await shot("gai_panel")
 	quit()

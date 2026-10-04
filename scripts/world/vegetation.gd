@@ -64,13 +64,17 @@ var areas: Array[Rect2] = [Rect2(-200, -200, 400, 400)]
 ## видно до горизонта, а треугольников в десятки раз меньше.
 
 
+## Сдвиг для деревьев и запретов травы, пока строится город (Town.SHIFT).
+var shift := Vector3.ZERO
+
+
 func add_tree(kind: int, xf: Transform3D) -> void:
-	_trees[kind].append(xf)
+	_trees[kind].append(xf.translated(shift))
 
 
 ## Прямоугольник в плане (X, Z), где не растёт трава.
 func block(x0: float, z0: float, x1: float, z1: float) -> void:
-	_blocked.append(Rect2(minf(x0, x1), minf(z0, z1), absf(x1 - x0), absf(z1 - z0)))
+	_blocked.append(Rect2(minf(x0, x1) + shift.x, minf(z0, z1) + shift.z, absf(x1 - x0), absf(z1 - z0)))
 
 
 func is_blocked(x: float, z: float) -> bool:

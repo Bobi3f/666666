@@ -54,9 +54,9 @@ func _run() -> void:
 	C.exit_car()
 	for i in 3: await process_frame
 	cam.current = true
-	cam.global_position = Vector3(64, 3.5, 13)
-	cam.look_at(Vector3(58, 0.5, 22))
-	C.global_position = Vector3(61, 0.1, 23.4); C.rotation.y = PI / 2.0
+	cam.global_position = Town.w(Vector3(64, 3.5, 13))
+	cam.look_at(Town.w(Vector3(58, 0.5, 22)))
+	C.global_position = Town.w(Vector3(61, 0.1, 23.4)); C.rotation.y = PI / 2.0
 	for i in 10: await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/vaz2107_salon.png" % OS.get_environment("SHOTS"))
 	quit()

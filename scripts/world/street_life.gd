@@ -9,9 +9,10 @@ extends Node3D
 ## машину пропускают и ругаются, если подъехать вплотную. Коровы — твёрдые:
 ## в них можно врезаться, лучше подождать.
 
-## Стоп-линии на трассе: едущие на восток (+X) и на запад (−X).
-const STOP_EAST := 89.0
-const STOP_WEST := 105.0
+## Стоп-линии на трассе (x в мире, город сдвинут на Town.SHIFT): едущие
+## на восток (+X) и на запад (−X).
+const STOP_EAST := 89.0 + Town.SHIFT.x
+const STOP_WEST := 105.0 + Town.SHIFT.x
 const GREEN := 14.0
 const YELLOW := 3.0
 const RED := 9.0
@@ -56,7 +57,7 @@ func _lamp_mat(col: Color) -> StandardMaterial3D:
 func _build_lights() -> void:
 	# Для трассы — два столба у стоп-линий; для городской улицы — один
 	for spec in [[Vector3(STOP_EAST, 0, 7.6), -PI / 2.0, true], [Vector3(STOP_WEST, 0, -7.6), PI / 2.0, true],
-			[Vector3(101.6, 0, 9.0), 0.0, false]]:
+			[Town.w(Vector3(101.6, 0, 9.0)), 0.0, false]]:
 		var root := Node3D.new()
 		add_child(root)
 		root.global_position = spec[0]
@@ -168,7 +169,10 @@ func _build_walkers() -> void:
 		var body := Villagers.walking_mesh(b)
 		n.add_child(body)
 		add_child(n)
-		var pts: Array = routes[i]
+		# Маршруты — в координатах города
+		var pts: Array = []
+		for p in routes[i]:
+			pts.append(Town.w(p))
 		n.global_position = pts[0]
 		_walkers.append({"node": n, "body": body, "pts": pts, "i": 1, "speed": rng.randf_range(1.1, 1.5),
 			"phase": rng.randf() * TAU, "wait": 0.0})

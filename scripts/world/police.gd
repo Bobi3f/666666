@@ -342,7 +342,7 @@ func _process(delta: float) -> void:
 	_arrow.visible = patrol_active
 	if not patrol_active:
 		return
-	var target: Vector3 = PATROL[patrol_idx]
+	var target: Vector3 = Town.w(PATROL[patrol_idx])
 	_arrow.global_position = target + Vector3(0, 2.6 + sin(_t * 4.0) * 0.2, 0)
 	_arrow.rotation.y = _t * 2.0
 	var p := GameManager.player as Node3D
