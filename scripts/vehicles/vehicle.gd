@@ -35,6 +35,8 @@ const SIDE_GRIP := 2.2
 ## повреждения; слабее — только звук.
 const DAMAGE_HIT := 4.5
 
+## Учебный ПАЗ-672: ширина, высота, длина — как у настоящего.
+const BUS_SIZE := Vector3(2.45, 2.95, 7.2)
 const SPECS := {
 	"car": {
 		"title": "Жигули", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
@@ -128,18 +130,19 @@ const SPECS := {
 			Vector3(-0.62, 0.46, 1.55), Vector3(0.62, 0.46, 1.55)],
 		"tail": [Vector3(-0.97, 0.9, 3.23), Vector3(0.97, 0.9, 3.23)], "lamps": [Vector3(-0.92, 1.22, -3.02), Vector3(0.92, 1.22, -3.02)],
 	},
-	# Учебный ПАЗ автошколы: длинный и тяжёлый, поворачивает широко.
+	# Учебный ПАЗ автошколы: как настоящий ПАЗ-672 — 7,2 м в длину, 2,5 в
+	# ширину, 3 в высоту, база 3,5 м; тяжёлый, поворачивает широко.
 	"bus": {
 		"title": "ПАЗ-672", "ratios": {-1: -6.2, 0: 0.0, 1: 6.4, 2: 3.4, 3: 1.8, 4: 1.0},
-		"final": 6.8, "wheel_r": 0.5, "mass": 5200.0, "idle": 650.0, "redline": 3600.0,
-		"torque": 520.0, "peak_rpm": 2200.0, "inertia": 0.55, "wheelbase": 5.3, "max_steer": 0.52,
+		"final": 6.8, "wheel_r": 0.5, "mass": 4500.0, "idle": 650.0, "redline": 3600.0,
+		"torque": 480.0, "peak_rpm": 2200.0, "inertia": 0.55, "wheelbase": 3.5, "max_steer": 0.55,
 		"tank": 110.0, "fuel_k": 2.6, "grip": 8.0, "drag": 1.0, "brake": 6.5,
-		"shape": Vector3(2.5, 2.8, 9.0), "shape_y": 1.75,
-		"seat": Vector3(-0.75, 2.0, -3.7), "exit": Vector3(-2.2, 0.2, -3.6),
-		"chase": Vector3(0, 5.0, 13.0), "roof": true, "two_wheels": false,
+		"shape": Vector3(2.45, 2.6, 7.2), "shape_y": 1.65,
+		"seat": Vector3(-0.72, 1.85, -2.85), "exit": Vector3(-2.1, 0.2, -2.8),
+		"chase": Vector3(0, 4.6, 11.0), "roof": true, "two_wheels": false,
 		"offroad": 1.0, "mud": 1.0, "paint": 3,
-		"wheels": [Vector3(-1.12, 0.5, -2.8), Vector3(1.12, 0.5, -2.8), Vector3(-1.12, 0.5, 2.5), Vector3(1.12, 0.5, 2.5)],
-		"tail": [Vector3(-1.0, 0.8, 4.55), Vector3(1.0, 0.8, 4.55)], "lamps": [Vector3(-0.95, 0.8, -4.55), Vector3(0.85, 0.8, -4.55)],
+		"wheels": [Vector3(-1.1, 0.5, -1.9), Vector3(1.1, 0.5, -1.9), Vector3(-1.1, 0.5, 1.6), Vector3(1.1, 0.5, 1.6)],
+		"tail": [Vector3(-1.0, 0.8, 3.65), Vector3(1.0, 0.8, 3.65)], "lamps": [Vector3(-0.95, 0.8, -3.65), Vector3(0.85, 0.8, -3.65)],
 	},
 	# Колхозный трактор: медленный, тянет по пашне как по асфальту.
 	# Колёса — [где, радиус, ширина]: задние огромные, передние маленькие.
@@ -1297,7 +1300,7 @@ func _paint_body() -> void:
 		"truck":
 			VehicleModels.gaz53(b, col, glass)
 		"bus":
-			VehicleModels.bus(b, col, Vector3(2.5, 3.0, 9.0))
+			VehicleModels.bus(b, col, BUS_SIZE)
 		"tractor":
 			VehicleModels.tractor(b, col, glass)
 		"vaz2107":

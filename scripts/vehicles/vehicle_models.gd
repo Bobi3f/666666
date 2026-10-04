@@ -499,9 +499,13 @@ static func car_wheel(b: MeshBuilder, r: float, w: float, rim: Variant = null) -
 
 ## Автобус ЛАЗ: окна рядами с простенками, двери-гармошки, маршрутный
 ## указатель, бамперы, фары, решётка сзади, крыша с люками.
+## size — ширина, высота (с люками на крыше), длина.
 static func bus(b: MeshBuilder, paint: Color, size: Vector3) -> void:
 	var hx := size.x * 0.5
 	var hz := size.z * 0.5
+	# Высоты ниже — для кузова в 3,26 м; ниже ростом — сжимаем по вертикали
+	var saved_xf := b.xf
+	b.xf = saved_xf * Transform3D(Basis.from_scale(Vector3(1.0, size.y / 3.26, 1.0)), Vector3.ZERO)
 	var glass := Color(0.25, 0.32, 0.38)
 	var dark := Color(0.08, 0.08, 0.09)
 	var white := Color(0.92, 0.9, 0.85)
@@ -540,6 +544,7 @@ static func bus(b: MeshBuilder, paint: Color, size: Vector3) -> void:
 		for x in [-hx - 0.02, hx - 0.28]:
 			b.box(Vector3(x, 0.0, zz - 0.52), Vector3(x + 0.3, 1.0, zz + 0.52), dark)
 			b.box(Vector3(x + (0.29 if x > 0 else -0.01), 0.3, zz - 0.25), Vector3(x + (0.31 if x > 0 else 0.01), 0.7, zz + 0.25), Color(0.6, 0.6, 0.62))
+	b.xf = saved_xf
 
 
 ## «Ява 350» (638): красный бак с чёрными накладками и надписью «JAWA»,

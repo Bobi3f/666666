@@ -397,7 +397,7 @@ func _build_grounds() -> void:
 	add_child(sign)
 	# Стоянка учебных машин: белые линии мест, таблички категорий
 	var white := Color(0.9, 0.9, 0.86)
-	for spot in [[CAR_SPOT, "B", 5.2], [TRUCK_SPOT, "C", 7.5], [BUS_SPOT, "D", 10.5], [MOTO_SPOT, "A", 3.0]]:
+	for spot in [[CAR_SPOT, "B", 5.2], [TRUCK_SPOT, "C", 7.5], [BUS_SPOT, "D", 8.5], [MOTO_SPOT, "A", 3.0]]:
 		var c: Vector3 = spot[0]
 		var hl: float = float(spot[2]) * 0.5
 		for sx in [-1.6, 1.6]:

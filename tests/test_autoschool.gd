@@ -135,5 +135,13 @@ func _run() -> void:
 		AS._park(v)
 		await frames(3)
 		ok(P.car == null and v.global_position.distance_to(Town.w(AS.MOTO_SPOT if v == AS.moto else (AS.TRUCK_SPOT if v == AS.truck else AS.BUS_SPOT))) < 1.0, "после экзамена «%s» — обратно на стоянку" % v.spec.title)
+	print("== Пропорции: учебный ПАЗ как настоящий")
+	var box := AABB()
+	for m in AS.bus._body.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.mesh and mi.get_aabb().size.y < 3.5:
+			var bb := AS.bus.global_transform.affine_inverse() * mi.global_transform * mi.get_aabb()
+			box = bb if box.size == Vector3.ZERO else box.merge(bb)
+	ok(box.size.z > 6.8 and box.size.z < 7.8 and box.size.y < 3.7, "ПАЗ: длина %.1f м, высота с знаком «У» на крыше %.1f м (настоящий — 7,2 и 3; был 9,3 и 3,9)" % [box.size.z, box.size.y])
 	print("\nИТОГО: " + ("всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ, провалов: %d" % fails))
 	quit(1 if fails else 0)
