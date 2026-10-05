@@ -179,6 +179,16 @@ func refresh() -> void:
 	for veh: Vehicle in cars:
 		var where := "ты за рулём" if veh.driver else "в %d м от тебя" % int(_dist(veh))
 		_row("%s — бензин %d/%d л, кузов %d%%, %s" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition), where])
+	if Progress.repair_kits > 0:
+		var fix := _row("Ремнабор: %d шт. — +%d%% к состоянию своей техники рядом" % [Progress.repair_kits, int(Progress.KIT_FIX)], "Починить")
+		fix.pressed.connect(func() -> void:
+			var v := kit_target(cars)
+			if v == null:
+				GameManager.notify("Подойди к своей машине или мотоциклу — ремнабор чинит то, что рядом")
+			elif Progress.use_repair_kit(v):
+				close_panel()
+				return
+			refresh())
 
 	_section("Дом и хозяйство")
 	_row(HOUSE_NAMES[clampi(Progress.house_level, 0, HOUSE_NAMES.size() - 1)])
@@ -186,6 +196,20 @@ func refresh() -> void:
 		_row(item_name(id))
 	for id in Daily.owned:
 		_row("Своё дело: %s, %d-й уровень, +%d грн в день до налога" % [Daily.BUSINESSES[id].title, Daily.level(id), Daily.income(id)])
+
+
+## Что чинить ремнабором: на чём едешь, иначе — своя техника в 6 м.
+func kit_target(cars: Array) -> Vehicle:
+	var best: Vehicle = null
+	var bd := 6.0
+	for v: Vehicle in cars:
+		if v.driver:
+			return v
+		var d := _dist(v)
+		if d < bd:
+			bd = d
+			best = v
+	return best
 
 
 ## Название купленной вещи: из лавок базара, «Хозтоваров» мира или списка

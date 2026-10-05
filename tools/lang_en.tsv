@@ -1954,3 +1954,20 @@ E — домой: лечь спать до утра	E — home: sleep till morni
 Дом продаётся — договориться у калитки	House for sale — ask at the gate
 Купил %s! Теперь можно ночевать в городе — у двери «E — домой»	Bought %s! Now you can spend nights in town — "E — home" at the door
 ТВОЁ ЖИЛЬЁ	YOUR HOME
+«%s» и так целая — ремнабор не нужен	"%s" is fine as it is — no repair kit needed
+Подлатал «%s» ремнабором: состояние %d%%. Осталось ремнаборов: %d	Patched up "%s" with a repair kit: condition %d%%. Repair kits left: %d
+Ремнабор: %d шт. — +%d%% к состоянию своей техники рядом	Repair kit: %d pcs — +%d%% condition to your vehicle nearby
+Починить	Repair
+Подойди к своей машине или мотоциклу — ремнабор чинит то, что рядом	Go to your car or motorbike — the repair kit fixes what's nearby
+Ремнабор	Repair kit
+починить машину или мотоцикл в дороге: +40% к состоянию (инвентарь — I)	repair a car or motorbike on the road: condition +40% (inventory — I)
+(в запасе %d)	(in stock %d)
+Ремнабор — в запасе (%d). Чинить — в инвентаре (I), рядом со своей техникой	Repair kit — in stock (%d). Repair from the inventory (I), next to your vehicle
+Да, удалить	Yes, delete
+Сохранение в ячейке %d удалено	The save in slot %d is deleted
+Удалить игру в ячейке %d (%s)?	Delete the game in slot %d (%s)?
+Вернуть её будет нельзя.	It can't be restored.
+Удалить сохранение %d	Delete save %d
+— в запасе %d	— in stock %d
+E — ремнабор для машины и мотоцикла (%d грн)%s	E — repair kit for a car or motorbike (%d UAH)%s
+Купил ремнабор (в запасе %d). Чинить — в инвентаре, рядом со своей машиной или мотоциклом	Bought a repair kit (in stock %d). Repair from the inventory, next to your car or motorbike

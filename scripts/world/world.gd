@@ -25,6 +25,8 @@ const LAMP_Z := -36.9
 ## Сельмаг за съездом к трассе, дверью к деревне.
 const SHOP_POS := Vector3(-45.0, 0, -24.0)
 const POND_POS := Vector3(-182.0, 0, -40.0)
+## Ремнабор в сельмаге — как на базаре
+const KIT_PRICE := 150
 ## Остановки: у Каменки (северная обочина) и в городе у склада (южная).
 const STOP_VILLAGE := Vector3(-68.5, 0, -7.6)
 const STOP_TOWN := Vector3(32.0, 0, 10.5)
@@ -1389,6 +1391,15 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	water_zone.prompt_fn = func() -> String: return "E — бутылка воды (%d грн)" % WATER_PRICE
 	water_zone.activated.connect(_buy_water)
 	add_child(water_zone)
+	var kit_zone := InteractZone.create("", Vector3(1.2, 2.2, 1.4))
+	kit_zone.name = "KitZone"
+	kit_zone.position = xf * Vector3(3.2, 0.4, 0.4)
+	kit_zone.rotation.y = yaw
+	kit_zone.prompt_fn = func() -> String:
+		var have := " — в запасе %d" % Progress.repair_kits if Progress.repair_kits > 0 else ""
+		return "E — ремнабор для машины и мотоцикла (%d грн)%s" % [KIT_PRICE, have]
+	kit_zone.activated.connect(buy_repair_kit)
+	add_child(kit_zone)
 
 
 ## Внутри сельмага (в его координатах, пол на 0.4): прилавок поперёк зала,
@@ -1435,6 +1446,16 @@ func _shop_inside(b: MeshBuilder, lamps: MeshBuilder, h: float) -> void:
 const WATER_PRICE := 10
 ## Колонка на деревенской улице: попить бесплатно.
 const PUMP_POS := Vector3(-88.0, 0, -36.2)
+
+
+## Ремнабор в запас: чинит свою технику где угодно (инвентарь — I).
+func buy_repair_kit() -> bool:
+	if not GameManager.spend(KIT_PRICE):
+		return false
+	Progress.repair_kits += 1
+	SoundLibrary.play("cash", -6.0)
+	GameManager.notify("Купил ремнабор (в запасе %d). Чинить — в инвентаре, рядом со своей машиной или мотоциклом" % Progress.repair_kits)
+	return true
 
 
 func _buy_water() -> void:

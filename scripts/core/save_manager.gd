@@ -91,6 +91,15 @@ func has_save() -> bool:
 
 
 ## Что лежит в ячейке — для кнопок меню: «день 5, 3200 грн» или «пусто».
+## Стереть игру в ячейке slot. true — было что стирать.
+func delete_slot(slot: int) -> bool:
+	var p := path_for(slot)
+	if not FileAccess.file_exists(p):
+		return false
+	DirAccess.remove_absolute(p)
+	return not FileAccess.file_exists(p)
+
+
 func slot_info(slot: int) -> String:
 	var p := path_for(slot)
 	if not FileAccess.file_exists(p):

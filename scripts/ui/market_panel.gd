@@ -23,6 +23,7 @@ const PARTS := {
 	"tank": ["Большой бак", 400, "бензина влезает в полтора раза больше"],
 	"wheels": ["Большие колёса", 600, "выше и лучше держат на грунте и в грязи"],
 	"rims": ["Диски", 250, "хром → чёрные → красные → золотые"],
+	"repair_kit": ["Ремнабор", 150, "починить машину или мотоцикл в дороге: +40% к состоянию (инвентарь — I)"],
 }
 
 signal closed
@@ -166,6 +167,8 @@ func _refresh() -> void:
 		var text := "%s — %s" % [it[0], it[2]]
 		if id == "rims" and _car and _car.parts.has("rims"):
 			text += " (сейчас %s)" % Vehicle.RIM_NAMES[int(_car.parts["rims"])]
+		if id == "repair_kit" and Progress.repair_kits > 0:
+			text += " (в запасе %d)" % Progress.repair_kits
 		var l := _label(text, 16, Color(0.95, 0.92, 0.85))
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -180,7 +183,9 @@ func _list() -> Dictionary:
 func _has(id: String) -> bool:
 	if mode == "home" or mode == "wedding":
 		return Progress.has_item(id)
-	return id != "rims" and _car != null and _car.has_part(id)
+	if id == "rims" or id == "repair_kit":
+		return false
+	return _car != null and _car.has_part(id)
 
 
 ## Купить товар id. true — получилось.
@@ -198,6 +203,9 @@ func buy(id: String) -> bool:
 		_status.text = "«%s» уже у тебя дома" % it[0]
 		if Progress.has_item("ring") and Progress.has_item("dress"):
 			QuestManager.event("wedding_set")
+	elif id == "repair_kit":
+		Progress.repair_kits += 1
+		_status.text = "Ремнабор — в запасе (%d). Чинить — в инвентаре (I), рядом со своей техникой" % Progress.repair_kits
 	else:
 		_car.fit_part(id)
 		_status.text = "На «%s» поставили: %s" % [_car.spec.title, it[0]]

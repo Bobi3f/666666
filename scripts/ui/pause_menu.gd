@@ -99,7 +99,7 @@ func _build() -> void:
 	var pages := VBoxContainer.new()
 	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(pages)
-	for pn in ["main", "settings", "controls", "confirm", "support"]:
+	for pn in ["main", "settings", "controls", "confirm", "support", "delete"]:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override("separation", 10)
 		page.custom_minimum_size = Vector2(400, 0)
@@ -113,6 +113,7 @@ func _build() -> void:
 	_build_controls(_pages.controls)
 	_build_confirm(_pages.confirm)
 	_build_support(_pages.support)
+	_build_delete(_pages.delete)
 
 
 ## Кнопки «Спорт»: красные, при наведении и фокусе — белая рамка, выбранная
@@ -153,6 +154,8 @@ const DONATE := [["PayPal", ""], ["Buy Me a Coffee", ""]]
 static var donate_links: Array = DONATE.filter(func(d: Array) -> bool: return not String(d[1]).is_empty())
 
 var _slot_buttons: Array[Button] = []
+var _delete: Button
+var _delete_q: Label
 ## Кнопки языка на главной странице меню
 var _lang_buttons: Array[Button] = []
 
@@ -180,6 +183,10 @@ func _build_main(box: VBoxContainer) -> void:
 			_refresh())
 		slots.add_child(sb)
 		_slot_buttons.append(sb)
+	# Стереть игру в выбранной ячейке — с вопросом «точно?»
+	_delete = _button(box, "", func() -> void: _show("delete"))
+	_delete.add_theme_font_size_override("font_size", 14)
+	_delete.custom_minimum_size.y = _btn_h() * 0.75
 	_save = _button(box, "Сохранить" if GameManager.touch_mode else "Сохранить (F5)", func() -> void:
 		SaveManager.save_game()
 		_refresh())
@@ -420,6 +427,28 @@ func _build_support(box: VBoxContainer) -> void:
 	_button(box, "Назад", func() -> void: _show("main"), true)
 
 
+## «Удалить сохранение»: какая ячейка и что в ней, «нет» — первым.
+func _build_delete(box: VBoxContainer) -> void:
+	_delete_q = Label.new()
+	_delete_q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_delete_q)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	var no := _button(row, "Нет, назад", func() -> void: _show("main"), true)
+	var yes := _button(row, "Да, удалить", delete_save)
+	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+## Стереть игру в выбранной ячейке и вернуться на главную страницу.
+func delete_save() -> void:
+	var slot := SettingsManager.slot
+	if SaveManager.delete_slot(slot):
+		GameManager.notify("Сохранение в ячейке %d удалено" % slot)
+	_show("main")
+
+
 func _build_confirm(box: VBoxContainer) -> void:
 	var q := Label.new()
 	q.text = "Начать заново?\nДеньги, дом и задания начнутся с нуля.\nСохранение перезапишется при следующей записи."
@@ -592,6 +621,8 @@ func _show(page: String) -> void:
 	_page = page
 	if page == "main":
 		_refresh()
+	if page == "delete":
+		_delete_q.text = "Удалить игру в ячейке %d (%s)?\nВернуть её будет нельзя." % [SettingsManager.slot, SaveManager.slot_info(SettingsManager.slot)]
 	if page == "controls":
 		_controls_text.text = _controls_bbcode()
 		_refresh_keys()
@@ -639,6 +670,8 @@ func _refresh() -> void:
 	_resume.visible = not (_main_mode and has)
 	_new.visible = not (_main_mode and not has)
 	_save.visible = not _main_mode
+	_delete.text = "Удалить сохранение %d" % SettingsManager.slot
+	_delete.visible = FileAccess.file_exists(SaveManager.path_for(SettingsManager.slot))
 	_load.visible = not _main_mode and has
 
 

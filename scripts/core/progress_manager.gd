@@ -60,6 +60,10 @@ var home_items: Array = []
 var fridge_day := 0
 ## Купленные в автосалоне машины: niva, volga, truck.
 var owned_cars: Array = []
+## Ремнаборы в запасе: чинят свою машину или мотоцикл где угодно.
+var repair_kits := 0
+const KIT_FIX := 40.0
+const KIT_MIN := 20.0
 ## Во сколько раз больше платят за этот развоз (грузовик — вдвое).
 var delivery_mult := 1.0
 const GREENHOUSE_SPEED := 1.5
@@ -107,6 +111,22 @@ func buy_car(kind: String) -> void:
 		owned_cars.append(kind)
 		# Мотоцикл из салона — не машина: в «Автопарк» не считается
 		QuestManager.event("moto_bought" if kind == "izh" else "car_bought")
+
+
+## Починить технику v ремнабором из запаса: +40% к состоянию, 20 минут.
+func use_repair_kit(v: Vehicle) -> bool:
+	if repair_kits <= 0 or v == null or not v.owned():
+		return false
+	if v.condition >= 99.5:
+		GameManager.notify("«%s» и так целая — ремнабор не нужен" % v.spec.title)
+		return false
+	repair_kits -= 1
+	v.condition = minf(v.condition + KIT_FIX, 100.0)
+	TimeManager.advance(KIT_MIN)
+	SoundLibrary.play("hammer")
+	QuestManager.event("repair_kit")
+	GameManager.notify("Подлатал «%s» ремнабором: состояние %d%%. Осталось ремнаборов: %d" % [v.spec.title, int(v.condition), repair_kits])
+	return true
 
 
 func has_item(id: String) -> bool:
@@ -314,7 +334,7 @@ func categories_text() -> String:
 
 
 func save_state() -> Dictionary:
-	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "path2": true,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "path2": true,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day, "cat_days": category_days, "license_no": license_no}
 
 
@@ -337,6 +357,7 @@ func load_state(d: Dictionary) -> void:
 	category_days = (cd as Dictionary).duplicate() if cd is Dictionary else {}
 	license_no = str(d.get("license_no", ""))
 	owned_cars = (d.get("cars", []) as Array).duplicate()
+	repair_kits = int(d.get("kits", 0))
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем
 	if not d.is_empty() and not d.has("path2"):

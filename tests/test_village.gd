@@ -105,7 +105,7 @@ func _run() -> void:
 	GM.money = 0
 	TM.day = 5; TM.minutes = 7.2 * 60.0
 	await frames(3)
-	ok(GM.money == 250, "утром доход с ларька: %d грн" % GM.money)
+	ok(GM.money == 250 - DL.tax_of(250), "утром доход с ларька после налога: %d грн" % GM.money)
 	var money: int = GM.money
 	await frames(10)
 	ok(GM.money == money, "доход — раз в день")
