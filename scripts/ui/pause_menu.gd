@@ -425,7 +425,7 @@ func _button(box: Container, text: String, fn: Callable, accent := false) -> But
 	b.text = text
 	b.custom_minimum_size = Vector2(0, _btn_h())
 	if accent:
-		b.add_theme_color_override("font_color", AMBER.lightened(0.2))
+		b.add_theme_color_override("font_color", Color.WHITE)
 	b.pressed.connect(func() -> void:
 		SoundLibrary.play("click", -6.0)
 		fn.call())
