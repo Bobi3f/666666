@@ -1765,4 +1765,7 @@ const EN := {
 	"«МЕТЕЛИЦА»": "\"METELITSA\"",
 	"соседские, 1978 года, на ходу. Ездить — только с правами": "the neighbour's, from 1978, runs fine. You can only drive with a license",
 	"быстрее мопеда вдвое. Нужна категория A": "twice as fast as the moped. Category A needed",
+	"ул. Садовая": "Sadovaya St",
+	"ул. Ленина": "Lenina St",
+	"пр. Мира": "Mira Ave",
 }

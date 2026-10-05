@@ -265,6 +265,16 @@ const ROAD := Color(0.72, 0.64, 0.52)
 const ROAD_MAIN := Color(0.6, 0.56, 0.5)
 const ROAD_EDGE := Color(0.45, 0.4, 0.34)
 const HOUSE := Color(0.5, 0.42, 0.36)
+## Подробности окрестностей: дворы с заборами, огороды с грядками, деревья.
+const YARD := Color(0.84, 0.86, 0.7)
+const FENCE := Color(0.5, 0.4, 0.3)
+const GARDEN := Color(0.62, 0.5, 0.36)
+const FURROW := Color(0.5, 0.39, 0.27)
+const PATH := Color(0.74, 0.66, 0.52)
+const TREE_COL := [Color(0.3, 0.46, 0.32), Color(0.45, 0.6, 0.3), Color(0.5, 0.64, 0.38), Color(0.48, 0.6, 0.36)]
+## Деревья по клеткам 100 × 100 м: на кусок карты — только свои клетки.
+const TREE_CELL := 100.0
+var _tree_cells := {}
 
 
 ## Метры мира → точки карты.
@@ -411,6 +421,11 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, "речка Каменка", Vector2(-100, -175), 12, true)
 			_label_at(font, "р. Быстрая", Vector2(348, -30), 13, true)
 			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(0, 34), 12, true)
+			# Улицы
+			_label_at(font, "ул. Садовая", Vector2(-112, -37.5), 11, true)
+			_label_at(font, "ул. Ленина", Town.w2(Vector2(97, 128)), 11, true)
+			_label_at(font, "пр. Мира", Town.w2(Vector2(150, 55.5)), 11, true)
+			_label_at(font, "ул. Заводская", Town.w2(Vector2(265, 96)), 11, true)
 		_compass(font)
 		_scale_bar(font)
 	_draw_places(labels, font)
@@ -464,12 +479,13 @@ func _draw_terrain() -> void:
 		_line(pts, float(r[1]), r[2])
 	var br: Rect2 = Roads.BRIDGE
 	_rect(br.position.x, br.position.y + 0.5, br.end.x, br.end.y - 0.5, Color(0.55, 0.45, 0.35))
-	# Дома: мелкие тёмные квадратики, свой — золотой
+	# Дворы: забор, дом, дорожка к калитке, огород за домом; свой дом — золотой
 	for x in _world.VILLAGE_X:
 		for zz in [_world.ROW_A_Z, _world.ROW_B_Z]:
 			var own: bool = Vector2(x, zz) == _world.PLAYER_HOUSE
-			_rect(x - 4.0, zz - 3.0, x + 4.0, zz + 3.0, Color(0.95, 0.72, 0.2) if own else HOUSE)
+			_yard(Vector2(x, zz), zz > _world.ROW_A_Z, Color(0.95, 0.72, 0.2) if own else HOUSE, Vector2(11, 9), Vector2(11, 12))
 	_draw_town()
+	_draw_trees()
 
 
 ## Город — в своих координатах, на карте сдвинут туда же, где стоит в мире.
@@ -509,6 +525,73 @@ func _draw_town() -> void:
 	_rect(TownEast.CAR_MARKET.position.x, TownEast.CAR_MARKET.position.y, TownEast.CAR_MARKET.end.x, TownEast.CAR_MARKET.end.y, Color(0.72, 0.7, 0.66))
 	_rect(TownEast.PLOTS.position.x, TownEast.PLOTS.position.y, TownEast.PLOTS.end.x, TownEast.PLOTS.end.y, Color(0.8, 0.85, 0.65))
 	_sh = Vector2.ZERO
+
+
+## Подробная ли сейчас текстура (окрестности 800 м, а не весь район).
+func _fine() -> bool:
+	return _view.size.x <= NEAR_M + 1.0
+
+
+## Двор у дома c: забор (half — полуширина и глубина к огороду, front — к
+## улице), дом, дорожка к калитке, за забором огород грядками. flip —
+## дом развёрнут (фасад к −Z).
+func _yard(c: Vector2, flip: bool, house: Color, back: Vector2, front: Vector2) -> void:
+	var s := -1.0 if flip else 1.0
+	if not _fine():
+		_rect(c.x - 4.0, c.y - 3.0, c.x + 4.0, c.y + 3.0, house)
+		return
+	var z0 := c.y - back.y * s
+	var z1 := c.y + front.y * s
+	if not _seen(c.x - back.x, minf(z0, z1) - 10.0, c.x + back.x, maxf(z0, z1) + 10.0):
+		return
+	_rect(c.x - back.x, minf(z0, z1), c.x + back.x, maxf(z0, z1), YARD)
+	# Огород за забором: грядки поперёк
+	var g0 := z0 - 1.0 * s
+	var g1 := z0 - 9.0 * s
+	_rect(c.x - 7.0, minf(g0, g1), c.x + 7.0, maxf(g0, g1), GARDEN)
+	var gz := minf(g0, g1) + 0.8
+	while gz < maxf(g0, g1) - 0.4:
+		_t.draw_line(_p(c.x - 6.5, gz), _p(c.x + 6.5, gz), FURROW, maxf(_m(0.35), 1.0))
+		gz += 1.3
+	# Забор
+	var pts := PackedVector2Array([_p(c.x - back.x, z0), _p(c.x + back.x, z0), _p(c.x + back.x, z1), _p(c.x - back.x, z1), _p(c.x - back.x, z0)])
+	_t.draw_polyline(pts, FENCE, maxf(_m(0.4), 1.0))
+	# Дорожка от калитки к крыльцу, дом с тенью
+	_t.draw_line(_p(c.x, c.y + 3.0 * s), _p(c.x, z1), PATH, maxf(_m(1.2), 1.0))
+	_rect(c.x - 4.0 + 0.6, c.y - 3.0 - 0.6 * s, c.x + 4.0 + 0.6, c.y + 3.0 - 0.6 * s, Color(0, 0, 0, 0.18))
+	_rect(c.x - 4.0, c.y - 3.0, c.x + 4.0, c.y + 3.0, house)
+	# Конёк крыши — светлая линия вдоль дома
+	_t.draw_line(_p(c.x - 3.8, c.y), _p(c.x + 3.8, c.y), house.lightened(0.3), maxf(_m(0.4), 1.0))
+
+
+## Каждое дерево — кружок кроны с тенью: ели темнее, яблони и берёзы светлее.
+func _draw_trees() -> void:
+	if not _fine():
+		return
+	if _tree_cells.is_empty():
+		var veg := _world.get_node_or_null("Vegetation")
+		if veg == null:
+			return
+		for kind in veg._trees:
+			for xf in veg._trees[kind]:
+				var o: Vector3 = (xf as Transform3D).origin
+				var key := Vector2i(floori(o.x / TREE_CELL), floori(o.z / TREE_CELL))
+				if not _tree_cells.has(key):
+					_tree_cells[key] = []
+				_tree_cells[key].append(Vector3(o.x, o.z, kind))
+	var a := Vector2i(floori(_view.position.x / TREE_CELL), floori(_view.position.y / TREE_CELL))
+	var b := Vector2i(floori(_view.end.x / TREE_CELL), floori(_view.end.y / TREE_CELL))
+	var shade := Color(0.2, 0.25, 0.15, 0.25)
+	for cx in range(a.x, b.x + 1):
+		for cz in range(a.y, b.y + 1):
+			for t in _tree_cells.get(Vector2i(cx, cz), []):
+				var tp: Vector3 = t
+				var kind := int(tp.z)
+				var r := _m(2.2 if kind == 0 else (0.9 if kind == 3 else 1.8))
+				var at := _p(tp.x, tp.y)
+				_t.draw_circle(at + Vector2(r * 0.35, r * 0.35), r, shade)
+				_t.draw_circle(at, r, TREE_COL[kind])
+				_t.draw_circle(at - Vector2(r * 0.3, r * 0.3), r * 0.45, (TREE_COL[kind] as Color).lightened(0.15))
 
 
 ## Район вокруг Каменки: поля, леса, озеро, река с мостами, грунтовки, сёла.
@@ -560,7 +643,7 @@ func _draw_region() -> void:
 		_line(PackedVector2Array([_p(side[0], 0), _p(side[1], 0)]), 8.0, ROAD_MAIN)
 	for h in Region.houses():
 		var c: Vector2 = h[0]
-		_rect(c.x - 4.0, c.y - 3.0, c.x + 4.0, c.y + 3.0, HOUSE)
+		_yard(c, float(h[1]) > 1.0, HOUSE, Vector2(9, 7), Vector2(9, 9))
 	# Железная дорога: тёмная линия с белыми шашками
 	var rail := PackedVector2Array()
 	for q in Railway.LINE:
