@@ -113,14 +113,30 @@ func _run() -> void:
 	TM.minutes = 8 * 60.0
 	NM.energy = 100.0
 	GM.money = 0
-	var shift := zone_in(AS, "рейс Каменка")
-	ok(shift != null, "с D и трудовой — берут водителем")
-	shift.activate()
-	ok(GM.money == 500 and TM.hour() >= 9.9, "рейс 2 часа: +500")
-	shift.activate(); NM.energy = 100.0; shift.activate()
+	var job: RouteJob = AS.bus_job
+	ok(job.prompt().contains("рейс Каменка"), "с D и трудовой — берут водителем: " + job.prompt())
+	job.start()
+	ok(job.active and AS.bus.allowed.call(), "рейс взят — за руль ПАЗа можно")
+	ok(job.stops.size() == 3, "три этапа: %s" % ", ".join(job.stops.map(func(st: Array) -> String: return st[0])))
+	# На своей машине до остановки — не считается, только на ПАЗе
+	var C2 = W.get_node("Car")
+	C2._on_enter()
+	C2.global_position = job.stops[0][1] + Vector3(0, 0.3, 0)
+	await frames(3)
+	ok(job.idx == 0, "на «Жигулях» остановка не засчитана")
+	C2.exit_car()
+	await frames(2)
+	AS.bus._on_enter()
+	for st in job.stops:
+		AS.bus.global_position = (st[1] as Vector3) + Vector3(0, 0.3, 0)
+		AS.bus.speed = 0.0
+		await frames(3)
+	ok(not job.active and GM.money == 500, "проехал три этапа на ПАЗе: +500")
+	ok(AS.bus.driver == null and AS.bus.global_position.distance_to(Town.w(AS.BUS_SPOT)) < 1.0, "ПАЗ поставлен на стоянку")
+	AS._bus_shift(); NM.energy = 100.0; AS._bus_shift()
 	ok(GM.money == 1500, "три рейса за день — 1500 грн")
-	shift.activate()
-	ok(GM.money == 1500 and zone_in(AS, "завтра") != null, "четвёртый рейс — нет")
+	AS._bus_shift()
+	ok(GM.money == 1500 and job.prompt().contains("завтра"), "четвёртый рейс — нет")
 
 	print("== Сохранение")
 	var st: Dictionary = PR.save_state()

@@ -109,10 +109,28 @@ func _run() -> void:
 	TM.minutes = 10 * 60.0
 	NM.energy = 80.0
 	var m0: int = GM.money
-	east.shift()
-	ok(GM.money == m0 + east.SHIFT_PAY and east.sto_day == TM.day, "смена на СТО: +%d грн" % east.SHIFT_PAY)
+	# Три этапа: принять машину — найти поломку — сдать
+	east._shift()
+	ok(east.sto_stage == 1 and east.find_child("StoClientCar", true, false) != null, "этап 1: машина клиента на подъёмнике")
+	east._inspect()
+	var LP2: LessonPanel = east.lesson_panel
+	ok(LP2.visible and LP2._question.text.contains("Клиент"), "этап 2: жалоба клиента и три узла на выбор")
+	LP2.answer((LP2.right_index() + 1) % 3)
+	ok(east.sto_stage == 1 and east.sto_miss == 1, "не тот узел — ищи дальше")
+	east._inspect()
+	LP2.answer(LP2.right_index())
+	ok(east.sto_stage == 2, "верный узел — починено")
+	ok(east._shift_prompt().begins_with("E — сдать"), "этап 3: " + east._shift_prompt())
+	east._shift()
+	ok(GM.money == m0 + east.SHIFT_PAY and east.sto_day == TM.day and east.sto_stage == 0, "сдал машину: +%d грн (с ошибкой — без премии)" % east.SHIFT_PAY)
+	await frames(2)
+	ok(east.find_child("StoClientCar", true, false) == null, "клиент уехал")
 	east.shift()
 	ok(GM.money == m0 + east.SHIFT_PAY, "вторая смена за день — нет")
+	TM.day += 1
+	TM.minutes = 10 * 60.0
+	ok(east.shift() == east.SHIFT_PAY + east.STO_BONUS, "без ошибок — с премией +%d" % east.STO_BONUS)
+	TM.day = day0
 	# Ремонт на городском СТО
 	var C = W.get_node("Car")
 	PR.buy_car("car")

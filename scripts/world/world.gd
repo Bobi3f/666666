@@ -939,6 +939,10 @@ func _roof_pattern(b: MeshBuilder, rx: float, rz: float, eave_y: float, ridge_y:
 
 
 ## Забор вокруг двора с калиткой напротив двери.
+## Калитка из двора в огород (x от и до, в координатах дома).
+const GARDEN_GATE := Vector2(-9.6, -8.0)
+
+
 func _yard_fence(b: MeshBuilder, hi: HouseInterior) -> void:
 	var x0 := -11.0
 	var x1 := 11.0
@@ -948,12 +952,16 @@ func _yard_fence(b: MeshBuilder, hi: HouseInterior) -> void:
 	var gate1 := hi.entrance_offset + 1.6
 	# Дорожка от калитки к двери
 	b.box(Vector3(hi.entrance_offset - 0.6, 0, hi.inner_size.z * 0.5 + 0.9), Vector3(hi.entrance_offset + 0.6, 0.025, z1), Color(0.5, 0.44, 0.34))
+	# Огород за домом — тоже за забором; из двора в огород калитка в углу
+	var zg := -14.6
 	var runs := [
 		[Vector3(x0, 0, z1), Vector3(gate0, 0, z1)],
 		[Vector3(gate1, 0, z1), Vector3(x1, 0, z1)],
-		[Vector3(x0, 0, z0), Vector3(x1, 0, z0)],
-		[Vector3(x0, 0, z0), Vector3(x0, 0, z1)],
-		[Vector3(x1, 0, z0), Vector3(x1, 0, z1)],
+		[Vector3(x0, 0, z0), Vector3(GARDEN_GATE.x, 0, z0)],
+		[Vector3(GARDEN_GATE.y, 0, z0), Vector3(x1, 0, z0)],
+		[Vector3(x0, 0, zg), Vector3(x0, 0, z1)],
+		[Vector3(x1, 0, zg), Vector3(x1, 0, z1)],
+		[Vector3(x0, 0, zg), Vector3(x1, 0, zg)],
 	]
 	for r in runs:
 		_fence_run(b, r[0], r[1], hi.wealth)

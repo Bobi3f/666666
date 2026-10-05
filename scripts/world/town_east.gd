@@ -45,11 +45,27 @@ const MECHANIC_QUIZ := [
 	["Синий дым из выхлопной трубы — признак того, что…", "Мотор ест масло", "Бак полный", "Колёса накачаны"],
 ]
 const SHIFT_PAY := 250
+## Смена на СТО: премия, если поломку нашёл с первого раза; где машина
+## клиента (на подъёмнике); жалобы клиентов: [жалоба, верный узел, два неверных].
+const STO_BONUS := 50
+const STO_CAR := Vector3(252.95, 0, 67.0)
+const STO_FAULTS := [
+	["Клиент: «Скрипит и плохо тормозит»", "Тормозные колодки", "Сцепление", "Амортизаторы"],
+	["Клиент: «На кочках стучит спереди, машину бросает»", "Амортизаторы", "Тормозные колодки", "Резина"],
+	["Клиент: «Газую — обороты растут, а не едет, пахнет горелым»", "Сцепление", "Мотор (капремонт)", "Тормозные колодки"],
+	["Клиент: «Дымит сизым и масло ест»", "Мотор (капремонт)", "Сцепление", "Амортизаторы"],
+	["Клиент: «Резина лысая, на мокром ведёт»", "Резина", "Амортизаторы", "Тормозные колодки"],
+]
 const GARAGE_PRICE := 2500
 ## Детские площадки во дворах пятиэтажек.
 const PLAYGROUNDS := [Rect2(52, 85, 30, 13), Rect2(126, 85, 20, 13)]
 
 var sto_day := -1
+## Смена на СТО: 0 — заказа нет, 1 — машина ждёт ремонта, 2 — починена, сдать
+var sto_stage := 0
+var sto_fault := 0
+var sto_miss := 0
+var _client_car: Node3D
 var master_panel: StoPanel
 ## Курсы автослесаря: оплачены ли, сколько уроков пройдено, в какой день был
 ## последний урок или экзамен.
@@ -300,32 +316,136 @@ func open_master() -> void:
 func _shift_prompt() -> String:
 	if not Progress.has_item("mechanic"):
 		return "Мастер СТО: «Без корочки автослесаря не возьму. Курсы — в бурсе»"
+	if sto_stage == 1:
+		return "Мастер СТО: «Машина клиента на подъёмнике — найди, что сломано»"
+	if sto_stage == 2:
+		return "E — сдать машину клиенту: +%d грн" % sto_pay()
 	if sto_day == TimeManager.day:
 		return "Мастер СТО: «На сегодня хватит, приходи завтра»"
 	var h := TimeManager.hour()
 	if h < 8.0 or h >= 18.0:
 		return "СТО работает с 8:00 до 18:00"
-	return "E — смена механиком на СТО: 3 часа, +%d грн" % SHIFT_PAY
+	return "E — смена механиком на СТО: принять машину, починить, сдать — +%d грн" % SHIFT_PAY
 
 
-func shift() -> void:
-	_shift()
+## Смена целиком сразу (для тестов): принять, починить верно, сдать.
+func shift() -> int:
+	if sto_stage == 0:
+		_take_order()
+	if sto_stage == 1:
+		_repair_done(5, "")
+	return _hand_over() if sto_stage == 2 else 0
 
 
+## Мастер: нет заказа — берём, машина починена — сдаём.
 func _shift() -> void:
+	match sto_stage:
+		0: _take_order()
+		2: _hand_over()
+
+
+## Этап 1: принять машину клиента — она встаёт на подъёмник с жалобой.
+func _take_order() -> void:
 	var h := TimeManager.hour()
 	if not Progress.has_item("mechanic") or sto_day == TimeManager.day or h < 8.0 or h >= 18.0:
 		return
 	if NeedsManager.energy < 20.0:
 		GameManager.notify("Слишком устал для смены. Выспись")
 		return
-	sto_day = TimeManager.day
+	sto_stage = 1
+	sto_fault = randi() % STO_FAULTS.size()
+	sto_miss = 0
+	SoundLibrary.play("click", -4.0, 1.2)
+	_show_client()
+	GameManager.notify("%s. Машина на подъёмнике — осмотри и поменяй что нужно" % STO_FAULTS[sto_fault][0])
+
+
+## Этап 2: осмотреть машину — выбрать узел по жалобе клиента.
+func _inspect() -> void:
+	if sto_stage != 1:
+		return
+	if lesson_panel == null:
+		lesson_panel = LessonPanel.new()
+		add_child(lesson_panel)
+	if lesson_panel.visible:
+		return
+	var f: Array = STO_FAULTS[sto_fault]
+	if lesson_panel.done.is_connected(_repair_done):
+		lesson_panel.done.disconnect(_repair_done)
+	lesson_panel.done.connect(_repair_done, CONNECT_ONE_SHOT)
+	lesson_panel.start_quiz("СТО — что менять?", [[f[0], f[1], f[2], f[3]]])
+
+
+func _repair_done(grade: int, _comment: String) -> void:
+	var f: Array = STO_FAULTS[sto_fault]
+	if grade < 5:
+		sto_miss += 1
+		TimeManager.advance(20.0)
+		GameManager.notify("Не то: снял, посмотрел — целое. Клиент ждёт, ищи дальше (премии уже не будет)")
+		return
+	sto_stage = 2
 	SoundLibrary.play("hammer")
-	TimeManager.advance(180.0)
+	TimeManager.advance(150.0)
 	NeedsManager.energy = maxf(NeedsManager.energy - 15.0, 0.0)
-	GameManager.add_money(SHIFT_PAY)
+	_show_client()
+	GameManager.notify("Поменял: %s. Сдай машину мастеру — клиент ждёт" % String(f[1]).to_lower())
+
+
+## Этап 3: сдать машину — оплата, без ошибок — премия. Сколько заплатили.
+func _hand_over() -> int:
+	if sto_stage != 2:
+		return 0
+	var pay := sto_pay()
+	sto_stage = 0
+	sto_day = TimeManager.day
+	_show_client()
+	GameManager.add_money(pay)
+	SoundLibrary.play("cash")
 	QuestManager.event("sto_shift")
-	GameManager.notify("Отработал смену: перебрал два карбюратора и поменял колодки. +%d грн" % SHIFT_PAY)
+	GameManager.notify("Клиент забрал машину: «Как новая!» +%d грн%s" % [pay, " (с премией)" if sto_miss == 0 else ""])
+	return pay
+
+
+func sto_pay() -> int:
+	return SHIFT_PAY + (STO_BONUS if sto_miss == 0 else 0)
+
+
+## Машина клиента на подъёмнике, стрелка и строка задания — по этапу смены.
+func _show_client() -> void:
+	if sto_stage == 0:
+		# Строку и стрелку чистим, только если они были наши
+		if _client_car:
+			_client_car.queue_free()
+			_client_car = null
+			GameManager.challenge_line = ""
+			GameManager.nav_target = Vector3.INF
+			GameManager.nav_label = ""
+		return
+	if _client_car == null:
+		_client_car = Node3D.new()
+		_client_car.position = STO_CAR
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		VehicleModels.npc(b, ["car", "moskvich", "zaz", "volga"][sto_fault % 4], [Color(0.7, 0.15, 0.12), Color(0.2, 0.35, 0.6), Color(0.9, 0.9, 0.88), Color(0.25, 0.45, 0.3)][sto_fault % 4])
+		_client_car.add_child(b.build_mesh())
+		var z := InteractZone.create("", Vector3(3.4, 2.2, 5.6))
+		z.name = "StoClientCar"
+		z.prompt_fn = func() -> String:
+			if sto_stage == 1:
+				return "E — осмотреть машину клиента. %s" % STO_FAULTS[sto_fault][0]
+			return "Машина починена — сдай её мастеру у ворот"
+		z.activated.connect(_inspect)
+		_client_car.add_child(z)
+		add_child(_client_car)
+	var master := Town.w(Vector3(STO.end.x + 1.5, 0, STO.position.y + 4.0))
+	if sto_stage == 1:
+		GameManager.challenge_line = "СТО: машина на подъёмнике — найди поломку (%s)" % String(STO_FAULTS[sto_fault][0]).trim_prefix("Клиент: ")
+		GameManager.nav_target = Town.w(STO_CAR)
+		GameManager.nav_label = "машина клиента"
+	else:
+		GameManager.challenge_line = "СТО: сдай машину мастеру, +%d грн" % sto_pay()
+		GameManager.nav_target = master
+		GameManager.nav_label = "мастер СТО"
 
 
 ## Ряд гаражей у восточной улицы: первый продаётся. В своём гараже машину
@@ -543,9 +663,10 @@ func _plots(b: MeshBuilder, veg: Vegetation) -> void:
 		var x0 := r.position.x + (i % 3) * w
 		var z0 := r.position.y + (i / 3) * d
 		var c := Vector3(x0 + w * 0.5, 0, z0 + d * 0.5)
-		# Штакетник по краю, калитка к улице (+X у крайних — с восточной стороны)
+		# Штакетник по краю, калитка напротив двери домика
 		_fence(b, Vector3(x0 + 0.3, 0, z0 + 0.3), Vector3(x0 + w - 0.3, 0, z0 + 0.3))
-		_fence(b, Vector3(x0 + 0.3, 0, z0 + d - 0.3), Vector3(x0 + w - 0.3, 0, z0 + d - 0.3))
+		_fence(b, Vector3(x0 + 0.3, 0, z0 + d - 0.3), Vector3(c.x - 0.8, 0, z0 + d - 0.3))
+		_fence(b, Vector3(c.x + 0.8, 0, z0 + d - 0.3), Vector3(x0 + w - 0.3, 0, z0 + d - 0.3))
 		_fence(b, Vector3(x0 + 0.3, 0, z0 + 0.3), Vector3(x0 + 0.3, 0, z0 + d - 0.3))
 		_fence(b, Vector3(x0 + w - 0.3, 0, z0 + 0.3), Vector3(x0 + w - 0.3, 0, z0 + d - 0.3))
 		# Домик
@@ -843,11 +964,15 @@ func _label(text: String, p: Vector3, yaw: float, px: float, color: Color) -> La
 
 
 func save_state() -> Dictionary:
-	return {"sto_day": sto_day, "course_paid": course_paid, "lessons": course_lessons, "course_day": course_day}
+	return {"sto_day": sto_day, "sto_stage": sto_stage, "sto_fault": sto_fault, "sto_miss": sto_miss, "course_paid": course_paid, "lessons": course_lessons, "course_day": course_day}
 
 
 func load_state(d: Dictionary) -> void:
 	sto_day = int(d.get("sto_day", -1))
+	sto_stage = int(d.get("sto_stage", 0))
+	sto_fault = int(d.get("sto_fault", 0)) % STO_FAULTS.size()
+	sto_miss = int(d.get("sto_miss", 0))
+	_show_client()
 	course_paid = bool(d.get("course_paid", false))
 	course_lessons = int(d.get("lessons", 0))
 	course_day = int(d.get("course_day", -1))

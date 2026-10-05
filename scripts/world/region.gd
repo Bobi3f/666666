@@ -780,7 +780,7 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
 		d.box(Vector3(-0.9, 2.6, 2.8), Vector3(0.9, 2.7, 4.0), Color(0.4, 0.4, 0.42))
 		for x in [-0.8, 0.7]:
 			d.box(Vector3(x, 0.45, 3.85), Vector3(x + 0.1, 2.6, 3.95), Color(0.85, 0.85, 0.82))
-	# Забор: спереди с калиткой, по бокам до огорода. У брошенного —
+	# Забор: спереди с калиткой, по бокам и сзади огорода. У брошенного —
 	# остатки: пролёты повалены или пропали
 	var fence: Color = [Color(0.55, 0.45, 0.32), Color(0.35, 0.5, 0.35), Color(0.45, 0.55, 0.7)][idx % 3]
 	if kind == "brick":
@@ -809,7 +809,7 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
 				d.box(o + Vector3(-0.04, 0, -0.04), o + Vector3(0.04, hh, 0.04), weed)
 				d.box(o + Vector3(-0.14, hh - 0.25, -0.14), o + Vector3(0.14, hh, 0.14), weed.lightened(0.15))
 	else:
-		for seg in [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(10, 9)], [Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)]]:
+		for seg in [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(10, 9)], [Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)], [Vector2(-10, -14), Vector2(10, -14)]]:
 			_fence(d, seg[0], seg[1], fence)
 		# Огород с грядками
 		d.box(Vector3(-8.5, 0, -14.5), Vector3(8.5, 0.04, -7.5), Color(0.38, 0.28, 0.18))

@@ -1884,3 +1884,33 @@ I — инвентарь: еда, вещи, документы, техника. 
 Телефон	Phone
 «Вещи» — инвентарь, «Телефон» — звонки, такси, эвакуатор, музыка, фото — в верхнем ряду	"Items" — inventory, "Phone" — calls, taxi, tow truck, music, photos — in the top row
 F1 — все клавиши   Esc — меню	F1 — all keys   Esc — menu
+Рейсовый автобус	Route bus
+рейс Каменка — город на ПАЗе, +%d грн	Kamenka — town run on the PAZ, +%d UAH
+на ПАЗе со стоянки автошколы	on the PAZ from the driving school car park
+Пассажиры вышли	Passengers got off
+рейс Каменка — город на ПАЗе: +%d грн (сегодня %d из %d)	Kamenka — town run on the PAZ: +%d UAH (today %d of %d)
+остановка «Каменка»	"Kamenka" bus stop
+городская остановка	town bus stop
+стоянка автошколы — поставить ПАЗ	driving school car park — park the PAZ
+Рейс Каменка — город сделан. Сегодня %d из %d. %s	Kamenka — town run done. Today %d of %d. %s
+Клиент: «Скрипит и плохо тормозит»	Customer: "It squeaks and brakes badly"
+Клиент: «На кочках стучит спереди, машину бросает»	Customer: "It knocks at the front on bumps, the car bounces around"
+Клиент: «Газую — обороты растут, а не едет, пахнет горелым»	Customer: "I step on the gas — the revs go up but it won't go, smells burnt"
+Клиент: «Дымит сизым и масло ест»	Customer: "Blue smoke and it eats oil"
+Клиент: «Резина лысая, на мокром ведёт»	Customer: "The tyres are bald, it slides on wet roads"
+Мастер СТО: «Машина клиента на подъёмнике — найди, что сломано»	Garage master: "The customer's car is on the lift — find what's broken"
+E — сдать машину клиенту: +%d грн	E — hand the car back to the customer: +%d UAH
+E — смена механиком на СТО: принять машину, починить, сдать — +%d грн	E — mechanic shift at the garage: take a car, fix it, hand it back — +%d UAH
+%s. Машина на подъёмнике — осмотри и поменяй что нужно	%s. The car is on the lift — inspect it and replace what's needed
+СТО — что менять?	Garage — what to replace?
+Не то: снял, посмотрел — целое. Клиент ждёт, ищи дальше (премии уже не будет)	Not that: took it off, looked — it's fine. The customer is waiting, keep looking (no bonus now)
+Поменял: %s. Сдай машину мастеру — клиент ждёт	Replaced: %s. Hand the car to the master — the customer is waiting
+Клиент забрал машину: «Как новая!» +%d грн%s	The customer took the car: "Like new!" +%d UAH%s
+(с премией)	(with a bonus)
+E — осмотреть машину клиента. %s	E — inspect the customer's car. %s
+Машина починена — сдай её мастеру у ворот	The car is fixed — hand it to the master at the gate
+СТО: машина на подъёмнике — найди поломку (%s)	Garage: the car is on the lift — find the fault (%s)
+Клиент:	Customer:
+машина клиента	customer's car
+СТО: сдай машину мастеру, +%d грн	Garage: hand the car to the master, +%d UAH
+мастер СТО	garage master

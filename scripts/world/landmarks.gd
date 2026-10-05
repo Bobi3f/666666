@@ -443,7 +443,8 @@ func _junk_fence(d: MeshBuilder, c: Vector3) -> void:
 	for s in [-1.0, 1.0]:
 		var gx: float = s * JUNK_GATE
 		d.box(c + Vector3(gx - 0.12, 0, r.end.y - 0.12), c + Vector3(gx + 0.12, 2.6, r.end.y + 0.12), Color(0.3, 0.3, 0.32), true)
-		d.box(c + Vector3(gx + s * 0.1, 0.1, r.end.y + 0.1), c + Vector3(gx + s * 0.16, 2.1, r.end.y + 3.0), Color(0.42, 0.3, 0.2), true)
+		var lx0 := gx + minf(s * 0.1, s * 0.16)
+		d.box(c + Vector3(lx0, 0.1, r.end.y + 0.1), c + Vector3(lx0 + 0.06, 2.1, r.end.y + 3.0), Color(0.42, 0.3, 0.2), true)
 
 
 ## Вагончик сторожа с вывеской и дядя Гриша у двери: E — продать технику на

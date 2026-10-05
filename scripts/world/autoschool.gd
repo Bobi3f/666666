@@ -5,7 +5,7 @@ extends Node3D
 ## Для любого экзамена нужны паспорт (сельсовет) и медсправка (больница).
 ##
 ## С категорией D и трудовой книжкой берут водителем рейсового автобуса:
-## рейс Каменка — город — Каменка от городской остановки, до трёх в день.
+## рейс на ПАЗе: остановка «Каменка» — городская остановка — стоянка, до трёх в день.
 ##
 ## Стоит к югу от трассы, между Дубравой и школой: кирпичный дом с классом
 ## (внутрь можно зайти — парты, плакаты со знаками, стол инструктора, стенд
@@ -46,7 +46,10 @@ const CATS := [
 ]
 ## Рейс: плата, сколько идёт, сколько рейсов в день и когда ходят.
 const BUS_TRIP_PAY := 500
-const BUS_TRIP_MIN := 120.0
+## Где автобус встаёт в рейсе: на полосе у остановки в Каменке (мир) и у
+## городской (в координатах города) — как остановки в world.gd
+const KAMENKA_STOP := Vector3(-68.5, 0, -3.6)
+const TOWN_STOP := Vector3(32.0, 0, 6.5)
 const BUS_TRIPS_DAY := 3
 const BUS_HOURS := Vector2(6.0, 20.0)
 const BUS_STOP := Vector3(32.0, 0, 13.0)
@@ -54,6 +57,7 @@ const BUS_STOP := Vector3(32.0, 0, 13.0)
 var truck: Vehicle
 var moto: Vehicle
 var bus: Vehicle
+var bus_job: RouteJob
 var car: Vehicle
 ## Какая категория сейчас сдаётся ("" — никакая)
 var exam_cat := ""
@@ -114,11 +118,34 @@ func _ready() -> void:
 	car.allowed = func() -> bool:
 		var ex = get_parent().get("_exam")
 		return ex != null and (ex as DrivingChallenge).active()
-	var shift := InteractZone.create("", Vector3(3.0, 2.2, 2.0))
-	shift.position = BUS_STOP + Vector3(-5.0, 0, 0)
-	shift.prompt_fn = _bus_prompt
-	shift.activated.connect(_bus_shift)
-	add_child(shift)
+	# Рейсовый автобус — работа в три этапа: от диспетчера на ПАЗе до
+	# остановки «Каменка», обратно на городскую остановку, ПАЗ — на стоянку
+	bus_job = RouteJob.new()
+	bus_job.name = "BusJob"
+	bus_job.id = "bus_shift"
+	bus_job.title = "Рейсовый автобус"
+	bus_job.describe = "рейс Каменка — город на ПАЗе, +%d грн" % BUS_TRIP_PAY
+	bus_job.giver = BUS_STOP + Vector3(-5.0, 0, 0)
+	bus_job.giver_size = Vector3(3.0, 2.2, 2.0)
+	bus_job.need_kind = "bus"
+	bus_job.ride_on = "на ПАЗе со стоянки автошколы"
+	bus_job.radius = 7.0
+	bus_job.verb = "Пассажиры вышли"
+	bus_job.open_from = BUS_HOURS.x
+	bus_job.open_to = BUS_HOURS.y
+	bus_job.blocked_fn = _bus_blocked
+	bus_job.describe_fn = func(_o: Array, pay: int) -> String:
+		return "рейс Каменка — город на ПАЗе: +%d грн (сегодня %d из %d)" % [pay, trips_today(), BUS_TRIPS_DAY]
+	bus_job.stops_fn = func() -> Array:
+		return [["остановка «Каменка»", KAMENKA_STOP],
+			["городская остановка", Town.w(TOWN_STOP)],
+			["стоянка автошколы — поставить ПАЗ", Town.w(BUS_SPOT)]]
+	bus_job.pay_fn = func(_s: Array) -> int: return BUS_TRIP_PAY
+	bus_job.finished.connect(_bus_done)
+	add_child(bus_job)
+	# ПАЗ — и на экзамене D, и в рейсе
+	bus.allowed = func() -> bool:
+		return (exam_cat != "" and (_exams[exam_cat] as DrivingChallenge).only_kind == "bus") or bus_job.active
 
 
 func _school_vehicle(kind: String, at: Vector3, node_name: String) -> Vehicle:
@@ -509,17 +536,17 @@ func _process(_delta: float) -> void:
 
 # --- Рейсовый автобус --------------------------------------------------------
 
-func _bus_prompt() -> String:
-	var h := TimeManager.hour()
+## Почему рейс не дают ("" — можно ехать).
+func _bus_blocked() -> String:
 	if not Progress.has_category("D"):
 		return "Автопарк: «Водителем автобуса — с категорией D и трудовой книжкой»"
 	if not Progress.has_doc("work_book"):
 		return "Автопарк: «Категория D есть — неси трудовую книжку из сельсовета»"
 	if trips_today() >= BUS_TRIPS_DAY:
 		return "Автопарк: «Три рейса за день — хватит, завтра приходи»"
-	if h < BUS_HOURS.x or h > BUS_HOURS.y:
-		return "Автопарк: «Рейсы — с 6:00 до 20:00»"
-	return "E — рейс Каменка — город — Каменка: 2 часа, +%d грн (сегодня %d из %d)" % [BUS_TRIP_PAY, trips_today(), BUS_TRIPS_DAY]
+	if NeedsManager.energy < 20.0:
+		return "Автопарк: «Сонный водитель автобуса — беда. Выспись»"
+	return ""
 
 
 ## Сколько рейсов уже сделано сегодня.
@@ -527,18 +554,15 @@ func trips_today() -> int:
 	return _bus_trips if _bus_day == TimeManager.day else 0
 
 
-func _bus_shift() -> void:
-	var h := TimeManager.hour()
-	if not Progress.has_category("D") or not Progress.has_doc("work_book") or trips_today() >= BUS_TRIPS_DAY or h < BUS_HOURS.x or h > BUS_HOURS.y:
-		return
-	if NeedsManager.energy < 20.0:
-		GameManager.notify("Автопарк: «Сонный водитель автобуса — беда. Выспись»")
-		return
+## Рейс сделан: ПАЗ отгоняем на стоянку, водитель устал.
+func _bus_done(_ok: bool) -> void:
 	_bus_trips = trips_today() + 1
 	_bus_day = TimeManager.day
-	TimeManager.advance(BUS_TRIP_MIN)
 	NeedsManager.rest(-8.0)
-	GameManager.add_money(BUS_TRIP_PAY)
-	SoundLibrary.play("cash")
-	QuestManager.event("bus_shift")
-	GameManager.notify("Рейс Каменка — город — Каменка: +%d грн. Сегодня %d из %d. %s" % [BUS_TRIP_PAY, _bus_trips, BUS_TRIPS_DAY, TimeManager.clock_text()])
+	_park(bus)
+	GameManager.notify("Рейс Каменка — город сделан. Сегодня %d из %d. %s" % [_bus_trips, BUS_TRIPS_DAY, TimeManager.clock_text()])
+
+
+## Рейс целиком сразу — для тестов.
+func _bus_shift() -> void:
+	bus_job.complete_all()

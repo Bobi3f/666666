@@ -49,6 +49,12 @@ var describe_fn: Callable
 ## Посылки: сколько коробок везём (видно на мопеде или в машине) и сколько
 ## оставляем у каждой точки; 0 — оставляем всё на последней.
 var cargo := 0
+## Только на этой технике (kind машины, "" — на любой своей): рейс — на ПАЗе.
+var need_kind := ""
+## Как сказать, на чём ехать, если техника своя особая («на ПАЗе …»).
+var ride_on := ""
+## () -> String: почему сейчас нельзя взять работу ("" — можно).
+var blocked_fn: Callable
 var drop_each := 0
 
 var active := false
@@ -143,6 +149,9 @@ func prompt() -> String:
 		return "%s: сначала закончи «%s»" % [title, current.title]
 	if not is_open():
 		return "%s: работа с %d:00 до %d:00" % [title, int(open_from), int(open_to)]
+	var why := _blocked()
+	if not why.is_empty():
+		return why
 	if describe_fn.is_valid():
 		var o := offer()
 		if not o.is_empty():
@@ -157,8 +166,12 @@ func offer() -> Array:
 	return _offer
 
 
+func _blocked() -> String:
+	return String(blocked_fn.call()) if blocked_fn.is_valid() else ""
+
+
 func start() -> void:
-	if active or (current != null and current != self) or not is_open():
+	if active or (current != null and current != self) or not is_open() or not _blocked().is_empty():
 		return
 	stops = offer()
 	_offer = []
@@ -170,7 +183,7 @@ func start() -> void:
 	active = true
 	current = self
 	SoundLibrary.play("click", -4.0, 1.2)
-	var how := "пешком" if mode == "foot" else "на мопеде или машине"
+	var how := "пешком" if mode == "foot" else (ride_on if not ride_on.is_empty() else "на мопеде или машине")
 	GameManager.notify("%s: сначала — %s (%s), плата %d грн. Стрелка покажет дорогу" % [title, stops[0][0], how, pay])
 	_show_stop()
 
@@ -230,7 +243,10 @@ func _reset_rider() -> void:
 func _mover() -> Node3D:
 	if mode == "foot":
 		return GameManager.player as Node3D if GameManager.vehicle == null else null
-	return GameManager.vehicle as Node3D
+	var v := GameManager.vehicle as Vehicle
+	if v and not need_kind.is_empty() and v.kind != need_kind:
+		return null
+	return v
 
 
 func _process(delta: float) -> void:
@@ -261,6 +277,14 @@ func _process(delta: float) -> void:
 	if m is Vehicle:
 		slow = (m as Vehicle).speed_kmh() < 6.0
 	if d < radius and slow:
+		_reach()
+
+
+## Пройти все точки сразу — для тестов и долгой игры.
+func complete_all() -> void:
+	if not active:
+		start()
+	while active:
 		_reach()
 
 
