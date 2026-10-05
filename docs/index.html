@@ -124,6 +124,11 @@
   #play{background:#d0140f;color:#fff;border-radius:3px;text-transform:uppercase;font-style:italic}
   .bar{background:#2a2b2e;border-radius:0}.bar>i{background:#d0140f}
   #fs{border-color:#d0140f}
+  /* Поддержать игру: тёмные кнопки с красной рамкой — не спорят с «Играть» */
+  .donate{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0}
+  .donate span{color:#bdbdbd;font-size:15px}
+  .donate a{flex:1 1 140px;text-align:center;padding:8px 12px;border:2px solid #d0140f;border-radius:3px;color:#fff;text-decoration:none;font-weight:700;font-size:15px;background:#1d1e20}
+  .donate a:hover,.donate a:focus-visible{background:#d0140f;outline:none}
 </style>
 
 </head>
@@ -138,6 +143,7 @@
       </div>
       <button id="play" type="button">Играть</button>
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
+      <p id="donate" class="donate" hidden><span>♥ Поддержать игру:</span></p>
       <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
       <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
         кнопки действий — справа внизу, «Меню» — справа вверху. В машине — руль, который крутишь пальцем, и педали, как в Car Parking. Лучше держать телефон горизонтально.</p>
@@ -167,6 +173,20 @@
   // uk, be, для остальных — английский. В игре язык меняется в меню.
   const EN = !/^(ru|uk|be)\b/i.test(navigator.language || "ru");
   function L(ru, en) { return EN ? en : ru; }
+  // Поддержать игру — те же ссылки, что в меню игры (pause_menu.gd → DONATE).
+  // Пустая ссылка — кнопки нет; нет ни одной — нет и строки.
+  const DONATE = [["PayPal", ""], ["Buy Me a Coffee", ""]];
+  (function () {
+    const row = document.getElementById("donate");
+    DONATE.forEach(function (d) {
+      if (!d[1]) return;
+      const a = document.createElement("a");
+      a.href = d[1]; a.target = "_blank"; a.rel = "noopener"; a.textContent = d[0];
+      row.appendChild(a);
+      row.hidden = false;
+    });
+    if (EN) row.querySelector("span").textContent = "♥ Support the game:";
+  })();
   if (EN) {
     document.documentElement.lang = "en";
     document.querySelector(".sub").textContent = "Life in Kamenka in first gear. From a crooked hut to master of the whole district: your own garage, a wedding with Olya, a route bus.";

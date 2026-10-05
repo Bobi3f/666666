@@ -99,7 +99,7 @@ func _build() -> void:
 	var pages := VBoxContainer.new()
 	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(pages)
-	for pn in ["main", "settings", "controls", "confirm"]:
+	for pn in ["main", "settings", "controls", "confirm", "support"]:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override("separation", 10)
 		page.custom_minimum_size = Vector2(400, 0)
@@ -112,6 +112,7 @@ func _build() -> void:
 	_build_settings(_pages.settings)
 	_build_controls(_pages.controls)
 	_build_confirm(_pages.confirm)
+	_build_support(_pages.support)
 
 
 ## Кнопки «Спорт»: красные, при наведении и фокусе — белая рамка, выбранная
@@ -145,6 +146,11 @@ func _theme() -> Theme:
 
 
 const ISSUES_URL := "https://github.com/Bobi3f/666666/issues/new"
+## Поддержать игру: [подпись, ссылка]. Пустая ссылка — кнопки нет; нет ни
+## одной — нет и пункта «Поддержать игру». Те же ссылки — в docs/index.html.
+const DONATE := [["PayPal", ""], ["Buy Me a Coffee", ""]]
+## Ссылки, которые есть на самом деле (тест подставляет свои).
+static var donate_links: Array = DONATE.filter(func(d: Array) -> bool: return not String(d[1]).is_empty())
 
 var _slot_buttons: Array[Button] = []
 ## Кнопки языка в меню и в настройках — горят одинаково
@@ -193,6 +199,8 @@ func _build_main(box: VBoxContainer) -> void:
 			_button(row, "Управление", func() -> void: _show("controls"))]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_lang_row(box)
+	if not donate_links.is_empty():
+		_button(box, "Поддержать игру", func() -> void: _show("support"))
 	_button(box, "Сообщить об ошибке", _report_bug)
 	# В браузере игра не может закрыть вкладку — кнопки выхода там нет
 	if not OS.has_feature("web"):
@@ -400,6 +408,20 @@ func _edit_touch() -> void:
 		return
 	_close()
 	tc.start_edit()
+
+
+## «Поддержать игру»: пара слов и по кнопке на каждую ссылку — открывается
+## в браузере, игра остаётся на паузе.
+func _build_support(box: VBoxContainer) -> void:
+	var q := Label.new()
+	q.text = "Игру делает один человек.\nЕсли нравится — можно угостить автора кофе."
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(q)
+	for d in donate_links:
+		var url: String = d[1]
+		var b := _button(box, String(d[0]), func() -> void: OS.shell_open(url))
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_button(box, "Назад", func() -> void: _show("main"), true)
 
 
 func _build_confirm(box: VBoxContainer) -> void:

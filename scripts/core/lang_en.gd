@@ -1768,4 +1768,7 @@ const EN := {
 	"ул. Садовая": "Sadovaya St",
 	"ул. Ленина": "Lenina St",
 	"пр. Мира": "Mira Ave",
+	"Поддержать игру": "Support the game",
+	"Игру делает один человек.": "The game is made by one person.",
+	"Если нравится — можно угостить автора кофе.": "If you like it, you can buy the author a coffee.",
 }

@@ -11,7 +11,7 @@ LOGS="${TEST_LOGS:-/tmp/firstgear-tests}"
 mkdir -p "$LOGS"
 
 # Наборы без экрана (headless) и с экраном (сенсорное управление, меню)
-HEADLESS="check_scripts test_vehicles test_driving test_life test_mvp test_round3 test_salon test_village test_seasons test_polish test_gai test_tutorial_save test_roads_town test_region test_jobs test_police test_club test_docs test_town_south test_traffic test_school test_path test_jobs_route test_boot test_perf_lod test_walk_in test_chase test_football test_market test_girl test_autoschool test_izh test_turn test_town_east test_smooth test_old_save test_trees_roads test_story test_lang test_soak"
+HEADLESS="check_scripts test_vehicles test_driving test_life test_mvp test_round3 test_salon test_village test_seasons test_polish test_gai test_tutorial_save test_roads_town test_region test_jobs test_police test_club test_docs test_town_south test_traffic test_school test_path test_jobs_route test_boot test_perf_lod test_walk_in test_chase test_football test_market test_girl test_autoschool test_izh test_turn test_town_east test_smooth test_old_save test_trees_roads test_story test_lang test_donate test_soak"
 SCREEN="test_touch test_menu_pad test_options test_view test_layout"
 
 run_one() {
@@ -21,7 +21,7 @@ run_one() {
 	case " $SCREEN " in *" $t "*) screen=1 ;; esac
 	case "$t" in
 		test_touch) args="--touch" ;;
-		test_menu_pad|test_boot) args="" ;;
+		test_menu_pad|test_boot|test_donate) args="" ;;
 		test_options|test_view|test_layout) args="--touch --no-menu" ;;
 	esac
 	if [ "$screen" = 1 ]; then
