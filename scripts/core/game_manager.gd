@@ -8,6 +8,9 @@ signal message(text: String)
 const START_MONEY := 1500
 
 var money := START_MONEY
+## Последние сообщения: [«День N, ЧЧ:ММ», текст] — их показывает телефон.
+var history: Array = []
+const HISTORY_MAX := 60
 var player: Node3D
 ## Жигули игрока и мотоцикл; vehicle — то, на чём игрок едет сейчас.
 var car: Node3D
@@ -78,6 +81,9 @@ func spend(amount: int) -> bool:
 
 
 func notify(text: String) -> void:
+	history.append(["День %d, %s" % [TimeManager.day, TimeManager.clock_text()], text])
+	if history.size() > HISTORY_MAX:
+		history.pop_front()
 	message.emit(touch_text(text))
 
 

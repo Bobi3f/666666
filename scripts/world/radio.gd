@@ -29,6 +29,8 @@ const STATIONS := [
 
 ## Какая станция выбрана: −1 — выключено
 var station := -1
+## Включено с телефона: играет и пешком
+var phone := false
 var _player: AudioStreamPlayer
 var _streams := {}  # номер станции → AudioStream
 ## Что собираем сейчас: номер станции, события, буфер, байты
@@ -57,6 +59,7 @@ const NEWS := [
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("radio")
 	_rng.seed = 91
 	_player = AudioStreamPlayer.new()
 	add_child(_player)
@@ -87,6 +90,21 @@ func toggle() -> void:
 	else:
 		GameManager.notify("Радио: «%s» — настраивается…" % STATIONS[station].name)
 		_start_build(station)
+	_sync()
+
+
+## Музыка с телефона: станция i играет и пешком.
+func play_on_phone(i: int) -> void:
+	station = i
+	phone = true
+	if not _streams.has(i):
+		_start_build(i)
+	_sync()
+
+
+func stop_phone() -> void:
+	phone = false
+	station = -1
 	_sync()
 
 
@@ -127,7 +145,7 @@ func _process(_delta: float) -> void:
 
 ## Играть нужную станцию, если сидим в машине, иначе молчать.
 func _sync() -> void:
-	var want := station >= 0 and GameManager.vehicle != null and _streams.has(station)
+	var want := station >= 0 and (GameManager.vehicle != null or phone) and _streams.has(station)
 	if want:
 		if _player.stream != _streams[station] or not _player.playing:
 			var restart: bool = _player.stream != _streams[station]

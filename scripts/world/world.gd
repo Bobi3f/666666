@@ -263,6 +263,12 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
 	# Журнал — после меню: Esc при открытом журнале закрывает журнал, а не открывает паузу
 	add_child(preload("res://scripts/ui/journal.gd").new())
+	var inv := InventoryPanel.new()
+	inv.name = "Inventory"
+	add_child(inv)
+	var phone := PhoneUI.new()
+	phone.name = "Phone"
+	add_child(phone)
 	add_child(preload("res://scripts/ui/gamepad.gd").new())
 	# Новая игра — короткое обучение; в загруженной игре оно само уберётся
 	if not Progress.tutorial_done:
@@ -1082,7 +1088,9 @@ func _front_garden(b: MeshBuilder, hi: HouseInterior) -> void:
 			var h := _vrng.randf_range(0.25, 0.6)
 			var zz := _vrng.randf_range(z0 + 0.1, z1 - 0.15)
 			if poor:
-				b.box_rot(Vector3(x, h * 0.5, zz), Vector3(0.35, h, 0.3), _vrng.randf() * TAU, Color(0.22, 0.38, 0.16))
+				# У бедного дома палисадник пустой: бурьян из коробок смотрелся
+				# кубиками. Число из генератора — как раньше, для остального
+				_vrng.randf()
 			else:
 				b.box(Vector3(x - 0.02, 0.08, zz - 0.02), Vector3(x + 0.02, h, zz + 0.02), Color(0.2, 0.4, 0.15))
 				var c: Color = flowers[_vrng.randi() % flowers.size()]
@@ -1161,16 +1169,19 @@ func _village_paths(b: MeshBuilder, glow: MeshBuilder) -> void:
 		x += 38.0
 
 
-## Колеи и лужи на грунтовке — видно, что по ней ездят.
+## Колеи на грунтовке — видно, что по ней ездят.
 func _street_ruts(b: MeshBuilder) -> void:
 	var rut := Color(0.38, 0.32, 0.23)
 	for z in [-41.0, -39.3]:
 		b.box(Vector3(-164, 0.04, z), Vector3(-58, 0.043, z + 0.5), rut)
+	# Сухих луж-прямоугольников больше нет: смотрелись плитами (в дождь лужи
+	# свои). Числа из генератора берём как раньше — всё, что строится после,
+	# стоит на прежних местах
 	for i in 9:
-		var x := _vrng.randf_range(-160.0, -62.0)
-		var z: float = [-41.0, -39.3][i % 2] + _vrng.randf_range(-0.2, 0.3)
-		var l := _vrng.randf_range(1.0, 2.6)
-		b.box(Vector3(x, 0.043, z), Vector3(x + l, 0.047, z + _vrng.randf_range(0.5, 0.9)), Color(0.36, 0.4, 0.44))
+		_vrng.randf_range(-160.0, -62.0)
+		_vrng.randf_range(-0.2, 0.3)
+		_vrng.randf_range(1.0, 2.6)
+		_vrng.randf_range(0.5, 0.9)
 
 
 ## Деревянный столб с железным плафоном; лампа горит в сумерках.

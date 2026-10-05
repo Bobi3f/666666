@@ -77,13 +77,6 @@ func block(x0: float, z0: float, x1: float, z1: float) -> void:
 	_blocked.append(Rect2(minf(x0, x1) + shift.x, minf(z0, z1) + shift.z, absf(x1 - x0), absf(z1 - z0)))
 
 
-func is_blocked(x: float, z: float) -> bool:
-	for r in _blocked:
-		if r.has_point(Vector2(x, z)):
-			return true
-	return false
-
-
 func build() -> void:
 	_rng.seed = 90210
 	var models := {
@@ -424,8 +417,7 @@ func _mid_apple() -> ArrayMesh:
 func _mid_bush() -> ArrayMesh:
 	var b := MeshBuilder.new()
 	var leaf := Color(0.22, 0.4, 0.17)
-	b.box_rot(Vector3(0, 0.5, 0), Vector3(1.5, 0.9, 1.4), 0.3, leaf)
-	b.box_rot(Vector3(0.1, 0.8, 0.05), Vector3(1.0, 0.6, 1.0), 1.0, leaf.lightened(0.08))
+	PersonModel.ball(b, Vector3(0, 0.5, 0), Vector3(0.8, 0.55, 0.75), leaf, 3, 6)
 	return b.build_array_mesh()
 
 
@@ -533,9 +525,12 @@ func _bush_mesh() -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4
 	var leaf := Color(0.22, 0.4, 0.17)
-	for i in 7:
-		var p := Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(0.35, 0.8), rng.randf_range(-0.6, 0.6))
-		b.box_rot(p, Vector3(0.8, 0.7, 0.8) * rng.randf_range(0.7, 1.1), rng.randf() * TAU, leaf.lightened(rng.randf() * 0.12))
+	# Округлые шапки листвы, а не кубики
+	for i in 4:
+		var a := TAU * i / 4.0 + rng.randf_range(-0.4, 0.4)
+		var p := Vector3(cos(a) * 0.35, rng.randf_range(0.45, 0.65), sin(a) * 0.35)
+		var r := rng.randf_range(0.45, 0.6)
+		PersonModel.ball(b, p, Vector3(r, r * 0.85, r), leaf.lightened(rng.randf() * 0.12), 3, 7)
 	return b.build_array_mesh()
 
 

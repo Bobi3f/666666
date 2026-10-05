@@ -87,9 +87,26 @@ func ice_factor() -> float:
 	return 1.0 - snow * 0.3
 
 
+## Сколько минут продержится нынешняя погода.
+func minutes_left() -> float:
+	return maxf(_minutes_left, 0.0)
+
+
+## Какая погода будет следующей — для прогноза в телефоне. Тот же генератор,
+## что у _pick_next, только копия: прогноз сбывается.
+func forecast() -> int:
+	var r := RandomNumberGenerator.new()
+	r.seed = _rng.seed
+	r.state = _rng.state
+	return _choose(r.randf())
+
+
 func _pick_next() -> void:
 	# Чаще ясно, дождь — примерно раз в сутки
-	var r := _rng.randf()
+	set_kind(_choose(_rng.randf()), _rng.randf_range(120.0, 360.0))
+
+
+func _choose(r: float) -> int:
 	var next := Kind.CLEAR
 	if r > 0.5:
 		next = Kind.CLOUDY
@@ -100,7 +117,7 @@ func _pick_next() -> void:
 		next = Kind.STORM
 	if r > 0.9:
 		next = Kind.FOG
-	set_kind(next, _rng.randf_range(120.0, 360.0))
+	return next
 
 
 ## Идёт дождь (или гроза) — мокро, грязь, в колхозе не работают.

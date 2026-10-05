@@ -72,7 +72,7 @@ func _ready() -> void:
 	hint.visible = not GameManager.touch_mode
 	hint.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	hint.offset_left = -230
-	hint.text = "F1 — управление   Esc — меню\nJ — журнал   M — карта\nF5 — сохранить  F9 — загрузить"
+	hint.text = "F1 — все клавиши   Esc — меню"
 	# Прицел-точка
 	var dot := ColorRect.new()
 	dot.color = Color(1, 1, 1, 0.7)
@@ -239,16 +239,3 @@ func _draw_needs() -> void:
 		_needs.draw_string(font, c + Vector2(-cw * 0.5, RING_R + 11.0), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.85))
 
 
-func _bar_node(pos: Vector2, color: Color) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.position = pos
-	bar.size = Vector2(130, 14)
-	bar.show_percentage = false
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0, 0, 0, 0.5)
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = color
-	bar.add_theme_stylebox_override("background", bg)
-	bar.add_theme_stylebox_override("fill", fill)
-	add_child(bar)
-	return bar

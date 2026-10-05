@@ -153,7 +153,7 @@ const DONATE := [["PayPal", ""], ["Buy Me a Coffee", ""]]
 static var donate_links: Array = DONATE.filter(func(d: Array) -> bool: return not String(d[1]).is_empty())
 
 var _slot_buttons: Array[Button] = []
-## Кнопки языка в меню и в настройках — горят одинаково
+## Кнопки языка на главной странице меню
 var _lang_buttons: Array[Button] = []
 
 
@@ -299,11 +299,7 @@ func _build_settings(box: VBoxContainer) -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(380, 0)
 	box.add_child(hint)
-	var lang_label := Label.new()
-	lang_label.text = "Язык · Language"
-	lang_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	box.add_child(lang_label)
-	_lang_row(box)
+	# Язык — на главной странице меню, здесь его не повторяем
 	# Размер текста и кнопок
 	var ts_label := Label.new()
 	ts_label.text = "Размер текста"
@@ -535,8 +531,10 @@ func _controls_bbcode() -> String:
 	t += "  Район: по трассе и грунтовкам — двенадцать сёл: Озерцово, Первомай, Тошики, Заречье,\n    Сосновка, Красный Яр, Берёзовка, Лужки, а по краям — Горки, Заозерье, Степное, Малиновка; за Быстрой — мосты. Районный автобус — у остановки Каменки, каждый час\n    в другое село. У озера за Озерцово — рыбалка\n"
 	if not GameManager.touch_mode:
 		t += "  M — карта (ещё раз — весь район), J — журнал, F5 — сохранить, F9 — загрузить, F1 — подсказка\n"
+		t += "  I — инвентарь: еда, вещи, документы, техника. P — телефон: звонки, такси, эвакуатор, музыка, фото\n"
 	else:
 		t += "  «Карта» и «Журнал» — справа вверху; «Карта» ещё раз — весь район\n"
+		t += "  «Вещи» — инвентарь, «Телефон» — звонки, такси, эвакуатор, музыка, фото — в верхнем ряду\n"
 		t += "  Кнопки и руль можно переставить и сделать крупнее — «Настроить кнопки под себя» ниже\n"
 	return t
 
