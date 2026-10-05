@@ -20,12 +20,21 @@ const KINDS := [
 	["apiary", "Пасека деда Степана", 6, 22.0],
 	["dairy", "Молочная ферма", 7, 40.0],
 	["camp", "Пионерлагерь «Звёздочка»", 8, 48.0],
-	["junkyard", "Свалка старых машин", 9, 30.0],
+	["junkyard", "Свалка старых машин", 9, 34.0],
 	["elevator", "Элеватор", 10, 26.0],
 	["pier", "Рыбацкие мостки", 11, 10.0],
 ]
 
 static var _sites: Array = []
+
+## Свалка: забор (x, z от центра), полуширина ворот, вагончик сторожа, часы.
+const JUNK_YARD := Rect2(-26, -15, 52, 35)
+const JUNK_GATE := 3.5
+const JUNK_HUT := Vector3(-19.0, 0, 15.5)
+const JUNK_OPEN := 7
+const JUNK_CLOSE := 20
+const Villagers := preload("res://scripts/world/villagers.gd")
+var junk_panel: JunkPanel
 
 var _world: Node3D
 var _blades: Node3D
@@ -395,10 +404,121 @@ func _junkyard(d: MeshBuilder, c: Vector3) -> void:
 	bus.rotation = Vector3(0, 0.6, 0.05)
 	add_child(bus)
 	d.add_collider(c + Vector3(17, 0, 6), c + Vector3(23, 3, 14))
+	# Покрышки — у задней стенки, перед воротами свободно для своей машины
 	for k in 4:
-		var p := c + Vector3(randf_range(-20, 20), 0, randf_range(8, 14))
+		var p := c + Vector3(-12.0 + k * 7.0, 0, -12.5)
 		for j in 6:
 			d.box(p + Vector3(-0.38, j * 0.24, -0.38), p + Vector3(0.38, j * 0.24 + 0.22, 0.38), Color(0.08, 0.08, 0.09))
+	_junk_fence(d, c)
+	_junk_hut(d, c)
+
+
+## Территория свалки: забор из ржавого профлиста по кругу, ворота к табличке.
+func _junk_fence(d: MeshBuilder, c: Vector3) -> void:
+	var r := JUNK_YARD
+	# Внутри — утоптанная земля в масляных пятнах
+	d.box(c + Vector3(r.position.x, 0.0, r.position.y), c + Vector3(r.end.x, 0.03, r.end.y + 4.0), Color(0.4, 0.35, 0.28))
+	for i in 6:
+		var o := c + Vector3(-14.0 + i * 5.5, 0.03, 9.0 + float(i % 3) * 3.0)
+		d.box(o + Vector3(-1.0, 0, -0.7), o + Vector3(1.0, 0.035, 0.7), Color(0.18, 0.16, 0.14))
+	var sheet := [Color(0.45, 0.44, 0.42), Color(0.36, 0.27, 0.22), Color(0.38, 0.4, 0.38)]
+	var k := 0
+	# Вдоль x — задняя стенка и передняя с проёмом ворот посередине
+	for z in [r.position.y, r.end.y]:
+		var x := r.position.x
+		while x < r.end.x - 0.01:
+			var x1 := minf(x + 2.0, r.end.x)
+			if not (z == r.end.y and x1 > -JUNK_GATE and x < JUNK_GATE):
+				d.box(c + Vector3(x, 0, z - 0.05), c + Vector3(x1, 2.2 - 0.1 * (k % 2), z + 0.05), sheet[k % 3], true)
+			x = x1
+			k += 1
+	for x in [r.position.x, r.end.x]:
+		var z := r.position.y
+		while z < r.end.y - 0.01:
+			var z1 := minf(z + 2.0, r.end.y)
+			d.box(c + Vector3(x - 0.05, 0, z), c + Vector3(x + 0.05, 2.2 - 0.1 * (k % 2), z1), sheet[k % 3], true)
+			z = z1
+			k += 1
+	# Столбы ворот и распахнутые створки
+	for s in [-1.0, 1.0]:
+		var gx: float = s * JUNK_GATE
+		d.box(c + Vector3(gx - 0.12, 0, r.end.y - 0.12), c + Vector3(gx + 0.12, 2.6, r.end.y + 0.12), Color(0.3, 0.3, 0.32), true)
+		d.box(c + Vector3(gx + s * 0.1, 0.1, r.end.y + 0.1), c + Vector3(gx + s * 0.16, 2.1, r.end.y + 3.0), Color(0.42, 0.3, 0.2), true)
+
+
+## Вагончик сторожа с вывеской и дядя Гриша у двери: E — продать технику на
+## лом или купить б/у запчасти (JunkPanel).
+func _junk_hut(d: MeshBuilder, c: Vector3) -> void:
+	var h := c + JUNK_HUT
+	d.box(h + Vector3(-2.6, 0.3, -1.2), h + Vector3(2.6, 2.7, 1.2), Color(0.32, 0.42, 0.5), true)
+	d.box(h + Vector3(-2.75, 2.7, -1.35), h + Vector3(2.75, 2.85, 1.35), Color(0.3, 0.3, 0.3))
+	for x in [-2.2, 2.0]:
+		d.box(h + Vector3(x, 0, -1.0), h + Vector3(x + 0.2, 0.3, 1.0), Color(0.2, 0.2, 0.2))
+	d.box(h + Vector3(0.6, 0.35, 1.2), h + Vector3(1.5, 2.3, 1.23), Color(0.45, 0.32, 0.2))
+	d.box(h + Vector3(-1.9, 1.3, 1.2), h + Vector3(-0.4, 2.2, 1.23), Color(0.6, 0.75, 0.85))
+	d.box(h + Vector3(0.4, 0.0, 1.2), h + Vector3(1.7, 0.32, 1.9), Color(0.5, 0.5, 0.48))
+	# Вывеска над вагончиком
+	d.box(h + Vector3(-2.4, 2.9, 0.9), h + Vector3(2.4, 3.75, 0.98), Color(0.95, 0.85, 0.25))
+	for x in [-2.0, 2.0]:
+		d.box(h + Vector3(x - 0.04, 2.85, 0.9), h + Vector3(x + 0.04, 2.95, 0.98), Color(0.3, 0.3, 0.3))
+	var l := Label3D.new()
+	l.text = "ПРИЁМ ЛОМА\nЗАПЧАСТИ Б/У"
+	l.font_size = 96
+	l.pixel_size = 0.0034
+	l.outline_size = 0
+	l.modulate = Color(0.12, 0.1, 0.08)
+	l.position = h + Vector3(0, 3.32, 0.99)
+	add_child(l)
+	# Сторож
+	var pb := MeshBuilder.new()
+	pb.ground_shade = false
+	Villagers.person_model(pb, Color(0.3, 0.35, 0.25), Color(0.2, 0.2, 0.22), false, false)
+	var who := pb.build_mesh()
+	who.position = h + Vector3(2.4, 0, 2.2)
+	add_child(who)
+	var zone := InteractZone.create("", Vector3(3.0, 2.2, 3.0))
+	zone.name = "JunkZone"
+	zone.position = h + Vector3(2.4, 0, 2.6)
+	zone.prompt_fn = junk_prompt
+	zone.activated.connect(open_junk)
+	add_child(zone)
+
+
+func junk_prompt() -> String:
+	var hr := TimeManager.hour()
+	if hr < JUNK_OPEN or hr >= JUNK_CLOSE:
+		return "Дядя Гриша: «Закрыто! Приходи с %d утра до %d вечера»" % [JUNK_OPEN, JUNK_CLOSE]
+	return "E — дядя Гриша: продать машину или мотоцикл, б/у запчасти"
+
+
+## Своя техника за воротами свалки.
+func junk_vehicles() -> Array:
+	var at := junk_center() + Vector3(0, 0, JUNK_YARD.get_center().y)
+	var out := []
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		var car := v as Vehicle
+		if car and car.owned() and not car.school and car.global_position.distance_to(at) < 30.0:
+			out.append(car)
+	return out
+
+
+func open_junk() -> void:
+	var hr := TimeManager.hour()
+	if hr < JUNK_OPEN or hr >= JUNK_CLOSE:
+		return
+	if junk_panel == null:
+		junk_panel = JunkPanel.new()
+		add_child(junk_panel)
+	SoundLibrary.play("click", -4.0)
+	junk_panel.open("junk", junk_vehicles())
+
+
+## Центр свалки в мире.
+static func junk_center() -> Vector3:
+	for st in sites():
+		if st[2] == "junkyard":
+			return Vector3((st[0] as Vector2).x, 0, (st[0] as Vector2).y)
+	return Vector3.ZERO
 
 
 func _elevator(b: MeshBuilder, c: Vector3) -> void:

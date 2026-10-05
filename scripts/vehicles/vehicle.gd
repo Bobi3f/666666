@@ -208,6 +208,8 @@ var _warned_parts := {}
 var tires := false
 ## Цена в автосалоне и короткое описание; 0 — своя с начала игры.
 var price := 0
+## Где стояла на продаже: проданную на свалку возвращаем сюда (sell_back).
+var sale_xf := Transform3D()
 ## Учебная машина автошколы: сесть можно, только пока allowed() — на экзамене.
 var school := false
 var allowed: Callable
@@ -1250,6 +1252,21 @@ func speed_kmh() -> float:
 
 func owned() -> bool:
 	return price == 0 or Progress.owns(kind)
+
+
+## Продана на свалку: снова не своя и стоит там, где её продавали, — с
+## табличкой «ПРОДАЁТСЯ», можно купить заново.
+func sell_back() -> void:
+	if driver:
+		_drop_driver()
+	Progress.owned_cars.erase(kind)
+	engine_on = false
+	rpm = 0.0
+	gear = 0
+	speed = 0.0
+	lateral = 0.0
+	velocity = Vector3.ZERO
+	global_transform = sale_xf
 
 
 ## Какие права нужны: "" — никаких (мопед, трактор колхоза).

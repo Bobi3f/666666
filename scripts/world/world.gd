@@ -2500,6 +2500,7 @@ func _spawn_salon_cars() -> void:
 		v.global_position = Town.w(entry[3])
 		if entry.size() > 4:
 			v.rotation.y = entry[4]
+		v.sale_xf = v.global_transform
 		v.fuel = v.tank() * 0.5
 
 
@@ -3289,6 +3290,7 @@ func _spawn_player_and_car() -> void:
 	# Жигули на улице перед домом, носом вдоль улицы
 	car.global_position = Vector3(PLAYER_HOUSE.x + 4.0, 0.1, -39.5)
 	car.rotation.y = -PI / 2.0
+	car.sale_xf = car.global_transform
 	# Ява во дворе у соседа — продаётся
 	var moto := Vehicle.new()
 	moto.kind = "moto"
@@ -3300,3 +3302,4 @@ func _spawn_player_and_car() -> void:
 	_spawn_salon_cars()
 	moto.global_position = MOTO_SPOT + Vector3(0, 0.1, 0)
 	moto.rotation.y = PI
+	moto.sale_xf = moto.global_transform
