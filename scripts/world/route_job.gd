@@ -84,7 +84,8 @@ func _ready() -> void:
 	_sign.modulate = Color(1.0, 0.8, 0.3)
 	_sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_sign.position = giver + Vector3(0, sign_height, 0)
-	_sign.visibility_range_end = 70.0
+	# Крупную табличку на улице видно издали, мелкую в помещении — вблизи
+	_sign.visibility_range_end = clampf(64.0 * sign_pixel * 400.0, 70.0, 150.0)
 	add_child(_sign)
 	_beacon = _make_beacon()
 	_beacon.visible = false

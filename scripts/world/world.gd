@@ -300,6 +300,13 @@ func _limit_view_ranges() -> void:
 		var gi := n as GeometryInstance3D
 		if gi == null or gi.visibility_range_end > 0.0 or gi is MultiMeshInstance3D:
 			continue
+		# Надписи видно тем дальше, чем крупнее буквы: вывеска — издали,
+		# табличка у двери — вблизи
+		if gi is Label3D:
+			var l := gi as Label3D
+			gi.visibility_range_end = clampf(l.font_size * l.pixel_size * 400.0, 50.0, far_props)
+			gi.visibility_range_end_margin = 5.0
+			continue
 		var size := 2.0
 		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh:
 			size = (gi as MeshInstance3D).mesh.get_aabb().size.length()
@@ -644,6 +651,7 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array
 	hi.name = "House_%d_%d" % [int(pos.x), int(pos.z)]
 	b.xf = Transform3D(Basis(Vector3.UP, yaw), pos + Vector3(0, HOUSE_Y, 0))
 	_house_exterior(b, hi)
+	nodes.append_array(_house_plate(b.xf, hi, pos))
 	b.xf = Transform3D(Basis(Vector3.UP, yaw), pos)
 	_yard_fence(b, hi)
 	_yard_extras(b, hi)
@@ -667,6 +675,24 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array
 		add_child(boss)
 		nodes.append(boss)
 	return nodes
+
+
+## Номер дома на табличке у двери: «ул. Садовая» и номер — нечётные по
+## северной стороне улицы, чётные по южной, с запада на восток.
+func _house_plate(xf: Transform3D, hi: HouseInterior, pos: Vector3) -> Array[Node]:
+	var out: Array[Node] = []
+	var i := VILLAGE_X.find(pos.x)
+	if i < 0:
+		return out
+	var num := i * 2 + (1 if is_equal_approx(pos.z, ROW_A_Z) else 2)
+	var oz := hi.inner_size.z * 0.5 + hi.wall_thickness + SKIN
+	var dx: float = hi.exterior_openings().front[0][0]
+	for t in [["ул. Садовая", 1.81, 0.00075], [str(num), 1.66, 0.0016]]:
+		var l := _label(t[0], xf * Vector3(dx + 1.2, t[1], oz + 0.035), xf.basis.get_euler().y, t[2], Color(1, 1, 1))
+		l.double_sided = false
+		l.visibility_range_end = 30.0
+		out.append(l)
+	return out
 
 
 func _upgrade_prompt() -> String:
@@ -743,8 +769,9 @@ func _house_details(b: MeshBuilder, hi: HouseInterior, ox: float, oz: float, H: 
 		b.box(Vector3(x, 2.28, oz), Vector3(x + 0.05, 2.33, oz + 0.85), style.trim)
 	# Лампочка у двери и табличка с номером дома
 	b.box(Vector3(dx + 0.6, 2.05, oz), Vector3(dx + 0.72, 2.2, oz + 0.12), Color(0.95, 0.92, 0.75))
-	b.box(Vector3(dx + 0.85, 1.65, oz), Vector3(dx + 1.2, 1.85, oz + 0.03), Color(0.15, 0.3, 0.6))
-	b.box(Vector3(dx + 0.95, 1.7, oz + 0.03), Vector3(dx + 1.1, 1.8, oz + 0.035), Color(0.95, 0.95, 0.95))
+	# Синяя табличка в белой рамке, надпись — _house_plate
+	b.box(Vector3(dx + 0.89, 1.55, oz), Vector3(dx + 1.51, 1.89, oz + 0.025), Color(0.95, 0.95, 0.95))
+	b.box(Vector3(dx + 0.91, 1.57, oz + 0.02), Vector3(dx + 1.49, 1.87, oz + 0.03), Color(0.12, 0.3, 0.62))
 	# Ставни у окон фасада (кроме кирпичного дома)
 	if hi.wealth != W.RICH:
 		for o in open.front:
@@ -1106,7 +1133,7 @@ func _build_village_life(b: MeshBuilder, glow: MeshBuilder) -> void:
 	for x in LAMP_X:
 		_street_lamp(b, glow, Vector3(x, 0, LAMP_Z))
 	_village_shop(b, glow)
-	_bus_stop(b, STOP_VILLAGE, 0.0, true)
+	_bus_stop(b, STOP_VILLAGE, 0.0, true, "Каменка")
 	_village_sign(b, Vector3(-54.5, 0, -7.2))
 	_pond(b, POND_POS)
 	for p in [Vector3(-42, 0, -62), Vector3(-33, 0, -70), Vector3(-26, 0, -57)]:
@@ -1383,9 +1410,9 @@ func _buy_village_food() -> void:
 		GameManager.notify("Купил хлеб и молоко, молоко выпил сразу. Съесть хлеб — Q")
 
 
-## Бетонная остановка у трассы: стенка, крыша, лавка, табличка «А».
-## Локально дорога — со стороны +Z, yaw разворачивает к ней.
-func _bus_stop(b: MeshBuilder, p: Vector3, yaw: float, to_town: bool) -> void:
+## Бетонная остановка у трассы: стенка, крыша, лавка, табличка «А», под ней —
+## название остановки. Локально дорога — со стороны +Z, yaw разворачивает к ней.
+func _bus_stop(b: MeshBuilder, p: Vector3, yaw: float, to_town: bool, stop_name := "") -> void:
 	var xf := Transform3D(Basis(Vector3.UP, yaw), p)
 	b.xf = xf
 	var concrete := Color(0.7, 0.7, 0.67)
@@ -1402,12 +1429,18 @@ func _bus_stop(b: MeshBuilder, p: Vector3, yaw: float, to_town: bool) -> void:
 	# Табличка на столбе
 	var s := Vector3(3.3, 0, 0.6)
 	b.box(s + Vector3(-0.04, 0, -0.04), s + Vector3(0.04, 2.5, 0.04), Color(0.4, 0.4, 0.4))
-	b.box(s + Vector3(-0.3, 2.0, 0.04), s + Vector3(0.3, 2.6, 0.07), Color(0.95, 0.85, 0.2))
+	b.box(s + Vector3(-0.42, 2.0, 0.04), s + Vector3(0.42, 2.6, 0.07), Color(0.95, 0.85, 0.2))
+	if not stop_name.is_empty():
+		b.box(s + Vector3(-0.55, 1.5, 0.04), s + Vector3(0.55, 1.95, 0.07), Color(0.95, 0.95, 0.92))
 	b.xf = Transform3D.IDENTITY
+	if not stop_name.is_empty():
+		var nl := _label(stop_name, xf * (s + Vector3(0, 1.725, 0.08)), yaw, 0.0016, Color(0.1, 0.1, 0.12))
+		nl.width = 1.0 / 0.0016
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var lbl := Label3D.new()
-	lbl.text = "А"
+	lbl.text = "А"  # по-английски — BUS, табличка шире буквы
 	lbl.font_size = 96
-	lbl.pixel_size = 0.004
+	lbl.pixel_size = 0.0036
 	lbl.modulate = Color(0.1, 0.1, 0.1)
 	lbl.outline_size = 0
 	lbl.position = xf * (s + Vector3(0, 2.3, 0.08))
@@ -1587,7 +1620,7 @@ func _build_town_all(b: MeshBuilder, glow: MeshBuilder) -> void:
 	_build_car_salon(b, glow)
 	_build_shops(b)
 	_build_autodrome(b)
-	_bus_stop(b, STOP_TOWN, PI, false)
+	_bus_stop(b, STOP_TOWN, PI, false, "Город · Склад")
 	_town_grass()
 	# Восточная часть и дворы — свой узел, сразу стоит на месте города
 	var east := TownEast.new()
@@ -2193,14 +2226,17 @@ func _sign(b: MeshBuilder, p: Vector3, yaw: float, text: String, width: float, r
 		b.box(Vector3(-width * 0.5 - 0.06, 1.55, 0.06), Vector3(width * 0.5 + 0.06, 2.45, 0.08), Color(0.8, 0.12, 0.1))
 	b.box(Vector3(-width * 0.5, 1.6, 0.08), Vector3(width * 0.5, 2.4, 0.1), Color(0.95, 0.95, 0.92))
 	b.xf = saved
-	var l := _label(text, p + Basis(Vector3.UP, yaw) * Vector3(0, 2.0, 0.11), yaw, 0.0019, Color(0.1, 0.1, 0.12))
-	l.width = width / 0.0019
+	var l := _label(text, p + Basis(Vector3.UP, yaw) * Vector3(0, 2.0, 0.11), yaw, 0.0023, Color(0.1, 0.1, 0.12))
+	l.width = (width - 0.1) / 0.0023
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _road_signs(b: MeshBuilder) -> void:
 	# У конца деревенской улицы — куда ведёт полевая дорога
 	_sign(b, Vector3(-55.5, 0, -33.8), 0.0, "Колхоз «Заря» →", 1.6)
+	# Название улицы — на тех же столбах, под указателями
+	RoadDetails.street_sign(b, self, Vector3(-55.5, 0, -33.8), 0.0, "ул. Садовая", 1.25)
+	RoadDetails.street_sign(b, self, Vector3(-161.5, 0, -45.0), -PI / 2.0, "ул. Садовая", 1.25)
 	# Выезд из деревни на трассу — уступи дорогу
 	_sign(b, Vector3(-55.8, 0, -8.6), 0.0, "УСТУПИ\nДОРОГУ", 1.1, true)
 	# С трассы на полевую дорогу

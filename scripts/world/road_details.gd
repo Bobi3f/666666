@@ -124,3 +124,29 @@ static func lamp(b: MeshBuilder, glow: MeshBuilder, p: Vector3, yaw: float, heig
 	glow.box(Vector3(-0.15, height + 0.02, -2.32), Vector3(0.15, height + 0.08, -1.83), Color(1.0, 0.86, 0.6))
 	b.xf = saved
 	glow.xf = g_saved
+
+
+## Табличка с названием улицы на столбе: синяя, белые буквы, читается с обеих
+## сторон. Столб и табличка — в b (b.xf не трогает), надписи — детьми parent
+## в тех же координатах, что и p.
+static func street_sign(b: MeshBuilder, parent: Node, p: Vector3, yaw: float, text: String, h := 2.4) -> void:
+	var saved := b.xf
+	var xf := Transform3D(Basis(Vector3.UP, yaw), p)
+	b.xf = saved * xf
+	var w := 0.3 + text.length() * 0.12
+	b.box(Vector3(-0.05, 0, -0.05), Vector3(0.05, h + 0.25, 0.05), Color(0.4, 0.4, 0.42), true)
+	b.box(Vector3(-w * 0.5, h - 0.2, -0.07), Vector3(w * 0.5, h + 0.2, 0.07), Color(0.95, 0.95, 0.95))
+	b.box(Vector3(-w * 0.5 + 0.03, h - 0.17, -0.075), Vector3(w * 0.5 - 0.03, h + 0.17, 0.075), Color(0.12, 0.3, 0.62))
+	b.xf = saved
+	for side in [0.0, PI]:
+		var l := Label3D.new()
+		l.text = text
+		l.font_size = 96
+		l.pixel_size = 0.0022
+		l.outline_size = 0
+		l.double_sided = false
+		l.modulate = Color(1, 1, 1)
+		l.position = xf * (Basis(Vector3.UP, side) * Vector3(0, h, 0.085))
+		l.rotation.y = yaw + side
+		l.visibility_range_end = 70.0
+		parent.add_child(l)

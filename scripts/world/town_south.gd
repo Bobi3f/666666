@@ -50,6 +50,9 @@ func build(b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 	_garages(b)
 	_factory(b, glow)
 	_traffic_lights(b)
+	# Угол Ленина и проспекта Мира: таблички улиц на одном столбе
+	RoadDetails.street_sign(b, self, Vector3(102.6, 0, 68.0), PI / 2.0, "ул. Ленина", 2.45)
+	RoadDetails.street_sign(b, self, Vector3(102.6, 0, 68.0), 0.0, "пр. Мира", 2.0)
 	_pedestrians()
 
 

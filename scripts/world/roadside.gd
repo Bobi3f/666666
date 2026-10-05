@@ -97,8 +97,21 @@ func _km_posts(b: MeshBuilder) -> void:
 
 
 ## Остановки у съездов с трассы к сёлам: отсюда автобус до Каменки.
+## Село, к которому ведёт дорога: ближайшее к её концу.
+static func _village_at(end: Vector2) -> String:
+	var best := ""
+	var d := INF
+	for v in Region.VILLAGES:
+		var dd := (v.c as Vector2).distance_to(end)
+		if dd < d:
+			d = dd
+			best = v.name
+	return best
+
+
+## Остановки на съездах к сёлам. У каждой свой меш: дальность видимости
+## считается от середины меша, и общий на всю трассу пропадал вблизи.
 func _stops() -> void:
-	var d := MeshBuilder.new()
 	for r in Region.ROADS:
 		var start: Vector2 = r[0]
 		# Только съезды с трассы (начало дороги у самой трассы)
@@ -106,9 +119,10 @@ func _stops() -> void:
 			continue
 		var side := 1.0 if start.y > 0.0 else -1.0
 		var p := Vector3(start.x + 14.0, 0, side * 7.8)
-		_world._bus_stop(d, p, 0.0 if side < 0.0 else PI, false)
-	add_child(d.build_mesh())
-	add_child(d.build_body())
+		var d := MeshBuilder.new()
+		_world._bus_stop(d, p, 0.0 if side < 0.0 else PI, false, "%s, поворот" % _village_at((r as Array).back()))
+		add_child(d.build_mesh())
+		add_child(d.build_body())
 
 
 ## Придорожное кафе у съезда к Заозерью: столики под навесом, фура у входа.

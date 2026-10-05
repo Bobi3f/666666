@@ -645,7 +645,7 @@ func _village(i: int, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> voi
 	_shop(shop, glow)
 	veg.block(shop.x - 4, shop.z - 3.5, shop.x + 4, shop.z + 4.5)
 	var stop := stop_pos(i)
-	_world._bus_stop(_d, stop, PI, false)
+	_world._bus_stop(_d, stop, PI, false, v.name)
 	veg.block(stop.x - 3, stop.z - 1.5, stop.x + 3, stop.z + 1.5)
 	_village_sign(Vector3(c.x + 60.0 * e, 0, c.y - 5.0), PI / 2.0 * e, v.name)
 	_villager(i, Vector3(c.x + 35.0 * e, 0, c.y - 4.2))

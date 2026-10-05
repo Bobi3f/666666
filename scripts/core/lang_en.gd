@@ -1637,7 +1637,7 @@ const EN := {
 	"Сдал рыбу: +%d грн": "Sold fish: +%d UAH",
 	"Сельмаг закрыт. Работает с 8:00 до 21:00": "The village shop is closed. Open from 8:00 to 21:00",
 	"Купил хлеб и молоко, молоко выпил сразу. Съесть хлеб — Q": "Bought bread and milk, drank the milk right away. Eat the bread — Q",
-	"А": "B",
+	"А": "BUS",
 	"E — автобус до %s (%d грн)": "E — bus to %s (%d UAH)",
 	"города": "town",
 	"Каменки": "Kamenka",
@@ -1771,4 +1771,6 @@ const EN := {
 	"Поддержать игру": "Support the game",
 	"Игру делает один человек.": "The game is made by one person.",
 	"Если нравится — можно угостить автора кофе.": "If you like it, you can buy the author a coffee.",
+	"%s, поворот": "%s turn",
+	"Город · Склад": "Town · Warehouse",
 }

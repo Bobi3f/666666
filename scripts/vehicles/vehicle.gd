@@ -388,7 +388,7 @@ func _ready() -> void:
 		_sale.modulate = Color(1.0, 0.9, 0.4)
 		_sale.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		_sale.position.y = float(spec.shape_y) + float((spec.shape as Vector3).y) * 0.5 + 0.7
-		_sale.visibility_range_end = 60.0
+		_sale.visibility_range_end = 120.0
 		add_child(_sale)
 	floor_snap_length = 0.4
 	_rng.randomize()
