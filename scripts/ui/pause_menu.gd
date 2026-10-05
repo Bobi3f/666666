@@ -14,6 +14,8 @@ extends CanvasLayer
 static var _started := false
 
 const AMBER := Color(0.95, 0.7, 0.24)
+## Вид меню «Спорт»: тёмно-серая панель, красная рамка и кнопки, белый текст.
+const RED := Color(0.82, 0.1, 0.08)
 const CREAM := Color(0.94, 0.9, 0.81)
 
 var _panel: PanelContainer
@@ -66,11 +68,11 @@ func _build() -> void:
 	root.add_child(center)
 	_panel = PanelContainer.new()
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.11, 0.12, 0.13, 0.95)
-	style.border_color = Color(0.3, 0.32, 0.34)
-	style.set_border_width_all(1)
+	style.bg_color = Color(0.13, 0.13, 0.14, 0.96)
+	style.border_color = RED
+	style.set_border_width_all(4)
 	style.set_content_margin_all(26)
-	style.set_corner_radius_all(12)
+	style.set_corner_radius_all(4)
 	_panel.add_theme_stylebox_override("panel", style)
 	center.add_child(_panel)
 	# Затемнение видно только вместе с панелью
@@ -82,7 +84,9 @@ func _build() -> void:
 	_title = Label.new()
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_size_override("font_size", 38)
-	_title.add_theme_color_override("font_color", AMBER)
+	_title.add_theme_color_override("font_color", Color.WHITE)
+	_title.add_theme_color_override("font_outline_color", RED)
+	_title.add_theme_constant_override("outline_size", 8)
 	outer.add_child(_title)
 	_sub = Label.new()
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -110,7 +114,8 @@ func _build() -> void:
 	_build_confirm(_pages.confirm)
 
 
-## Кнопки в цветах игры: тёмные, при наведении и фокусе — янтарная рамка.
+## Кнопки «Спорт»: красные, при наведении и фокусе — белая рамка, выбранная
+## (ячейка, язык, время суток) — светло-серая.
 func _theme() -> Theme:
 	var t := Theme.new()
 	var touch := GameManager.touch_mode
@@ -120,18 +125,18 @@ func _theme() -> Theme:
 		s.bg_color = bg
 		s.border_color = border
 		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
+		s.set_corner_radius_all(3)
 		s.content_margin_left = 16
 		s.content_margin_right = 16
 		s.content_margin_top = 10
 		s.content_margin_bottom = 10
 		return s
-	t.set_stylebox("normal", "Button", mk.call(Color(0.18, 0.19, 0.21), Color(0.18, 0.19, 0.21)))
-	t.set_stylebox("hover", "Button", mk.call(Color(0.23, 0.24, 0.26), AMBER.darkened(0.3)))
-	t.set_stylebox("pressed", "Button", mk.call(AMBER.darkened(0.45), AMBER))
-	t.set_stylebox("focus", "Button", mk.call(Color(0, 0, 0, 0), AMBER))
-	t.set_stylebox("disabled", "Button", mk.call(Color(0.14, 0.14, 0.15), Color(0.14, 0.14, 0.15)))
-	t.set_color("font_color", "Button", CREAM)
+	t.set_stylebox("normal", "Button", mk.call(RED, RED))
+	t.set_stylebox("hover", "Button", mk.call(RED.lightened(0.12), Color.WHITE))
+	t.set_stylebox("pressed", "Button", mk.call(Color(0.55, 0.55, 0.57), Color.WHITE))
+	t.set_stylebox("focus", "Button", mk.call(Color(0, 0, 0, 0), Color.WHITE))
+	t.set_stylebox("disabled", "Button", mk.call(Color(0.3, 0.12, 0.11), Color(0.3, 0.12, 0.11)))
+	t.set_color("font_color", "Button", Color.WHITE)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
 	t.set_color("font_focus_color", "Button", Color.WHITE)
 	t.set_color("font_pressed_color", "Button", Color.WHITE)
