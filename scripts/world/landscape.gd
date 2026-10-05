@@ -32,7 +32,7 @@ const CROP_NAMES := ["wheat", "sunflower", "rapeseed", "corn", "fallow", "hay", 
 ## Занято ли место под лесом: на холмах, полях и в прудах деревьев нет.
 static func occupied(x: float, z: float) -> bool:
 	plan()
-	if Landmarks.occupied(x, z):
+	if Landmarks.occupied(x, z) or Farm.occupied(x, z):
 		return true
 	var p := Vector2(x, z)
 	for h in hills:

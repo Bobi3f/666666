@@ -32,6 +32,7 @@ const BUSINESSES := {
 	"sto": {"title": "СТО у трассы", "price": 15000, "income": 600},
 	"fleet": {"title": "автопарк", "price": 0, "income": 800, "cars": 3},
 	"kiosk2": {"title": "ларёк Жоры в Озерцово", "price": 7000, "income": 300},
+	"farm": {"title": "ферма у Каменки", "price": 20000, "income": 700},
 }
 ## Работники: кто к какому делу и сколько добавляет в день.
 const WORKERS := {"vasya": {"title": "механик Васёк", "biz": "sto", "income": 300}}

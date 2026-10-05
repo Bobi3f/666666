@@ -41,7 +41,7 @@ static func on_forest_road(x: float, z: float) -> bool:
 
 ## Можно ли здесь сажать дерево: не на дорогах и не в речке.
 static func tree_ok(x: float, z: float) -> bool:
-	return not (_in(FIELD, x, z, 2.5) or _in(FOREST, x, z, 2.5) or STREAM.grow(2.5).has_point(Vector2(x, z)))
+	return not Farm.occupied(x, z) and not (_in(FIELD, x, z, 2.5) or _in(FOREST, x, z, 2.5) or STREAM.grow(2.5).has_point(Vector2(x, z)))
 
 
 static func all_rects() -> Array:

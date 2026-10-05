@@ -3023,6 +3023,7 @@ func _tree(b: MeshBuilder, p: Vector3, yaw: float, kind: int) -> void:
 ## Где травы нет: дороги, дворы у домов, площадки, город, пруд.
 func _block_grass() -> void:
 	var v := _veg
+	v.block(Farm.AREA.position.x - 1, Farm.AREA.position.y - 19, Farm.AREA.end.x + 1, Farm.AREA.end.y + 1)
 	v.block(-200, -6, 200, 6)
 	v.block(-166, -43, -56, -37)
 	v.block(-63, -43, -56, -5)
@@ -3224,6 +3225,10 @@ func _build_clubs() -> void:
 	var girl := Girl.new()
 	girl.name = "Girl"
 	add_child(girl)
+	# Своя ферма — за трассой напротив Каменки, продаётся у ворот
+	var farm := Farm.new()
+	farm.name = "Farm"
+	add_child(farm)
 
 
 # --- Игрок и машина ---------------------------------------------------------
