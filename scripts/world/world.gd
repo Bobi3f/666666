@@ -635,7 +635,9 @@ func _build_player_yard() -> void:
 	_yard_nodes.clear()
 	var yb := MeshBuilder.new()
 	var level: int = clampi(Progress.house_level, W.POOR, W.RICH)
+	_cottage = Progress.house_level >= 3
 	_yard_nodes.append_array(_build_yard(yb, Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y), 0.0, level))
+	_cottage = false
 	var mesh := yb.build_mesh()
 	mesh.name = "PlayerYardMesh"
 	mesh.material_override = MeshBuilder.detail_material()
@@ -645,6 +647,10 @@ func _build_player_yard() -> void:
 	body.name = "PlayerYardCollision"
 	add_child(body)
 	_yard_nodes.append(body)
+
+
+## Строится двор игрока-коттедж: второй этаж, балкон, беседка.
+var _cottage := false
 
 
 ## Строит двор в b и возвращает созданные узлы (интерьер, зоны).
@@ -722,6 +728,8 @@ func _house_exterior(b: MeshBuilder, hi: HouseInterior) -> void:
 	_skin_wall(b, Vector3(-ox, y0, -oz), Vector3(ox, H, -hz), 0, [], Vector3.FORWARD, style)
 	_skin_wall(b, Vector3(-ox, y0, -hz), Vector3(-hx, H, hz), 2, open.left, Vector3.LEFT, style)
 	_skin_wall(b, Vector3(hx, y0, -hz), Vector3(ox, H, hz), 2, open.right, Vector3.RIGHT, style)
+	if _cottage:
+		H = _second_floor(b, ox, oz, H, style)
 	# Крыльцо-ступенька у двери
 	var door: Array = open.front[0]
 	b.box(Vector3(door[0] - 0.8, y0, oz), Vector3(door[0] + 0.8, 0.0, oz + 0.7), Color(0.55, 0.55, 0.53))
@@ -750,6 +758,56 @@ func _house_exterior(b: MeshBuilder, hi: HouseInterior) -> void:
 		b.box(Vector3(ox - 1.2, H - 0.6, oz), Vector3(ox - 1.15, H - 0.5, oz + 0.35), Color(0.6, 0.6, 0.6))
 		b.box(Vector3(ox - 1.5, H - 0.85, oz + 0.3), Vector3(ox - 0.85, H - 0.2, oz + 0.36), Color(0.9, 0.9, 0.9))
 	_house_details(b, hi, ox, oz, H, e, drop, ridge_y, style, open)
+
+
+## Второй этаж коттеджа: стены с окнами со всех сторон, балкон над дверью.
+## Возвращает новую высоту, от которой строится крыша.
+func _second_floor(b: MeshBuilder, ox: float, oz: float, H: float, style: Dictionary) -> float:
+	var H2 := H + 2.8
+	var wall: Color = style.wall
+	b.box(Vector3(-ox, H, -oz), Vector3(ox, H2, oz), wall, true)
+	b.box(Vector3(-ox - 0.05, H - 0.1, -oz - 0.05), Vector3(ox + 0.05, H + 0.1, oz + 0.05), Color(0.9, 0.9, 0.88))
+	var glass := Color(0.3, 0.42, 0.52)
+	var frame := Color(0.95, 0.95, 0.93)
+	for sz in [1.0, -1.0]:
+		var x := -ox + 1.0
+		while x < ox - 1.4:
+			var z: float = sz * oz
+			b.box(Vector3(x - 0.06, H + 0.84, minf(z, z + sz * 0.05)), Vector3(x + 1.26, H + 2.26, maxf(z, z + sz * 0.05)), frame)
+			b.box(Vector3(x, H + 0.9, minf(z, z + sz * 0.07)), Vector3(x + 1.2, H + 2.2, maxf(z, z + sz * 0.07)), glass)
+			x += 2.4
+	for sx in [1.0, -1.0]:
+		var xw: float = sx * ox
+		b.box(Vector3(minf(xw, xw + sx * 0.07), H + 0.9, -0.7), Vector3(maxf(xw, xw + sx * 0.07), H + 2.2, 0.7), glass)
+	# Балкон над входом: плита, столбики, перила
+	b.box(Vector3(-1.9, H - 0.05, oz), Vector3(1.9, H + 0.12, oz + 1.3), Color(0.7, 0.7, 0.68))
+	b.box(Vector3(-1.9, H + 0.95, oz + 1.22), Vector3(1.9, H + 1.05, oz + 1.3), frame)
+	var px := -1.85
+	while px <= 1.86:
+		b.box(Vector3(px - 0.03, H + 0.12, oz + 1.22), Vector3(px + 0.03, H + 0.95, oz + 1.28), frame)
+		px += 0.25
+	for sx in [-1.85, 1.75]:
+		b.box(Vector3(sx, H + 0.12, oz + 0.05), Vector3(sx + 0.1, H + 1.05, oz + 1.3), frame)
+	return H2
+
+
+## Беседка во дворе коттеджа: столбы, четырёхскатная крыша, стол и лавки.
+func _gazebo(b: MeshBuilder, c: Vector3) -> void:
+	var wood := Color(0.55, 0.38, 0.22)
+	var s := 1.35
+	for p in [Vector2(-s, -s), Vector2(s, -s), Vector2(-s, s), Vector2(s, s)]:
+		b.box(c + Vector3(p.x - 0.08, 0, p.y - 0.08), c + Vector3(p.x + 0.08, 2.3, p.y + 0.08), wood, true)
+	b.box(c + Vector3(-s - 0.2, 2.3, -s - 0.2), c + Vector3(s + 0.2, 2.4, s + 0.2), wood.darkened(0.2))
+	var top := c + Vector3(0, 3.3, 0)
+	var roof := Color(0.45, 0.2, 0.15)
+	var k := [Vector3(-s - 0.3, 2.4, -s - 0.3), Vector3(s + 0.3, 2.4, -s - 0.3), Vector3(s + 0.3, 2.4, s + 0.3), Vector3(-s - 0.3, 2.4, s + 0.3)]
+	for i in 4:
+		b.tri(c + k[i], c + k[(i + 1) % 4], top, roof.darkened(0.06 * i), true)
+	b.box(c + Vector3(-0.6, 0.72, -0.45), c + Vector3(0.6, 0.78, 0.45), wood.lightened(0.1), true)
+	b.box(c + Vector3(-0.06, 0, -0.06), c + Vector3(0.06, 0.72, 0.06), wood)
+	for sz in [-0.85, 0.85]:
+		b.box(c + Vector3(-0.8, 0.42, sz - 0.15), c + Vector3(0.8, 0.47, sz + 0.15), wood.lightened(0.05))
+	b.box(c + Vector3(-s - 0.2, 0, -s - 0.2), c + Vector3(s + 0.2, 0.05, s + 0.2), Color(0.55, 0.5, 0.45))
 
 
 ## Мелочи снаружи дома: водостоки с трубами, козырёк над дверью, ставни,
@@ -1020,6 +1078,8 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 		_tree(b, p, _rng.randf() * TAU, Vegetation.TreeKind.BUSH)
 	_gate_bench(b, hi.wealth)
 	_front_garden(b, hi)
+	if _cottage:
+		_gazebo(b, Vector3(-7.7, 0, -1.2))
 	# На огороде игрока растёт то, что он сам посадил (garden.gd)
 	var own := is_equal_approx(hi.position.x, PLAYER_HOUSE.x) and is_equal_approx(hi.position.z, PLAYER_HOUSE.y)
 	_vegetable_plot(b, hi.wealth, not own)

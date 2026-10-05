@@ -37,8 +37,13 @@ func _run() -> void:
 
 	print("== Город отодвинут от Каменки")
 	ok(Town.SHIFT.x >= 600.0, "город в %d м восточнее прежнего места" % int(Town.SHIFT.x))
-	# Где стоял склад (27.5, 37) — теперь луг, а склад — на новом месте
-	ok(ray(Vector3(27.5, 3, 25), Vector3(27.5, 3, 50)).is_empty(), "на старом месте склада пусто")
+	# Где стоял склад (27.5, 37) — теперь луг и ферма, а склад — на новом месте
+	var q := PhysicsRayQueryParameters3D.create(Vector3(27.5, 3, 25), Vector3(27.5, 3, 50))
+	var farm_bodies: Array[RID] = []
+	for b in W.get_node("Farm").find_children("*", "CollisionObject3D", true, false):
+		farm_bodies.append((b as CollisionObject3D).get_rid())
+	q.exclude = farm_bodies
+	ok(W.get_world_3d().direct_space_state.intersect_ray(q).is_empty(), "на старом месте склада — только ферма")
 	ok(not ray(Town.w(Vector3(27.5, 3, 25)), Town.w(Vector3(27.5, 3, 50))).is_empty(), "склад стоит в городе")
 	ok(ray(Vector3(70, 5, 25), Vector3(70, 5, 60)).is_empty() and not ray(Town.w(Vector3(70, 5, 25)), Town.w(Vector3(70, 5, 60))).is_empty(), "пятиэтажка переехала")
 	ok(W.get_node("TownSouth").position == Town.SHIFT and W.get_node("Police").position == Town.SHIFT and W.get_node("AutoSchool").position == Town.SHIFT, "южная часть, милиция и автошкола — на месте города")

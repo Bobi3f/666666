@@ -57,6 +57,12 @@ const STO_FAULTS := [
 	["Клиент: «Резина лысая, на мокром ведёт»", "Резина", "Амортизаторы", "Тормозные колодки"],
 ]
 const GARAGE_PRICE := 2500
+## Своё жильё в городе: [id вещи, название, цена, где купить, где спать,
+## поворот таблички] — домик на первом участке и квартира в шестиэтажке.
+const HOMES := [
+	["town_house", "дом в городе", 25000, Vector3(213.0, 0, 174.0), Vector3(213.0, 0, 160.2), 0.0],
+	["flat", "квартиру в шестиэтажке", 18000, Vector3(272.0, 0, 76.0), Vector3(272.0, 0, 76.0), -PI / 2.0],
+]
 ## Детские площадки во дворах пятиэтажек.
 const PLAYGROUNDS := [Rect2(52, 85, 30, 13), Rect2(126, 85, 20, 13)]
 
@@ -110,6 +116,7 @@ func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) ->
 	for f in FLATS:
 		_flats(b, glow, f)
 	_plots(b, veg)
+	_homes()
 	_park(b, glow, veg)
 	for p in PLAYGROUNDS:
 		_playground(b, p)
@@ -650,6 +657,68 @@ func _flats(b: MeshBuilder, glow: MeshBuilder, r: Rect2) -> void:
 		_bench(b, Vector3(fx - 2.6, 0, ez + 2.8), PI / 2.0)
 	# Газон с бордюром перед домом и тропинки к подъездам
 	b.box(Vector3(fx - 4.0, 0, r.position.y), Vector3(fx - 0.1, 0.04, r.end.y), Color(0.48, 0.48, 0.47))
+
+
+## Дом в городе и квартира: у калитки (у подъезда) — купить, потом там же
+## (дома — у двери) можно лечь спать до утра, как дома в Каменке.
+func _homes() -> void:
+	for h in HOMES:
+		var id: String = h[0]
+		var sign := _label("", (h[3] as Vector3) + Vector3(0, 2.6, 0), float(h[5]), 0.0045, Color(0.75, 0.15, 0.1))
+		sign.outline_size = 8
+		sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sign.name = "HomeSign_" + id
+		var at_door := (h[3] as Vector3).is_equal_approx(h[4])
+		var offer := func() -> String:
+			return "E — купить %s за %d грн: можно ночевать в городе" % [h[1], int(h[2])]
+		# Дом на участке — покупка у калитки; квартира — всё у подъезда
+		if not at_door:
+			var buy := InteractZone.create("", Vector3(2.4, 2.2, 2.4))
+			buy.name = "HomeBuy_" + id
+			buy.position = h[3]
+			buy.prompt_fn = func() -> String:
+				return "Твой %s — спать у двери" % String(h[1]) if Progress.has_item(id) else offer.call()
+			buy.activated.connect(buy_home.bind(id))
+			add_child(buy)
+		var bed := InteractZone.create("", Vector3(2.4, 2.2, 2.4))
+		bed.name = "HomeSleep_" + id
+		bed.position = h[4]
+		bed.prompt_fn = func() -> String:
+			if Progress.has_item(id):
+				return "E — домой: лечь спать до утра"
+			return offer.call() if at_door else "Дом продаётся — договориться у калитки"
+		bed.activated.connect(func() -> void:
+			if Progress.has_item(id):
+				_world._sleep()
+			elif at_door:
+				buy_home(id))
+		add_child(bed)
+	Progress.home_changed.connect(_update_homes)
+	_update_homes()
+
+
+## Купить дом в городе или квартиру. true — купил.
+func buy_home(id: String) -> bool:
+	for h in HOMES:
+		if h[0] != id or Progress.has_item(id):
+			continue
+		if not GameManager.spend(int(h[2])):
+			return false
+		Progress.add_item(id)
+		SoundLibrary.play("quest", -4.0)
+		QuestManager.event("home_bought")
+		GameManager.notify("Купил %s! Теперь можно ночевать в городе — у двери «E — домой»" % String(h[1]))
+		return true
+	return false
+
+
+func _update_homes() -> void:
+	for h in HOMES:
+		var s := find_child("HomeSign_" + String(h[0]), true, false) as Label3D
+		if s:
+			var mine := Progress.has_item(String(h[0]))
+			s.text = "ТВОЁ ЖИЛЬЁ" if mine else "ПРОДАЁТСЯ\n%d грн" % int(h[2])
+			s.modulate = Color(0.2, 0.55, 0.2) if mine else Color(0.75, 0.15, 0.1)
 
 
 ## Частные участки: домик с двускатной крышей, штакетник, грядки, яблоня.

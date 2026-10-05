@@ -19,8 +19,10 @@ const QUEST_ITEMS := {
 const OTHER_ITEMS := {
 	"garage": "Гараж в ГСК «Мотор»",
 	"mechanic": "Корочка автослесаря",
+	"town_house": "Дом в городе, у восточной улицы",
+	"flat": "Квартира в новой шестиэтажке",
 }
-const HOUSE_NAMES := ["Старая изба", "Штукатуренный дом под шифером", "Кирпичный дом под черепицей"]
+const HOUSE_NAMES := ["Старая изба", "Штукатуренный дом под шифером", "Кирпичный дом под черепицей", "Двухэтажный коттедж с беседкой"]
 
 var _panel: PanelContainer
 var _list: VBoxContainer
@@ -179,11 +181,11 @@ func refresh() -> void:
 		_row("%s — бензин %d/%d л, кузов %d%%, %s" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition), where])
 
 	_section("Дом и хозяйство")
-	_row(HOUSE_NAMES[clampi(Progress.house_level, 0, 2)])
+	_row(HOUSE_NAMES[clampi(Progress.house_level, 0, HOUSE_NAMES.size() - 1)])
 	for id in Progress.home_items:
 		_row(item_name(id))
 	for id in Daily.owned:
-		_row("Своё дело: %s, +%d грн в день" % [Daily.BUSINESSES[id].title, Daily.income(id)])
+		_row("Своё дело: %s, %d-й уровень, +%d грн в день до налога" % [Daily.BUSINESSES[id].title, Daily.level(id), Daily.income(id)])
 
 
 ## Название купленной вещи: из лавок базара, «Хозтоваров» мира или списка

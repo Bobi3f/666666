@@ -34,6 +34,19 @@ const BUSINESSES := {
 	"kiosk2": {"title": "ларёк Жоры в Озерцово", "price": 7000, "income": 300},
 	"farm": {"title": "ферма у Каменки", "price": 20000, "income": 700},
 }
+## Улучшения своего дела: что ставят на 2-м и 3-м уровне. Доход растёт
+## ×1,5 и ×2; цена — половина и целая цена дела (автопарк — от 8000).
+const UPGRADES := {
+	"kiosk": ["холодильник и новая витрина", "второй продавец и торговля допоздна"],
+	"kiosk2": ["холодильник и новая витрина", "второй продавец и торговля допоздна"],
+	"sto": ["второй подъёмник", "покрасочная камера"],
+	"fleet": ["диспетчер с рацией", "новые машины в парк"],
+	"farm": ["доильный аппарат", "ещё двенадцать коров"],
+}
+const LEVEL_K := [1.0, 1.5, 2.0]
+const LEVEL_MAX := 3
+## Налог с дохода своего дела — каждое утро, сразу.
+const TAX := 0.15
 ## Работники: кто к какому делу и сколько добавляет в день.
 const WORKERS := {"vasya": {"title": "механик Васёк", "biz": "sto", "income": 300}}
 ## Конкурент: Жора из Озерцово открывает ларёк на другой день после того,
@@ -57,6 +70,8 @@ var owned: Array = []
 var paid_day := 0
 ## Нанятые работники (id из WORKERS)
 var hired: Array = []
+## Уровень своего дела: id → 1..3 (нет записи — 1)
+var levels := {}
 ## Вклад в банке: 10% годовых, год — четыре времени года (28 игровых
 ## дней); проценты капают каждое утро (с копейками — вниз).
 var deposit := 0
@@ -85,9 +100,10 @@ func _on_minutes(_m: float) -> void:
 			for id in owned:
 				sum += income(id)
 			if sum > 0:
-				GameManager.add_money(sum)
+				var tax := tax_of(sum)
+				GameManager.add_money(sum - tax)
 				SoundLibrary.play("cash", -6.0)
-				GameManager.notify("Доход с твоего дела за день: +%d грн%s" % [sum, " (Жора переманивает покупателей)" if rival == Rival.ACTIVE else ""])
+				GameManager.notify("Доход с твоего дела за день: +%d грн, налог %d%% — %d грн, на руки +%d грн%s" % [sum, int(TAX * 100.0), tax, sum - tax, " (Жора переманивает покупателей)" if rival == Rival.ACTIVE else ""])
 			if owned.has("fleet") and own_cars() < int(BUSINESSES.fleet.cars):
 				GameManager.notify("Автопарк простаивает: нужно три своих машины, сейчас %d" % own_cars())
 		# Ларёк куплен вчера или раньше — в Озерцово объявляется конкурент
@@ -162,11 +178,53 @@ func income(id: String) -> int:
 		return int(b.income) / 2
 	if id == "fleet" and own_cars() < int(b.cars):
 		return 0
-	var sum := int(b.income)
+	var sum := int(round(float(b.income) * LEVEL_K[level(id) - 1]))
 	for w in hired:
 		if WORKERS[w].biz == id:
 			sum += int(WORKERS[w].income)
 	return sum
+
+
+func level(id: String) -> int:
+	return clampi(int(levels.get(id, 1)), 1, LEVEL_MAX)
+
+
+## Цена следующего улучшения (0 — уже лучшее).
+func upgrade_cost(id: String) -> int:
+	if level(id) >= LEVEL_MAX:
+		return 0
+	var base := int(BUSINESSES[id].price)
+	if base <= 0:
+		base = 8000
+	return int(round(base * [0.5, 1.0][level(id) - 1] / 100.0)) * 100
+
+
+## Что даст следующее улучшение.
+func upgrade_text(id: String) -> String:
+	if level(id) >= LEVEL_MAX:
+		return ""
+	return String((UPGRADES.get(id, ["улучшение", "улучшение"]) as Array)[level(id) - 1])
+
+
+## Улучшить своё дело: доход больше. true — получилось.
+func upgrade(id: String) -> bool:
+	if not owned.has(id) or level(id) >= LEVEL_MAX:
+		return false
+	var cost := upgrade_cost(id)
+	var what := upgrade_text(id)
+	if not GameManager.spend(cost):
+		return false
+	levels[id] = level(id) + 1
+	SoundLibrary.play("hammer")
+	GameManager.notify("%s: %s! Теперь %d-й уровень, +%d грн в день (до налога)" % [String(BUSINESSES[id].title).capitalize(), what, level(id), income(id)])
+	QuestManager.event("business_upgrade")
+	changed.emit()
+	return true
+
+
+## Налог с дневного дохода sum.
+static func tax_of(sum: int) -> int:
+	return int(round(sum * TAX))
 
 
 ## Нанять работника к своему делу (Васёк — на СТО).
@@ -262,7 +320,7 @@ func take_money() -> int:
 
 func save_state() -> Dictionary:
 	return {"deposit": deposit, "errand": errand, "day": errand_day, "n": progress, "done": done, "total": done_total, "owned": owned, "paid": paid_day,
-		"rival": rival, "dump": dump_days, "hired": hired}
+		"rival": rival, "dump": dump_days, "hired": hired, "levels": levels}
 
 
 func load_state(d: Dictionary) -> void:
@@ -277,4 +335,6 @@ func load_state(d: Dictionary) -> void:
 	rival = int(d.get("rival", Rival.NONE))
 	dump_days = (d.get("dump", []) as Array).duplicate()
 	hired = (d.get("hired", []) as Array).duplicate()
+	var lv: Variant = d.get("levels", {})
+	levels = (lv as Dictionary).duplicate() if lv is Dictionary else {}
 	changed.emit()

@@ -63,7 +63,8 @@ func _run() -> void:
 	TM.minutes = 23.9 * 60.0
 	TM.advance(8.0 * 60.0)
 	await frames(2)
-	ok(GM.money >= m1 + DM.income("farm"), "утром — доход фермы +%d грн" % DM.income("farm"))
+	var net: int = DM.income("farm") - DM.tax_of(DM.income("farm"))
+	ok(GM.money >= m1 + net, "утром — доход фермы +%d грн после налога" % net)
 	ok(farm.milk_prompt().begins_with("E — подоить"), "новый день — снова доить")
 
 	print("== Сохранение")

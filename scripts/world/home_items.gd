@@ -211,10 +211,10 @@ func _build_chair() -> void:
 
 
 ## Пёс у будки во дворе, виляет хвостом. Будка у бедного и среднего
-## двора уже стоит пустая; у кирпичного дома её нет — ставим свою.
+## двора уже стоит пустая; у кирпичного дома и коттеджа её нет — ставим свою.
 func _build_dog() -> void:
 	var base := house_pos + Vector3(3.6, 0, 8.2)
-	if Progress.max_level():
+	if Progress.house_level >= 2:
 		_build_kennel(base)
 	_build_dog_at(base)
 

@@ -666,7 +666,7 @@ func _page_bank() -> void:
 	for id in Daily.owned:
 		per_day += Daily.income(id)
 	if per_day > 0:
-		_text("Своё дело приносит %d грн в день" % per_day, 13, Color(0.85, 0.95, 0.85))
+		_text("Своё дело: %d грн в день, налог %d%% — на руки %d грн" % [per_day, int(Daily.TAX * 100.0), per_day - Daily.tax_of(per_day)], 13, Color(0.85, 0.95, 0.85))
 	var put := _btn("Положить на вклад (300 грн оставить)", Color(0.12, 0.45, 0.32))
 	put.disabled = GameManager.money <= 300
 	put.pressed.connect(func() -> void:
@@ -678,6 +678,15 @@ func _page_bank() -> void:
 	take.pressed.connect(func() -> void:
 		_redo("Снял %d грн" % Daily.take_money()))
 	_content.add_child(take)
+	# Своё дело: уровень, доход и улучшение
+	for id in Daily.owned:
+		_text("%s — %d-й уровень, +%d грн в день" % [String(Daily.BUSINESSES[id].title).capitalize(), Daily.level(id), Daily.income(id)], 13, Color.WHITE)
+		if Daily.level(id) < Daily.LEVEL_MAX:
+			var up := _btn("Улучшить: %s — %d грн" % [Daily.upgrade_text(id), Daily.upgrade_cost(id)], Color(0.12, 0.45, 0.32))
+			up.disabled = GameManager.money < Daily.upgrade_cost(id)
+			up.pressed.connect(func() -> void:
+				_redo("Улучшено!" if Daily.upgrade(id) else "Не хватает денег"))
+			_content.add_child(up)
 
 
 func _page_weather() -> void:
