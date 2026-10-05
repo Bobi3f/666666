@@ -114,6 +114,16 @@
     .note { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+
+  /* Вид «Спорт»: тёмный асфальт, красные косые полосы, красная кнопка */
+  #cover{background:repeating-linear-gradient(-55deg,#1b1c1e 0 38px,#202124 38px 76px) !important;}
+  #cover::before{content:"";position:absolute;inset:0;background:linear-gradient(-55deg,transparent 0 62%,#d0140f 62% 70%,transparent 70% 74%,#d0140f 74% 76%,transparent 76%);pointer-events:none}
+  .card{position:relative;background:#141516;border:none;border-left:8px solid #d0140f;border-radius:4px}
+  h1{color:#fff;font-style:italic;text-transform:uppercase;-webkit-text-stroke:1px #d0140f;text-shadow:4px 4px 0 #d0140f}
+  .gear{border-color:#fff;color:#fff}
+  #play{background:#d0140f;color:#fff;border-radius:3px;text-transform:uppercase;font-style:italic}
+  .bar{background:#2a2b2e;border-radius:0}.bar>i{background:#d0140f}
+  #fs{border-color:#d0140f}
 </style>
 
 </head>
@@ -204,7 +214,7 @@
       canvas: canvas,
       canvasResizePolicy: 2,
       executable: "index",
-      fileSizes: { "index.pck": 2312768, "index.wasm": 38034280 },
+      fileSizes: { "index.pck": 2450760, "index.wasm": 38034280 },
       focusCanvas: true,
       ensureCrossOriginIsolationHeaders: false,
       experimentalVK: false,
