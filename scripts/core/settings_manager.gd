@@ -45,8 +45,11 @@ var key_map := {}
 ## [x и y центра долей экрана, размер]. См. touch_controls.gd.
 var touch_layout := {}
 var remap: KeyRemap
-var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) \
-	else (1 if OS.has_feature("web") else 2)
+var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")) else 2
+
+
+static func _phone() -> bool:
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 
 
 ## Слабый телефон: если игра долго идёт медленно, детализация снижается
@@ -88,6 +91,10 @@ func _ready() -> void:
 		music = clampf(float(cfg.get_value("audio", "music", 0.5)), 0.0, 1.0)
 		auto_gearbox = bool(cfg.get_value("driving", "auto_gearbox", true))
 		detail = clampi(int(cfg.get_value("graphics", "detail", detail)), 0, 2)
+		# Раньше на компьютере в браузере по умолчанию была средняя — один
+		# раз поднимаем до высокой (дальше игра сама снизит, если тормозит)
+		if not cfg.has_section_key("graphics", "v") and detail == 1 and not _phone():
+			detail = 2
 		text_scale = clampf(float(cfg.get_value("ui", "text_scale", 1.0)), 1.0, 1.4)
 		left_hand = bool(cfg.get_value("ui", "left_hand", false))
 		vibration = bool(cfg.get_value("ui", "vibration", true))
@@ -284,7 +291,7 @@ func render_lines() -> float:
 
 ## Дальность теней от солнца (0 — без теней).
 func shadow_range() -> float:
-	return [0.0, 45.0, 70.0][detail]
+	return [0.0, 45.0, 85.0][detail]
 
 
 func _apply() -> void:
@@ -301,6 +308,7 @@ func _save() -> void:
 	cfg.set_value("audio", "music", music)
 	cfg.set_value("driving", "auto_gearbox", auto_gearbox)
 	cfg.set_value("graphics", "detail", detail)
+	cfg.set_value("graphics", "v", 2)
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)

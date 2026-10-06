@@ -535,6 +535,12 @@ static func bus(b: MeshBuilder, paint: Color, size: Vector3) -> void:
 	b.box(Vector3(-hx, 0.3, hz), Vector3(hx, 0.5, hz + 0.15), dark)
 	for i in 6:
 		b.box(Vector3(-hx + 0.3, 0.6 + i * 0.12, hz), Vector3(hx - 0.3, 0.66 + i * 0.12, hz + 0.02), dark)
+	for s in [-1.0, 1.0]:
+		var m := Vector3(s * (hx + 0.25), 2.25, -hz - 0.25)
+		VehicleModels.pipe(b, [Vector3(s * hx, 2.6, -hz + 0.1), Vector3(s * (hx + 0.2), 2.6, -hz - 0.15), m], 0.02, dark)
+		b.box(m + Vector3(-0.08, -0.18, -0.02), m + Vector3(0.08, 0.18, 0.03), dark)
+		b.box(Vector3(s * (hx - 0.05) - 0.12, 0.95, -hz - 0.035), Vector3(s * (hx - 0.05) + 0.12, 1.03, -hz), Color(0.98, 0.55, 0.1))
+		b.box_rot(Vector3(s * 0.45, 1.3, -hz - 0.03), Vector3(0.75, 0.03, 0.03), 0.1 * s, dark)
 	# Крыша: люки и козырёк
 	b.box(Vector3(-hx + 0.05, 3.1, -hz + 0.05), Vector3(hx - 0.05, 3.18, hz - 0.05), paint.lightened(0.1))
 	for zz in [-2.0, 1.5]:
@@ -706,6 +712,37 @@ static func tube(b: MeshBuilder, a: Vector3, c: Vector3, t: float, col: Color) -
 static func pipe(b: MeshBuilder, pts: Array, t: float, col: Color) -> void:
 	for i in pts.size() - 1:
 		tube(b, pts[i], pts[i + 1], t, col)
+
+
+## Мелочи кузова, без которых машина — коробка: швы и ручки дверей,
+## боковые зеркала, дворники, оранжевые поворотники, брызговики.
+## hx — полуширина по бортам; seams — z швов дверей от sill до top;
+## handles — z ручек (под окном); mirror — (z, y) зеркал, stalk — вынос;
+## wiper — (z, y, полуширина) у низа лобового; blink — (x наружный, y, z
+## переда); flap — (z за задним колесом, верх), z = 0 — без брызговиков.
+static func _trim(b: MeshBuilder, hx: float, seams: Array, sill: float, top: float, handles: Array,
+		mirror: Vector2, stalk: float, wiper: Vector3, blink: Vector3, flap := Vector2.ZERO) -> void:
+	var dark := Color(0.07, 0.07, 0.08)
+	var chrome := Color(0.72, 0.72, 0.74)
+	for s in [-1.0, 1.0]:
+		var x: float = s * hx
+		for z in seams:
+			b.box(Vector3(x - 0.006, sill, z), Vector3(x + 0.006, top, z + 0.014), dark)
+		for z in handles:
+			b.box(Vector3(x - 0.02 if s < 0 else x, top - 0.1, z), Vector3(x if s < 0 else x + 0.02, top - 0.07, z + 0.15), chrome)
+		# Зеркало на ножке
+		var m := Vector3(s * (hx + stalk), mirror.y, mirror.x)
+		VehicleModels.tube(b, Vector3(x, mirror.y - 0.04, mirror.x + 0.04), m, 0.012, dark)
+		b.box(m + Vector3(-0.06, -0.05, -0.02), m + Vector3(0.06, 0.05, 0.03), dark)
+		b.box(m + Vector3(-0.05, -0.04, 0.03), m + Vector3(0.05, 0.04, 0.035), Color(0.75, 0.8, 0.85))
+		# Поворотник у фары
+		b.box(Vector3(s * blink.x - (0.12 if s > 0 else 0.0), blink.y, blink.z - 0.015), Vector3(s * blink.x + (0.12 if s < 0 else 0.0), blink.y + 0.07, blink.z), Color(0.98, 0.55, 0.1))
+		if flap.x != 0.0:
+			b.box(Vector3(x - 0.3 if s > 0 else x + 0.02, 0.12, flap.x), Vector3(x - 0.02 if s > 0 else x + 0.3, flap.y, flap.x + 0.02), dark)
+	# Дворники: два поводка с щётками у низа лобового
+	for k in [-1.0, 1.0]:
+		var c := Vector3(k * wiper.z * 0.5, wiper.y, wiper.x)
+		b.box_rot(c, Vector3(wiper.z * 0.8, 0.02, 0.025), 0.12 * k, dark)
 
 
 ## Круглая шайба-восьмигранник: фара, крышки мотора, пробка бака.
@@ -983,6 +1020,7 @@ static func niva(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		b.box(Vector3(x, 0.8, 1.87), Vector3(x + 0.14, 0.95, 1.89), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-0.72, 1.58, -0.7), Vector3(0.72, 1.6, 1.8), Color(0.8, 0.78, 0.72))
 	_cabin(b, -0.66, 0.62, 0.72, 0.05, true)
+	_trim(b, 0.84, [-0.7, 0.36], 0.5, 1.0, [0.18], Vector2(-0.6, 1.12), 0.12, Vector3(-0.8, 1.07, 0.62), Vector3(0.84, 0.58, -1.9), Vector2(1.6, 0.55))
 
 
 ## «Волга» ГАЗ-24: длинный седан, много хрома, решётка с вертикальными
@@ -1027,6 +1065,7 @@ static func volga(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> 
 		b.box(Vector3(x, 0.6, 2.36), Vector3(x + 0.18, 0.76, 2.38), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-0.76, 1.38, -0.84), Vector3(0.76, 1.4, 1.2), Color(0.82, 0.8, 0.74))
 	_cabin(b, -0.8, 0.5, 0.76, -0.05, true)
+	_trim(b, 0.9, [-0.86, 0.25, 1.18], 0.36, 0.86, [0.08, 1.0], Vector2(-0.78, 1.0), 0.12, Vector3(-0.92, 0.91, 0.64), Vector3(0.9, 0.44, -2.37))
 
 
 ## Грузовик ГАЗ-53: длинный капот, кабина, деревянный кузов с бортами.
@@ -1071,6 +1110,7 @@ static func gaz53(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> 
 		b.box(Vector3(x, 0.85, 3.18), Vector3(x + 0.15, 0.95, 3.22), Color(0.9, 0.2, 0.15))
 	b.box(Vector3(-1.05, 2.15, -2.1), Vector3(1.05, 2.18, -0.95), Color(0.3, 0.32, 0.3))
 	_cabin(b, -2.05, 1.12, 0.95, -1.6, false)
+	_trim(b, 1.1, [-2.05, -1.1], 0.85, 1.5, [-1.3], Vector2(-2.0, 1.95), 0.25, Vector3(-2.19, 1.57, 0.9), Vector3(1.18, 1.0, -3.1), Vector2(2.75, 1.0))
 
 
 ## Трактор МТЗ-80 «Беларус» как на фото: голубой, длинный капот с
@@ -1299,6 +1339,7 @@ static func moskvich(b: MeshBuilder, paint: Color) -> void:
 	for z in [-2.15, 2.05]:
 		b.box(Vector3(-0.8, 0.36, z), Vector3(0.8, 0.46, z + 0.1), chrome)
 	plate(b, Vector3(-0.22, 0.4, 2.15), Vector3(0.22, 0.5, 2.16))
+	_trim(b, 0.78, [-0.72, 0.14, 0.96], 0.36, 0.82, [-0.02, 0.82], Vector2(-0.62, 0.92), 0.1, Vector3(-0.82, 0.85, 0.56), Vector3(0.78, 0.47, -2.06))
 
 
 ## ЗАЗ-968 «Запорожец»: маленький, мотор сзади — по бокам «уши»
@@ -1325,6 +1366,7 @@ static func zaporozhets(b: MeshBuilder, paint: Color) -> void:
 	b.box(Vector3(-0.5, 0.45, 1.85), Vector3(0.5, 0.52, 1.88), dark)
 	for z in [-1.95, 1.85]:
 		b.box(Vector3(-0.76, 0.32, z), Vector3(0.76, 0.42, z + 0.1), chrome)
+	_trim(b, 0.74, [-0.52, 0.86], 0.34, 0.8, [0.68], Vector2(-0.45, 0.9), 0.1, Vector3(-0.62, 0.85, 0.5), Vector3(0.74, 0.44, -1.86))
 
 
 ## УАЗ-452 «буханка»: высокий фургон с плоским лбом, круглые фары,
@@ -1350,6 +1392,7 @@ static func uaz(b: MeshBuilder, paint: Color) -> void:
 	b.box(Vector3(-0.35, 0.9, 2.2), Vector3(0.35, 1.6, 2.35), dark)
 	for x in [-0.9, 0.78]:
 		b.box(Vector3(x, 0.8, 2.2), Vector3(x + 0.12, 1.0, 2.22), Color(0.9, 0.2, 0.15))
+	_trim(b, 0.95, [-1.98, -1.2], 0.55, 1.3, [-1.38], Vector2(-1.95, 1.65), 0.16, Vector3(-2.24, 1.32, 0.7), Vector3(0.95, 0.74, -2.22))
 
 
 ## КамАЗ-5320 с тентом: кабина над мотором, высокий кузов под брезентом,
@@ -1377,6 +1420,7 @@ static func kamaz(b: MeshBuilder, paint: Color) -> void:
 			b.box(Vector3(x, 1.3, z), Vector3(x + 0.02, 3.3, z + 0.06), tent.darkened(0.25))
 	for x in [-1.1, 0.9]:
 		b.box(Vector3(x, 0.9, 4.1), Vector3(x + 0.2, 1.05, 4.12), Color(0.9, 0.2, 0.15))
+	_trim(b, 1.25, [-3.92, -2.4], 1.0, 1.9, [-2.62], Vector2(-3.8, 2.45), 0.3, Vector3(-4.04, 1.93, 1.0), Vector3(1.25, 1.3, -4.03), Vector2(3.65, 1.15))
 
 
 ## Размер коробки столкновений попутки [ширина, высота, длина].

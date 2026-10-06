@@ -549,42 +549,24 @@ static func set_walk(mi: MeshInstance3D, phase: float, amount: float) -> void:
 		mat.set_shader_parameter("amount", amount)
 
 
+## Курица — округлая (AnimalModel), белая или рыжая.
 func _chicken_mesh() -> Node3D:
 	var root := Node3D.new()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var white := Color(0.95, 0.93, 0.88)
-	b.box(Vector3(-0.1, 0.15, -0.14), Vector3(0.1, 0.33, 0.14), white)
-	b.box(Vector3(-0.05, 0.3, -0.2), Vector3(0.05, 0.42, -0.1), white)
-	b.box(Vector3(-0.02, 0.42, -0.18), Vector3(0.02, 0.47, -0.1), Color(0.85, 0.1, 0.1))
-	b.box(Vector3(-0.015, 0.34, -0.25), Vector3(0.015, 0.37, -0.2), Color(0.95, 0.7, 0.2))
-	b.box(Vector3(-0.07, 0.25, 0.1), Vector3(0.07, 0.4, 0.18), white.darkened(0.1))
-	for x in [-0.05, 0.03]:
-		b.box(Vector3(x, 0.0, -0.01), Vector3(x + 0.02, 0.15, 0.01), Color(0.95, 0.7, 0.2))
-	var mesh := b.build_mesh()
-	root.add_child(mesh)
+	AnimalModel.chicken(b, Color(0.95, 0.93, 0.88) if _rng.randf() < 0.6 else Color(0.72, 0.42, 0.2))
+	root.add_child(b.build_mesh())
 	return root
 
 
+## Дворняга — округлая (AnimalModel), своя масть у каждой.
 func _dog_mesh() -> Node3D:
 	var root := Node3D.new()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var fur := Color(0.45, 0.32, 0.2)
-	b.box(Vector3(-0.15, 0.25, -0.35), Vector3(0.15, 0.5, 0.3), fur)
-	b.box(Vector3(-0.12, 0.45, -0.55), Vector3(0.12, 0.7, -0.3), fur)
-	b.box(Vector3(-0.07, 0.48, -0.68), Vector3(0.07, 0.6, -0.55), fur.darkened(0.2))
-	b.box(Vector3(-0.12, 0.7, -0.45), Vector3(-0.06, 0.8, -0.38), fur.darkened(0.3))
-	b.box(Vector3(0.06, 0.7, -0.45), Vector3(0.12, 0.8, -0.38), fur.darkened(0.3))
-	for x in [-0.13, 0.07]:
-		for z in [-0.3, 0.2]:
-			# По диагонали: левая передняя с правой задней
-			b.alpha = 0.9 if (x < 0.0) == (z < 0.0) else 0.8
-			b.box(Vector3(x, 0.0, z), Vector3(x + 0.06, 0.26, z + 0.07), fur.darkened(0.1))
-	b.alpha = 0.5
-	b.box(Vector3(-0.02, 0.45, 0.3), Vector3(0.02, 0.5, 0.5), fur)
-	b.alpha = 1.0
-	root.add_child(animal_mesh(b, 0.26, 0.47, 0.3, 11.0))
+	var furs := [Color(0.45, 0.32, 0.2), Color(0.2, 0.17, 0.14), Color(0.75, 0.6, 0.4), Color(0.55, 0.5, 0.45)]
+	AnimalModel.dog(b, furs[_rng.randi() % furs.size()])
+	root.add_child(animal_mesh(b, 0.38, 0.47, 0.32, 11.0))
 	return root
 
 

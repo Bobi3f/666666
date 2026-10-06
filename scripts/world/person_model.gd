@@ -284,6 +284,16 @@ static func _head_parts(b: MeshBuilder, c: Vector3, skin: Color, hair: Color, ha
 	# Нос и губы
 	limb(b, Vector3(c.x, c.y + 0.01, front + 0.006), Vector3(c.x, c.y - 0.028, front - 0.008), Vector2(0.009, 0.008), Vector2(0.016, 0.011), skin.darkened(0.04), true)
 	b.box(Vector3(c.x - 0.028, c.y - 0.058, front + 0.012), Vector3(c.x + 0.028, c.y - 0.046, front + 0.017), Color(0.66, 0.36, 0.33))
+	# Очки в тонкой оправе — у каждого пятого
+	if seed % 5 == 2:
+		var rim := Color(0.12, 0.1, 0.09)
+		for s in [-1.0, 1.0]:
+			var e := Vector3(c.x + s * 0.034, c.y + 0.014, front - 0.006)
+			b.box(e + Vector3(-0.024, 0.014, -0.004), e + Vector3(0.024, 0.019, 0.0), rim)
+			b.box(e + Vector3(-0.024, -0.017, -0.004), e + Vector3(0.024, -0.012, 0.0), rim)
+			b.box(e + Vector3(s * 0.024 - 0.003, -0.017, -0.004), e + Vector3(s * 0.024 + 0.003, 0.019, 0.0), rim)
+			b.box(Vector3(c.x + s * 0.088, c.y + 0.026, front + 0.004), Vector3(c.x + s * 0.092, c.y + 0.031, c.z + 0.04), rim)
+		b.box(Vector3(c.x - 0.01, c.y + 0.026, front - 0.01), Vector3(c.x + 0.01, c.y + 0.03, front - 0.006), rim)
 	# Усы — у каждого третьего мужчины
 	if not woman and seed % 3 == 0:
 		b.box(Vector3(c.x - 0.03, c.y - 0.042, front + 0.006), Vector3(c.x + 0.03, c.y - 0.03, front + 0.013), hair.darkened(0.1))

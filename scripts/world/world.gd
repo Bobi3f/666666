@@ -470,6 +470,9 @@ func _apply_detail() -> void:
 	_sun.directional_shadow_max_distance = maxf(r, 1.0)
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if SettingsManager.detail >= 2 \
 		else DirectionalLight3D.SHADOW_ORTHOGONAL
+	# На компьютере на высокой — сглаживание краёв (на телефоне дорого)
+	get_viewport().msaa_3d = Viewport.MSAA_2X if SettingsManager.detail >= 2 and not GameManager.touch_mode \
+		else Viewport.MSAA_DISABLED
 
 
 func _update_daylight() -> void:
@@ -1101,6 +1104,10 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	_front_garden(b, hi)
 	if _cottage:
 		_gazebo(b, Vector3(-7.7, 0, -1.2))
+	# Газовая труба, шины-клумбы, бочка, велосипед, вёдра, скворечник
+	YardProps.add(b, int(hi.position.x * 31.0 + hi.position.z * 17.0),
+		hi.inner_size.x * 0.5 + hi.wall_thickness + SKIN, hi.inner_size.z * 0.5 + hi.wall_thickness + SKIN,
+		hi.entrance_offset, hi.wealth == W.POOR, hi.wealth == W.RICH)
 	# На огороде игрока растёт то, что он сам посадил (garden.gd)
 	var own := is_equal_approx(hi.position.x, PLAYER_HOUSE.x) and is_equal_approx(hi.position.z, PLAYER_HOUSE.y)
 	_vegetable_plot(b, hi.wealth, not own)
