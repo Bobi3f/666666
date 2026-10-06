@@ -118,6 +118,9 @@ func close_card() -> void:
 		_card = null
 		_panel.visible = true
 		SoundLibrary.play("click", -4.0, 1.2)
+		# Карточку закрыли — мышь снова крутит камеру
+		if not GameManager.touch_mode and not get_tree().paused:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		var p := GameManager.player as Node3D
 		if p:
 			_yaw0 = p.rotation.y
@@ -156,6 +159,14 @@ func _next() -> void:
 	_show_step()
 
 
+## Карточку цели можно закрыть и с клавиатуры: Enter, пробел или E.
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if _card and key and key.pressed and not key.echo and key.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_E]:
+		get_viewport().set_input_as_handled()
+		close_card()
+
+
 func _finish() -> void:
 	Progress.tutorial_done = true
 	queue_free()
@@ -166,6 +177,10 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 	if _card:
+		# Пока карточка на экране, мышь свободна: в захваченном режиме клик
+		# приходит в середину экрана, мимо кнопки «Поехали!»
+		if not GameManager.touch_mode and not get_tree().paused:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
 	_place()
 	var p := GameManager.player as Player

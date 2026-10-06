@@ -29,9 +29,17 @@ func _run() -> void:
 	var tut = child("tutorial.gd")
 	ok(tut != null and tut._card != null and tut._card.visible, "новая игра — сначала карточка с целью")
 	ok(GM.touch_text(tut.GOAL_TEXT).contains("права") and tut.GOAL_TEXT.contains("мопед"), "в карточке путь: мопед → права → машина")
-	tut.close_card()
+	# Пока карточка открыта, мышь не захвачена — по «Поехали!» можно кликнуть
+	menu._close()
 	await pf(2)
-	ok(tut._card == null and tut._panel.visible, "«Поехали!» — карточка закрыта, начинается обучение")
+	ok(tut._card != null and (DisplayServer.get_name() == "headless" or Input.mouse_mode == Input.MOUSE_MODE_VISIBLE), "пока карточка на экране — мышь свободна")
+	# Закрыть можно и с клавиатуры: Enter
+	for down in [true, false]:
+		var e := InputEventKey.new()
+		e.physical_keycode = KEY_ENTER; e.keycode = KEY_ENTER; e.pressed = down
+		Input.parse_input_event(e)
+		await pf(2)
+	ok(tut._card == null and tut._panel.visible, "Enter — карточка закрыта, начинается обучение")
 	ok(tut != null and tut._step == 0 and tut._text.text.contains("мышью"), "новая игра — обучение: " + (tut._text.text if tut else "нет"))
 	P._look(1.0, 0.0)
 	await pf(3)
