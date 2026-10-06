@@ -143,7 +143,7 @@ func _ready() -> void:
 			add_child(c)
 			_chickens.append({"node": c, "xf": home, "target": c.position, "wait": _rng.randf_range(0.0, 3.0)})
 	# Калитки для писем: у двух дворов первого ряда и одного — второго
-	for g in [Vector3(-151.6, 0, -43.2), Vector3(-98.4, 0, -36.8), Vector3(-76.6, 0, -43.2)]:
+	for g in [Vector3(-154.3, 0, -43.2), Vector3(-95.7, 0, -36.8), Vector3(-79.3, 0, -43.2)]:
 		var i := _letter_gates.size()
 		var z := InteractZone.create("", Vector3(2.4, 2.0, 1.8))
 		z.position = g
@@ -168,7 +168,7 @@ func _ready() -> void:
 	for y in DOG_YARDS:
 		var xf := Transform3D(Basis(Vector3.UP, y[2]), Vector3(y[0], 0, y[1]))
 		var dog := _dog_mesh()
-		dog.position = xf * Vector3(4.6, 0, 9.2)
+		dog.position = xf * Vector3(7.6, 0, 9.2)
 		dog.rotation.y = y[2] + PI
 		add_child(dog)
 		_dogs.append({"node": dog, "cool": 0.0})

@@ -980,8 +980,18 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder, style := "mix
 				d.box(o + Vector3(-0.04, 0, -0.04), o + Vector3(0.04, hh, 0.04), weed)
 				d.box(o + Vector3(-0.14, hh - 0.25, -0.14), o + Vector3(0.14, hh, 0.14), weed.lightened(0.15))
 	else:
-		for seg in [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(10, 9)], [Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)], [Vector2(-10, -14), Vector2(10, -14)]]:
-			_fence(d, seg[0], seg[1], fence)
+		# Спереди — калитка у крыльца и ворота справа (заехать на машине или
+		# мотоцикле), профнастил у кирпичных домов и дач, у остальных — штакетник
+		var tin := kind == "brick" or kind == "dacha" or (kind != "mazanka" and idx % 4 == 0)
+		var tin_col: Color = TIN[idx % TIN.size()]
+		var front := [[Vector2(-10, 9), Vector2(-1.2, 9)], [Vector2(1.2, 9), Vector2(3.8, 9)], [Vector2(8.2, 9), Vector2(10, 9)]]
+		for seg in front + [[Vector2(-10, 9), Vector2(-10, -14)], [Vector2(10, 9), Vector2(10, -14)], [Vector2(-10, -14), Vector2(10, -14)]]:
+			if tin:
+				_tin_fence(d, seg[0], seg[1], tin_col, front.has(seg))
+			else:
+				_fence(d, seg[0], seg[1], fence)
+		_gates(d, tin_col if tin else fence, tin)
+		_carport(d, Color(0.48, 0.38, 0.26) if kind != "dacha" else Color(0.5, 0.52, 0.54))
 		# Огород с грядками
 		d.box(Vector3(-8.5, 0, -14.5), Vector3(8.5, 0.04, -7.5), Color(0.38, 0.28, 0.18))
 		var z := -14.0
@@ -999,11 +1009,74 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder, style := "mix
 	d.box(Vector3(-9.4, 2.2, -6.7), Vector3(-6.3, 2.35, -3.3), Color(0.35, 0.33, 0.32))
 	if kind != "abandoned" and idx % 4 == 1:
 		# Будка с цепью и поленница у сарая
-		d.box(Vector3(6.0, 0, -4.0), Vector3(7.0, 0.8, -3.0), Color(0.5, 0.38, 0.25))
+		d.box(Vector3(-5.6, 0, -1.9), Vector3(-4.6, 0.8, -0.9), Color(0.5, 0.38, 0.25))
 		d.box(Vector3(-6.3, 0, -6.4), Vector3(-5.6, 1.4, -3.6), Color(0.6, 0.45, 0.28))
 	glow.xf = Transform3D.IDENTITY
-	_world._tree(d, Vector3(6.8 if idx % 2 == 0 else -6.5, 0, 5.5), _rng.randf() * TAU, Vegetation.TreeKind.APPLE if idx % 3 != 2 and kind != "abandoned" else Vegetation.TreeKind.BIRCH)
+	_world._tree(d, Vector3(-6.5, 0, 5.5), _rng.randf() * TAU, Vegetation.TreeKind.APPLE if idx % 3 != 2 and kind != "abandoned" else Vegetation.TreeKind.BIRCH)
 	d.xf = Transform3D.IDENTITY
+
+
+## Цвета профнастила: синий, бирюзовый, бордовый, зелёный, серый.
+const TIN := [Color(0.35, 0.5, 0.62), Color(0.22, 0.46, 0.46), Color(0.45, 0.18, 0.2), Color(0.25, 0.4, 0.3), Color(0.5, 0.52, 0.53)]
+
+
+## Забор из профнастила на столбах (в координатах дома), с коллизией.
+## ribbed — с рёбрами волны (по улице), сбоку и сзади — гладкий лист.
+func _tin_fence(d: MeshBuilder, a: Vector2, c: Vector2, color: Color, ribbed: bool) -> void:
+	var dir := c - a
+	var size_m := dir.length()
+	if size_m < 0.1:
+		return
+	var u := dir / size_m
+	var mid := (a + c) * 0.5
+	var yaw := atan2(u.x, u.y)
+	d.box_rot(Vector3(mid.x, 0.98, mid.y), Vector3(0.04, 1.8, size_m), yaw, color)
+	var t := 0.0
+	while t <= size_m + 0.01:
+		var p := a + u * t
+		d.box_rot(Vector3(p.x, 1.0, p.y), Vector3(0.09, 2.0, 0.09), yaw, Color(0.25, 0.25, 0.27))
+		t += 2.5
+	if ribbed:
+		t = 0.25
+		while t < size_m:
+			var p := a + u * t
+			d.box_rot(Vector3(p.x, 0.98, p.y), Vector3(0.08, 1.8, 0.06), yaw, color.darkened(0.14))
+			t += 0.5
+	var saved := d.xf
+	d.xf = d.xf * Transform3D(Basis(Vector3.UP, yaw), Vector3(mid.x, 0, mid.y))
+	d.add_collider(Vector3(-0.06, 0, -size_m * 0.5), Vector3(0.06, 1.9, size_m * 0.5))
+	d.xf = saved
+
+
+## Ворота во двор: два столба, створки распахнуты внутрь, гравийный заезд
+## с улицы до навеса — машина и мотоцикл проезжают свободно.
+func _gates(d: MeshBuilder, color: Color, tin: bool) -> void:
+	for x in [3.8, 8.2]:
+		d.box(Vector3(x - 0.08, 0, 8.92), Vector3(x + 0.08, 2.1, 9.08), Color(0.25, 0.25, 0.27))
+	for x in [3.85, 8.15]:
+		d.box(Vector3(x - 0.03, 0.15, 6.8), Vector3(x + 0.03, 1.9, 8.95), color.darkened(0.05))
+		if not tin:
+			for z in [7.2, 8.0, 8.7]:
+				d.box(Vector3(x - 0.05, 0.15, z - 0.04), Vector3(x + 0.05, 1.9, z + 0.04), color.darkened(0.25))
+	d.box(Vector3(4.1, 0, -1.4), Vector3(7.9, 0.03, 13.2), Color(0.5, 0.47, 0.42))
+
+
+## Навес-сарай для машины в глубине двора: стены с трёх сторон, открыт
+## к воротам, крыша на скат. Заезжай и ставь.
+func _carport(d: MeshBuilder, wood: Color) -> void:
+	d.box(Vector3(4.4, 0, -7.3), Vector3(9.6, 2.5, -7.0), wood)
+	d.add_collider(Vector3(4.4, 0, -7.3), Vector3(9.6, 2.5, -7.0))
+	for x in [4.4, 9.35]:
+		d.box(Vector3(x, 0, -7.3), Vector3(x + 0.25, 2.4, -1.5), wood.darkened(0.08))
+		d.add_collider(Vector3(x, 0, -7.3), Vector3(x + 0.25, 2.4, -1.5))
+		var z := -7.0
+		while z < -1.6:
+			d.box(Vector3(x - 0.01, 0.1, z), Vector3(x + 0.26, 2.3, z + 0.05), wood.darkened(0.3))
+			z += 0.45
+	d.box(Vector3(4.2, 2.45, -7.5), Vector3(9.8, 2.6, -1.2), Color(0.38, 0.36, 0.34))
+	# Лампочка под навесом и канистра у стены
+	d.box(Vector3(6.95, 2.3, -4.4), Vector3(7.05, 2.45, -4.3), Color(1.0, 0.9, 0.6))
+	d.box(Vector3(8.6, 0, -6.8), Vector3(9.0, 0.45, -6.5), Color(0.75, 0.15, 0.12))
 
 
 ## Штакетник от a до b (в координатах дома), с коллизией.

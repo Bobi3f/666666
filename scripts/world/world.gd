@@ -1072,10 +1072,18 @@ func _yard_fence(b: MeshBuilder, hi: HouseInterior) -> void:
 	var x1 := 11.0
 	var z0 := -9.0
 	var z1 := 12.0
-	var gate0 := hi.entrance_offset - 1.6
-	var gate1 := hi.entrance_offset + 1.6
-	# Дорожка от калитки к двери
+	# Ворота шириной 4,4 м — заехать во двор на машине или мотоцикле
+	var gate0 := hi.entrance_offset - 2.2
+	var gate1 := hi.entrance_offset + 2.2
+	# Заезд от ворот к дому: гравий, посередине — дорожка
+	b.box(Vector3(gate0 + 0.3, 0, hi.inner_size.z * 0.5 + 0.9), Vector3(gate1 - 0.3, 0.02, z1 + 1.0), Color(0.5, 0.47, 0.42))
 	b.box(Vector3(hi.entrance_offset - 0.6, 0, hi.inner_size.z * 0.5 + 0.9), Vector3(hi.entrance_offset + 0.6, 0.025, z1), Color(0.5, 0.44, 0.34))
+	# Створки распахнуты внутрь двора
+	var leaf := Color(0.3, 0.42, 0.32) if hi.wealth == W.RICH else Color(0.55, 0.44, 0.3)
+	for gx in [gate0, gate1]:
+		b.box(Vector3(gx - 0.09, 0, z1 - 0.09), Vector3(gx + 0.09, 2.1, z1 + 0.09), Color(0.3, 0.3, 0.32))
+		var lx: float = gx + (0.08 if gx < hi.entrance_offset else -0.08)
+		b.box(Vector3(lx - 0.03, 0.12, z1 - 2.2), Vector3(lx + 0.03, 1.8, z1 - 0.05), leaf)
 	# Огород за домом — тоже за забором; из двора в огород калитка в углу
 	var zg := -14.6
 	var runs := [
@@ -1142,7 +1150,7 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	# Кусты сирени и смородины вдоль забора
 	for p in [Vector3(-10.0, 0, 10.8), Vector3(-10.0, 0, 3.0), Vector3(10.0, 0, 11.0), Vector3(-6.0, 0, -8.0)]:
 		_tree(b, p, _rng.randf() * TAU, Vegetation.TreeKind.BUSH)
-	_gate_bench(b, hi.wealth)
+	_gate_bench(b, hi.wealth, hi.entrance_offset + 2.6)
 	_front_garden(b, hi)
 	if _cottage:
 		_gazebo(b, Vector3(-7.7, 0, -1.2))
@@ -1154,7 +1162,7 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	var own := is_equal_approx(hi.position.x, PLAYER_HOUSE.x) and is_equal_approx(hi.position.z, PLAYER_HOUSE.y)
 	_vegetable_plot(b, hi.wealth, not own)
 	if hi.wealth != W.RICH:
-		_kennel(b, Vector3(3.6, 0, 8.2))
+		_kennel(b, Vector3(6.6, 0, 8.2))
 	match hi.wealth:
 		W.POOR:
 			# Уличный туалет
@@ -1195,12 +1203,12 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 
 
 ## Лавочка у забора справа от калитки — посидеть с соседями.
-func _gate_bench(b: MeshBuilder, wealth: int) -> void:
+func _gate_bench(b: MeshBuilder, wealth: int, x0 := 1.0) -> void:
 	var wood := Color(0.5, 0.35, 0.2) if wealth == W.RICH else Color(0.55, 0.45, 0.32)
-	b.box(Vector3(1.0, 0.42, 12.25), Vector3(3.0, 0.47, 12.65), wood)
+	b.box(Vector3(x0, 0.42, 12.25), Vector3(x0 + 2.0, 0.47, 12.65), wood)
 	if wealth != W.POOR:
-		b.box(Vector3(1.0, 0.47, 12.15), Vector3(3.0, 0.85, 12.2), wood)
-	for x in [1.1, 2.8]:
+		b.box(Vector3(x0, 0.47, 12.15), Vector3(x0 + 2.0, 0.85, 12.2), wood)
+	for x in [x0 + 0.1, x0 + 1.8]:
 		b.box(Vector3(x, 0, 12.3), Vector3(x + 0.1, 0.42, 12.6), wood.darkened(0.35))
 
 
