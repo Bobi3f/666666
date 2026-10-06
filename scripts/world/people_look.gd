@@ -13,15 +13,27 @@ const SPEED := 3.0
 
 ## Кто сейчас повёрнут: меш → [голова, тело].
 var _turned := {}
+## Кто рядом — пересматриваем раз в полсекунды, а не весь список каждый кадр.
+var _near: Array = []
+var _scan := 0.0
 
 
 func _process(delta: float) -> void:
 	var target := _target()
+	_scan -= delta
+	if _scan <= 0.0:
+		_scan = 0.5
+		_near.clear()
+		if target != Vector3.INF:
+			for n in get_tree().get_nodes_in_group("people"):
+				var g := n as Node3D
+				if g and g.global_position.distance_squared_to(target) < (RANGE + 6.0) * (RANGE + 6.0):
+					_near.append(g)
 	var seen := {}
 	if target != Vector3.INF:
-		for n in get_tree().get_nodes_in_group("people"):
+		for n in _near:
 			var mi := n as MeshInstance3D
-			if mi == null or not mi.is_visible_in_tree():
+			if mi == null or not is_instance_valid(mi) or not mi.is_visible_in_tree():
 				continue
 			if mi.global_position.distance_squared_to(target) > RANGE * RANGE:
 				continue

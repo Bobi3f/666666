@@ -1,6 +1,7 @@
 extends SceneTree
 ## Без подвисаний: шейдеры прогреваются за экраном загрузки — каждый
-## материал мира рисуется один раз заранее, а не когда впервые попадёт в кадр.
+## материал мира рисуется один раз заранее, а не когда впервые попадёт в кадр;
+## стоящие машины и камеры, в которые никто не смотрит, кадр не тратят.
 var fails := 0
 var W
 func ok(c: bool, w: String) -> void:
@@ -28,6 +29,25 @@ func _run() -> void:
 	ok(n == mats.size(), "все нарисованы: %d" % n)
 	await frames(2)
 	ok(W.find_child("ShaderWarmup", true, false) == null, "квадратики убраны")
+	print("== Лишняя работа каждый кадр")
+	var car: Vehicle = W.get_node("Car")
+	for i in 5: await physics_frame
+	ok(car._asleep(), "стоящая машина без водителя спит — физику не считает")
+	car.global_position += Vector3(0, 0, 0.5)
+	ok(not car._asleep(), "сдвинули — проснулась")
+	car.speed = 3.0
+	ok(not car._asleep(), "катится — не спит")
+	car.speed = 0.0
+	var idle := 0
+	for c in W.find_children("*", "SmoothCamera", true, false):
+		if not c.current:
+			c._ready_xf = true
+			idle += 1
+	await physics_frame
+	var still := 0
+	for c in W.find_children("*", "SmoothCamera", true, false):
+		if not c.current and not c._ready_xf: still += 1
+	ok(idle > 5 and still == idle, "камеры, в которые не смотрят, не считаются: %d из %d" % [still, idle])
 	var boot := FileAccess.get_file_as_string("res://scripts/ui/boot.gd")
 	ok(boot.contains("ShaderWarmup.run(world)"), "при запуске — за экраном загрузки")
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])

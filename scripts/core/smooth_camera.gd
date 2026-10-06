@@ -31,7 +31,10 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if target == null or not is_instance_valid(target):
+	# Камер у машин и людей десятки, смотрит одна — остальные не считаем;
+	# станет текущей — начнёт с места метки
+	if not current or target == null or not is_instance_valid(target):
+		_ready_xf = false
 		return
 	_prev = _cur
 	_cur = target.global_transform
@@ -42,7 +45,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if target == null or not is_instance_valid(target):
+	if not current or target == null or not is_instance_valid(target):
 		return
 	if not _ready_xf:
 		_prev = target.global_transform

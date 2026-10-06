@@ -626,6 +626,8 @@ func gear_name() -> String:
 
 func _physics_process(dt: float) -> void:
 	_skip_teleport()
+	if _asleep():
+		return
 	var drv := driver != null
 	var w := drv and Input.is_physical_key_pressed(KEY_W)
 	var s := drv and Input.is_physical_key_pressed(KEY_S)
@@ -644,6 +646,22 @@ func _physics_process(dt: float) -> void:
 	if drv:
 		_return_look(dt)
 		_update_camera(dt)
+
+
+## Стоит без водителя, мотор заглушен, не катится — физику не считаем:
+## машин в мире больше десятка, а на телефоне каждый шаг физики дорог.
+## Сдвинули (эвакуатор, загрузка, тест) или сел водитель — сразу просыпается.
+var _sleep_pos := Vector3.INF
+
+
+func _asleep() -> bool:
+	if driver or engine_on or rpm > 50.0 or absf(speed) > 0.05 or absf(lateral) > 0.05 or not is_on_floor():
+		_sleep_pos = Vector3.INF
+		return false
+	if _sleep_pos == Vector3.INF or global_position.distance_to(_sleep_pos) > 0.01:
+		_sleep_pos = global_position
+		return false
+	return true
 
 
 ## Перенесли разом (салон, автобус, загрузка, эвакуатор) — не размазывать
