@@ -163,7 +163,9 @@ func _next() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if _card and key and key.pressed and not key.echo and key.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_E]:
-		get_viewport().set_input_as_handled()
+		# E не съедаем: у машины она же и сажает за руль
+		if key.physical_keycode != KEY_E:
+			get_viewport().set_input_as_handled()
 		close_card()
 
 
