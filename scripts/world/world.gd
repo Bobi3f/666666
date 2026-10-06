@@ -1760,20 +1760,118 @@ func _build_meadow(b: MeshBuilder) -> void:
 		var c := Vector2(r.randf_range(-20, 190), r.randf_range(30, 185))
 		for k in r.randi_range(5, 11):
 			var p := Vector3(c.x + r.randf_range(-11, 11), 0, c.y + r.randf_range(-9, 9))
-			if not Roads.tree_ok(p.x, p.z) or p.z < 14.0:
-				continue
 			var kind := Vegetation.TreeKind.BIRCH if r.randf() < 0.7 else (Vegetation.TreeKind.BUSH if r.randf() < 0.6 else Vegetation.TreeKind.SPRUCE)
-			_tree(b, p, r.randf() * TAU, kind)
+			var yaw := r.randf() * TAU
+			# В роще свои деревья, на тропинках — никаких
+			if not Roads.tree_ok(p.x, p.z) or p.z < 14.0 or GROVE.has_point(Vector2(p.x, p.z)) \
+					or _polyline_dist(Vector2(p.x, p.z), GROVE_PATHS[0]) < 3.0 or _polyline_dist(Vector2(p.x, p.z), GROVE_PATHS[1]) < 3.0:
+				continue
+			_tree(b, p, yaw, kind)
 	# Тропинка через луг: от трассы к берёзовым колкам и к железной дороге
-	RoadDetails.path(b, [Vector2(60, 7), Vector2(72, 30), Vector2(95, 62), Vector2(118, 95), Vector2(130, 130), Vector2(150, 165), Vector2(160, 199)], 0.9, r)
-	RoadDetails.path(b, [Vector2(95, 62), Vector2(60, 80), Vector2(20, 95), Vector2(-15, 110)], 0.8, r)
-	# Вдоль трассы — редкие кусты и одинокие берёзы
-	var x := -30.0
-	while x < 195.0:
-		if r.randf() < 0.45:
-			_tree(b, Vector3(x + r.randf_range(-4, 4), 0, r.randf_range(12, 20)), r.randf() * TAU,
-					Vegetation.TreeKind.BUSH if r.randf() < 0.6 else Vegetation.TreeKind.BIRCH)
-		x += 14.0
+	RoadDetails.path(b, GROVE_PATHS[0], 0.9, r)
+	RoadDetails.path(b, GROVE_PATHS[1], 0.8, r)
+	_build_grove(b)
+	_build_tree_belts(b)
+
+
+## Тропинки рощи «Берёзки» (вместе с луговыми): по ним деревьев нет.
+const GROVE := Rect2(58, 52, 118, 122)
+const GROVE_CLEARING := Vector2(124.0, 112.0)
+const GROVE_PATHS := [
+	[Vector2(60, 7), Vector2(72, 30), Vector2(95, 62), Vector2(118, 95), Vector2(130, 130), Vector2(150, 165), Vector2(160, 199)],
+	[Vector2(95, 62), Vector2(60, 80), Vector2(20, 95), Vector2(-15, 110)],
+	# Кольцо через рощу: от тропинки к полянке, по опушке и обратно
+	[Vector2(118, 95), Vector2(129, 106), Vector2(146, 104), Vector2(164, 126), Vector2(150, 150), Vector2(130, 130)],
+	[Vector2(95, 62), Vector2(84, 98), Vector2(92, 134), Vector2(118, 146), Vector2(130, 130)],
+]
+
+
+## Расстояние от точки до ломаной.
+static func _polyline_dist(p: Vector2, pts: Array) -> float:
+	var best := INF
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var c: Vector2 = pts[i + 1]
+		var t := clampf((p - a).dot(c - a) / maxf((c - a).length_squared(), 0.001), 0.0, 1.0)
+		best = minf(best, p.distance_to(a + (c - a) * t))
+	return best
+
+
+## Роща «Берёзки» за фермой: берёзы и ели гуще, чем на лугу, тропинки
+## кольцом, посередине — полянка с лавками и кострищем, у входа — табличка.
+func _build_grove(b: MeshBuilder) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 5150
+	var g := GROVE
+	RoadDetails.path(b, GROVE_PATHS[2], 0.8, r)
+	RoadDetails.path(b, GROVE_PATHS[3], 0.8, r)
+	var x := g.position.x
+	while x < g.end.x:
+		var z := g.position.y
+		while z < g.end.y:
+			var p := Vector2(x + r.randf_range(-2.5, 2.5), z + r.randf_range(-2.5, 2.5))
+			var kind := Vegetation.TreeKind.BIRCH if r.randf() < 0.72 else Vegetation.TreeKind.SPRUCE
+			var yaw := r.randf() * TAU
+			var skip := r.randf() < 0.18
+			var near_path := false
+			for path in GROVE_PATHS:
+				if _polyline_dist(p, path) < 3.2:
+					near_path = true
+			if not skip and not near_path and p.distance_to(GROVE_CLEARING) > 11.0 \
+					and Roads.tree_ok(p.x, p.y) and not Farm.occupied(p.x, p.y):
+				_tree(b, Vector3(p.x, 0, p.y), yaw, kind)
+			z += 7.0
+		x += 7.0
+	# Полянка: лавки по кругу, кострище из камней, поленья
+	var c := Vector3(GROVE_CLEARING.x, 0, GROVE_CLEARING.y)
+	for i in 3:
+		var a := TAU * i / 3.0 + 0.4
+		var bp := c + Vector3(cos(a), 0, sin(a)) * 4.2
+		b.xf = Transform3D(Basis(Vector3.UP, -a + PI * 0.5), bp)
+		b.box(Vector3(-1.1, 0.4, -0.2), Vector3(1.1, 0.48, 0.2), Color(0.5, 0.36, 0.22), true)
+		for s in [-0.9, 0.9]:
+			b.box(Vector3(s - 0.08, 0, -0.15), Vector3(s + 0.08, 0.4, 0.15), Color(0.4, 0.3, 0.2))
+		b.xf = Transform3D.IDENTITY
+	for i in 8:
+		var a := TAU * i / 8.0
+		b.box(c + Vector3(cos(a) * 0.8 - 0.14, 0, sin(a) * 0.8 - 0.12), c + Vector3(cos(a) * 0.8 + 0.14, 0.18, sin(a) * 0.8 + 0.12), Color(0.45, 0.44, 0.42))
+	b.box(c + Vector3(-0.5, 0, -0.5), c + Vector3(0.5, 0.03, 0.5), Color(0.12, 0.1, 0.09))
+	for i in 3:
+		b.box_rot(c + Vector3(0, 0.12, 0), Vector3(1.1, 0.12, 0.12), TAU * i / 3.0, Color(0.36, 0.25, 0.16))
+	# Табличка у входа с луговой тропинки
+	_sign(b, Vector3(76.5, 0, 34.0), PI * 0.8, "Роща «Берёзки»", 1.6)
+
+
+## Лесополосы вдоль трассы: берёзы в два ряда вразнобой, с просветами — от
+## Каменки (восточнее клуба) до города и к западу от Каменки. Только берёзы: один вид — меньше
+## вызовов отрисовки на телефоне. У сёл, съездов, остановок и города — разрывы.
+func _build_tree_belts(b: MeshBuilder) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 6060
+	var exits := []
+	for road in Region.ROADS:
+		var s: Vector2 = road[0]
+		if absf(s.y) < 6.0:
+			exits.append(s.x)
+	for stretch in [Vector2(10.0, 600.0), Vector2(-1000.0, -205.0)]:
+		for side in [-1.0, 1.0]:
+			for row in 2:
+				var x: float = stretch.x + row * 3.5
+				while x < stretch.y:
+					var px := x + r.randf_range(-1.5, 1.5)
+					var pz: float = side * (16.5 + row * 4.0 + r.randf_range(-1.0, 1.0))
+					var gap := r.randf() < 0.14
+					var yaw := r.randf() * TAU
+					var ok := not gap
+					for ex in exits:
+						if absf(px - float(ex)) < 24.0:
+							ok = false
+					if ok and _polyline_dist(Vector2(px, pz), GROVE_PATHS[0]) < 3.5:
+						ok = false
+					if ok and Roads.tree_ok(px, pz) and not Farm.occupied(px, pz) and Region.road_dist(px, pz) > 8.0 \
+							and Railway.dist(px, pz) > 10.0 and not Landscape.occupied(px, pz) and not Landmarks.occupied(px, pz):
+						_tree(b, Vector3(px, 0, pz), yaw, Vegetation.TreeKind.BIRCH)
+					x += r.randf_range(6.5, 9.0)
 
 
 func _build_town(b: MeshBuilder, glow: MeshBuilder) -> void:

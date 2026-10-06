@@ -1979,4 +1979,6 @@ const EN := {
 	"E — ремнабор для машины и мотоцикла (%d грн)%s": "E — repair kit for a car or motorbike (%d UAH)%s",
 	"Купил ремнабор (в запасе %d). Чинить — в инвентаре, рядом со своей машиной или мотоциклом": "Bought a repair kit (in stock %d). Repair from the inventory, next to your car or motorbike",
 	"Показывать FPS (кадры в секунду)": "Show FPS (frames per second)",
+	"Роща «Берёзки»": "\"Beryozki\" grove",
+	"роща «Берёзки»": "\"Beryozki\" grove",
 }
