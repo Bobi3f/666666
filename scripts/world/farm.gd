@@ -24,7 +24,9 @@ const Villagers := preload("res://scripts/world/villagers.gd")
 
 var milk_day := -1
 var _sign: Label3D
+## Лампы и здание, где каждая светит: горит, только пока игрок внутри
 var _lights: Array[OmniLight3D] = []
+var _light_rooms: Array[Rect2] = []
 
 
 ## Занято ли место фермой — для деревьев и травы.
@@ -54,13 +56,14 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	# Свет внутри — только когда игрок рядом и темно или в помещении
+	# Лампа горит, только пока игрок в её здании: на телефоне каждый свет
+	# утяжеляет всё, на что падает
 	var p := GameManager.player as Node3D
 	if p == null:
 		return
-	var near := p.global_position.distance_to(Vector3(AREA.get_center().x, 0, AREA.get_center().y)) < 45.0
-	for l in _lights:
-		l.visible = near
+	var at := Vector2(p.global_position.x, p.global_position.z)
+	for i in _lights.size():
+		_lights[i].visible = _light_rooms[i].grow(1.5).has_point(at)
 
 
 # --- Земля, забор, площадка ---------------------------------------------------
@@ -152,6 +155,7 @@ func _garage(b: MeshBuilder) -> void:
 	lamp.light_color = Color(1.0, 0.9, 0.7)
 	add_child(lamp)
 	_lights.append(lamp)
+	_light_rooms.append(GARAGE)
 
 
 ## Полукруглый ангар из профлиста: открыт к воротам (−Z), сзади глухой торец.
@@ -188,6 +192,7 @@ func _hangar(b: MeshBuilder) -> void:
 	lamp.light_color = Color(1.0, 0.92, 0.75)
 	add_child(lamp)
 	_lights.append(lamp)
+	_light_rooms.append(HANGAR)
 
 
 # --- Коровник ---------------------------------------------------------------------
@@ -249,6 +254,7 @@ func _barn(b: MeshBuilder) -> void:
 		lamp.light_color = Color(1.0, 0.9, 0.72)
 		add_child(lamp)
 		_lights.append(lamp)
+		_light_rooms.append(BARN)
 	var l := _label("КОРОВНИК", Vector3(r.position.x - 0.05, 3.4, mid), -PI / 2.0, 0.004, Color(0.2, 0.2, 0.2))
 	l.visibility_range_end = 120.0
 

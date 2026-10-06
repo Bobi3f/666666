@@ -333,6 +333,11 @@ func _build_settings(box: VBoxContainer) -> void:
 	mm.button_pressed = SettingsManager.minimap
 	mm.toggled.connect(SettingsManager.set_minimap)
 	box.add_child(mm)
+	var fps := CheckButton.new()
+	fps.text = "Показывать FPS (кадры в секунду)"
+	fps.button_pressed = SettingsManager.show_fps
+	fps.toggled.connect(SettingsManager.set_show_fps)
+	box.add_child(fps)
 	if GameManager.touch_mode:
 		var lefty := CheckButton.new()
 		lefty.text = "Под левую руку: джойстик и руль справа"

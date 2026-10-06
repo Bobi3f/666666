@@ -8,6 +8,8 @@ var _needs: Control
 const RING_R := 15.0
 const RINGS := [["сытость", Color(0.95, 0.65, 0.2)], ["бодрость", Color(0.4, 0.7, 1.0)], ["вода", Color(0.35, 0.85, 0.9)]]
 var _snacks: Label
+## Кадры в секунду — если включено в настройках
+var _fps: Label
 var _car: Label
 var _prompt: Label
 var _msg: Label
@@ -35,6 +37,7 @@ func _ready() -> void:
 	_needs.draw.connect(_draw_needs)
 	add_child(_needs)
 	_snacks = _label(Vector2(0, 12), 17)
+	_fps = _label(Vector2(0, 12), 15)
 	_car = _label(Vector2(16, 0), 22)
 	_car.anchor_top = 1.0
 	_car.anchor_bottom = 1.0
@@ -143,6 +146,12 @@ func _process(delta: float) -> void:
 	_needs.position = Vector2(16.0 + tw + 14.0, 6.0)
 	_needs.queue_redraw()
 	_snacks.position = Vector2(_needs.position.x + (RINGS.size() - 1) * (RING_R * 2.0 + 30.0) + RING_R * 2.0 + 18.0, 14.0)
+	_fps.visible = SettingsManager.show_fps
+	if _fps.visible:
+		var f := Engine.get_frames_per_second()
+		_fps.text = "FPS %d" % int(f)
+		_fps.position = Vector2(_snacks.position.x + _snacks.get_combined_minimum_size().x + 16.0, 15.0)
+		_fps.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5) if f >= 28.0 else (Color(1.0, 0.85, 0.3) if f >= 18.0 else Color(1.0, 0.4, 0.35)))
 	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
 	var lines: Array[String] = []
 	if GameManager.challenge_line != "":

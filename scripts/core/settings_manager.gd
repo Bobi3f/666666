@@ -27,6 +27,8 @@ var left_hand := false
 var vibration := true
 ## Мини-карта в углу экрана.
 var minimap := true
+## Частота кадров на экране — понять, где игра тормозит.
+var show_fps := false
 ## Пешком — вид от третьего лица (персонаж виден со спины).
 var third_person := true
 ## Ячейка сохранения 1–3.
@@ -88,6 +90,7 @@ func _ready() -> void:
 		left_hand = bool(cfg.get_value("ui", "left_hand", false))
 		vibration = bool(cfg.get_value("ui", "vibration", true))
 		minimap = bool(cfg.get_value("ui", "minimap", true))
+		show_fps = bool(cfg.get_value("ui", "show_fps", false))
 		third_person = bool(cfg.get_value("ui", "third_person", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 		lang = "en" if str(cfg.get_value("ui", "lang", lang)) == "en" else "ru"
@@ -151,6 +154,12 @@ func set_left_hand(v: bool) -> void:
 
 func set_third_person(v: bool) -> void:
 	third_person = v
+	_save()
+	changed.emit()
+
+
+func set_show_fps(v: bool) -> void:
+	show_fps = v
 	_save()
 	changed.emit()
 
@@ -294,6 +303,7 @@ func _save() -> void:
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)
 	cfg.set_value("ui", "minimap", minimap)
+	cfg.set_value("ui", "show_fps", show_fps)
 	cfg.set_value("ui", "lang", lang)
 	cfg.set_value("ui", "third_person", third_person)
 	cfg.set_value("save", "slot", slot)

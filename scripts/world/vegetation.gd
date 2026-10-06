@@ -16,7 +16,7 @@ const CHUNK := 25.0
 ## Деревья — кусками 100×100 м: вызовов отрисовки вчетверо меньше, чем при 50 м,
 ## а тени всё равно не рисуют весь лес сразу.
 const TREE_CHUNK := 100.0
-const FAR_CHUNK := 200.0
+const FAR_CHUNK := 400.0
 const GRASS_RANGE := 75.0
 
 const GRASS_SHADER := """
@@ -122,7 +122,7 @@ func build() -> void:
 				mi.name = "%s_%d_%d_%d" % [lod, kind, key.x, key.y]
 				add_child(mi)
 
-		# Силуэты — крупными кусками по 200 м: вдали деревьев много, а
+		# Силуэты — крупными кусками по 400 м: вдали деревьев много, а
 		# вызовов отрисовки должно быть мало
 		if far_models.has(kind):
 			var far_cells := {}

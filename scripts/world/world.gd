@@ -488,7 +488,9 @@ func _update_daylight() -> void:
 		_water_mat.set_shader_parameter("sky", Vector3(sky_col.r, sky_col.g, sky_col.b))
 		_water_mat.set_shader_parameter("deep", Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day))
 		_water_mat.set_shader_parameter("ice", clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0))
-	MeshBuilder.set_surface(WeatherManager.wetness, 1.0)
+	# Рисунок поверхностей — со средней детализации: на низкой (телефон)
+	# шейдер обходится тремя выборками зерна, без узоров травы и кирпича
+	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.detail >= 1 else 0.0)
 	if _glow_mat:
 		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 	# Фонари зажигаются в сумерках

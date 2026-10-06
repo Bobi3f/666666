@@ -170,6 +170,31 @@ func _run() -> void:
 	ok(root.scaling_3d_scale < sc, "слабый телефон — картинка ещё проще: %d%%" % int(root.scaling_3d_scale * 100.0))
 	SM._lines_k = 1.0
 	GM.touch_mode = false
+
+	print("== Лёгкий режим поверхностей и прочее")
+	set_detail.call(0)
+	W._update_daylight()
+	ok(float(MeshBuilder.world_material().get_shader_parameter("quality")) == 0.0, "на низкой детализации рисунок поверхностей выключен — меньше работы на пиксель")
+	set_detail.call(1)
+	W._update_daylight()
+	ok(float(MeshBuilder.world_material().get_shader_parameter("quality")) == 1.0, "со средней — с рисунком")
+	var far_n := 0
+	for c in W.get_node("Vegetation").get_children():
+		if String(c.name).begins_with("TreesFar"): far_n += 1
+	ok(Vegetation.FAR_CHUNK >= 400.0 and far_n < 250, "дальние деревья кусками по %d м: %d на весь район" % [int(Vegetation.FAR_CHUNK), far_n])
+	var farm = W.get_node("Farm")
+	W.get_node("Player").global_position = Vector3(Farm.GATE_X, 0.3, Farm.AREA.position.y - 5.0)
+	await process_frame
+	var lit := 0
+	for l in farm._lights: if l.visible: lit += 1
+	ok(lit == 0, "у ворот фермы лампы в зданиях не горят")
+	SM.set_show_fps(true)
+	await process_frame
+	var fps_ok := false
+	for c in W.get_children():
+		if c.get_script() and c.get_script().resource_path.ends_with("hud.gd"): fps_ok = c._fps.visible and c._fps.text.begins_with("FPS")
+	ok(fps_ok, "в настройках можно включить FPS на экране")
+	SM.set_show_fps(false)
 	set_detail.call(detail0)
 
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
