@@ -143,6 +143,16 @@ const ROOFS := [Color(0.42, 0.44, 0.46), Color(0.55, 0.25, 0.18), Color(0.28, 0.
 
 static var _river: PackedVector2Array = PackedVector2Array()
 static var _segs: Array = []  # [a, b] — все отрезки дорог и улиц
+static var _plans := {}
+static var _rects := {}
+
+## Каждое село своё. plan — что за главной улицей (с дальнего от въезда
+## конца): line — ничего, long — улица длиннее, L — поворот в сторону от
+## поля, ring — улица-кольцо, double — вторая улица параллельно, khutor —
+## грунтовка к хуторам. style — какие дома: срубы, кирпич, избы, мазанки
+## под соломой, дачи с верандами, умирающее село с брошенными домами.
+const PLANS := ["ring", "long", "khutor", "L", "double", "line", "ring", "long", "L", "double", "line", "khutor"]
+const STYLES := ["log", "brick", "dying", "izba", "log", "brick", "dacha", "mazanka", "izba", "mixed", "mazanka", "dacha"]
 
 var visited: Array = []
 var _world: Node3D
@@ -176,15 +186,133 @@ static func river() -> PackedVector2Array:
 	return _river
 
 
+## Сторона села без поля (там же его особое место): -1 — север, 1 — юг.
+static func free_side(i: int) -> float:
+	var c: Vector2 = VILLAGES[i].c
+	var f: Rect2 = FIELDS[i][0]
+	return -signf(f.get_center().y - c.y)
+
+
+## Планировка села i сверх главной улицы: {"streets": [[a, b]…], "houses":
+## [[где, куда смотрит]…]}. Всё — с дальнего от въезда конца улицы.
+static func plan(i: int) -> Dictionary:
+	if _plans.has(i):
+		return _plans[i]
+	var v: Dictionary = VILLAGES[i]
+	var c: Vector2 = v.c
+	var e := float(v.entry)
+	var fs := free_side(i)
+	var streets := []
+	var hs := []
+	var start := Vector2(c.x - 58.0 * e, c.y)
+	match PLANS[i]:
+		"long":
+			streets.append([start, Vector2(c.x - 100.0 * e, c.y)])
+			for side in [-1.0, 1.0]:
+				for hx in [-66.0, -88.0]:
+					hs.append([Vector2(c.x + hx * e, c.y + side * 16.0), 0.0 if side < 0.0 else PI])
+		"L":
+			var k := Vector2(c.x - 100.0 * e, c.y)
+			streets.append([start, k])
+			streets.append([k, k + Vector2(0, fs * 78.0)])
+			for sx in [-1.0, 1.0]:
+				for dz in [32.0, 56.0]:
+					hs.append([k + Vector2(sx * 16.0, fs * dz), PI / 2.0 if sx < 0.0 else -PI / 2.0])
+		"ring":
+			var rc := Vector2(c.x - 98.0 * e, c.y)
+			var rx := 22.0
+			var rz := 16.0
+			streets.append([start, Vector2(rc.x + rx * e, c.y)])
+			var prev := Vector2.ZERO
+			for k in 17:
+				var t := TAU * k / 16.0
+				var p := rc + Vector2(cos(t) * rx * e, sin(t) * rz)
+				if k > 0:
+					streets.append([prev, p])
+				prev = p
+			# Дома снаружи кольца, фасадом к скверу посередине
+			for deg in [80.0, 130.0, 180.0, 230.0, 280.0]:
+				var a := deg_to_rad(deg)
+				var dir := Vector2(cos(a) * e, sin(a))
+				var rd := 1.0 / sqrt(pow(cos(a) / rx, 2.0) + pow(sin(a) / rz, 2.0))
+				var p := rc + dir * (rd + 13.0)
+				var to := rc - p
+				hs.append([p, atan2(to.x, to.y)])
+		"double":
+			var z2 := c.y + fs * 46.0
+			var k := Vector2(c.x - 70.0 * e, c.y)
+			streets.append([start, k])
+			streets.append([k, Vector2(k.x, z2)])
+			streets.append([Vector2(k.x, z2), Vector2(c.x - 152.0 * e, z2)])
+			for hx in [-90.0, -112.0, -134.0]:
+				hs.append([Vector2(c.x + hx * e, z2 - fs * 16.0), 0.0 if fs > 0.0 else PI])
+				hs.append([Vector2(c.x + hx * e, z2 + fs * 16.0), PI if fs > 0.0 else 0.0])
+		"khutor":
+			var b2 := Vector2(c.x - 95.0 * e, c.y + fs * 22.0)
+			var c2 := Vector2(c.x - 145.0 * e, c.y + fs * 14.0)
+			streets.append([start, b2])
+			streets.append([b2, c2])
+			hs.append([b2 + Vector2(-2.0 * e, fs * 17.0), PI if fs > 0.0 else 0.0])
+			hs.append([c2 + Vector2(0, fs * 17.0), PI if fs > 0.0 else 0.0])
+			hs.append([c2 + Vector2(-17.0 * e, -fs * 8.0), PI / 2.0 * e])
+	# Дом не ставим там, где районная дорога, поле или река
+	var keep := []
+	for h in hs:
+		if _house_fits(h[0]):
+			keep.append(h)
+	_plans[i] = {"streets": streets, "houses": keep}
+	return _plans[i]
+
+
+## Можно ли поставить двор (около 24 м в поперечнике) с центром в p.
+static func _house_fits(p: Vector2) -> bool:
+	for r in ROADS:
+		for k in (r as Array).size() - 1:
+			if p.distance_to(Geometry2D.get_closest_point_to_segment(p, r[k], r[k + 1])) < 16.0:
+				return false
+	for f in FIELDS:
+		if (f[0] as Rect2).grow(14.0).has_point(p):
+			return false
+	return river_dist(p.x, p.y) > RIVER_HALF + 16.0
+
+
+## Где село i целиком (улицы, дома, огороды) — там не растёт лес.
+static func village_rect(i: int) -> Rect2:
+	if _rects.has(i):
+		return _rects[i]
+	var c: Vector2 = VILLAGES[i].c
+	var r := Rect2(c.x - 66, c.y - 38, 132, 76)
+	var p := plan(i)
+	for s in p.streets:
+		r = r.expand(s[0]).expand(s[1])
+	for h in p.houses:
+		r = r.merge(Rect2(h[0] - Vector2(16, 16), Vector2(32, 32)))
+	r = r.grow(4.0)
+	_rects[i] = r
+	return r
+
+
+## Прямоугольник rect в координатах xf (дом) — в мире, по осям.
+static func world_rect(xf: Transform3D, rect: Rect2) -> Rect2:
+	var mn := Vector2(INF, INF)
+	var mx := -mn
+	for q in [rect.position, rect.position + Vector2(rect.size.x, 0), rect.end, rect.position + Vector2(0, rect.size.y)]:
+		var w := xf * Vector3(q.x, 0, q.y)
+		mn = Vector2(minf(mn.x, w.x), minf(mn.y, w.z))
+		mx = Vector2(maxf(mx.x, w.x), maxf(mx.y, w.z))
+	return Rect2(mn, mx - mn)
+
+
 ## Все дороги района и улицы сёл отрезками [a, b].
 static func segments() -> Array:
 	if _segs.is_empty():
 		for r in ROADS:
 			for i in (r as Array).size() - 1:
 				_segs.append([r[i], r[i + 1]])
-		for v in VILLAGES:
-			var c: Vector2 = v.c
+		for i in VILLAGES.size():
+			var c: Vector2 = VILLAGES[i].c
 			_segs.append([c + Vector2(-58, 0), c + Vector2(58, 0)])
+			_segs.append_array(plan(i).streets)
 	return _segs
 
 
@@ -233,12 +361,13 @@ static func tree_ok(x: float, z: float) -> bool:
 	if road_dist(x, z) < ROAD_HALF + 3.0 or river_dist(x, z) < RIVER_HALF + 6.0:
 		return false
 	var p := Vector2(x, z)
-	if Town.wr(Rect2(-60, -10, 360, 260)).has_point(p):
-		return false  # город
-	for v in VILLAGES:
-		var c: Vector2 = v.c
-		if Rect2(c.x - 66, c.y - 38, 132, 76).has_point(p):
+	if Town.wr(Rect2(-60, -10, 405, 260)).has_point(p):
+		return false  # город с задворками у бурсы
+	for i in VILLAGES.size():
+		if village_rect(i).has_point(p):
 			return false
+	if KamenkaNorth.AREA.has_point(p):
+		return false
 	for f in FIELDS:
 		if (f[0] as Rect2).grow(3.0).has_point(p):
 			return false
@@ -261,11 +390,14 @@ static func shop_pos(i: int) -> Vector3:
 ## Все дома района: [центр, поворот] — для карты.
 static func houses() -> Array:
 	var out := []
-	for v in VILLAGES:
+	for i in VILLAGES.size():
+		var v: Dictionary = VILLAGES[i]
 		var c: Vector2 = v.c
 		for side in [-1, 1]:
 			for hx in HOUSE_X:
 				out.append([Vector2(c.x + hx * v.entry, c.y + side * 16.0), 0.0 if side < 0 else PI])
+		out.append_array(plan(i).houses)
+	out.append_array(KamenkaNorth.houses())
 	return out
 
 
@@ -293,6 +425,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 		veg.block(r.position.x, r.position.y, r.end.x, r.end.y)
 	for i in VILLAGES.size():
 		_village(i, b, glow, veg)
+	KamenkaNorth.build(self, glow, veg)
 	# Холмы, поля, пруды и лесополосы — до лесов: лес их обходит
 	Landscape.build(b, _d, _world._water_b, self, func(p: Vector3, yaw: float, kind: int) -> void:
 		_world._tree(_d, p, yaw, kind))
@@ -636,10 +769,18 @@ func _village(i: int, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> voi
 	for side in [-1, 1]:
 		for hx in HOUSE_X:
 			var pos := Vector3(c.x + hx * e, 0, c.y + side * 16.0)
-			_house(pos, 0.0 if side < 0 else PI, i * 8 + k, glow)
+			_house(pos, 0.0 if side < 0 else PI, i * 8 + k, glow, STYLES[i])
 			veg.block(pos.x - 5, pos.z - 4, pos.x + 5, pos.z + 4)
 			veg.block(pos.x - 8.5, pos.z + side * 7.5, pos.x + 8.5, pos.z + side * 14.5)
 			k += 1
+	# Дома за главной улицей — по планировке села
+	var extra: Array = plan(i).houses
+	for j in extra.size():
+		var hp: Vector2 = extra[j][0]
+		var hy: float = extra[j][1]
+		_house(Vector3(hp.x, 0, hp.y), hy, 200 + i * 10 + j, glow, STYLES[i])
+		var wr := world_rect(Transform3D(Basis(Vector3.UP, hy), Vector3(hp.x, 0, hp.y)), Rect2(-10.5, -14.5, 21, 24))
+		veg.block(wr.position.x, wr.position.y, wr.end.x, wr.end.y)
 	# Магазин, остановка, указатель, житель
 	var shop := Vector3(c.x + 42.0 * e, 0, c.y - 9.0)
 	_shop(shop, glow)
@@ -670,7 +811,20 @@ func _village(i: int, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> voi
 ## Какой дом стоит на месте idx: изба с ставнями, кирпичный под
 ## четырёхскатной крышей, бревенчатый сруб с наличниками или брошенный —
 ## с заколоченными окнами и дырявой крышей. Примерно каждый седьмой брошен.
-static func house_kind(idx: int) -> String:
+static func house_kind(idx: int, style := "mixed") -> String:
+	match style:
+		"log":
+			return "abandoned" if idx % 9 == 4 else ("izba" if idx % 5 == 2 else "log")
+		"brick":
+			return "abandoned" if idx % 11 == 5 else ("izba" if idx % 5 == 2 else "brick")
+		"izba":
+			return "abandoned" if idx % 9 == 4 else ("log" if idx % 4 == 1 else "izba")
+		"dying":
+			return "abandoned" if idx % 2 == 0 else "izba"
+		"mazanka":
+			return "abandoned" if idx % 9 == 4 else ("izba" if idx % 6 == 1 else "mazanka")
+		"dacha":
+			return "brick" if idx % 7 == 3 else "dacha"
 	if idx % 7 == 3:
 		return "abandoned"
 	return ["izba", "brick", "log"][(idx * 5 + idx / 8) % 3]
@@ -678,8 +832,8 @@ static func house_kind(idx: int) -> String:
 
 ## Сельский дом снаружи: цоколь, стены, крыша, окна, забор с калиткой,
 ## огород за домом и дерево во дворе. Вид — по house_kind.
-func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
-	var kind := house_kind(idx)
+func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder, style := "mixed") -> void:
+	var kind := house_kind(idx, style)
 	var wall: Color = WALLS[idx % WALLS.size()]
 	var roof: Color = ROOFS[(idx * 7 + 1) % ROOFS.size()]
 	match kind:
@@ -690,6 +844,13 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
 		"abandoned":
 			wall = Color(0.52, 0.5, 0.46)
 			roof = Color(0.4, 0.33, 0.28)
+		"mazanka":
+			# Белёная хата под соломой
+			wall = Color(0.95, 0.94, 0.9)
+			roof = Color(0.72, 0.6, 0.33)
+		"dacha":
+			wall = [Color(0.7, 0.85, 0.65), Color(0.65, 0.78, 0.92), Color(0.95, 0.88, 0.55), Color(0.93, 0.72, 0.72)][idx % 4]
+			roof = [Color(0.25, 0.5, 0.3), Color(0.65, 0.2, 0.15)][idx % 2]
 	var xf := Transform3D(Basis(Vector3.UP, yaw), pos)
 	var d := _d
 	d.xf = xf
@@ -745,7 +906,17 @@ func _house(pos: Vector3, yaw: float, idx: int, glow: MeshBuilder) -> void:
 	else:
 		d.box(Vector3(1.6, 3.6, -1.2), Vector3(2.2, 5.3, -0.6), Color(0.6, 0.35, 0.28))
 	# Окна на улицу и сбоку
-	var frame := Color(0.92, 0.92, 0.88)
+	var frame := Color(0.3, 0.5, 0.8) if kind == "mazanka" else Color(0.92, 0.92, 0.88)
+	if kind == "mazanka":
+		# Солома толстым слоем поверх крыши, синий цоколь
+		d.quad(Vector3(-eave.x - 0.2, eave.y - 0.15, eave.z + 0.25), Vector3(eave.x + 0.2, eave.y - 0.15, eave.z + 0.25), Vector3(eave.x + 0.2, ridge + 0.2, 0), Vector3(-eave.x - 0.2, ridge + 0.2, 0), roof.darkened(0.08), true)
+		d.quad(Vector3(eave.x + 0.2, eave.y - 0.15, -eave.z - 0.25), Vector3(-eave.x - 0.2, eave.y - 0.15, -eave.z - 0.25), Vector3(-eave.x - 0.2, ridge + 0.2, 0), Vector3(eave.x + 0.2, ridge + 0.2, 0), roof.darkened(0.15), true)
+		d.box(Vector3(-3.84, 0.45, -2.84), Vector3(3.84, 0.8, 2.84), Color(0.3, 0.45, 0.7))
+	elif kind == "dacha":
+		# Застеклённая веранда сбоку от крыльца
+		d.box(Vector3(-3.8, 0.45, 2.8), Vector3(-1.0, 2.5, 4.8), wall.lightened(0.15))
+		d.box(Vector3(-3.9, 2.5, 2.7), Vector3(-0.9, 2.65, 4.9), roof)
+		glow.box(Vector3(-3.6, 1.1, 4.8), Vector3(-1.2, 2.2, 4.82), Color(0.9, 0.85, 0.6))
 	var shutter: Color = [Color(0.25, 0.45, 0.7), Color(0.3, 0.55, 0.3), Color(0.9, 0.9, 0.85)][idx % 3]
 	for x in [-2.3, 2.3]:
 		if kind == "abandoned":

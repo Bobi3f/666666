@@ -1563,10 +1563,10 @@ const SHOP_MENU := {
 var _shop_panel: MarketPanel
 
 
-## Открыть меню сельмага (с 8 до 21).
-func open_shop() -> void:
+## Открыть меню сельмага (с 8 до 21; always — магазин «24 часа»).
+func open_shop(always := false) -> void:
 	var h := TimeManager.hour()
-	if h < 8.0 or h >= 21.0:
+	if not always and (h < 8.0 or h >= 21.0):
 		GameManager.notify("Сельмаг закрыт. Работает с 8:00 до 21:00")
 		return
 	if _shop_panel == null:

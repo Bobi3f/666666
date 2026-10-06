@@ -13,6 +13,15 @@ const FIELD := [
 	Rect2(-9, -89, 5, 54),
 	Rect2(-9, -89, 34, 5),
 	Rect2(21, -89, 4, 83.5),
+	# Каменка-Северная (kamenka_north.gd): Центральная улица от лесной
+	# дороги на север, кольцо вокруг сквера, въезды к магазину и грузовому двору
+	Rect2(-65, -206, 6, 117),
+	Rect2(-80, -212, 36, 6),
+	Rect2(-80, -236, 36, 6),
+	Rect2(-80, -236, 6, 30),
+	Rect2(-50, -236, 6, 30),
+	Rect2(-22, -94, 6, 5),
+	Rect2(-59, -149, 7, 4),
 ]
 ## Лесная дорога: от пруда на север и через лес на восток, к полевой. Грунт.
 const FOREST := [
@@ -41,6 +50,8 @@ static func on_forest_road(x: float, z: float) -> bool:
 
 ## Можно ли здесь сажать дерево: не на дорогах и не в речке.
 static func tree_ok(x: float, z: float) -> bool:
+	if KamenkaNorth.AREA.has_point(Vector2(x, z)):
+		return false
 	return not Farm.occupied(x, z) and not (_in(FIELD, x, z, 2.5) or _in(FOREST, x, z, 2.5) or STREAM.grow(2.5).has_point(Vector2(x, z)))
 
 

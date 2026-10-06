@@ -113,6 +113,8 @@ func build(world: Node3D, b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) ->
 	_sto(b, glow)
 	_garages(b)
 	_college(b, glow, veg)
+	# Задворки у бурсы: девятиэтажки, котельная, теплотрасса, тусовка
+	Backlot.build(self, b, glow, veg)
 	for f in FLATS:
 		_flats(b, glow, f)
 	_plots(b, veg)

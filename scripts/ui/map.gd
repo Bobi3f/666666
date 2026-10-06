@@ -420,6 +420,7 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, "колхоз «Заря»", Vector2(62, -150), 13, true)
 			_label_at(font, "ферма", Farm.AREA.get_center(), 12, true)
 			_label_at(font, "роща «Берёзки»", Vector2(117, 113), 12, true)
+			_label_at(font, "ул. Центральная", Vector2(-62, -160), 12, true)
 			_label_at(font, "речка Каменка", Vector2(-100, -175), 12, true)
 			_label_at(font, "р. Быстрая", Vector2(348, -30), 13, true)
 			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(0, 34), 12, true)
