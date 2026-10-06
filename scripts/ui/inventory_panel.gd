@@ -190,6 +190,17 @@ func refresh() -> void:
 				return
 			refresh())
 
+	if Progress.canister_l >= 0.5:
+		var pour := _row("Канистры: %d л бензина — в бак своей техники рядом" % int(round(Progress.canister_l)), "Залить")
+		pour.pressed.connect(func() -> void:
+			var v := kit_target(cars)
+			if v == null:
+				GameManager.notify("Подойди к своей машине или мотоциклу — залить можно в то, что рядом")
+			elif Progress.use_canister(v):
+				close_panel()
+				return
+			refresh())
+
 	_section("Дом и хозяйство")
 	_row(HOUSE_NAMES[clampi(Progress.house_level, 0, HOUSE_NAMES.size() - 1)])
 	for id in Progress.home_items:

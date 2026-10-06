@@ -1987,3 +1987,13 @@ E — сельмаг: хлеб, бургер, вода, ремнабор	E — v
 вода +70%	water +70%
 для своей машины или мотоцикла: +40% к состоянию (инвентарь — I)	for your own car or motorcycle: condition +40% (inventory — I)
 Съел бургер с котлетой. Сытость %d%%	Ate a burger. Fullness %d%%
+У «%s» бак полный — канистра не нужна	The "%s" tank is full — no need for the canister
+Залил из канистры %d л в «%s»: в баке %d л. В канистрах осталось %d л	Poured %d L from the canister into the "%s": %d L in the tank. %d L left in canisters
+— в запасе %d л	— %d L in stock
+E — канистра бензина 10 л (%d грн)%s	E — 10 L petrol canister (%d UAH)%s
+Больше %d л в канистрах не увезти	You can't carry more than %d L in canisters
+Купил канистру бензина (в запасе %d л). Залить — в инвентаре (I), рядом со своей машиной или мотоциклом	Bought a petrol canister (%d L in stock). Pour it from the inventory (I) next to your car or motorcycle
+Канистры: %d л бензина — в бак своей техники рядом	Canisters: %d L of petrol — into the tank of your vehicle nearby
+Залить	Pour
+Подойди к своей машине или мотоциклу — залить можно в то, что рядом	Go to your car or motorcycle — you can only pour into what's nearby
+Готовим картинку…	Preparing graphics…

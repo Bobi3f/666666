@@ -1684,6 +1684,7 @@ func _apply_parts() -> void:
 
 func _build_car() -> void:
 	_paint_body()
+	_add_rider()
 	# Стоп-сигналы — на красной полосе больших задних фонарей
 	_brake_lights(spec.get("tail", [Vector3(-0.62, 0.64, 2.0), Vector3(0.62, 0.64, 2.0)]), Vector3(0.3, 0.05, 0.02))
 	for p in spec.get("wheels", VehicleModels.ZHIGULI_WHEELS):
@@ -1693,27 +1694,59 @@ func _build_car() -> void:
 			_wheel(p, false)
 
 
+## Рукоятки руля мотоциклов (правая; левая — зеркально), как в моделях.
+const GRIPS := {"moto": Vector3(0.36, 1.22, -0.46), "izh": Vector3(0.41, 1.31, -0.37), "moped": Vector3(0.33, 1.07, -0.435)}
+
+
+## Сам игрок за рулём — та же внешность (Player.SHIRT), сидя, руки на руле;
+## на мотоцикле — в шлеме. Виден с вида сзади, пока кто-то едет; от первого
+## лица не рисуется (камера у него в голове).
+func _add_rider() -> void:
+	var seat: Vector3 = spec.seat
+	var moto: bool = spec.two_wheels
+	_rider = Node3D.new()
+	_rider.name = "Rider"
+	# Таз модели сидя — на 0,5 м. На мотоцикле — на седле чуть позади
+	# точки камеры, в машине — так, чтобы глаза пришлись на камеру
+	if moto:
+		_rider.position = Vector3(seat.x, seat.y - 1.0, seat.z + 0.1)
+	else:
+		_rider.position = Vector3(seat.x, seat.y - 1.22, seat.z + 0.05)
+	var hands: Array = []
+	for s in [-1.0, 1.0]:
+		var g: Vector3
+		if moto:
+			g = GRIPS.get(kind, GRIPS.moto) * Vector3(s, 1, 1)
+		else:
+			# Руль перед водителем: ниже глаз и впереди
+			g = seat + Vector3(s * 0.17, -0.3, -0.5)
+		hands.append(g - _rider.position)
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	PersonModel.person(b, Player.SHIRT, Player.CAP, true, false, hands)
+	var mi := b.build_mesh()
+	if moto:
+		# Шлем поверх кепки: макушка — у верха модели
+		var top := mi.mesh.get_aabb().end.y
+		var hb := MeshBuilder.new()
+		hb.ground_shade = false
+		PersonModel.ball(hb, Vector3(0, top - 0.12, 0.01), Vector3(0.14, 0.15, 0.155), Color(0.85, 0.12, 0.1), 6, 14, true)
+		hb.box(Vector3(-0.11, top - 0.13, -0.165), Vector3(0.11, top - 0.11, -0.14), Color(0.1, 0.1, 0.1))
+		var helmet := hb.build_mesh()
+		helmet.material_override = MeshBuilder.vehicle_material()
+		_rider.add_child(helmet)
+	mi.remove_from_group("people")
+	_rider.add_child(mi)
+	_rider.visible = false
+	_body.add_child(_rider)
+
+
 func _build_moto() -> void:
 	_paint_body()
 	_brake_lights(spec.get("tail", [Vector3(0, 0.66, 0.965)]), Vector3(0.12, 0.07, 0.03))
 	for p in spec.get("wheels", [Vector3(0, 0.31, -0.8), Vector3(0, 0.31, 0.62)]):
 		_wheel(p, true)
-	# Мотоциклист — виден с вида сзади, пока кто-то едет
-	_rider = Node3D.new()
-	var r := MeshBuilder.new()
-	r.ground_shade = false
-	var jacket := Color(0.2, 0.25, 0.35)
-	r.box(Vector3(-0.2, 0.9, -0.05), Vector3(0.2, 1.45, 0.3), jacket)
-	r.box(Vector3(-0.25, 0.55, -0.35), Vector3(-0.12, 0.95, 0.2), Color(0.2, 0.2, 0.24))
-	r.box(Vector3(0.12, 0.55, -0.35), Vector3(0.25, 0.95, 0.2), Color(0.2, 0.2, 0.24))
-	r.box(Vector3(-0.32, 1.1, -0.75), Vector3(-0.2, 1.35, 0.1), jacket)
-	r.box(Vector3(0.2, 1.1, -0.75), Vector3(0.32, 1.35, 0.1), jacket)
-	r.box(Vector3(-0.14, 1.45, -0.05), Vector3(0.14, 1.75, 0.22), Color(0.9, 0.9, 0.2))
-	_rider.add_child(r.build_mesh())
-	# Модель седока — под сиденье «Явы»; на мопеде сиденье ниже
-	_rider.position.y = float((spec.seat as Vector3).y) - 1.45
-	_rider.visible = false
-	_body.add_child(_rider)
+	_add_rider()
 
 
 func _wheel(p: Vector3, moto: bool, r := 0.0, w := 0.2) -> void:

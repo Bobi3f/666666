@@ -219,6 +219,7 @@ func _fuel_station(d: MeshBuilder) -> void:
 		if need <= 0:
 			return "Бак полный (%d л)" % int(car.fuel)
 		return "E — заправить %d л за %d грн (в баке %d л)" % [need, need * _world.FUEL_PRICE, int(car.fuel)]
+	_world.can_zone(self, c + Vector3(9.0, 0, 7.2), Vector3.ZERO)
 	zone.activated.connect(func() -> void:
 		var car: Vehicle = _world._car_near(c + Vector3(0, 0, 3.4), 10.0)
 		if car == null:

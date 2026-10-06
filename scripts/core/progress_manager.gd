@@ -62,6 +62,10 @@ var fridge_day := 0
 var owned_cars: Array = []
 ## Ремнаборы в запасе: чинят свою машину или мотоцикл где угодно.
 var repair_kits := 0
+## Бензин в канистрах, литры: купить на АЗС, залить в свою технику где угодно.
+var canister_l := 0.0
+const CAN_L := 10.0
+const CAN_MAX := 40.0
 const KIT_FIX := 40.0
 const KIT_MIN := 20.0
 ## Во сколько раз больше платят за этот развоз (грузовик — вдвое).
@@ -126,6 +130,24 @@ func use_repair_kit(v: Vehicle) -> bool:
 	SoundLibrary.play("hammer")
 	QuestManager.event("repair_kit")
 	GameManager.notify("Подлатал «%s» ремнабором: состояние %d%%. Осталось ремнаборов: %d" % [v.spec.title, int(v.condition), repair_kits])
+	return true
+
+
+## Залить в бак v бензин из канистр — сколько влезет. true — залил.
+func use_canister(v: Vehicle) -> bool:
+	if canister_l < 0.5 or v == null or not v.owned():
+		return false
+	var need := v.tank() - v.fuel
+	if need < 0.5:
+		GameManager.notify("У «%s» бак полный — канистра не нужна" % v.spec.title)
+		return false
+	var l := minf(need, canister_l)
+	canister_l -= l
+	v.refuel(l)
+	TimeManager.advance(5.0)
+	SoundLibrary.play("splash", -8.0, 1.4)
+	QuestManager.event("canister")
+	GameManager.notify("Залил из канистры %d л в «%s»: в баке %d л. В канистрах осталось %d л" % [int(round(l)), v.spec.title, int(v.fuel), int(round(canister_l))])
 	return true
 
 
@@ -334,7 +356,7 @@ func categories_text() -> String:
 
 
 func save_state() -> Dictionary:
-	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "path2": true,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "cans": canister_l, "path2": true,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day, "cat_days": category_days, "license_no": license_no}
 
 
@@ -358,6 +380,7 @@ func load_state(d: Dictionary) -> void:
 	license_no = str(d.get("license_no", ""))
 	owned_cars = (d.get("cars", []) as Array).duplicate()
 	repair_kits = int(d.get("kits", 0))
+	canister_l = float(d.get("cans", 0.0))
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем
 	if not d.is_empty() and not d.has("path2"):

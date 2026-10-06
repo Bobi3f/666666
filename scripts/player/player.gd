@@ -36,6 +36,9 @@ const RUN_FOV := 82.0
 const TP_DISTANCE := 3.4
 const TP_HEIGHT := 0.25
 
+## Как выглядит игрок: зелёная рубашка, тёмная кепка (и за рулём — тот же).
+const SHIRT := Color(0.2, 0.33, 0.25)
+const CAP := Color(0.25, 0.22, 0.2)
 var camera: SmoothCamera
 var _last_pos := Vector3.ZERO
 ## Точка глаз: к ней плавно тянется камера (см. SmoothCamera).
@@ -102,7 +105,7 @@ func _ready() -> void:
 	add_child(_body)
 	var bb := MeshBuilder.new()
 	bb.ground_shade = false
-	Villagers.person_model(bb, Color(0.2, 0.33, 0.25), Color(0.25, 0.22, 0.2), false, false)
+	Villagers.person_model(bb, SHIRT, CAP, false, false)
 	_body_mesh = Villagers.walking_mesh(bb)
 	_body_mesh.remove_from_group("people")
 	_body_mesh.layers = 1 | HouseInterior.INSIDE_LAYER

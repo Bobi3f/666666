@@ -35,6 +35,8 @@ const BUS_FARE := 15
 const FUEL_POS := Vector3(-110.0, 0, 13.0)
 const GARAGE_POS := Vector3(-86.0, 0, 14.0)
 const FUEL_PRICE := 32
+## Канистра на 10 л: бензин по цене колонки и 40 грн за саму канистру
+const CAN_PRICE := 10 * FUEL_PRICE + 40
 const FISH_PRICE := 60
 ## Колхозный сарай у стогов.
 const BARN_POS := Vector3(-35.0, 0, -47.0)
@@ -2267,6 +2269,37 @@ func _fuel_station(b: MeshBuilder) -> void:
 	zone.prompt_fn = _fuel_prompt
 	zone.activated.connect(_refuel)
 	add_child(zone)
+	# У будки кассира — канистры с бензином
+	can_zone(self, c + Vector3(0, 0, 3.9), Vector3(0, PI, 0))
+	b.box(c + Vector3(1.4, 0, 4.0), c + Vector3(1.75, 0.45, 4.25), Color(0.75, 0.15, 0.12), true)
+	b.box(c + Vector3(1.85, 0, 4.0), c + Vector3(2.2, 0.45, 4.25), Color(0.75, 0.15, 0.12), true)
+
+
+## Место у кассы АЗС, где продают канистры (в Каменке и на трассе).
+func can_zone(parent: Node, pos: Vector3, rot: Vector3) -> InteractZone:
+	var z := InteractZone.create("", Vector3(3.0, 2.4, 1.6))
+	z.name = "CanZone"
+	z.position = pos
+	z.rotation = rot
+	z.prompt_fn = func() -> String:
+		var have := " — в запасе %d л" % int(round(Progress.canister_l)) if Progress.canister_l >= 0.5 else ""
+		return "E — канистра бензина 10 л (%d грн)%s" % [CAN_PRICE, have]
+	z.activated.connect(buy_canister)
+	parent.add_child(z)
+	return z
+
+
+## Канистра с бензином в запас: залить в свою технику где угодно (инвентарь — I).
+func buy_canister() -> bool:
+	if Progress.canister_l + Progress.CAN_L > Progress.CAN_MAX + 0.1:
+		GameManager.notify("Больше %d л в канистрах не увезти" % int(Progress.CAN_MAX))
+		return false
+	if not GameManager.spend(CAN_PRICE):
+		return false
+	Progress.canister_l += Progress.CAN_L
+	SoundLibrary.play("cash", -6.0)
+	GameManager.notify("Купил канистру бензина (в запасе %d л). Залить — в инвентаре (I), рядом со своей машиной или мотоциклом" % int(round(Progress.canister_l)))
+	return true
 
 
 ## Ближайший к точке транспорт игрока (машина или мотоцикл).

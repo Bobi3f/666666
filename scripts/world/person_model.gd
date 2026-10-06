@@ -152,7 +152,9 @@ static func _en(p: Vector3, r: Vector3) -> Vector3:
 
 ## Житель: shirt — рубашка (или кофта), hat — кепка у мужчины, косынка у
 ## женщины; sit — сидит на лавке (ноги вперёд, руки на коленях).
-static func person(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, woman: bool) -> void:
+## hands — куда сидящему тянуть руки (руль, рукоятки) вместо колен: две точки
+## в координатах модели.
+static func person(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, woman: bool, hands: Array = []) -> void:
 	_mark(b, sit)
 	var seed := int(shirt.r * 97.0 + shirt.g * 57.0 + shirt.b * 31.0 + hat.r * 13.0) + (7 if woman else 0)
 	var skin: Color = SKINS[seed % SKINS.size()]
@@ -217,7 +219,15 @@ static func person(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, woman: b
 		var s := -1.0 if i == 0 else 1.0
 		var sh := Vector3(s * 0.19 * plump, chest - 0.03, 0.0)
 		ball(b, sh + Vector3(-s * 0.01, 0.01, 0), Vector3(0.062, 0.055, 0.065) * plump, shirt, 4, 8)
-		if sit:
+		if sit and hands.size() == 2:
+			# Руки на руле: локоть чуть в сторону и вниз
+			var wr: Vector3 = hands[i]
+			var el := (sh + wr) * 0.5 + Vector3(s * 0.07, -0.07, 0.04)
+			limb(b, sh, el, Vector2(0.052, 0.052), Vector2(0.046, 0.046), shirt)
+			ball(b, el, Vector3(0.046, 0.046, 0.046), shirt, 3, 6)
+			limb(b, el, wr, Vector2(0.046, 0.046), Vector2(0.036, 0.036), shirt)
+			ball(b, wr, Vector3(0.04, 0.035, 0.05), skin, 3, 6)
+		elif sit:
 			var el := Vector3(s * 0.24, base + 0.24, -0.06)
 			var wr := Vector3(s * 0.17, base + 0.06, -0.33)
 			limb(b, sh, el, Vector2(0.052, 0.052), Vector2(0.046, 0.046), shirt)
