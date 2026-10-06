@@ -80,7 +80,7 @@ func _run() -> void:
 
 	print("== Приборы и звук дороги")
 	ok(C._needles.size() == 2 and W.get_node("Moto")._dash_vp != null, "в Жигулях спидометр и тахометр, у «Явы» — живой щиток на руле")
-	C.global_position = Vector3(-10, 0.1, -100); C.rotation.y = -PI / 2.0
+	C.global_position = Vector3(2, 0.1, -100); C.rotation.y = -PI / 2.0
 	C._on_enter(); C.fuel = 30.0
 	await frames(3)
 	var r0: float = C._needles[0].rotation.z

@@ -56,7 +56,7 @@ func _run() -> void:
 
 	print("== Пыль, вода, птицы")
 	var C = W.get_node("Car")
-	C.global_position = Vector3(-10, 0.1, -100); C.rotation.y = -PI / 2.0
+	C.global_position = Vector3(2, 0.1, -100); C.rotation.y = -PI / 2.0
 	C._on_enter(); C.fuel = 30.0
 	await frames(3)
 	key(KEY_W, true)

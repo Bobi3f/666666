@@ -206,6 +206,12 @@ func _build_main(box: VBoxContainer) -> void:
 			_button(row, "Управление", func() -> void: _show("controls"))]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_lang_row(box)
+	var gc := _button(box, "GEARCOIN — монеты и эксклюзив", func() -> void:
+		var shop := get_tree().get_first_node_in_group("gear_shop") as GearShop
+		if shop:
+			_close()
+			shop.open())
+	gc.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
 	if not donate_links.is_empty():
 		_button(box, "Поддержать игру", func() -> void: _show("support"))
 	_button(box, "Сообщить об ошибке", _report_bug)

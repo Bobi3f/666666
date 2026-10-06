@@ -205,6 +205,9 @@ func _ready() -> void:
 	NeedsManager.fainted.connect(_faint)
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
+	var shop := GearShop.new()
+	shop.name = "GearShop"
+	add_child(shop)
 	var look := preload("res://scripts/world/people_look.gd").new()
 	look.name = "PeopleLook"
 	add_child(look)
@@ -363,6 +366,7 @@ func _fit_render_scale() -> void:
 
 
 func _process(_delta: float) -> void:
+	_spawn_exclusives()
 	_update_view()
 	_update_daylight()
 	_check_delivery()
@@ -2310,6 +2314,38 @@ func buy_canister() -> bool:
 	return true
 
 
+## Где встаёт купленная за GEARCOIN техника: у своего дома, вдоль улицы.
+const EXCLUSIVE_SPOTS := [Vector3(-137, 0.1, -39.5), Vector3(-144, 0.1, -39.5), Vector3(-151, 0.1, -39.5)]
+var _exclusive_t := 0.0
+
+
+## Эксклюзив из магазина GEARCOIN: появляется у дома, когда куплен (и после
+## загрузки сохранения). Свой ключ «вид:выпуск» в Progress.owned_cars.
+func _spawn_exclusives() -> void:
+	_exclusive_t -= get_process_delta_time()
+	if _exclusive_t > 0.0:
+		return
+	_exclusive_t = 1.0
+	var n := 0
+	for key in Progress.owned_cars:
+		var k := String(key)
+		if not k.contains(":"):
+			continue
+		var node_name := "Exclusive_" + k.replace(":", "_")
+		if has_node(node_name):
+			n += 1
+			continue
+		var v := Vehicle.new()
+		v.kind = k.get_slice(":", 0)
+		v.edition = k.get_slice(":", 1)
+		v.name = node_name
+		v.fuel = 40.0
+		add_child(v)
+		v.global_position = EXCLUSIVE_SPOTS[n % EXCLUSIVE_SPOTS.size()]
+		v.rotation.y = PI / 2.0
+		n += 1
+
+
 ## Ближайший к точке транспорт игрока (машина или мотоцикл).
 func _car_near(p: Vector3, dist: float) -> Vehicle:
 	var best: Vehicle = null
@@ -3525,6 +3561,7 @@ func _build_clubs() -> void:
 	v.days = ["пт", "сб"]
 	v.fee = 20
 	v.plaza = Rect2(-3.0, 5.5, 6.0, 8.5)
+	v.biz = "club_v"
 	add_child(v)
 	var t := Club.new()
 	t.name = "ClubTown"
@@ -3540,6 +3577,7 @@ func _build_clubs() -> void:
 	t.prize = 150
 	t.date_price = 300
 	t.plaza = Rect2(-25.0, 7.0, 54.0, 10.0)
+	t.biz = "club_t"
 	add_child(t)
 	# Водительское удостоверение — карточка из журнала
 	var card := LicenseCard.new()

@@ -39,7 +39,7 @@ func _run() -> void:
 	await view("c_birds", Vector3(-105, 2, -20), Vector3(-105, 30, -60))
 	# Пыль за машиной
 	var C = W.get_node("Car")
-	C.global_position = Vector3(-10, 0.1, -100); C.rotation.y = -PI / 2.0
+	C.global_position = Vector3(2, 0.1, -100); C.rotation.y = -PI / 2.0
 	C._on_enter(); C.fuel = 30.0
 	var e := InputEventKey.new(); e.physical_keycode = KEY_W; e.pressed = true
 	Input.parse_input_event(e)

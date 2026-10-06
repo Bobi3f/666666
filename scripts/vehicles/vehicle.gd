@@ -187,6 +187,13 @@ var _sale: Label3D
 @export var kind := "car"
 
 var spec: Dictionary
+## Эксклюзивный выпуск за GEARCOIN (EDITIONS): своё имя, цвет и запчасти.
+var edition := ""
+const EDITIONS := {
+	"black": {"title": "«Волга» Чёрная", "paint": Color(0.04, 0.04, 0.05), "parts": {"rims": 3}, "tuned": true},
+	"gold": {"title": "«Ява» Золотая", "paint": Color(0.86, 0.66, 0.2), "parts": {"rims": 3, "exhaust": true}, "tuned": false},
+	"hunter": {"title": "«Нива» Охотник", "paint": Color(0.33, 0.37, 0.22), "parts": {"wheels": true, "tank": true}, "tuned": false},
+}
 var driver: Player
 var engine_on := false
 var gear := 0
@@ -301,6 +308,9 @@ func _ready() -> void:
 	# Едет в физике — рисуется между её шагами (плавно на любом экране)
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	spec = SPECS[kind]
+	if EDITIONS.has(edition):
+		spec = spec.duplicate()
+		spec.title = EDITIONS[edition].title
 	if spec.has("paint") and paint == 0:
 		paint = int(spec.paint)
 	add_to_group("persist")
@@ -332,6 +342,12 @@ func _ready() -> void:
 		_build_moto()
 	else:
 		_build_car()
+	if EDITIONS.has(edition):
+		var ed: Dictionary = EDITIONS[edition]
+		for p in ed.parts:
+			parts[p] = ed.parts[p]
+		engine_tuned = ed.tuned
+		_apply_parts.call_deferred()
 	_build_gauges()
 	_build_turn_lamps()
 	if DASH.has(kind):
@@ -1282,6 +1298,8 @@ func speed_kmh() -> float:
 # --- Внешний вид ------------------------------------------------------------
 
 func owned() -> bool:
+	if EDITIONS.has(edition):
+		return true
 	return price == 0 or Progress.owns(kind)
 
 
@@ -1331,7 +1349,7 @@ func _paint_body() -> void:
 		_paint_mesh.queue_free()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	var col: Color = paints()[paint % paints().size()]
+	var col: Color = EDITIONS[edition].paint if EDITIONS.has(edition) else paints()[paint % paints().size()]
 	var glass := MeshBuilder.new()
 	glass.ground_shade = false
 	match kind:

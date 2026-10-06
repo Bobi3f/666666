@@ -14,6 +14,9 @@ const RING := Rect2(-80, -236, 36, 30)
 const SHOP24 := Vector3(-48, 0, -147)
 const FLATS := Vector3(-44, 0, -176)
 const DEPOT := Rect2(-32, -128, 26, 34)
+## Особняк за GEARCOIN: участок за трёхэтажкой, дверь — на запад.
+const MANSION := Rect2(-34, -200, 26, 40)
+const MANSION_DOOR := Vector3(-27.5, 0, -180)
 
 
 ## Дома: [где, куда смотрит]. Фасад — к улице, огород — за домом.
@@ -44,6 +47,7 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 	_flats(d, glow, veg)
 	_depot(r, d, veg)
 	_square(r, d, veg)
+	_mansion(r, d, glow, veg)
 	# Фонари вдоль Центральной улицы и вокруг кольца
 	var lamps: Array[Vector3] = []
 	var z := -95.0
@@ -188,6 +192,85 @@ static func _depot(r: Region, d: MeshBuilder, veg: Vegetation) -> void:
 	l.position = Vector3(a.x + 12.5, 2.6, e.y + 0.1)
 	r.add_child(l)
 	veg.block(a.x - 1, a.y - 1, e.x + 1, e.y + 1)
+
+
+## Особняк: два этажа из красного кирпича под четырёхскатной крышей,
+## большие окна, крыльцо с колоннами и балконом, гараж; участок за
+## профнастилом с воротами к проезду от Центральной улицы. Купить —
+## за GEARCOIN, потом спать у двери.
+static func _mansion(r: Region, d: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
+	var m := MANSION
+	var c := Vector3(-19, 0, -180)
+	var brick := Color(0.6, 0.28, 0.2)
+	var tin := Color(0.25, 0.4, 0.3)
+	# Забор: ворота на западе к проезду
+	r._tin_fence(d, Vector2(m.position.x, m.position.y), Vector2(m.end.x, m.position.y), tin, true)
+	r._tin_fence(d, Vector2(m.end.x, m.position.y), Vector2(m.end.x, m.end.y), tin, false)
+	r._tin_fence(d, Vector2(m.position.x, m.end.y), Vector2(m.end.x, m.end.y), tin, false)
+	r._tin_fence(d, Vector2(m.position.x, m.position.y), Vector2(m.position.x, m.position.y + 1.0), tin, true)
+	r._tin_fence(d, Vector2(m.position.x, m.position.y + 6.0), Vector2(m.position.x, m.end.y), tin, true)
+	d.box(Vector3(m.position.x + 0.2, 0, m.position.y + 0.2), Vector3(m.end.x - 0.2, 0.02, m.end.y - 0.2), Color(0.28, 0.42, 0.22))
+	d.box(Vector3(m.position.x, 0, m.position.y + 1.2), Vector3(c.x - 6.0, 0.03, m.position.y + 5.8), Color(0.5, 0.47, 0.42))
+	d.box(Vector3(c.x - 9.5, 0, m.position.y + 1.2), Vector3(c.x - 6.0, 0.03, c.z + 1.0), Color(0.5, 0.47, 0.42))
+	# Дом: два этажа
+	d.box(c + Vector3(-7, 0, -5), c + Vector3(7, 0.5, 5), Color(0.55, 0.55, 0.53))
+	d.box(c + Vector3(-6.8, 0.5, -4.8), c + Vector3(6.8, 6.8, 4.8), brick, true)
+	d.box(c + Vector3(-6.85, 3.6, -4.85), c + Vector3(6.85, 3.8, 4.85), Color(0.9, 0.9, 0.86))
+	var e := Vector3(7.4, 6.8, 5.4)
+	d.quad(c + Vector3(-e.x, e.y, e.z), c + Vector3(e.x, e.y, e.z), c + Vector3(3.5, 9.4, 0), c + Vector3(-3.5, 9.4, 0), Color(0.3, 0.3, 0.33), true)
+	d.quad(c + Vector3(e.x, e.y, -e.z), c + Vector3(-e.x, e.y, -e.z), c + Vector3(-3.5, 9.4, 0), c + Vector3(3.5, 9.4, 0), Color(0.27, 0.27, 0.3), true)
+	d.tri(c + Vector3(-e.x, e.y, -e.z), c + Vector3(-e.x, e.y, e.z), c + Vector3(-3.5, 9.4, 0), Color(0.28, 0.28, 0.31), true)
+	d.tri(c + Vector3(e.x, e.y, e.z), c + Vector3(e.x, e.y, -e.z), c + Vector3(3.5, 9.4, 0), Color(0.28, 0.28, 0.31), true)
+	# Окна двух этажей на все стороны
+	for y in [1.2, 4.3]:
+		for z in [-3.0, 3.0]:
+			glow.box(c + Vector3(-6.83, y, z - 0.8), c + Vector3(-6.8, y + 1.7, z + 0.8), Color(0.95, 0.82, 0.5))
+			glow.box(c + Vector3(6.8, y, z - 0.8), c + Vector3(6.83, y + 1.7, z + 0.8), Color(0.95, 0.82, 0.5))
+		for x in [-4.0, 0.0, 4.0]:
+			for sz in [-1.0, 1.0]:
+				glow.box(c + Vector3(x - 0.8, y, sz * 4.8 - 0.02), c + Vector3(x + 0.8, y + 1.7, sz * 4.8 + 0.02), Color(0.95, 0.82, 0.5))
+	# Крыльцо с колоннами и балкон над ним
+	d.box(c + Vector3(-9.2, 0, -2.2), c + Vector3(-6.8, 0.5, 2.2), Color(0.75, 0.74, 0.7), true)
+	for z in [-1.9, 1.9]:
+		PersonModel.limb(d, c + Vector3(-9.0, 0.5, z), c + Vector3(-9.0, 3.6, z), Vector2(0.16, 0.16), Vector2(0.14, 0.14), Color(0.92, 0.92, 0.88), true)
+	d.box(c + Vector3(-9.4, 3.6, -2.4), c + Vector3(-6.8, 3.8, 2.4), Color(0.85, 0.85, 0.82))
+	d.box(c + Vector3(-9.4, 3.8, -2.4), c + Vector3(-9.3, 4.8, 2.4), Color(0.3, 0.3, 0.32))
+	d.box(c + Vector3(-6.83, 0.5, -0.8), c + Vector3(-6.8, 2.9, 0.8), Color(0.35, 0.22, 0.15))
+	# Гараж сбоку с воротами
+	var g := c + Vector3(-1, 0, -9)
+	d.box(g + Vector3(-4, 0, -3), g + Vector3(4, 3.0, 3), brick.darkened(0.08), true)
+	d.box(g + Vector3(-4.2, 3.0, -3.2), g + Vector3(4.2, 3.2, 3.2), Color(0.3, 0.3, 0.33))
+	d.box(g + Vector3(-4.03, 0, -2.3), g + Vector3(-4.0, 2.5, 2.3), Color(0.75, 0.76, 0.78))
+	var l := Label3D.new()
+	l.name = "MansionSign"
+	l.font_size = 96
+	l.pixel_size = 0.005
+	l.outline_size = 8
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.position = Vector3(m.position.x - 0.5, 2.6, m.position.y + 3.5)
+	r.add_child(l)
+	var upd := func() -> void:
+		var mine := Progress.has_item("mansion")
+		l.text = "ТВОЁ ЖИЛЬЁ" if mine else "ПРОДАЁТСЯ\n2500 GEARCOIN"
+		l.modulate = Color(0.2, 0.55, 0.2) if mine else Color(0.85, 0.66, 0.2)
+	upd.call()
+	Progress.home_changed.connect(upd)
+	var zone := InteractZone.create("", Vector3(2.4, 2.2, 2.4))
+	zone.name = "MansionDoor"
+	zone.position = MANSION_DOOR
+	zone.prompt_fn = func() -> String:
+		if Progress.has_item("mansion"):
+			return "E — домой: лечь спать до утра"
+		return "Особняк продаётся — за 2500 GEARCOIN (E — открыть магазин)"
+	zone.activated.connect(func() -> void:
+		if Progress.has_item("mansion"):
+			r._world._sleep()
+		else:
+			var shop := r.get_tree().get_first_node_in_group("gear_shop") as GearShop
+			if shop:
+				shop.open("shop"))
+	r.add_child(zone)
+	veg.block(m.position.x - 1, m.position.y - 1, m.end.x + 1, m.end.y + 1)
 
 
 ## Сквер в кольце: трава, качели, песочница, лавочки, берёзы.

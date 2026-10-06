@@ -62,6 +62,8 @@ var fridge_day := 0
 var owned_cars: Array = []
 ## Ремнаборы в запасе: чинят свою машину или мотоцикл где угодно.
 var repair_kits := 0
+## GEARCOIN — монеты доната (gear_shop.gd): за них эксклюзив.
+var gearcoins := 0
 ## Бензин в канистрах, литры: купить на АЗС, залить в свою технику где угодно.
 var canister_l := 0.0
 const CAN_L := 10.0
@@ -356,7 +358,7 @@ func categories_text() -> String:
 
 
 func save_state() -> Dictionary:
-	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "cans": canister_l, "path2": true,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "gc": gearcoins, "cans": canister_l, "path2": true,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day, "cat_days": category_days, "license_no": license_no}
 
 
@@ -380,6 +382,7 @@ func load_state(d: Dictionary) -> void:
 	license_no = str(d.get("license_no", ""))
 	owned_cars = (d.get("cars", []) as Array).duplicate()
 	repair_kits = int(d.get("kits", 0))
+	gearcoins = int(d.get("gc", 0))
 	canister_l = float(d.get("cans", 0.0))
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем

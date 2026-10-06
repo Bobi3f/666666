@@ -27,6 +27,8 @@ var close_hour := 1.0
 ## Дни недели, когда дискотека (пусто — каждый день); как в TimeManager.WEEKDAYS
 var days: Array = []
 var fee := 20
+## Своё дело (Daily), если клуб можно купить: хозяину вход бесплатный.
+var biz := ""
 var prize := 0
 ## Столик на двоих у стены (0 — нет): ужин с девушкой, раз за вечер.
 var date_price := 0
@@ -299,13 +301,16 @@ func _entry_prompt() -> String:
 		return "%s: закрыто. Дискотека %s" % [title, _schedule_text()]
 	if _paid_day == _night():
 		return ""
+	if biz != "" and Daily.owns(biz):
+		return "E — в свой клуб: вход бесплатный"
 	return "E — билет на дискотеку: %d грн" % fee
 
 
 func _enter() -> void:
 	if not is_open() or _paid_day == _night():
 		return
-	if not GameManager.spend(fee):
+	var mine := biz != "" and Daily.owns(biz)
+	if not mine and not GameManager.spend(fee):
 		return
 	_paid_day = _night()
 	SoundLibrary.play("click", -4.0)

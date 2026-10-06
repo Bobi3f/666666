@@ -33,6 +33,9 @@ const BUSINESSES := {
 	"fleet": {"title": "автопарк", "price": 0, "income": 800, "cars": 3},
 	"kiosk2": {"title": "ларёк Жоры в Озерцово", "price": 7000, "income": 300},
 	"farm": {"title": "ферма у Каменки", "price": 20000, "income": 700},
+	# Клубы — только за GEARCOIN (gear_shop.gd); price — для цены улучшений
+	"club_v": {"title": "клуб «Каменка»", "price": 30000, "income": 900, "coins": 1500},
+	"club_t": {"title": "клуб «Метелица»", "price": 60000, "income": 1800, "coins": 3000},
 }
 ## Улучшения своего дела: что ставят на 2-м и 3-м уровне. Доход растёт
 ## ×1,5 и ×2; цена — половина и целая цена дела (автопарк — от 8000).
@@ -42,6 +45,8 @@ const UPGRADES := {
 	"sto": ["второй подъёмник", "покрасочная камера"],
 	"fleet": ["диспетчер с рацией", "новые машины в парк"],
 	"farm": ["доильный аппарат", "ещё двенадцать коров"],
+	"club_v": ["новый звук и свет", "бар и вип-зона"],
+	"club_t": ["новый звук и свет", "бар и вип-зона"],
 }
 const LEVEL_K := [1.0, 1.5, 2.0]
 const LEVEL_MAX := 3
@@ -281,7 +286,7 @@ func dump() -> bool:
 
 func buy(id: String) -> bool:
 	var b: Dictionary = BUSINESSES[id]
-	if owned.has(id):
+	if owned.has(id) or b.has("coins"):
 		return false
 	if b.has("cars") and own_cars() < int(b.cars):
 		GameManager.notify("Для автопарка нужно %d своих машины — сейчас %d" % [int(b.cars), own_cars()])
@@ -295,6 +300,15 @@ func buy(id: String) -> bool:
 	QuestManager.event("business_" + id)
 	changed.emit()
 	return true
+
+
+## Своё дело, купленное за GEARCOIN (клубы): сразу твоё.
+func grant(id: String) -> void:
+	if owned.has(id):
+		return
+	owned.append(id)
+	QuestManager.event("business")
+	changed.emit()
 
 
 ## Положить все деньги, кроме мелочи на расходы.

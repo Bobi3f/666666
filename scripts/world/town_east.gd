@@ -62,6 +62,8 @@ const GARAGE_PRICE := 2500
 const HOMES := [
 	["town_house", "дом в городе", 25000, Vector3(213.0, 0, 174.0), Vector3(213.0, 0, 160.2), 0.0],
 	["flat", "квартиру в шестиэтажке", 18000, Vector3(272.0, 0, 76.0), Vector3(272.0, 0, 76.0), -PI / 2.0],
+	# За GEARCOIN (gear_shop.gd): цена — в монетах
+	["penthouse", "квартиру на 9-м этаже у бурсы", 900, Vector3(324.6, 0, 77.0), Vector3(324.6, 0, 77.0), -PI / 2.0, true],
 ]
 ## Детские площадки во дворах пятиэтажек.
 const PLAYGROUNDS := [Rect2(52, 85, 30, 13), Rect2(126, 85, 20, 13)]
@@ -671,7 +673,10 @@ func _homes() -> void:
 		sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		sign.name = "HomeSign_" + id
 		var at_door := (h[3] as Vector3).is_equal_approx(h[4])
+		var coins: bool = h.size() > 6 and h[6]
 		var offer := func() -> String:
+			if coins:
+				return "Продаётся %s — за %d GEARCOIN (меню → GEARCOIN)" % [h[1], int(h[2])]
 			return "E — купить %s за %d грн: можно ночевать в городе" % [h[1], int(h[2])]
 		# Дом на участке — покупка у калитки; квартира — всё у подъезда
 		if not at_door:
@@ -704,6 +709,12 @@ func buy_home(id: String) -> bool:
 	for h in HOMES:
 		if h[0] != id or Progress.has_item(id):
 			continue
+		if h.size() > 6 and h[6]:
+			# За монеты — в окне GEARCOIN
+			var shop := get_tree().get_first_node_in_group("gear_shop") as GearShop
+			if shop:
+				shop.open("shop")
+			return false
 		if not GameManager.spend(int(h[2])):
 			return false
 		Progress.add_item(id)
@@ -719,7 +730,7 @@ func _update_homes() -> void:
 		var s := find_child("HomeSign_" + String(h[0]), true, false) as Label3D
 		if s:
 			var mine := Progress.has_item(String(h[0]))
-			s.text = "ТВОЁ ЖИЛЬЁ" if mine else "ПРОДАЁТСЯ\n%d грн" % int(h[2])
+			s.text = "ТВОЁ ЖИЛЬЁ" if mine else ("ПРОДАЁТСЯ\n%d GEARCOIN" % int(h[2]) if h.size() > 6 else "ПРОДАЁТСЯ\n%d грн" % int(h[2]))
 			s.modulate = Color(0.2, 0.55, 0.2) if mine else Color(0.75, 0.15, 0.1)
 
 

@@ -73,8 +73,8 @@ func _run() -> void:
 	var a_t: float = await accel(T, Vector3(-150, 0.1, -2.0), 6.0)
 	print("       за 6 с по трассе: Жигули %d, Волга %d, ГАЗ-53 %d км/ч" % [int(a_z), int(a_v), int(a_t)])
 	ok(a_v > a_z and a_t < a_z, "Волга быстрее Жигулей, грузовик медленнее")
-	var g_z: float = await accel(C, Vector3(-10, 0.1, -100), 5.0)
-	var g_n: float = await accel(N, Vector3(-10, 0.1, -100), 5.0)
+	var g_z: float = await accel(C, Vector3(2, 0.1, -100), 5.0)
+	var g_n: float = await accel(N, Vector3(2, 0.1, -100), 5.0)
 	print("       за 5 с по пашне: Жигули %d, Нива %d км/ч" % [int(g_z), int(g_n)])
 	ok(g_n > g_z + 3.0, "Нива по бездорожью быстрее Жигулей")
 
