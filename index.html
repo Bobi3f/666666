@@ -2,8 +2,16 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Без viewport-fit=cover: на iPhone игра не залезает под вырез экрана и скруглённые углы -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="index.icon.png">
+<!-- С экрана «Домой» — на весь экран, без панелей браузера (iPhone, Android) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="First Gear">
+<link rel="apple-touch-icon" href="index.icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>First Gear</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -145,6 +153,7 @@
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
       <p id="donate" class="donate" hidden><span>♥ Поддержать игру:</span></p>
       <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
+      <p id="ios" class="hint" hidden>На iPhone: «Поделиться» → «На экран „Домой“» — игра откроется на весь экран, без панелей Safari, и кнопки станут удобнее.</p>
       <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
         кнопки действий — справа внизу, «Меню» — справа вверху. В машине — руль, который крутишь пальцем, и педали, как в Car Parking. Лучше держать телефон горизонтально.</p>
       <ul class="keys">
@@ -173,6 +182,16 @@
   // uk, be, для остальных — английский. В игре язык меняется в меню.
   const EN = !/^(ru|uk|be)\b/i.test(navigator.language || "ru");
   function L(ru, en) { return EN ? en : ru; }
+  // iPhone в Safari: на весь экран — только с экрана «Домой», подсказываем
+  (function () {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches;
+    const tip = document.getElementById("ios");
+    if (ios && !standalone && tip) {
+      tip.hidden = false;
+      if (EN) tip.textContent = "On iPhone: Share → Add to Home Screen — the game opens full screen, without Safari bars, and the buttons get easier to use.";
+    }
+  })();
   // Поддержать игру — те же ссылки, что в меню игры (pause_menu.gd → DONATE).
   // Пустая ссылка — кнопки нет; нет ни одной — нет и строки.
   const DONATE = [["PayPal", ""], ["Buy Me a Coffee", ""]];
@@ -234,7 +253,7 @@
       canvas: canvas,
       canvasResizePolicy: 2,
       executable: "index",
-      fileSizes: { "index.pck": 2535008, "index.wasm": 38034280 },
+      fileSizes: { "index.pck": 2785512, "index.wasm": 38034280 },
       focusCanvas: true,
       ensureCrossOriginIsolationHeaders: false,
       experimentalVK: false,
