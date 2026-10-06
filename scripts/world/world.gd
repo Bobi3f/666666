@@ -450,6 +450,8 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	add_child(we)
+	_vignette = _make_vignette()
+	add_child(_vignette)
 	_sun = DirectionalLight3D.new()
 	_sun.shadow_enabled = true
 	_sun.directional_shadow_max_distance = 70.0
@@ -457,6 +459,33 @@ func _setup_environment() -> void:
 	SettingsManager.changed.connect(_apply_detail)
 	_apply_detail()
 	_update_daylight()
+
+
+var _vignette: CanvasLayer
+
+
+## Мягкое затемнение по краям экрана — как в кино; поверх 3D, под интерфейсом.
+func _make_vignette() -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.name = "Vignette"
+	layer.layer = -1
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+void fragment() {
+	float d = length((UV - 0.5) * vec2(1.25, 1.0));
+	COLOR = vec4(0.0, 0.0, 0.0, smoothstep(0.42, 0.9, d) * 0.32);
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	rect.material = mat
+	layer.add_child(rect)
+	layer.visible = false
+	return layer
 
 
 ## Детализация: на высокой — тени в два каскада, на средней — один
@@ -470,6 +499,11 @@ func _apply_detail() -> void:
 	_sun.directional_shadow_max_distance = maxf(r, 1.0)
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if SettingsManager.detail >= 2 \
 		else DirectionalLight3D.SHADOW_ORTHOGONAL
+	# На высокой — картинка сочнее, по краям экрана мягкое затемнение
+	_env.adjustment_contrast = 1.1 if SettingsManager.detail >= 2 else 1.06
+	_env.adjustment_saturation = 1.1 if SettingsManager.detail >= 2 else 1.04
+	if _vignette:
+		_vignette.visible = SettingsManager.detail >= 2 and not GameManager.touch_mode
 	# На компьютере на высокой — сглаживание краёв (на телефоне дорого)
 	get_viewport().msaa_3d = Viewport.MSAA_2X if SettingsManager.detail >= 2 and not GameManager.touch_mode \
 		else Viewport.MSAA_DISABLED
@@ -496,6 +530,11 @@ func _update_daylight() -> void:
 		mist *= 1.6
 	_env.fog_density = _fog_base + WeatherManager.rain * 0.007 + WeatherManager.fog * 0.03 + mist * 0.009
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
+	# На закате и рассвете дымка вокруг солнца светится тёплым
+	_env.fog_sun_scatter = lerpf(0.25, 0.7, dusk)
+	# Тени облаков плывут по полям — при солнце, со средней детализации;
+	# в сплошных тучах их не видно
+	MeshBuilder.set_clouds(day * lerpf(0.9, 0.0, cloud) if SettingsManager.detail >= 1 else 0.0)
 	_sun.visible = day > 0.01
 	# Молния на мгновение заливает всё холодным светом
 	var fl := WeatherManager.flash

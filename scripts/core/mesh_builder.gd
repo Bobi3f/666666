@@ -240,6 +240,11 @@ uniform float wet = 0.0;
 uniform bool detailed = false;
 // 0 — низкая детализация: рисунок не считаем
 uniform float quality = 1.0;
+// Машины: краска блестит, хром отражает (у остального — 0)
+uniform float gloss = 0.0;
+// Тени облаков по земле: сила (0 — нет) и ветер, м/с
+uniform float clouds = 0.0;
+uniform vec2 cloud_wind = vec2(3.0, 1.2);
 
 varying vec3 wpos;
 varying vec3 wnrm;
@@ -251,6 +256,20 @@ void vertex() {
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Тени от облаков: плавный шум, плывёт по ветру
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float cloud_shadow(vec3 wp) {
+	vec2 p = (wp.xz + cloud_wind * TIME) / 70.0;
+	float n = vnoise(p) * 0.65 + vnoise(p * 2.3 + 7.1) * 0.35;
+	return smoothstep(0.47, 0.6, n);
 }
 
 void fragment() {
@@ -380,9 +399,28 @@ void fragment() {
 	float roof = smoothstep(0.25, 0.45, wnrm.y) * (1.0 - smoothstep(0.9, 0.97, wnrm.y)) * smoothstep(2.0, 2.6, wpos.y);
 	float s = snow * max(ground, roof);
 	c = mix(c, vec3(0.9, 0.92, 0.96), s * (0.8 + 0.2 * g));
+	if (clouds > 0.0) {
+		c *= 1.0 - clouds * 0.42 * cloud_shadow(wpos);
+	}
+	float spec = mix(0.4, 0.7, wetk);
+	float metal = 0.0;
+	if (gloss > 0.0) {
+		// Краска — насыщенный цвет или белая; хром — светло-серый
+		float cmx = max(COLOR.r, max(COLOR.g, COLOR.b));
+		float cmn = min(COLOR.r, min(COLOR.g, COLOR.b));
+		float csat = (cmx - cmn) / (cmx + 0.001);
+		float clum = dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
+		float paint = max(clamp(csat * 3.0, 0.0, 1.0) * step(0.08, clum), smoothstep(0.84, 0.92, clum)) * (1.0 - s);
+		float chrome = (1.0 - clamp(csat * 6.0, 0.0, 1.0)) * smoothstep(0.55, 0.65, clum) * (1.0 - smoothstep(0.8, 0.86, clum));
+		rough = mix(rough, 0.2, paint * gloss);
+		rough = mix(rough, 0.12, chrome * gloss);
+		spec = mix(spec, 0.75, paint * gloss);
+		metal = 0.85 * chrome * gloss;
+	}
 	ALBEDO = c * g * 1.08;
 	ROUGHNESS = rough;
-	SPECULAR = mix(0.4, 0.7, wetk);
+	SPECULAR = spec;
+	METALLIC = metal;
 }
 """
 
@@ -408,9 +446,28 @@ static func detail_material() -> ShaderMaterial:
 	return _detail_mat
 
 
+static var _vehicle_mat: ShaderMaterial
+
+
+## Материал машин и мотоциклов: тот же, но краска блестит, хром отражает.
+static func vehicle_material() -> ShaderMaterial:
+	if _vehicle_mat == null:
+		_vehicle_mat = world_material().duplicate() as ShaderMaterial
+		_vehicle_mat.set_shader_parameter("gloss", 1.0)
+	return _vehicle_mat
+
+
+## Тени облаков по земле (0 — нет): всему миру, машинам и траве.
+static func set_clouds(k: float) -> void:
+	for m in [world_material(), detail_material(), vehicle_material()]:
+		m.set_shader_parameter("clouds", k)
+	if Vegetation.grass_material:
+		Vegetation.grass_material.set_shader_parameter("clouds", k)
+
+
 ## Сезон для всего мира: снег, осень, весна — от 0 до 1.
 static func set_season(snow: float, autumn: float, spring: float) -> void:
-	for m in [world_material(), detail_material()]:
+	for m in [world_material(), detail_material(), vehicle_material()]:
 		m.set_shader_parameter("snow", snow)
 		m.set_shader_parameter("autumn", autumn)
 		m.set_shader_parameter("spring", spring)
@@ -418,7 +475,7 @@ static func set_season(snow: float, autumn: float, spring: float) -> void:
 
 ## Мокрая земля после дождя (0..1) и качество рисунка из настроек.
 static func set_surface(wet: float, quality: float) -> void:
-	for m in [world_material(), detail_material()]:
+	for m in [world_material(), detail_material(), vehicle_material()]:
 		m.set_shader_parameter("wet", wet)
 		m.set_shader_parameter("quality", quality)
 

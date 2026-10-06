@@ -105,6 +105,7 @@ func _build_mesh(kind: String, color: Color) -> MeshInstance3D:
 	b.ground_shade = false
 	VehicleModels.npc(b, kind, color)
 	var mi := b.build_mesh()
+	mi.material_override = MeshBuilder.vehicle_material()
 	mi.set_meta("plates", b.get_meta("plates", []))
 	return mi
 

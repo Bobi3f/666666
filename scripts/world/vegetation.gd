@@ -26,9 +26,32 @@ render_mode cull_disabled, specular_disabled;
 uniform float sway = 0.07;
 uniform float snow = 0.0;
 uniform float autumn = 0.0;
+uniform float clouds = 0.0;
+uniform vec2 cloud_wind = vec2(3.0, 1.2);
+
+varying vec3 gpos;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Тени от облаков: плавный шум, плывёт по ветру
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float cloud_shadow(vec3 wp) {
+	vec2 p = (wp.xz + cloud_wind * TIME) / 70.0;
+	float n = vnoise(p) * 0.65 + vnoise(p * 2.3 + 7.1) * 0.35;
+	return smoothstep(0.47, 0.6, n);
+}
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	gpos = wp;
 	float h = max(VERTEX.y, 0.0);
 	float t = TIME;
 	VERTEX.x += sin(t * 1.7 + wp.x * 0.35 + wp.z * 0.21) * sway * h * 2.5;
@@ -41,6 +64,9 @@ void fragment() {
 	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
 	// Зимой трава под снегом, торчат только кончики
 	c = mix(c, vec3(0.88, 0.9, 0.94), snow * 0.85);
+	if (clouds > 0.0) {
+		c *= 1.0 - clouds * 0.42 * cloud_shadow(gpos);
+	}
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	// Освещаем как землю, с обеих сторон травинки: иначе изнанка

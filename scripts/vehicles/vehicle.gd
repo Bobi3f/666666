@@ -1338,6 +1338,7 @@ func _paint_body() -> void:
 		_:
 			VehicleModels.zhiguli(b, col, true, glass)
 	_paint_mesh = b.build_mesh()
+	_paint_mesh.material_override = MeshBuilder.vehicle_material()
 	_body.add_child(_paint_mesh)
 	# Надписи модели (эмблемы на баке и т. п.) — живут вместе с кузовом
 	for l in b.get_meta("labels", []):
