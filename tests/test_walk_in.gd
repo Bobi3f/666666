@@ -63,7 +63,7 @@ func _run() -> void:
 	ok(P.current_prompt().contains("сельмаг"), "у прилавка: " + P.current_prompt())
 	P.global_position = sx * Vector3(1.6, 0.5, 0.5)
 	await frames(4)
-	ok(P.current_prompt().contains("воды"), "у холодильника: " + P.current_prompt())
+	ok(P.current_prompt().contains("вода"), "у холодильника — то же меню, вода в нём: " + P.current_prompt())
 	ok(W.has_node("ShopLamps"), "в магазине горят лампы")
 
 	print("== Сельсовет и почта")
