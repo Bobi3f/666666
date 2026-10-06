@@ -505,8 +505,9 @@ func _apply_detail() -> void:
 	if _vignette:
 		_vignette.visible = SettingsManager.detail >= 2 and not GameManager.touch_mode
 	# На компьютере на высокой — сглаживание краёв (на телефоне дорого)
+	# В браузере сглаживание дорого встроенной видеокарте ноутбука — только в программе
 	get_viewport().msaa_3d = Viewport.MSAA_2X if SettingsManager.detail >= 2 and not GameManager.touch_mode \
-		else Viewport.MSAA_DISABLED
+		and not OS.has_feature("web") else Viewport.MSAA_DISABLED
 
 
 func _update_daylight() -> void:
@@ -532,9 +533,9 @@ func _update_daylight() -> void:
 	_sun.light_color = Color(1.0, 0.75, 0.5).lerp(Color(1.0, 0.97, 0.92), clampf(elev * 2.0, 0.0, 1.0))
 	# На закате и рассвете дымка вокруг солнца светится тёплым
 	_env.fog_sun_scatter = lerpf(0.25, 0.7, dusk)
-	# Тени облаков плывут по полям — при солнце, со средней детализации;
+	# Тени облаков плывут по полям — при солнце, на высокой детализации;
 	# в сплошных тучах их не видно
-	MeshBuilder.set_clouds(day * lerpf(0.9, 0.0, cloud) if SettingsManager.detail >= 1 else 0.0)
+	MeshBuilder.set_clouds(day * lerpf(0.9, 0.0, cloud) if SettingsManager.detail >= 2 else 0.0)
 	_sun.visible = day > 0.01
 	# Молния на мгновение заливает всё холодным светом
 	var fl := WeatherManager.flash

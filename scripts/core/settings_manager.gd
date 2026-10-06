@@ -68,8 +68,9 @@ func _process(delta: float) -> void:
 		_slow = 0.0
 		return
 	var fps := Engine.get_frames_per_second()
-	_slow = _slow + delta if fps > 0 and fps < 24 else maxf(_slow - delta * 2.0, 0.0)
-	if _slow < 15.0:
+	# Ниже 28 кадров дольше 8 секунд — проще картинку (раньше ждали 15 с при 24)
+	_slow = _slow + delta if fps > 0 and fps < 28 else maxf(_slow - delta * 2.0, 0.0)
+	if _slow < 8.0:
 		return
 	_slow = -15.0
 	if detail > 0:

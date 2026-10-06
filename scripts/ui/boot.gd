@@ -35,6 +35,9 @@ func _build() -> void:
 	if load_save:
 		load_save = false
 		SaveManager.load_game()
+	# Шейдеры — пока закрыто экраном загрузки, иначе игра подвисает в пути
+	screen.set_progress(0.9, "Готовим картинку…")
+	await ShaderWarmup.run(world)
 	screen.set_progress(1.0, "Готово")
 	await get_tree().process_frame
 	queue_free()
