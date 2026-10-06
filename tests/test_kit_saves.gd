@@ -46,7 +46,7 @@ func _run() -> void:
 	GM.money = 1000
 	PR.repair_kits = 0
 	ok(W.buy_repair_kit() and PR.repair_kits == 1 and GM.money == 850, "купил ремнабор в сельмаге за 150")
-	var kz: InteractZone = W.find_child("KitZone", true, false)
+	var kz: InteractZone = W.find_child("ShopZone", true, false)
 	ok(kz != null, "в сельмаге место с ремнабором у прилавка")
 	var pl = W.get_node("Player")
 	pl.global_position = kz.global_position + kz.global_transform.basis.z * 0.5 + Vector3(0, 0.5, 0)

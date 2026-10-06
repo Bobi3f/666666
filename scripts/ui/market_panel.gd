@@ -28,6 +28,9 @@ const PARTS := {
 
 signal closed
 
+## Сельмаг: товары и покупку даёт мир (world.gd → SHOP_MENU, shop_buy).
+var shop_fn: Callable
+
 var mode := "home"
 var _vehicles: Array = []
 var _car: Vehicle
@@ -123,7 +126,9 @@ func open(m: String, vehicles: Array = []) -> void:
 	visible = true
 	get_tree().paused = true
 	_status.text = ""
-	_title.text = {"home": "Базар — для дома", "wedding": "Базар — к свадьбе"}.get(mode, "Базар — автозапчасти")
+	_title.text = {"home": "Базар — для дома", "wedding": "Базар — к свадьбе", "shop": "Сельмаг «Продукты»"}.get(mode, "Базар — автозапчасти")
+	if mode == "shop":
+		_status.text = _stock()
 	_cars_label.visible = mode == "parts"
 	_cars_box.visible = mode == "parts"
 	for c in _cars_box.get_children():
@@ -177,10 +182,19 @@ func _refresh() -> void:
 
 ## Куплено ли уже (диски можно брать снова — другой цвет).
 func _list() -> Dictionary:
+	if mode == "shop":
+		return get_parent().SHOP_MENU
 	return {"home": HOME, "wedding": WEDDING}.get(mode, PARTS)
 
 
+## Что у игрока сейчас — под меню сельмага.
+func _stock() -> String:
+	return "Сытость %d%% · вода %d%% · еды в запасе %d · ремнаборов %d" % [int(NeedsManager.food), int(NeedsManager.water), NeedsManager.snacks, Progress.repair_kits]
+
+
 func _has(id: String) -> bool:
+	if mode == "shop":
+		return false
 	if mode == "home" or mode == "wedding":
 		return Progress.has_item(id)
 	if id == "rims" or id == "repair_kit":
@@ -194,6 +208,11 @@ func buy(id: String) -> bool:
 	if not list.has(id) or _has(id) or (mode == "parts" and _car == null):
 		return false
 	var it: Array = list[id]
+	if mode == "shop":
+		var got: bool = shop_fn.call(id)
+		_status.text = ("Купил: %s. " % it[0] if got else "Не хватает денег: «%s» стоит %d грн. " % [it[0], it[1]]) + _stock()
+		_refresh()
+		return got
 	if not GameManager.spend(it[1]):
 		_status.text = "Не хватает денег: «%s» стоит %d грн" % [it[0], it[1]]
 		return false

@@ -477,41 +477,8 @@ static func person_model(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, wo
 
 # --- Ходьба: ноги и руки качает шейдер ---------------------------------------
 
-const WALK_SHADER := """
-shader_type spatial;
+const WALK_SHADER := PersonModel.SHADER
 
-uniform float phase = 0.0;
-uniform float amount = 0.0;
-
-// Поворот точки p вокруг оси X, проходящей на высоте pivot_y
-vec3 swing(vec3 p, float pivot_y, float a) {
-	float dy = p.y - pivot_y;
-	float c = cos(a);
-	float s = sin(a);
-	return vec3(p.x, pivot_y + dy * c - p.z * s, dy * s + p.z * c);
-}
-
-void vertex() {
-	float tag = COLOR.a;
-	float a = sin(phase) * 0.5 * amount;
-	if (tag < 0.95 && tag > 0.85) {
-		VERTEX = swing(VERTEX, 0.85, a);
-	} else if (tag < 0.85 && tag > 0.75) {
-		VERTEX = swing(VERTEX, 0.85, -a);
-	} else if (tag < 0.75 && tag > 0.65) {
-		VERTEX = swing(VERTEX, 1.4, -a * 0.8);
-	} else if (tag < 0.65 && tag > 0.55) {
-		VERTEX = swing(VERTEX, 1.4, a * 0.8);
-	}
-}
-
-void fragment() {
-	ALBEDO = COLOR.rgb * 1.05;
-	ROUGHNESS = 0.9;
-}
-"""
-
-static var _walk_shader: Shader
 
 ## Четвероногие: ноги по диагонали (0.9 и 0.8 в альфе), хвост (0.5) виляет
 ## вокруг вертикали у корня. hip — высота «плеч», откуда качаются ноги.
@@ -568,13 +535,9 @@ static func animal_mesh(b: MeshBuilder, hip: float, tail_y: float, tail_z: float
 
 ## Меш человека с шейдером ходьбы — у каждого свой материал, свой шаг.
 static func walking_mesh(b: MeshBuilder) -> MeshInstance3D:
-	if _walk_shader == null:
-		_walk_shader = Shader.new()
-		_walk_shader.code = WALK_SHADER
 	var mi := b.build_mesh()
-	var mat := ShaderMaterial.new()
-	mat.shader = _walk_shader
-	mi.material_override = mat
+	if not mi.material_override is ShaderMaterial:
+		mi.material_override = PersonModel.material()
 	return mi
 
 

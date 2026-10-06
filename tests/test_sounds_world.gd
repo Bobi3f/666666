@@ -88,24 +88,24 @@ func _run() -> void:
 	var spots := {}
 	for i in VS.SPOTS.size(): spots[VS.SPOTS[i].name] = i
 	var here: Array = VO.audible(Vector3(-100, 0, -40))
-	ok(here.has(spots["лавочки"]), "днём в Каменке у лавочек слышно людей")
-	ok(not here.has(spots["рынок"]), "а городской рынок оттуда не слышно")
-	VO.speak(spots["лавочки"])
-	ok(VO.last.spot == "лавочки" and VO.last.sound.begins_with("laugh") and VO.last.pos.distance_to(Vector3(-95, 1.6, -36.5)) < 10.0, "засмеялись у лавочек: %s" % VO.last.sound)
+	ok(here.has(spots["benches"]), "днём в Каменке у лавочек слышно людей")
+	ok(not here.has(spots["market"]), "а городской рынок оттуда не слышно")
+	VO.speak(spots["benches"])
+	ok(VO.last.spot == "benches" and VO.last.sound.begins_with("laugh") and VO.last.pos.distance_to(Vector3(-95, 1.6, -36.5)) < 10.0, "засмеялись у лавочек: %s" % VO.last.sound)
 	here = VO.audible(Town.w(Vector3(64, 0, 144)))
-	ok(here.has(spots["рынок"]), "в городе на рынке — гомон и окрики")
-	VO.speak(spots["рынок"])
+	ok(here.has(spots["market"]), "в городе на рынке — гомон и окрики")
+	VO.speak(spots["market"])
 	ok(VO.last.pos.x > 700.0, "голос с рынка — в городе")
-	ok(VO.audible(Town.w(Vector3(160, 0, 160))).has(spots["стадион"]), "на стадионе болеют")
-	ok(VO.audible(Vector3(124, 0, 112)).has(spots["роща"]), "в роще аукаются")
+	ok(VO.audible(Town.w(Vector3(160, 0, 160))).has(spots["stadium"]), "на стадионе болеют")
+	ok(VO.audible(Vector3(124, 0, 112)).has(spots["grove"]), "в роще аукаются")
 	TM.minutes = 3 * 60.0
-	ok(not VO.audible(Vector3(-100, 0, -40)).has(spots["лавочки"]), "в 3 ночи у лавочек тихо")
+	ok(not VO.audible(Vector3(-100, 0, -40)).has(spots["benches"]), "в 3 ночи у лавочек тихо")
 	TM.minutes = 23 * 60.0
-	ok(VO.audible(Vector3(-24, 0, -25)).has(spots["клуб «Каменка»"]), "в 11 вечера у клуба шумят")
+	ok(VO.audible(Vector3(-24, 0, -25)).has(spots["club_village"]), "в 11 вечера у клуба шумят")
 	TM.minutes = 12 * 60.0
 	WM.set_kind(3, 9999.0)
 	WM.rain = 1.0
-	ok(not VO.audible(Vector3(-100, 0, -40)).has(spots["лавочки"]), "в ливень на лавочках никого")
+	ok(not VO.audible(Vector3(-100, 0, -40)).has(spots["benches"]), "в ливень на лавочках никого")
 	WM.set_kind(0, 9999.0)
 	WM.rain = 0.0
 	# Гомон переезжает к ближнему месту с толпой

@@ -9,11 +9,81 @@ extends RefCounted
 ## Внешность жителя (цвет кожи и волос, причёска, усы, полнота) выводится из
 ## цвета его рубашки: у каждого своя, но всегда одна и та же.
 ##
-## Шаг по-прежнему делает шейдер (villagers.gd → WALK_SHADER): метки в альфе
-## цвета — левая нога 0.9, правая 0.8 (качаются вокруг 0.85 м), левая рука
-## 0.7, правая 0.6 (вокруг 1.4 м). Человек смотрит в −Z, ступни на нуле.
+## Шаг и взгляд делает шейдер SHADER: метки в альфе цвета — левая нога 0.9,
+## правая 0.8 (качаются вокруг 0.85 м), левая рука 0.7, правая 0.6 (вокруг
+## 1.4 м), голова 0.5 (поворачивается на look). turn — поворот всего тела.
+## Человек смотрит в −Z, ступни на нуле. Отдельный человек (свой
+## MeshBuilder) получает этот шейдер сам и попадает в группу "people" —
+## его голову поворачивает к игроку PeopleLook.
 
 const SEG := 8
+
+const SHADER := """
+shader_type spatial;
+
+uniform float phase = 0.0;
+uniform float amount = 0.0;
+uniform float look = 0.0;
+uniform float turn = 0.0;
+
+// Поворот точки p вокруг оси X, проходящей на высоте pivot_y
+vec3 swing(vec3 p, float pivot_y, float a) {
+	float dy = p.y - pivot_y;
+	float c = cos(a);
+	float s = sin(a);
+	return vec3(p.x, pivot_y + dy * c - p.z * s, dy * s + p.z * c);
+}
+
+// Поворот вокруг вертикали (как Basis(UP, a))
+vec3 yaw(vec3 p, float a) {
+	float c = cos(a);
+	float s = sin(a);
+	return vec3(p.x * c + p.z * s, p.y, -p.x * s + p.z * c);
+}
+
+void vertex() {
+	float tag = COLOR.a;
+	float a = sin(phase) * 0.5 * amount;
+	float y = turn;
+	if (tag < 0.95 && tag > 0.85) {
+		VERTEX = swing(VERTEX, 0.85, a);
+	} else if (tag < 0.85 && tag > 0.75) {
+		VERTEX = swing(VERTEX, 0.85, -a);
+	} else if (tag < 0.75 && tag > 0.65) {
+		VERTEX = swing(VERTEX, 1.4, -a * 0.8);
+	} else if (tag < 0.65 && tag > 0.55) {
+		VERTEX = swing(VERTEX, 1.4, a * 0.8);
+	} else if (tag < 0.55 && tag > 0.45) {
+		y += look;
+	}
+	VERTEX = yaw(VERTEX, y);
+	NORMAL = yaw(NORMAL, y);
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb * 1.05;
+	ROUGHNESS = 0.9;
+}
+"""
+
+static var _shader: Shader
+
+
+## Свой материал человеку: шаг и взгляд у каждого свои.
+static func material() -> ShaderMaterial:
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = _shader
+	return mat
+
+
+## Пустой построитель без сдвига, в котором будет один человек, — его меш
+## смотрит на игрока (голова крутится вокруг начала координат меша).
+static func _mark(b: MeshBuilder, sit: bool) -> void:
+	if b._count == 0 and b.xf.origin.length() < 0.01:
+		b.set_meta("person", sit)
 const SKINS := [Color(0.88, 0.7, 0.58), Color(0.82, 0.63, 0.5), Color(0.92, 0.76, 0.66), Color(0.76, 0.57, 0.45)]
 const HAIRS := [Color(0.3, 0.22, 0.15), Color(0.16, 0.13, 0.11), Color(0.55, 0.42, 0.28), Color(0.62, 0.6, 0.58), Color(0.42, 0.3, 0.2)]
 
@@ -83,6 +153,7 @@ static func _en(p: Vector3, r: Vector3) -> Vector3:
 ## Житель: shirt — рубашка (или кофта), hat — кепка у мужчины, косынка у
 ## женщины; sit — сидит на лавке (ноги вперёд, руки на коленях).
 static func person(b: MeshBuilder, shirt: Color, hat: Color, sit: bool, woman: bool) -> void:
+	_mark(b, sit)
 	var seed := int(shirt.r * 97.0 + shirt.g * 57.0 + shirt.b * 31.0 + hat.r * 13.0) + (7 if woman else 0)
 	var skin: Color = SKINS[seed % SKINS.size()]
 	var hair: Color = HAIRS[(seed / 3) % HAIRS.size()]
@@ -187,8 +258,16 @@ static func _hand(b: MeshBuilder, at: Vector3, skin: Color, side: float, flat: b
 	ball(b, at + Vector3(-side * 0.02, -0.005, -0.03), Vector3(0.014, 0.03, 0.014), skin, 2, 6)
 
 
-## Голова: лицо, глаза с бровями, нос, губы, уши, причёска и головной убор.
+## Голова с меткой 0.5 в альфе — её поворачивает шейдер (смотрит на игрока).
 static func _head(b: MeshBuilder, c: Vector3, skin: Color, hair: Color, hat: Color, woman: bool, seed: int) -> void:
+	var a0 := b.alpha
+	b.alpha = 0.5
+	_head_parts(b, c, skin, hair, hat, woman, seed)
+	b.alpha = a0
+
+
+## Голова: лицо, глаза с бровями, нос, губы, уши, причёска и головной убор.
+static func _head_parts(b: MeshBuilder, c: Vector3, skin: Color, hair: Color, hat: Color, woman: bool, seed: int) -> void:
 	ball(b, c, Vector3(0.092, 0.118, 0.104), skin, 8, 12)
 	# Подбородок — чуть вперёд, светлый (не тенью, как щетина)
 	ball(b, c + Vector3(0, -0.07, -0.035), Vector3(0.045, 0.04, 0.06), skin.lightened(0.04), 3, 8)
@@ -230,6 +309,7 @@ static func _head(b: MeshBuilder, c: Vector3, skin: Color, hair: Color, hat: Col
 ## Оля: платье в горошек с поясом и короткими рукавами, белые гольфы,
 ## туфли, длинные русые волосы с чёлкой и хвостом, белый бант, румянец.
 static func girl(b: MeshBuilder, sit: bool) -> void:
+	_mark(b, sit)
 	var skin := Color(0.93, 0.76, 0.65)
 	var dress := Color(0.85, 0.2, 0.3)
 	var dots := Color(0.98, 0.95, 0.9)
@@ -288,6 +368,7 @@ static func girl(b: MeshBuilder, sit: bool) -> void:
 	var neck := chest + 0.05
 	limb(b, Vector3(0, neck - 0.03, 0.005), Vector3(0, neck + 0.06, 0.008), Vector2(0.042, 0.04), Vector2(0.039, 0.038), skin)
 	var c := Vector3(0, neck + 0.14, 0.0)
+	b.alpha = 0.5
 	ball(b, c, Vector3(0.086, 0.11, 0.097), skin, 8, 12)
 	ball(b, c + Vector3(0, -0.065, -0.032), Vector3(0.04, 0.036, 0.055), skin.lightened(0.04), 3, 8)
 	var front := c.z - 0.093
@@ -310,3 +391,4 @@ static func girl(b: MeshBuilder, sit: bool) -> void:
 	limb(b, c + Vector3(0, 0.0, 0.1), c + Vector3(0, -0.3, 0.14), Vector2(0.045, 0.035), Vector2(0.02, 0.018), hair, true)
 	for s in [-1.0, 1.0]:
 		ball(b, c + Vector3(s * 0.045, 0.02, 0.115), Vector3(0.04, 0.028, 0.02), Color(0.97, 0.97, 1.0), 2, 6)
+	b.alpha = 1.0

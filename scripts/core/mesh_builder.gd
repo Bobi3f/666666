@@ -198,6 +198,11 @@ static func set_small_range(root: Node) -> void:
 func build_mesh(unshaded := false) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = build_array_mesh(unshaded)
+	# Один человек — свой шейдер (шаг, взгляд) и в группу «люди»
+	if has_meta("person"):
+		mi.material_override = PersonModel.material()
+		mi.set_meta("sit", get_meta("person"))
+		mi.add_to_group("people")
 	return mi
 
 

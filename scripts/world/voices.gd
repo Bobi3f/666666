@@ -10,22 +10,22 @@ extends Node3D
 ## за полночь), какие голоса, есть ли гомон (crowd), под крышей ли (roof —
 ## и в дождь), только летом (summer).
 const SPOTS := [
-	{"name": "лавочки", "pos": Vector3(-95, 0, -36.5), "r": 12.0, "hours": [8, 21], "sounds": ["laugh_woman", "laugh_man", "laugh_woman"], "crowd": true},
-	{"name": "сельмаг", "pos": Vector3(-50, 0, -25), "r": 8.0, "hours": [8, 20], "sounds": ["laugh_man", "shout_hey", "laugh_woman"]},
-	{"name": "клуб «Каменка»", "pos": Vector3(-24, 0, -20), "r": 14.0, "hours": [19, 25], "sounds": ["laugh_man", "laugh_woman", "shout_yahoo", "laugh_woman"], "crowd": true, "roof": true},
-	{"name": "пруд", "pos": Vector3(-178, 0, -40), "r": 10.0, "hours": [10, 19], "sounds": ["kids_play", "laugh_kid", "kids_play"], "summer": true},
-	{"name": "ферма", "pos": Vector3(18, 0, 46), "r": 20.0, "hours": [7, 19], "sounds": ["shout_hey", "laugh_man"]},
-	{"name": "свалка", "pos": Vector3(0, 0, 2), "junk": true, "r": 14.0, "hours": [8, 18], "sounds": ["shout_hey", "laugh_man"]},
-	{"name": "роща", "pos": Vector3(124, 0, 112), "r": 14.0, "hours": [10, 21], "sounds": ["auu", "laugh_woman", "laugh_man", "auu"]},
-	{"name": "кафе у трассы", "pos": Vector3(-1380, 0, -22), "r": 12.0, "hours": [8, 22], "sounds": ["laugh_man", "laugh_woman"], "crowd": true, "roof": true},
-	{"name": "рынок", "pos": Vector3(64, 0, 144), "town": true, "r": 18.0, "hours": [7, 17], "sounds": ["shout_hey", "laugh_woman", "laugh_man"], "crowd": true},
-	{"name": "площадь", "pos": Vector3(122, 0, 21), "town": true, "r": 16.0, "hours": [8, 22], "sounds": ["laugh_woman", "laugh_man", "laugh_kid"], "crowd": true},
-	{"name": "парк", "pos": Vector3(-2, 0, 165), "town": true, "r": 25.0, "hours": [9, 21], "sounds": ["laugh_kid", "kids_play", "laugh_woman", "shout_yahoo"]},
-	{"name": "школа", "pos": Vector3(11, 0, 99), "town": true, "r": 22.0, "hours": [8, 15], "sounds": ["kids_play", "laugh_kid", "kids_play"]},
-	{"name": "стадион", "pos": Vector3(160, 0, 160), "town": true, "r": 26.0, "hours": [10, 20], "sounds": ["cheer", "shout_yahoo", "cheer"], "crowd": true},
-	{"name": "«Метелица»", "pos": Vector3(125, 0, 118), "town": true, "r": 14.0, "hours": [19, 25], "sounds": ["laugh_man", "laugh_woman", "shout_yahoo"], "crowd": true, "roof": true},
-	{"name": "вокзал", "pos": Vector3(97, 0, 193), "town": true, "r": 14.0, "hours": [6, 22], "sounds": ["shout_hey", "laugh_man"], "crowd": true, "roof": true},
-	{"name": "СТО", "pos": Vector3(248, 0, 67), "town": true, "r": 10.0, "hours": [8, 19], "sounds": ["shout_hey", "laugh_man"]},
+	{"name": "benches", "pos": Vector3(-95, 0, -36.5), "r": 12.0, "hours": [8, 21], "sounds": ["laugh_woman", "laugh_man", "laugh_woman"], "crowd": true},
+	{"name": "shop", "pos": Vector3(-50, 0, -25), "r": 8.0, "hours": [8, 20], "sounds": ["laugh_man", "shout_hey", "laugh_woman"]},
+	{"name": "club_village", "pos": Vector3(-24, 0, -20), "r": 14.0, "hours": [19, 25], "sounds": ["laugh_man", "laugh_woman", "shout_yahoo", "laugh_woman"], "crowd": true, "roof": true},
+	{"name": "pond", "pos": Vector3(-178, 0, -40), "r": 10.0, "hours": [10, 19], "sounds": ["kids_play", "laugh_kid", "kids_play"], "summer": true},
+	{"name": "farm", "pos": Vector3(18, 0, 46), "r": 20.0, "hours": [7, 19], "sounds": ["shout_hey", "laugh_man"]},
+	{"name": "junkyard", "pos": Vector3(0, 0, 2), "junk": true, "r": 14.0, "hours": [8, 18], "sounds": ["shout_hey", "laugh_man"]},
+	{"name": "grove", "pos": Vector3(124, 0, 112), "r": 14.0, "hours": [10, 21], "sounds": ["auu", "laugh_woman", "laugh_man", "auu"]},
+	{"name": "cafe", "pos": Vector3(-1380, 0, -22), "r": 12.0, "hours": [8, 22], "sounds": ["laugh_man", "laugh_woman"], "crowd": true, "roof": true},
+	{"name": "market", "pos": Vector3(64, 0, 144), "town": true, "r": 18.0, "hours": [7, 17], "sounds": ["shout_hey", "laugh_woman", "laugh_man"], "crowd": true},
+	{"name": "square", "pos": Vector3(122, 0, 21), "town": true, "r": 16.0, "hours": [8, 22], "sounds": ["laugh_woman", "laugh_man", "laugh_kid"], "crowd": true},
+	{"name": "park", "pos": Vector3(-2, 0, 165), "town": true, "r": 25.0, "hours": [9, 21], "sounds": ["laugh_kid", "kids_play", "laugh_woman", "shout_yahoo"]},
+	{"name": "school", "pos": Vector3(11, 0, 99), "town": true, "r": 22.0, "hours": [8, 15], "sounds": ["kids_play", "laugh_kid", "kids_play"]},
+	{"name": "stadium", "pos": Vector3(160, 0, 160), "town": true, "r": 26.0, "hours": [10, 20], "sounds": ["cheer", "shout_yahoo", "cheer"], "crowd": true},
+	{"name": "club_town", "pos": Vector3(125, 0, 118), "town": true, "r": 14.0, "hours": [19, 25], "sounds": ["laugh_man", "laugh_woman", "shout_yahoo"], "crowd": true, "roof": true},
+	{"name": "station", "pos": Vector3(97, 0, 193), "town": true, "r": 14.0, "hours": [6, 22], "sounds": ["shout_hey", "laugh_man"], "crowd": true, "roof": true},
+	{"name": "sto", "pos": Vector3(248, 0, 67), "town": true, "r": 10.0, "hours": [8, 19], "sounds": ["shout_hey", "laugh_man"]},
 ]
 ## Откуда ещё слышно: к радиусу места.
 const HEAR := 45.0

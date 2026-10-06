@@ -22,7 +22,7 @@ func _run() -> void:
 	await save("k_delete")
 	root.get_node("SaveManager").delete_slot(root.get_node("SettingsManager").slot)
 	menu._close()
-	var kit: Node3D = W.find_child("KitZone", true, false)
+	var kit: Node3D = W.find_child("ShopZone", true, false)
 	var p: Node3D = W.get_node("Player")
 	p.global_position = kit.global_position + kit.global_transform.basis.z * 1.2
 	for i in 10: await physics_frame

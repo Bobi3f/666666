@@ -203,6 +203,9 @@ func _ready() -> void:
 	NeedsManager.fainted.connect(_faint)
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
+	var look := preload("res://scripts/world/people_look.gd").new()
+	look.name = "PeopleLook"
+	add_child(look)
 	var voices := preload("res://scripts/world/voices.gd").new()
 	voices.name = "Voices"
 	add_child(voices)
@@ -1384,12 +1387,13 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	sign.rotation.y = yaw
 	add_child(sign)
 
-	# Всё покупают внутри, у прилавка: хлеб посередине, рыбу принимают
-	# слева у весов, воду — справа у холодильника
-	var zone := InteractZone.create("E — сельмаг: хлеб и молоко (40 грн)", Vector3(2.0, 2.2, 1.4))
-	zone.position = xf * Vector3(-0.4, 0.4, 0.4)
+	# Всё покупают внутри, у прилавка: меню продавщицы посередине (хлеб,
+	# бургер, вода, ремнабор), рыбу принимают слева у весов
+	var zone := InteractZone.create("E — сельмаг: хлеб, бургер, вода, ремнабор", Vector3(4.0, 2.2, 1.4))
+	zone.name = "ShopZone"
+	zone.position = xf * Vector3(0.6, 0.4, 0.4)
 	zone.rotation.y = yaw
-	zone.activated.connect(_buy_village_food)
+	zone.activated.connect(open_shop)
 	add_child(zone)
 
 	var fish_zone := InteractZone.create("", Vector3(1.4, 2.2, 1.4))
@@ -1401,21 +1405,6 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 		return "E — сдать рыбу: %d шт × %d грн" % [NeedsManager.fish, FISH_PRICE]
 	fish_zone.activated.connect(_sell_fish)
 	add_child(fish_zone)
-	var water_zone := InteractZone.create("", Vector3(1.4, 2.2, 1.4))
-	water_zone.position = xf * Vector3(1.6, 0.4, 0.4)
-	water_zone.rotation.y = yaw
-	water_zone.prompt_fn = func() -> String: return "E — бутылка воды (%d грн)" % WATER_PRICE
-	water_zone.activated.connect(_buy_water)
-	add_child(water_zone)
-	var kit_zone := InteractZone.create("", Vector3(1.2, 2.2, 1.4))
-	kit_zone.name = "KitZone"
-	kit_zone.position = xf * Vector3(3.2, 0.4, 0.4)
-	kit_zone.rotation.y = yaw
-	kit_zone.prompt_fn = func() -> String:
-		var have := " — в запасе %d" % Progress.repair_kits if Progress.repair_kits > 0 else ""
-		return "E — ремнабор для машины и мотоцикла (%d грн)%s" % [KIT_PRICE, have]
-	kit_zone.activated.connect(buy_repair_kit)
-	add_child(kit_zone)
 
 
 ## Внутри сельмага (в его координатах, пол на 0.4): прилавок поперёк зала,
@@ -1513,6 +1502,58 @@ func _sell_fish() -> void:
 	GameManager.add_money(pay)
 	SoundLibrary.play("cash")
 	GameManager.notify("Сдал рыбу: +%d грн" % pay)
+
+
+## Меню сельмага: что почём и что даёт. id → [название, цена, что даёт].
+const SHOP_MENU := {
+	"bread": ["Хлеб и молоко", 40, "хлеб — в запас (съесть — Q), молоко выпьешь сразу: вода +25%"],
+	"burger": ["Бургер с котлетой", 60, "съешь сразу: сытость +60%"],
+	"water": ["Бутылка воды", WATER_PRICE, "вода +70%"],
+	"repair_kit": ["Ремнабор", KIT_PRICE, "для своей машины или мотоцикла: +40% к состоянию (инвентарь — I)"],
+}
+var _shop_panel: MarketPanel
+
+
+## Открыть меню сельмага (с 8 до 21).
+func open_shop() -> void:
+	var h := TimeManager.hour()
+	if h < 8.0 or h >= 21.0:
+		GameManager.notify("Сельмаг закрыт. Работает с 8:00 до 21:00")
+		return
+	if _shop_panel == null:
+		_shop_panel = MarketPanel.new()
+		_shop_panel.name = "ShopPanel"
+		_shop_panel.shop_fn = shop_buy
+		add_child(_shop_panel)
+	_shop_panel.open("shop")
+
+
+## Купить в сельмаге товар id из SHOP_MENU. true — купил.
+func shop_buy(id: String) -> bool:
+	match id:
+		"bread":
+			if not GameManager.spend(40):
+				return false
+			NeedsManager.snacks += 1
+			NeedsManager.drink(25.0)
+			GameManager.notify("Купил хлеб и молоко, молоко выпил сразу. Съесть хлеб — Q")
+		"burger":
+			if not GameManager.spend(60):
+				return false
+			NeedsManager.eat(60.0)
+			QuestManager.event("ate")
+			GameManager.notify("Съел бургер с котлетой. Сытость %d%%" % int(NeedsManager.food))
+		"water":
+			if not GameManager.spend(WATER_PRICE):
+				return false
+			NeedsManager.drink(70.0)
+			GameManager.notify("Выпил бутылку воды. Вода %d%%" % int(NeedsManager.water))
+		"repair_kit":
+			return buy_repair_kit()
+		_:
+			return false
+	SoundLibrary.play("cash", -6.0)
+	return true
 
 
 func _buy_village_food() -> void:
