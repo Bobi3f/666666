@@ -63,6 +63,23 @@ func _ready() -> void:
 	_makers["whistle"] = func() -> AudioStreamWAV: return _make(_whistle(), false)
 	_makers["step_snow"] = func() -> AudioStreamWAV: return _make(_step_snow(), false)
 	_makers["grass"] = func() -> AudioStreamWAV: return _make(_grass(), true)
+	_makers["engine_moped"] = func() -> AudioStreamWAV: return _make(_engine_moped(), true)
+	_makers["engine_moto"] = func() -> AudioStreamWAV: return _make(_engine_moto(), true)
+	_makers["engine_izh"] = func() -> AudioStreamWAV: return _make(_engine_izh(), true)
+	_makers["engine_diesel"] = func() -> AudioStreamWAV: return _make(_engine_diesel(), true)
+	_makers["engine_tractor"] = func() -> AudioStreamWAV: return _make(_engine_tractor(), true)
+	_makers["engine_volga"] = func() -> AudioStreamWAV: return _make(_engine_volga(), true)
+	_makers["engine_zaz"] = func() -> AudioStreamWAV: return _make(_engine_zaz(), true)
+	# Голоса людей: смех, крики, гомон толпы, болельщики
+	_makers["laugh_man"] = func() -> AudioStreamWAV: return _make(_laugh(5, 165.0, 120.0, "а", 1.0, 0.11, 0.06, 0.06), false)
+	_makers["laugh_woman"] = func() -> AudioStreamWAV: return _make(_laugh(5, 300.0, 250.0, "а", 1.17, 0.09, 0.05, 0.05), false)
+	_makers["laugh_kid"] = func() -> AudioStreamWAV: return _make(_laugh(6, 400.0, 470.0, "и", 1.3, 0.07, 0.045, 0.04), false)
+	_makers["shout_hey"] = func() -> AudioStreamWAV: return _make(_shout_hey(), false)
+	_makers["shout_yahoo"] = func() -> AudioStreamWAV: return _make(_shout_yahoo(), false)
+	_makers["kids_play"] = func() -> AudioStreamWAV: return _make(_kids_play(), false)
+	_makers["cheer"] = func() -> AudioStreamWAV: return _make(_cheer(), false)
+	_makers["auu"] = func() -> AudioStreamWAV: return _make(_auu(), false)
+	_makers["chatter"] = func() -> AudioStreamWAV: return _make(_chatter(), true)
 	for n in _makers:
 		_streams[n] = Assets.sound("effects/" + n, _makers[n])
 	SettingsManager.changed.connect(_apply_music_volume)
@@ -378,6 +395,284 @@ func _engine() -> PackedFloat32Array:
 		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.15
 		a[i] = (sin(TAU * f * t) * 0.35 + sin(TAU * f * 2.0 * t) * 0.2 + pulse * 0.35 + lp * 0.25 * pulse) * 0.8
 	return a
+
+
+## Сила каждой из n вспышек: у живого мотора они чуть разные. Свой
+## генератор с постоянным зерном — петля звучит одинаково каждый раз.
+func _jitter(n: int, spread: float, seed_: int) -> PackedFloat32Array:
+	var r := RandomNumberGenerator.new()
+	r.seed = seed_
+	var k := PackedFloat32Array()
+	k.resize(n)
+	for i in n:
+		k[i] = 1.0 - r.randf() * spread
+	return k
+
+
+## Мопед «Карпаты» (50 кубов, двухтактный): тонкое злое жужжание —
+## узкие хлопки, почти без баса, с призвоном высоко.
+func _engine_moped() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var k := _jitter(55, 0.35, 501)
+	var hp := 0.0
+	var prev := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 16.0) * k[int(t * f) % 55]
+		var n := _rng.randf_range(-1.0, 1.0)
+		hp = (n - prev) * 0.5
+		prev = n
+		var saw := ph * 2.0 - 1.0
+		a[i] = (pulse * 0.5 + sin(TAU * f * 9.0 * t) * exp(-ph * 5.0) * 0.22 + saw * 0.12
+				+ sin(TAU * f * 3.0 * t) * 0.12 + hp * pulse * 0.3) * 0.8
+	return a
+
+
+## «Ява» (двухтактная): звонкий «ринг-динг» — резкий хлопок и звон
+## резонатора на выхлопе, бас средний.
+func _engine_moto() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var k := _jitter(55, 0.2, 502)
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 10.0) * k[int(t * f) % 55]
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.3
+		a[i] = (pulse * 0.42 + sin(TAU * f * 5.0 * t) * exp(-ph * 3.5) * 0.3
+				+ sin(TAU * f * t) * 0.25 + lp * pulse * 0.3) * 0.8
+	return a
+
+
+## ИЖ «Юпитер» (два цилиндра): низкое густое «бу-бу-бу» — мягкие тяжёлые
+## толчки, каждый второй слабее; две секунды на 110 вспышек — петля ровная.
+func _engine_izh() -> PackedFloat32Array:
+	var a := _buf(2.0)
+	var f := 55.0
+	var k := _jitter(110, 0.15, 503)
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var idx := int(t * f) % 110
+		var pulse := exp(-ph * 4.0) * k[idx] * (1.0 if idx % 2 == 0 else 0.7)
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.06
+		a[i] = (sin(TAU * f * t) * 0.42 + sin(TAU * f * 0.5 * t) * 0.18 + pulse * 0.38
+				+ sin(TAU * f * 2.0 * t) * 0.1 + lp * pulse * 0.9) * 0.8
+	return a
+
+
+## Дизель (грузовик, автобус): низкий гул и сухой стук-цокот на каждой вспышке.
+func _engine_diesel() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var k := _jitter(55, 0.25, 504)
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 5.0) * k[int(t * f) % 55]
+		var n := _rng.randf_range(-1.0, 1.0)
+		lp += (n - lp) * 0.1
+		a[i] = (sin(TAU * f * t) * 0.4 + pulse * 0.3 + n * exp(-ph * 35.0) * 0.45 * k[int(t * f) % 55] + lp * 0.2) * 0.8
+	return a
+
+
+## Трактор: тяжёлое «тук-тук-тук» с железным позвякиванием.
+func _engine_tractor() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var k := _jitter(55, 0.3, 505)
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 3.0) * k[int(t * f) % 55]
+		a[i] = (pulse * 0.5 + sin(TAU * f * t) * 0.35 + _rng.randf_range(-1.0, 1.0) * exp(-ph * 25.0) * 0.35
+				+ sin(TAU * f * 7.0 * t) * exp(-ph * 8.0) * 0.1) * 0.8
+	return a
+
+
+## «Волга»: мотор крупнее и мягче «Жигулей» — ровный низкий гул почти без треска.
+func _engine_volga() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.08
+		a[i] = (sin(TAU * f * t) * 0.5 + sin(TAU * f * 2.0 * t) * 0.25 + exp(-ph * 6.0) * 0.2 + lp * 0.12) * 0.8
+	return a
+
+
+## «Запорожец»: воздушное охлаждение — дребезжит и тарахтит.
+func _engine_zaz() -> PackedFloat32Array:
+	var a := _buf(1.0)
+	var f := 55.0
+	var k := _jitter(55, 0.4, 506)
+	var prev := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 9.0) * k[int(t * f) % 55]
+		var n := _rng.randf_range(-1.0, 1.0)
+		var hp := (n - prev) * 0.5
+		prev = n
+		a[i] = (pulse * 0.4 + sin(TAU * f * 3.0 * t) * 0.15 + hp * (0.5 + pulse) * 0.3
+				+ sin(TAU * f * 11.0 * t) * exp(-ph * 4.0) * 0.12 + sin(TAU * f * t) * 0.15) * 0.8
+	return a
+
+
+# --- Голоса ------------------------------------------------------------------
+
+## Форманты гласных (мужской голос), Гц: у женщин и детей выше в scale раз.
+const VOWELS := {
+	"а": Vector3(730, 1090, 2440), "о": Vector3(570, 840, 2410), "у": Vector3(300, 870, 2240),
+	"э": Vector3(530, 1840, 2480), "и": Vector3(270, 2290, 3010),
+}
+
+
+## Слог голосом: связки (пила с высотой f0a → f0b) через три форманты
+## гласной, как через рот; breath — сначала выдох «х», секунд. Гласная
+## может перетекать в vowel_to («эй»). wrap — заворачивать в начало буфера
+## (для петли).
+func _voice(a: PackedFloat32Array, start: float, dur: float, f0a: float, f0b: float, vowel: String,
+		scale := 1.0, amp := 1.0, breath := 0.0, vowel_to := "", wrap := false) -> void:
+	var fa: Vector3 = VOWELS[vowel] * scale
+	var fb: Vector3 = VOWELS[vowel_to if vowel_to != "" else vowel] * scale
+	var bw := Vector3(90, 110, 160) * scale
+	var gain := Vector3(1.0, 0.7, 0.35)
+	var y1 := Vector3.ZERO
+	var y2 := Vector3.ZERO
+	var ph := 0.0
+	var i0 := int(start * RATE)
+	var nb := int(breath * RATE)
+	var nv := maxi(int(dur * RATE), 1)
+	for j in nb + nv:
+		var idx := i0 + j
+		if wrap:
+			idx = idx % a.size()
+		elif idx >= a.size():
+			break
+		var src := 0.0
+		var env := 1.0
+		var k := 0.0
+		if j < nb:
+			src = _rng.randf_range(-1.0, 1.0) * 0.5
+			env = float(j) / nb
+		else:
+			var jv := j - nb
+			k = float(jv) / nv
+			var f0 := lerpf(f0a, f0b, k) * (1.0 + 0.015 * sin(TAU * 6.0 * jv / RATE))
+			ph = fmod(ph + f0 / RATE, 1.0)
+			src = 1.0 - 2.0 * ph + _rng.randf_range(-0.1, 0.1)
+			env = minf(jv / (0.015 * RATE), 1.0) * minf((nv - jv) / (0.04 * RATE), 1.0)
+		var f := fa.lerp(fb, k)
+		var out := 0.0
+		for m in 3:
+			var r := exp(-PI * bw[m] / RATE)
+			var y := (1.0 - r) * src + 2.0 * r * cos(TAU * f[m] / RATE) * y1[m] - r * r * y2[m]
+			y2[m] = y1[m]
+			y1[m] = y
+			out += y * gain[m]
+		a[idx] += out * amp * env
+
+
+## Довести громкость до пика peak — у голосов разная сила форматов.
+func _norm(a: PackedFloat32Array, peak: float) -> PackedFloat32Array:
+	var m := 0.0
+	for v in a:
+		m = maxf(m, absf(v))
+	if m > 0.0:
+		for i in a.size():
+			a[i] *= peak / m
+	return a
+
+
+## Смех: n слогов «ха» (или «хи»), высота от f0 к f0_end, к концу тише.
+func _laugh(n: int, f0: float, f0_end: float, vowel: String, scale: float, syl: float, gap: float, breath: float) -> PackedFloat32Array:
+	var a := _buf(n * (syl + gap + breath) + 0.25)
+	var t := 0.03
+	for i in n:
+		var k := float(i) / maxf(n - 1, 1)
+		var f := lerpf(f0, f0_end, k)
+		_voice(a, t, syl * _rng.randf_range(0.85, 1.15), f * 1.08, f * 0.92, vowel, scale, lerpf(1.0, 0.55, k), breath)
+		t += syl + gap + breath
+	return _norm(a, 0.6)
+
+
+## «Эй!» — окрик через двор.
+func _shout_hey() -> PackedFloat32Array:
+	var a := _buf(0.7)
+	_voice(a, 0.03, 0.45, 205.0, 240.0, "э", 1.0, 1.0, 0.02, "и")
+	return _norm(a, 0.75)
+
+
+## «Эге-ге-гей!» — весело, на всю округу.
+func _shout_yahoo() -> PackedFloat32Array:
+	var a := _buf(1.25)
+	_voice(a, 0.03, 0.14, 205.0, 215.0, "э")
+	_voice(a, 0.22, 0.13, 245.0, 255.0, "э", 1.0, 0.9)
+	_voice(a, 0.4, 0.6, 300.0, 255.0, "э", 1.0, 1.0, 0.0, "и")
+	return _norm(a, 0.75)
+
+
+## Дети играют: визг «а-а-а!», «и-и!» и хихиканье вперемешку.
+func _kids_play() -> PackedFloat32Array:
+	var a := _buf(1.7)
+	_voice(a, 0.02, 0.6, 520.0, 650.0, "а", 1.35)
+	_voice(a, 0.45, 0.3, 640.0, 720.0, "и", 1.35, 0.7)
+	for i in 3:
+		_voice(a, 0.95 + i * 0.12, 0.07, 440.0, 420.0, "и", 1.3, 0.6, 0.03)
+	_voice(a, 1.1, 0.45, 700.0, 560.0, "а", 1.35, 0.8)
+	return _norm(a, 0.6)
+
+
+## Трибуна: много голосов разом тянут «а-а-а» / «о-о-о» — гол!
+func _cheer() -> PackedFloat32Array:
+	var a := _buf(2.4)
+	for i in 18:
+		var woman := _rng.randf() < 0.35
+		var f0 := _rng.randf_range(200.0, 290.0) if woman else _rng.randf_range(110.0, 180.0)
+		_voice(a, _rng.randf_range(0.0, 0.4), _rng.randf_range(1.3, 1.8), f0 * 0.95, f0 * 1.1,
+				"а" if _rng.randf() < 0.6 else "о", 1.17 if woman else 1.0, _rng.randf_range(0.5, 1.0))
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.1
+		a[i] += lp * 0.4 * minf(t * 3.0, 1.0) * minf((2.4 - t) * 2.0, 1.0)
+	return _norm(a, 0.7)
+
+
+## «Ау!» в роще — и эхо.
+func _auu() -> PackedFloat32Array:
+	var a := _buf(1.8)
+	_voice(a, 0.03, 0.25, 300.0, 330.0, "а", 1.17)
+	_voice(a, 0.27, 0.5, 340.0, 285.0, "у", 1.17, 0.9)
+	var dry := a.duplicate()
+	for echo in [[0.45, 0.3], [0.9, 0.12]]:
+		var d := int(float(echo[0]) * RATE)
+		for i in range(d, a.size()):
+			a[i] += dry[i - d] * float(echo[1])
+	return _norm(a, 0.65)
+
+
+## Гомон: несколько человек говорят наперебой, слов не разобрать.
+## Четыре секунды петлёй — слоги заворачиваются в начало без щелчка.
+func _chatter() -> PackedFloat32Array:
+	var a := _buf(4.0)
+	var speakers := [[120.0, 1.0], [150.0, 1.0], [230.0, 1.17], [260.0, 1.17], [200.0, 1.17]]
+	var vowels := VOWELS.keys()
+	for i in 80:
+		var s: Array = speakers[_rng.randi() % speakers.size()]
+		var f0: float = float(s[0]) * _rng.randf_range(0.9, 1.15)
+		_voice(a, _rng.randf_range(0.0, 4.0), _rng.randf_range(0.07, 0.2), f0, f0 * _rng.randf_range(0.85, 1.1),
+				vowels[_rng.randi() % vowels.size()], float(s[1]), _rng.randf_range(0.4, 1.0),
+				0.03 if _rng.randf() < 0.4 else 0.0, "", true)
+	return _norm(a, 0.5)
 
 
 ## Стартер: визг с подвыванием, в конце мотор схватывает.

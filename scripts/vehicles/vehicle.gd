@@ -263,6 +263,19 @@ var _rider: Node3D
 var _zone: InteractZone
 var _wheels: Array[Node3D] = []
 var _engine_snd: AudioStreamPlayer3D
+## Свой мотор у каждого: «Карпаты» жужжат, «Ява» звенит, ИЖ бубнит,
+## грузовик и автобус — дизель, трактор тукает, «Волга» гудит мягко.
+const ENGINE_SOUND := {"moped": "engine_moped", "moto": "engine_moto", "izh": "engine_izh",
+	"truck": "engine_diesel", "bus": "engine_diesel", "tractor": "engine_tractor", "volga": "engine_volga"}
+## Вспышек за оборот — от этого высота звука: у «Жигулей» 4 цилиндра — 2,
+## мопед звучит выше, двухцилиндровый ИЖ — ниже «Явы».
+const ENGINE_FIRES := {"moped": 1.45, "moto": 1.2, "izh": 1.0, "truck": 1.8, "bus": 1.8, "tractor": 1.1,
+	"volga": 1.8, "niva": 1.9, "vaz2107": 2.1}
+## Громкость мотора: мопед записан тише — прибавляем; «Волга» тише, ИЖ, грузовик и трактор громче.
+const ENGINE_DB := {"moped": 3.0, "izh": 2.0, "truck": 2.0, "tractor": 3.0, "volga": -1.0}
+## Сигнал: у мопеда пискляво, у грузовика и «Волги» — басом.
+const HORN_PITCH := {"moped": 1.6, "moto": 1.35, "izh": 1.25, "vaz2107": 1.1, "niva": 1.05, "volga": 0.85,
+	"truck": 0.7, "kamaz": 0.65, "bus": 0.75, "tractor": 0.8, "zaz": 1.3, "moskvich": 1.08, "uaz": 0.95}
 var _skid_snd: AudioStreamPlayer3D
 var _rain_snd: AudioStreamPlayer
 ## Шины по гравию или траве — слышно, по чему едешь
@@ -395,7 +408,7 @@ func _ready() -> void:
 	floor_snap_length = 0.4
 	_rng.randomize()
 	_engine_snd = AudioStreamPlayer3D.new()
-	_engine_snd.stream = SoundLibrary.stream("engine")
+	_engine_snd.stream = SoundLibrary.stream(ENGINE_SOUND.get(kind, "engine"))
 	_engine_snd.unit_size = 6.0
 	_engine_snd.max_distance = 80.0
 	_engine_snd.position = Vector3(0, 0.7, -1.5 if spec.roof else 0.0)
@@ -522,7 +535,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not SettingsManager.auto_gearbox:
 				_shift(-1)
 		KEY_H:
-			SoundLibrary.play_at("horn", global_position, 2.0, 1.0 if spec.roof else 1.35)
+			SoundLibrary.play_at("horn", global_position, 2.0, HORN_PITCH.get(kind, 1.0 if spec.roof else 1.35))
 		KEY_Z:
 			set_turn(0 if turn == -1 else -1)
 		KEY_X:
@@ -1034,14 +1047,14 @@ func _update_sound() -> void:
 	if engine_on or rpm > 50.0:
 		if not _engine_snd.playing:
 			_engine_snd.play()
-		# 4 цилиндра — 2 вспышки на оборот, одноцилиндровая Ява — одна, но звонче;
-		# звук записан на 55 вспышек в секунду
-		var per_rev := 2.0 if spec.roof else 1.2
+		# Звук записан на 55 вспышек в секунду
+		var per_rev: float = ENGINE_FIRES.get(kind, 2.0 if spec.roof else 1.2)
 		# Прямоток — ниже и громче
 		var loud := has_part("exhaust")
 		_engine_snd.pitch_scale = clampf(rpm / 60.0 * per_rev / 55.0 * (0.88 if loud else 1.0), 0.3, 4.0)
 		var gas := 1.0 if driver and Input.is_physical_key_pressed(KEY_W) else 0.0
-		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0) + (4.0 if loud else 0.0)
+		_engine_snd.volume_db = lerpf(-8.0, 0.0, gas) + (0.0 if engine_on else -10.0) + (4.0 if loud else 0.0) \
+				+ float(ENGINE_DB.get(kind, 0.0))
 	elif _engine_snd.playing:
 		_engine_snd.stop()
 	# Визг шин в заносе

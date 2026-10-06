@@ -203,6 +203,9 @@ func _ready() -> void:
 	NeedsManager.fainted.connect(_faint)
 	_spawn_player_and_car()
 	add_child(preload("res://scripts/world/ambience.gd").new())
+	var voices := preload("res://scripts/world/voices.gd").new()
+	voices.name = "Voices"
+	add_child(voices)
 	add_child(preload("res://scripts/world/traffic.gd").new())
 	var life := StreetLife.new()
 	life.name = "StreetLife"

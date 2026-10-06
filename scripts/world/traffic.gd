@@ -20,6 +20,13 @@ const STOPS := {-1: -68.5, 1: 32.0 + Town.SHIFT.x}
 const STOP_WAIT := 8.0
 ## Дальше этого мотор попутки не слышно — звук выключаем.
 const SOUND_RANGE := 80.0
+## Мотор попутки: звук и высота на холостых. Грузовики и автобус — дизель,
+## «Запорожец» тарахтит, «Волга» и УАЗ гудят ниже.
+const ENGINE := {
+	"bus": ["engine_diesel", 0.6], "truck": ["engine_diesel", 0.65], "kamaz": ["engine_diesel", 0.55],
+	"tractor": ["engine_tractor", 0.5], "zaz": ["engine_zaz", 1.1], "volga": ["engine_volga", 0.95],
+	"uaz": ["engine_volga", 0.85], "niva": ["engine", 0.92], "moskvich": ["engine", 1.08],
+}
 ## Какие машины едут по трассе (по кругу).
 const KINDS := ["car", "moskvich", "zaz", "volga", "car", "niva", "uaz", "truck", "moskvich", "kamaz", "car", "zaz"]
 
@@ -73,7 +80,8 @@ func _spawn(dir: int, x: float, color: Color, kind: String) -> void:
 	var lights := _build_lights(size)
 	body.add_child(lights[0])
 	var snd := AudioStreamPlayer3D.new()
-	snd.stream = SoundLibrary.stream("engine")
+	var eng: Array = ENGINE.get(kind, ["engine", 1.0])
+	snd.stream = SoundLibrary.stream(eng[0])
 	snd.unit_size = 5.0
 	snd.max_distance = SOUND_RANGE - 10.0
 	snd.volume_db = -6.0 if bus else -10.0
@@ -206,14 +214,14 @@ func _physics_process(delta: float) -> void:
 			else:
 				snd.stop()
 		if hear:
-			snd.pitch_scale = (0.6 if v.bus or v.kind in ["truck", "kamaz"] else 1.0) + sp / CRUISE * 0.8
+			snd.pitch_scale = float(ENGINE.get(v.kind, ["engine", 1.0])[1]) + sp / CRUISE * 0.8
 
 		# Стоят из-за игрока — сигналят
 		if sp < 0.5 and v.wait <= 0.0 and gap < need + 4.0:
 			v.stopped += delta
 			if v.stopped > 2.5:
 				v.stopped = -4.0
-				SoundLibrary.play_at("horn", body.global_position)
+				SoundLibrary.play_at("horn", body.global_position, 0.0, Vehicle.HORN_PITCH.get(v.kind, 1.0))
 		elif v.stopped > 0.0:
 			v.stopped = 0.0
 
