@@ -54,7 +54,9 @@ var detail := 0 if (OS.has_feature("mobile") or OS.has_feature("web_android") or
 ## разрешения. В тестах (--no-menu) не трогаем.
 var _slow := 0.0
 ## Слабый телефон на низкой детализации: 3D ещё на четверть грубее.
-var _lines_k := 1.0
+## На iPhone в Safari графика медленнее, чем в Chrome на Android: сразу чуть
+## меньше строк 3D-картинки (дальше игра сама упростит, если тормозит)
+var _lines_k := 0.85 if OS.has_feature("web_ios") else 1.0
 var _auto := not ("--no-menu" in OS.get_cmdline_user_args())
 
 

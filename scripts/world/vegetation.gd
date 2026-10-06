@@ -150,7 +150,7 @@ func build() -> void:
 	apply_detail()
 
 
-## Детализация из настроек: дальность травы, на низкой — травы нет вовсе.
+## Детализация из настроек: дальность травы (на низкой — только у самых ног).
 func apply_detail() -> void:
 	var r := SettingsManager.grass_range()
 	var near := SettingsManager.tree_range()
@@ -175,6 +175,11 @@ func apply_detail() -> void:
 
 
 # --- Трава, цветы, колосья, камни ------------------------------------------
+
+## Густота травы: на телефоне реже.
+static func _density() -> float:
+	return 0.6 if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") else 1.0
+
 
 func _build_ground_cover() -> void:
 	var sh := Shader.new()
@@ -209,10 +214,11 @@ func _build_ground_cover() -> void:
 		var flowers := PackedFloat32Array()
 		var wheat_l := PackedFloat32Array()
 		var stones := PackedFloat32Array()
-		# Около 1.1 пучка на квадратный метр, пшеница — 5
-		var tries := int(CHUNK * CHUNK * 1.1)
+		# Около 1.1 пучка на квадратный метр, пшеница — 5; на телефоне —
+		# 60 % (видно её всё равно только рядом, а память и видеочип слабее)
+		var tries := int(CHUNK * CHUNK * 1.1 * _density())
 		if cell.intersects(wheat_rect):
-			tries = int(CHUNK * CHUNK * 5.0)
+			tries = int(CHUNK * CHUNK * 5.0 * _density())
 		for i in tries:
 			var x := x0 + _rng.randf() * CHUNK
 			var z := z0 + _rng.randf() * CHUNK

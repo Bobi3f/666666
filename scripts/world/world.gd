@@ -325,11 +325,22 @@ func _limit_view_ranges() -> void:
 
 func _fit_ui() -> void:
 	var win := get_window()
-	var base := maxf(1.0, win.size.y / 600.0) if GameManager.touch_mode else 1.0
+	var base := maxf(1.0, win.size.y / ui_height()) if GameManager.touch_mode else 1.0
 	var k := base * SettingsManager.text_scale
 	if absf(win.content_scale_factor - k) > 0.001:
 		win.content_scale_factor = k
 	_fit_render_scale()
+
+
+## Сколько точек интерфейса по высоте экрана телефона. Обычно 600, но на
+## низком экране в браузере (iPhone в Safari — около 340 «точек» CSS) кнопки
+## тогда мельче пальца: делаем интерфейс крупнее — до 460 точек по высоте,
+## на это раскладка кнопок и рассчитана.
+func ui_height() -> float:
+	var css := float(get_window().size.y) / maxf(DisplayServer.screen_get_scale(), 1.0)
+	if not OS.has_feature("web") or css <= 0.0:
+		return 600.0
+	return clampf(css / 0.75, 460.0, 600.0)
 
 
 ## Телефон: экран с высокой плотностью точек, а видеочип слабый — 3D рисуем

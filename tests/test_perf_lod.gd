@@ -195,6 +195,7 @@ func _run() -> void:
 		if c.get_script() and c.get_script().resource_path.ends_with("hud.gd"): fps_ok = c._fps.visible and c._fps.text.begins_with("FPS")
 	ok(fps_ok, "в настройках можно включить FPS на экране")
 	SM.set_show_fps(false)
+	ok(W.ui_height() == 600.0 and Vegetation._density() == 1.0, "на компьютере интерфейс и трава как прежде (на телефоне в браузере — крупнее и реже)")
 	set_detail.call(detail0)
 
 	print("ИТОГО: %s" % ("всё работает" if fails == 0 else "%d ошибок" % fails))
