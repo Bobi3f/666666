@@ -31,9 +31,9 @@ func _run() -> void:
 	ok(shop.redeem(" test-code ") and PR.gearcoins == 1000000 and GM.money == m0 + 1000000, "код: +1 000 000 GEARCOIN и +1 000 000 грн")
 	ok(shop._balance.text.contains("1 000 000"), "баланс с пробелами: " + shop._balance.text)
 	ok(not shop.redeem("TEST-CODE") and PR.gearcoins == 1000000, "второй раз тот же код не проходит")
-	var st: Dictionary = PR.save_state()
+	var cst: Dictionary = PR.save_state()
 	PR.codes = []
-	PR.load_state(st)
+	PR.load_state(cst)
 	ok(PR.codes.size() == 1, "активированный код сохраняется")
 	ok(GearShop.CODES.size() == 2, "в игре есть личный код владельца")
 	GearShop.CODES.erase("TEST-CODE".sha256_text())

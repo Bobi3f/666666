@@ -19,7 +19,7 @@ static func attach(edit: LineEdit, title: String) -> void:
 		var tap := (e is InputEventMouseButton and (e as InputEventMouseButton).pressed) or (e is InputEventScreenTouch and (e as InputEventScreenTouch).pressed)
 		if not tap:
 			return
-		var got := ask(title, edit.text)
+		var got: Variant = ask(title, edit.text)
 		if got != null:
 			edit.text = String(got).left(edit.max_length if edit.max_length > 0 else 64)
 			edit.text_changed.emit(edit.text))
