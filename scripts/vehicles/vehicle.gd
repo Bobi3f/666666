@@ -1786,7 +1786,7 @@ func _wheel_mesh(moto: bool, r: float, w: float, disc: Variant) -> MeshInstance3
 	var wb := MeshBuilder.new()
 	wb.ground_shade = false
 	if moto:
-		VehicleModels.moto_wheel(wb, r, disc)
+		VehicleModels.moto_wheel(wb, r, disc, kind == "moped")
 	elif kind == "tractor" and disc == null:
 		VehicleModels.tractor_wheel(wb, r, w)
 	else:
