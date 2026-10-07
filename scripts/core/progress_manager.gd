@@ -66,6 +66,8 @@ var repair_kits := 0
 var gearcoins := 0
 ## Отпечатки активированных подарочных кодов (GearShop.CODES).
 var codes: Array = []
+## Засчитанные платежи Pi Network (id) — один платёж не начислится дважды.
+var pi_paid: Array = []
 ## Бензин в канистрах, литры: купить на АЗС, залить в свою технику где угодно.
 var canister_l := 0.0
 const CAN_L := 10.0
@@ -360,7 +362,7 @@ func categories_text() -> String:
 
 
 func save_state() -> Dictionary:
-	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "gc": gearcoins, "codes": codes, "cans": canister_l, "path2": true,
+	return {"docs": docs, "cats": categories, "house": house_level, "delivery": delivery_active, "left": delivery_left, "done": deliveries_done, "bread": bread, "tutorial": tutorial_done, "license": license, "race_day": race_day, "home": home_items, "cars": owned_cars, "kits": repair_kits, "gc": gearcoins, "codes": codes, "pi": pi_paid, "cans": canister_l, "path2": true,
 		"planted": planted, "planted_at": planted_at, "w_day": watered_day, "w_days": watered_days, "fridge": fridge_day, "cat_days": category_days, "license_no": license_no}
 
 
@@ -387,6 +389,8 @@ func load_state(d: Dictionary) -> void:
 	gearcoins = int(d.get("gc", 0))
 	var cs: Variant = d.get("codes", [])
 	codes = (cs as Array).duplicate() if cs is Array else []
+	var pp: Variant = d.get("pi", [])
+	pi_paid = (pp as Array).duplicate() if pp is Array else []
 	canister_l = float(d.get("cans", 0.0))
 	# Сохранения до мопеда: «Жигули» и «Ява» были у игрока с начала и ездил
 	# он на них без прав — так и остаётся, ничего не отбираем

@@ -1,9 +1,13 @@
 class_name GearShop
 extends CanvasLayer
-## GEARCOIN — монеты для доната. Окно: баланс, пакеты монет с ценой в
-## гривнах, рублях или долларах (оплата подключится позже — пока кнопки
-## «Скоро»), магазин эксклюзива за монеты — техника, клубы, жильё — и ввод
-## кода. Пока окно открыто, игра на паузе.
+## GEARCOIN — монеты для доната. Окно: баланс, пакеты монет, магазин
+## эксклюзива за монеты — техника, клубы, жильё — и ввод кода. Пока окно
+## открыто, игра на паузе.
+##
+## Оплата — Pi Network, в Pi Browser: цены пакетов в π (PI_PRICES), платёж
+## подтверждает наш сервер (docs/pi.js → server/cloudflare). Монеты — только
+## после ответа сервера «завершён»; id платежа помним (Progress.pi_paid).
+## В обычном браузере и в программе — цены в гривнах, оплата «скоро».
 
 ## Пакеты: монет, цена в гривнах (как на картинке).
 const PACKS := [[100, 49], [500, 229], [1200, 449], [3000, 1099], [7500, 2199], [15000, 3999]]
@@ -24,7 +28,11 @@ const ITEMS := [
 	["mansion", "Особняк в Каменке-Северной", "два этажа, гараж и свой участок, спать у двери", 2500, "Жильё"],
 ]
 
+## Цены пакетов в Pi — те же, что в docs/pi.js и на сервере (тест сверяет).
+const PI_PRICES := [0.5, 2.0, 4.0, 10.0, 20.0, 35.0]
+
 static var currency := "грн"
+var _pi_t := 0.0
 
 var _root: PanelContainer
 var _balance: Label
@@ -185,6 +193,10 @@ func _refresh() -> void:
 
 
 func _page_coins() -> void:
+	var pi := pi_status()
+	if bool(pi.get("ready", false)):
+		_page_pi(pi)
+		return
 	# Выбор валюты
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
@@ -223,6 +235,100 @@ func _page_coins() -> void:
 	var note := _label("Оплата подключится скоро — в гривнах, рублях и долларах. Цены в рублях и долларах примерные.", 13, Color(0.75, 0.72, 0.65))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(note)
+
+
+## Пакеты за Pi (в Pi Browser, сервер оплаты на месте).
+func _page_pi(pi: Dictionary) -> void:
+	var who := String(pi.get("user", ""))
+	_body.add_child(_label(("Оплата Pi Network — вход: @%s" % who) if who != "" else "Оплата Pi Network", 16, Color(0.85, 0.75, 1.0)))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.add_child(grid)
+	for i in PACKS.size():
+		var card := VBoxContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(card)
+		var n := _label("%s GEARCOIN" % _thousands(int(PACKS[i][0])), 15, Color.WHITE)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		card.add_child(n)
+		var b := _button(pi_price_text(i), Color(0.4, 0.25, 0.55))
+		b.pressed.connect(buy_pi.bind(i))
+		card.add_child(b)
+	var note := _label("Монеты придут, как только оплата подтвердится. Игра сразу сохранится.", 13, Color(0.75, 0.72, 0.65))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_body.add_child(note)
+
+
+static func pi_price_text(i: int) -> String:
+	var p: float = PI_PRICES[i]
+	return ("%d π" % int(p)) if is_equal_approx(p, roundf(p)) else ("%s π" % String.num(p, 2))
+
+
+## Что говорит docs/pi.js: готова ли оплата Pi, кто вошёл, ошибка.
+static func pi_status() -> Dictionary:
+	if not OS.has_feature("web"):
+		return {}
+	var s: Variant = JavaScriptBridge.eval("window.FirstGearPi ? window.FirstGearPi.status() : ''", true)
+	var d: Variant = JSON.parse_string(str(s)) if s != null and str(s) != "" else null
+	return d if d is Dictionary else {}
+
+
+## Купить пакет i за Pi: откроется окно оплаты Pi.
+func buy_pi(i: int) -> bool:
+	if not bool(pi_status().get("ready", false)):
+		return false
+	var ok: Variant = JavaScriptBridge.eval("window.FirstGearPi.buy(%d)" % i, true)
+	_status.text = "Подтверди оплату %s в окне Pi" % pi_price_text(i) if ok else "Подожди — прошлая оплата ещё идёт"
+	return bool(ok)
+
+
+## Результаты оплаты Pi: раз в полсекунды забираем из docs/pi.js.
+func _process(delta: float) -> void:
+	_pi_t -= delta
+	if _pi_t > 0.0 or not OS.has_feature("web"):
+		return
+	_pi_t = 0.5
+	var s: Variant = JavaScriptBridge.eval("window.FirstGearPi ? window.FirstGearPi.take() : '[]'", true)
+	var list: Variant = JSON.parse_string(str(s)) if s != null else null
+	if list is Array and not (list as Array).is_empty():
+		apply_pi(list)
+	elif visible:
+		var err := String(pi_status().get("error", ""))
+		if err != "" and _status.text != err:
+			_status.text = err
+
+
+## Засчитать готовые платежи Pi: монеты по номеру пакета, один id — один раз.
+## Сразу сохраняем игру, чтобы купленное не пропало. Сколько монет пришло.
+func apply_pi(results: Array) -> int:
+	var got := 0
+	for r in results:
+		if not r is Dictionary:
+			continue
+		var d: Dictionary = r
+		if d.get("cancel", false):
+			_status.text = "Оплата отменена"
+			continue
+		var id := String(d.get("id", ""))
+		var pack := int(d.get("pack", -1))
+		if not d.get("ok", false) or id == "" or pack < 0 or pack >= PACKS.size() or Progress.pi_paid.has(id):
+			continue
+		var coins := int(PACKS[pack][0])
+		Progress.pi_paid.append(id)
+		Progress.gearcoins += coins
+		got += coins
+	if got > 0:
+		SoundLibrary.play("cash")
+		_status.text = "Оплата Pi прошла: +%s GEARCOIN" % _thousands(got)
+		GameManager.notify(_status.text)
+		QuestManager.event("gearcoin_buy")
+		SaveManager.save_game()
+		if visible:
+			_refresh()
+	return got
 
 
 ## Купить пакет монет: оплаты пока нет — говорим, что скоро.

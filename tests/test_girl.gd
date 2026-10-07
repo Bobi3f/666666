@@ -54,7 +54,10 @@ func _run() -> void:
 	TM.minutes = 21 * 60.0
 	TM.day = 5  # пятница
 	P.global_position = Vector3(300, 0.1, 300)
-	await frames(2)
+	# Под нагрузкой несколько шагов физики проходят за один кадр — ждём кадры
+	for i in 30:
+		await process_frame
+		if G.doll.global_position.distance_to(G.CLUB) < 0.5: break
 	ok(G.doll.global_position.distance_to(G.CLUB) < 0.5, "в пятницу вечером — у клуба")
 	TM.day = 3
 	TM.minutes = 14 * 60.0

@@ -2375,4 +2375,11 @@ const EN := {
 	"Ты — легенда района! Про тебя рассказывают в каждом селе": "You are the legend of the district! Every village tells stories about you",
 	"» Ты — легенда района! Играй дальше в своё удовольствие": "» You are the legend of the district! Keep playing for fun",
 	"[color=#9a9a9a]Игра продолжается — дальше вторая часть, «Жизнь хозяина района»: новые работы, Дядя Владик, гараж техники, дом в Липках. Журнал — J.[/color]": "[color=#9a9a9a]The game goes on — next comes part two, «Life of the district boss»: new jobs, Uncle Vladik, a garage of vehicles, a house in Lipki. Journal — J.[/color]",
+	"Оплата Pi Network — вход: @%s": "Pi Network payment — signed in: @%s",
+	"Оплата Pi Network": "Pi Network payment",
+	"Монеты придут, как только оплата подтвердится. Игра сразу сохранится.": "Coins arrive as soon as the payment is confirmed. The game saves right away.",
+	"Подтверди оплату %s в окне Pi": "Confirm the %s payment in the Pi window",
+	"Подожди — прошлая оплата ещё идёт": "Wait — the previous payment is still in progress",
+	"Оплата отменена": "Payment cancelled",
+	"Оплата Pi прошла: +%s GEARCOIN": "Pi payment done: +%s GEARCOIN",
 }
