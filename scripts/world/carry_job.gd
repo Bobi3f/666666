@@ -93,7 +93,7 @@ func setup() -> void:
 	var put := InteractZone.create("", Vector3(3.0, 2.2, 3.0))
 	put.position = drop
 	put.prompt_fn = func() -> String:
-		return "E — положить %s (+%d грн)" % [item_name, pay_each] if active and carrying else ""
+		return "E — положить %s (+%d грн)" % [item_name, JobLevels.pay(event_name, pay_each)] if active and carrying else ""
 	put.activated.connect(put_down)
 	add_child(put)
 
@@ -111,6 +111,8 @@ func _slot(i: int) -> Vector3:
 func start_prompt() -> String:
 	if active:
 		return ""
+	if JobLevels.JOBS.has(event_name):
+		return "E — %s: %d × %d грн (%s)" % [title, total, JobLevels.pay(event_name, pay_each), JobLevels.tag(event_name)]
 	return "E — %s: %d × %d грн" % [title, total, pay_each]
 
 
@@ -148,15 +150,18 @@ func put_down() -> void:
 	done += 1
 	# Пока носил, время и так шло — часы не перематываем
 	NeedsManager.rest(-energy_each)
-	GameManager.add_money(pay_each)
+	# Плата за штуку — по уровню работы (до прибавки опыта за эту смену)
+	var each := JobLevels.pay(event_name, pay_each)
+	GameManager.add_money(each)
 	SoundLibrary.play("cash", -6.0)
 	QuestManager.event("carry")
 	if done >= total:
 		active = false
 		GameManager.challenge_line = ""
 		if event_name != "":
+			JobLevels.add(event_name)
 			QuestManager.event(event_name)
-		GameManager.notify("%s: смена окончена — %d × %d = %d грн. %s" % [title, total, pay_each, total * pay_each, TimeManager.clock_text()])
+		GameManager.notify("%s: смена окончена — %d × %d = %d грн. %s" % [title, total, each, total * each, TimeManager.clock_text()])
 		finished.emit(done)
 		# Кузов разгрузят, куча снова наберётся к следующей смене
 		get_tree().create_timer(3.0).timeout.connect(func() -> void:
@@ -173,7 +178,7 @@ func stop() -> void:
 	active = false
 	carrying = false
 	GameManager.challenge_line = ""
-	GameManager.notify("%s: смена брошена — донёс %d из %d, получил %d грн" % [title, done, total, done * pay_each])
+	GameManager.notify("%s: смена брошена — донёс %d из %d, получил %d грн" % [title, done, total, done * JobLevels.pay(event_name, pay_each)])
 	finished.emit(done)
 	done = 0
 	_refresh()

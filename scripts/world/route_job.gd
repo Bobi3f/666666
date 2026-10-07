@@ -156,11 +156,12 @@ func prompt() -> String:
 	var why := _blocked()
 	if not why.is_empty():
 		return why
+	var lv := (" (%s)" % JobLevels.tag(id)) if JobLevels.JOBS.has(id) else ""
 	if describe_fn.is_valid():
 		var o := offer()
 		if not o.is_empty():
-			return "E — %s: %s" % [title, describe_fn.call(o, int(pay_fn.call(o)))]
-	return "E — %s: %s" % [title, describe]
+			return "E — %s: %s%s" % [title, describe_fn.call(o, JobLevels.pay(id, int(pay_fn.call(o)))), lv]
+	return "E — %s: %s%s" % [title, describe, lv]
 
 
 ## Заказ, который возьмёт игрок, если нажмёт E.
@@ -181,7 +182,7 @@ func start() -> void:
 	_offer = []
 	if stops.is_empty():
 		return
-	pay = int(pay_fn.call(stops))
+	pay = JobLevels.pay(id, int(pay_fn.call(stops)))
 	_load = cargo
 	idx = 0
 	active = true
@@ -323,6 +324,7 @@ func _reach() -> void:
 		_drop_t = 6.0
 	GameManager.add_money(pay)
 	SoundLibrary.play("cash")
+	JobLevels.add(id)
 	QuestManager.event(id)
 	QuestManager.event("job")
 	GameManager.notify("%s: работа сделана, +%d грн" % [title, pay])

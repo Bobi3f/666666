@@ -98,10 +98,12 @@ func _process(delta: float) -> void:
 	# Дождь: капли над головой, шум — снаружи (в машине стучит по крыше сама машина)
 	var snowing := WeatherManager.snowing()
 	_rain.global_position = cam.global_position + Vector3(0, 9, 0)
-	_rain.emitting = rain > 0.25 and not snowing
+	# В здании (Interiors) — ни капель, ни шума дождя
+	var inside := GameManager.indoors != ""
+	_rain.emitting = rain > 0.25 and not snowing and not inside
 	_snow.global_position = cam.global_position + Vector3(0, 7, 0)
-	_snow.emitting = rain > 0.25 and snowing
-	_fade(_rain_snd, -4.0 if rain > 0.1 and not in_car and not snowing else -80.0, rain, delta)
+	_snow.emitting = rain > 0.25 and snowing and not inside
+	_fade(_rain_snd, -4.0 if rain > 0.1 and not in_car and not snowing and not inside else -80.0, rain, delta)
 
 	# Сверчки — ночью и без дождя
 	_fade(_crickets, -10.0 if night and rain < 0.3 and WeatherManager.season() != 2 else -80.0, 1.0, delta)

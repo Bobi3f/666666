@@ -336,7 +336,7 @@ func _shift_prompt() -> String:
 	var h := TimeManager.hour()
 	if h < 8.0 or h >= 18.0:
 		return "СТО работает с 8:00 до 18:00"
-	return "E — смена механиком на СТО: принять машину, починить, сдать — +%d грн" % SHIFT_PAY
+	return "E — смена механиком на СТО: принять машину, починить, сдать — +%d грн (%s)" % [JobLevels.pay("sto_shift", SHIFT_PAY), JobLevels.tag("sto_shift")]
 
 
 ## Смена целиком сразу (для тестов): принять, починить верно, сдать.
@@ -412,13 +412,14 @@ func _hand_over() -> int:
 	_show_client()
 	GameManager.add_money(pay)
 	SoundLibrary.play("cash")
+	JobLevels.add("sto_shift")
 	QuestManager.event("sto_shift")
 	GameManager.notify("Клиент забрал машину: «Как новая!» +%d грн%s" % [pay, " (с премией)" if sto_miss == 0 else ""])
 	return pay
 
 
 func sto_pay() -> int:
-	return SHIFT_PAY + (STO_BONUS if sto_miss == 0 else 0)
+	return JobLevels.pay("sto_shift", SHIFT_PAY + (STO_BONUS if sto_miss == 0 else 0))
 
 
 ## Машина клиента на подъёмнике, стрелка и строка задания — по этапу смены.

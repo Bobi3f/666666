@@ -114,6 +114,13 @@ var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
 var _veg := Vegetation.new()
 var my_garage: MyGarage
+var interiors: Interiors
+
+
+func _build_interiors() -> void:
+	interiors = Interiors.new()
+	add_child(interiors)
+	interiors.build(self)
 var _sky_top: Color
 ## Туман в ясную погоду: густеет так, чтобы у края видимости всё тонуло в дымке
 var _fog_base := 0.0025
@@ -235,6 +242,8 @@ func _ready() -> void:
 	var civic := Civic.new()
 	civic.name = "Civic"
 	add_child(civic)
+	# Интерьеры банка, больницы, бурсы и завода — когда город уже построен
+	_build_interiors.call_deferred()
 	var school := AutoSchool.new()
 	school.name = "AutoSchool"
 	school.position = Town.SHIFT

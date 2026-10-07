@@ -122,6 +122,17 @@ func _journal_text() -> String:
 		t += _quest_line(id)
 	if unknown > 0:
 		t += "[color=#9a9a9a]  Ещё %d — поговори с жителями, у кого «(!)» над подсказкой[/color]\n" % unknown
+	t += "\n[b][color=#f0d890]РАБОТА[/color][/b] [color=#9a9a9a](подработка — 3 уровня, официальная — 5)[/color]\n"
+	for jid in JobLevels.JOBS:
+		if JobLevels.xp(jid) == 0:
+			continue
+		var nxt := JobLevels.to_next(jid)
+		if nxt > 0:
+			t += "  " + "%s — %s, до следующего: %d смен" % [JobLevels.JOBS[jid][0], JobLevels.tag(jid), nxt] + "\n"
+		else:
+			t += "  " + "%s — %s, высший уровень" % [JobLevels.JOBS[jid][0], JobLevels.tag(jid)] + "\n"
+	if JobLevels.JOBS.keys().all(func(j: String) -> bool: return JobLevels.xp(j) == 0):
+		t += "  [color=#9a9a9a]Отработай первую смену — здесь появится уровень[/color]\n"
 	t += "\n[b][color=#f0d890]ВЕЩИ[/color][/b]\n"
 	t += "  Деньги: %d грн   Еда в запасе: %d   Рыба: %d\n" % [GameManager.money, NeedsManager.snacks, NeedsManager.fish]
 	if Daily.deposit > 0:
