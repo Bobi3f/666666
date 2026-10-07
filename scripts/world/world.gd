@@ -282,6 +282,7 @@ func _ready() -> void:
 	# Принцесса — девушка игрока, гуляет у его дома с собачками и котом
 	princess = Princess.new()
 	add_child(princess)
+	add_child(PrincessPanel.new())
 	var home := preload("res://scripts/world/home_items.gd").new()
 	home.name = "HomeItems"
 	home.house_pos = Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y)

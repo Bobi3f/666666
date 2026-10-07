@@ -3,8 +3,13 @@ extends Node3D
 ## Принцесса — девушка игрока: розовое платье, золотая корона на голове.
 ## Днём (8:00–21:00) гуляет по улице Каменки у его дома с двумя собачками —
 ## белой болонкой Снежкой и рыжим спаниелем Рыжиком — и полосатым котом
-## Барсиком: питомцы бегут следом. E рядом — поговорить и позвать гулять:
-## тогда она идёт рядом с игроком (и вся её свита), E ещё раз — отпустить.
+## Барсиком: питомцы бегут следом. E рядом — её окошко (PrincessPanel):
+## позвать гулять (идёт рядом со всей свитой) или отпустить, купить брелочек.
+##
+## Настроение (mood 0–100): добрая (от 50) — ласковая, скидка на брелоки,
+## гуляет охотно, над головой «добрая». Злая — каждый день без встречи она
+## обижается сильнее: грубит, брелоки дороже, гулять не идёт. Помириться —
+## купить брелочек, гулять с ней, приходить почаще.
 
 const Villagers := preload("res://scripts/world/villagers.gd")
 ## Прогулка: точки по улице Каменки (туда-обратно), стоянки у точек.
@@ -26,9 +31,24 @@ const BYE := [
 	"Спасибо за прогулку, милый. Не скучай!",
 	"Барсик устал, пора домой. Целую!",
 ]
+const ANGRY := [
+	"Явился! Где ты пропадал? Я тебя ждала-ждала!",
+	"Не подходи. Корону не трогай. И собачек не трогай!",
+	"Гулять? С тобой? Сначала заслужи. Брелочек хотя бы купи.",
+	"Барсик, фас! Ну ладно, Барсик не умеет. Но я злая!",
+]
+## Брелочки: id, название, цена в гривнах.
+const KEYCHAINS := [
+	["crown", "брелок-коронка", 120], ["snezhka", "собачка Снежка", 90], ["barsik", "кот Барсик", 90],
+	["heart", "сердечко", 60], ["star", "звёздочка", 70], ["volga", "розовая «Волга»", 200],
+]
 ## Гуляет рядом с игроком (позвал), иначе — своя прогулка по улице.
 var following := false
 var hug_day := -1
+var mood := 70.0
+var seen_day := 1
+var keychains: Array = []
+var _mood_label: Label3D
 
 var girl: MeshInstance3D
 var pets: Array[Node3D] = []
@@ -55,6 +75,15 @@ func _ready() -> void:
 	var crown := _crown()
 	crown.position = Vector3(0, top - 0.05, 0)
 	girl.add_child(crown)
+	_mood_label = Label3D.new()
+	_mood_label.font_size = 48
+	_mood_label.pixel_size = 0.005
+	_mood_label.outline_size = 10
+	_mood_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_mood_label.position = Vector3(0, top + 0.3, 0)
+	_mood_label.visibility_range_end = 25.0
+	girl.add_child(_mood_label)
+	_show_mood()
 	var furs := [Color(0.96, 0.95, 0.92), Color(0.78, 0.45, 0.2)]
 	for i in 2:
 		var db := MeshBuilder.new()
@@ -73,7 +102,7 @@ func _ready() -> void:
 		add_child(p)
 	_zone = InteractZone.create("", Vector3(2.6, 2.0, 2.6))
 	_zone.prompt_fn = func() -> String:
-		return "E — Принцесса: отпустить домой" if following else "E — Принцесса: поговорить и позвать гулять"
+		return "E — Принцесса (%s): поговорить, гулять, брелочки" % ("добрая" if kind() else "злая")
 	_zone.activated.connect(talk)
 	girl.add_child(_zone)
 	_zone.scale = Vector3.ONE / SCALE
@@ -121,26 +150,96 @@ static func cat_model(b: MeshBuilder, fur: Color) -> void:
 	b.alpha = 1.0
 
 
+## E: повернуться к игроку и открыть окошко Принцессы.
 func talk() -> void:
 	var pl := GameManager.player as Node3D
 	if pl:
 		var to := pl.global_position - girl.global_position
 		girl.rotation.y = atan2(-to.x, -to.z)
+	catch_up()
+	var panel := get_tree().get_first_node_in_group("princess_panel") as PrincessPanel
+	if panel:
+		panel.open(self)
+	else:
+		walk()
+
+
+func kind() -> bool:
+	return mood >= 50.0
+
+
+## Сколько дней не виделись — на столько и обиделась (−15 за день).
+func catch_up() -> void:
+	var missed := TimeManager.day - seen_day - 1
+	if missed > 0:
+		set_mood(mood - 15.0 * missed)
+	seen_day = TimeManager.day
+
+
+func set_mood(v: float) -> void:
+	mood = clampf(v, 0.0, 100.0)
+	_show_mood()
+
+
+func _show_mood() -> void:
+	if _mood_label == null:
+		return
+	_mood_label.text = "добрая" if kind() else "злая!"
+	_mood_label.modulate = Color(1.0, 0.55, 0.75) if kind() else Color(0.95, 0.2, 0.15)
+
+
+## Что она говорит сейчас — по настроению.
+func say() -> String:
+	_line += 1
+	return (LINES if kind() else ANGRY)[_line % (LINES if kind() else ANGRY).size()]
+
+
+## Цена брелока i: доброй — скидка, злой — дороже.
+func price(i: int) -> int:
+	var base: int = KEYCHAINS[i][2]
+	return int(round(base * (0.8 if kind() else 1.5)))
+
+
+## Купить брелок i: в коллекцию, Принцесса добреет. true — купил.
+func buy(i: int) -> bool:
+	var id: String = KEYCHAINS[i][0]
+	if keychains.has(id) or not GameManager.spend(price(i)):
+		return false
+	keychains.append(id)
+	set_mood(mood + 20.0)
+	SoundLibrary.play("cash", -4.0)
+	QuestManager.event("keychain")
+	GameManager.notify("Купил у Принцессы брелок: %s. В коллекции %d из %d" % [KEYCHAINS[i][1], keychains.size(), KEYCHAINS.size()])
+	return true
+
+
+## Позвать гулять / отпустить. Злая гулять не идёт. Что ответила.
+func walk() -> String:
+	if not following and not kind():
+		set_mood(mood + 2.0)
+		var no := "Не пойду! Сначала помирись со мной."
+		GameManager.notify("Принцесса: «%s»" % no)
+		return no
 	following = not following
+	var said := ""
 	if following:
-		GameManager.notify("Принцесса: «%s»" % LINES[_line % LINES.size()])
+		set_mood(mood + 5.0)
+		said = LINES[_line % LINES.size()]
+		GameManager.notify("Принцесса: «%s»" % said)
 		# Обняла — раз в день прибавляет сил
 		if hug_day != TimeManager.day:
 			hug_day = TimeManager.day
 			NeedsManager.rest(10.0)
 			GameManager.notify("Принцесса обняла тебя — сил прибавилось")
 	else:
-		GameManager.notify("Принцесса: «%s»" % BYE[_line % BYE.size()])
+		said = BYE[_line % BYE.size()]
+		GameManager.notify("Принцесса: «%s»" % said)
 		_target = _nearest_route()
 	_line += 1
 	_wait = 1.0
 	SoundLibrary.play("bark", -6.0, 1.3)
 	QuestManager.event("princess")
+	return said
 
 
 func _nearest_route() -> int:
@@ -218,9 +317,14 @@ func _process(delta: float) -> void:
 
 
 func save_state() -> Dictionary:
-	return {"line": _line, "hug": hug_day}
+	return {"line": _line, "hug": hug_day, "mood": mood, "seen": seen_day, "keys": keychains}
 
 
 func load_state(d: Dictionary) -> void:
 	_line = int(d.get("line", 0))
 	hug_day = int(d.get("hug", -1))
+	mood = float(d.get("mood", 70.0))
+	seen_day = int(d.get("seen", TimeManager.day))
+	var k: Variant = d.get("keys", [])
+	keychains = (k as Array).duplicate() if k is Array else []
+	_show_mood()

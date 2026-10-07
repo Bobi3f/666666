@@ -23,7 +23,7 @@ func _run() -> void:
 	var P: Node3D = GM.player
 	P.global_position = PR.girl.global_position + Vector3(1.5, 0.1, 0)
 	NM.energy = 50.0
-	PR.talk()
+	PR.walk()
 	ok(PR.following and NM.energy > 55.0, "позвал гулять — обняла, сил прибавилось")
 	P.global_position += Vector3(20, 0, 0)
 	var t0 := Time.get_ticks_msec()
@@ -35,8 +35,32 @@ func _run() -> void:
 	await create_timer(2.0).timeout
 	for p in PR.pets: pet_d = maxf(pet_d, (p as Node3D).global_position.distance_to(PR.girl.global_position))
 	ok(pet_d < 3.5, "собачки и кот рядом: до %.1f м" % pet_d)
-	PR.talk()
+	PR.walk()
 	ok(not PR.following, "отпустил — идёт домой")
+	print("== Брелочки и настроение")
+	PR.set_mood(70.0)
+	ok(PR.kind() and PR.price(0) == 96, "добрая: брелок-коронка со скидкой — %d грн" % PR.price(0))
+	GM.money = 1000
+	ok(PR.buy(0) and PR.keychains.has("crown") and GM.money == 904, "купил брелок-коронку")
+	ok(not PR.buy(0), "второй такой же не продаёт")
+	PR.seen_day = TM.day
+	TM.day += 5
+	PR.catch_up()
+	ok(not PR.kind() and PR.price(3) == 90, "5 дней не приходил — злая, сердечко втридорога: %d грн" % PR.price(3))
+	PR.walk()
+	ok(not PR.following, "злая гулять не идёт")
+	PR.buy(3)
+	PR.buy(4)
+	ok(PR.kind(), "купил два брелочка — помирились (%d)" % int(PR.mood))
+	var st: Dictionary = PR.save_state()
+	PR.keychains = []
+	PR.load_state(st)
+	ok(PR.keychains.size() == 3, "коллекция брелоков сохраняется")
+	print("== Окошко")
+	PR.talk()
+	var panel: PrincessPanel = W.get_tree().get_first_node_in_group("princess_panel")
+	ok(panel.visible and paused and panel._list.get_child_count() == 7, "окошко: настроение, гулять и 6 брелоков")
+	panel.close_panel()
 	TM.minutes = 23 * 60.0
 	await frames(2)
 	ok(not PR.visible, "ночью дома")
