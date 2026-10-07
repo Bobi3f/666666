@@ -24,7 +24,45 @@ func _run() -> void:
 	ok(GearShop.price_text(0, "₽").ends_with("₽") and GearShop.price_text(0, "$").begins_with("$"), "цены в рублях и долларах: %s, %s" % [GearShop.price_text(0, "₽"), GearShop.price_text(0, "$")])
 	PR.gearcoins = 0
 	ok(not shop.buy_pack(2) and shop._status.text.contains("скоро") and PR.gearcoins == 0, "оплаты пока нет — «скоро»")
-	ok(not shop.redeem("ABCD-1234") and PR.gearcoins == 0, "кодов пока нет")
+	ok(not shop.redeem("ABCD-1234") and PR.gearcoins == 0 and shop._status.text.contains("нет"), "чужой код не проходит")
+	# Подарочный код: проверочный, добавлен только на время теста
+	GearShop.CODES["TEST-CODE".sha256_text()] = [1000000, 1000000]
+	var m0: int = GM.money
+	ok(shop.redeem(" test-code ") and PR.gearcoins == 1000000 and GM.money == m0 + 1000000, "код: +1 000 000 GEARCOIN и +1 000 000 грн")
+	ok(shop._balance.text.contains("1 000 000"), "баланс с пробелами: " + shop._balance.text)
+	ok(not shop.redeem("TEST-CODE") and PR.gearcoins == 1000000, "второй раз тот же код не проходит")
+	var st: Dictionary = PR.save_state()
+	PR.codes = []
+	PR.load_state(st)
+	ok(PR.codes.size() == 1, "активированный код сохраняется")
+	ok(GearShop.CODES.size() == 2, "в игре есть личный код владельца")
+	GearShop.CODES.erase("TEST-CODE".sha256_text())
+	PR.codes = []
+	GM.money = m0
+	print("== Профиль и экран")
+	var SM = root.get_node("SettingsManager")
+	var keep: Array = [SM.first_name, SM.last_name]
+	SM.set_player_name("  Богдан ", "Тестовый")
+	ok(SM.full_name() == "Богдан Тестовый", "профиль: " + SM.full_name())
+	shop._refresh()
+	ok(shop._balance.text.begins_with("Богдан Тестовый"), "имя в окне GEARCOIN")
+	var hud: Node = null
+	for n in W.get_children():
+		if n.get_script() and String(n.get_script().resource_path).ends_with("hud.gd"): hud = n
+	hud._slow_update()
+	ok(hud._top.text.contains("1 000 000 GC"), "GEARCOIN на экране: " + hud._top.text)
+	var menu: Node = null
+	for n in W.get_children():
+		if n.get_script() and String(n.get_script().resource_path).ends_with("pause_menu.gd"): menu = n
+	menu._refresh()
+	ok(menu._profile.text == "Профиль: Богдан Тестовый", "кнопка профиля в меню: " + menu._profile.text)
+	menu._show("profile")
+	menu._name_edits[0].text = "Иван"
+	menu._name_edits[1].text = "Петренко"
+	menu.save_profile()
+	ok(SM.full_name() == "Иван Петренко" and menu._page == "main", "имя сохранено из меню")
+	SM.set_player_name(keep[0], keep[1])
+	PR.gearcoins = 0
 	print("== Эксклюзив")
 	ok(not shop.buy("club_v") and shop._status.text.contains("Не хватает"), "без монет не купишь")
 	PR.gearcoins = 10000

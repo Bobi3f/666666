@@ -81,6 +81,7 @@ func _run() -> void:
 	var sn: int = NM.snacks
 	g.activate()
 	ok(NM.snacks == sn + 6 and PR.garden_stage() == 0, "выкопал: +6 еды, грядки пустые")
+	TM.finish_work()
 	await frames(2)
 	ok(garden._plants == null, "ботва убрана")
 

@@ -99,7 +99,7 @@ func _build() -> void:
 	var pages := VBoxContainer.new()
 	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(pages)
-	for pn in ["main", "settings", "controls", "confirm", "support", "delete"]:
+	for pn in ["main", "settings", "controls", "confirm", "support", "delete", "profile"]:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override("separation", 10)
 		page.custom_minimum_size = Vector2(400, 0)
@@ -114,6 +114,7 @@ func _build() -> void:
 	_build_confirm(_pages.confirm)
 	_build_support(_pages.support)
 	_build_delete(_pages.delete)
+	_build_profile(_pages.profile)
 
 
 ## Кнопки «Спорт»: красные, при наведении и фокусе — белая рамка, выбранная
@@ -155,6 +156,8 @@ static var donate_links: Array = DONATE.filter(func(d: Array) -> bool: return no
 
 var _slot_buttons: Array[Button] = []
 var _delete: Button
+var _profile: Button
+var _name_edits: Array[LineEdit] = []
 var _delete_q: Label
 ## Кнопки языка на главной странице меню
 var _lang_buttons: Array[Button] = []
@@ -206,6 +209,7 @@ func _build_main(box: VBoxContainer) -> void:
 			_button(row, "Управление", func() -> void: _show("controls"))]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_lang_row(box)
+	_profile = _button(box, "", func() -> void: _show("profile"))
 	var gc := _button(box, "GEARCOIN — монеты и эксклюзив", func() -> void:
 		var shop := get_tree().get_first_node_in_group("gear_shop") as GearShop
 		if shop:
@@ -451,6 +455,44 @@ func _build_support(box: VBoxContainer) -> void:
 	_button(box, "Назад", func() -> void: _show("main"), true)
 
 
+## Профиль: имя и фамилия игрока. На телефоне в браузере поле спрашивает
+## окном браузера (TextInput), там клавиатура Godot не открывается.
+func _build_profile(box: VBoxContainer) -> void:
+	var q := Label.new()
+	q.text = "Профиль игрока"
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(q)
+	for f in [["Имя", "first"], ["Фамилия", "last"]]:
+		var l := Label.new()
+		l.text = f[0]
+		box.add_child(l)
+		var e := LineEdit.new()
+		e.name = "Profile_" + String(f[1])
+		e.placeholder_text = f[0]
+		e.max_length = 20 if f[1] == "first" else 24
+		e.custom_minimum_size = Vector2(0, _btn_h())
+		e.add_theme_font_size_override("font_size", 18)
+		TextInput.attach(e, f[0])
+		box.add_child(e)
+		_name_edits.append(e)
+	_hint(box, "Имя видно в меню, на водительских правах и в окне GEARCOIN.")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	var no := _button(row, "Назад", func() -> void: _show("main"))
+	var yes := _button(row, "Сохранить", save_profile, true)
+	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+## Сохранить имя и фамилию из полей профиля.
+func save_profile() -> void:
+	SettingsManager.set_player_name(_name_edits[0].text, _name_edits[1].text)
+	if SettingsManager.full_name() != "":
+		GameManager.notify("Профиль: %s" % SettingsManager.full_name())
+	_show("main")
+
+
 ## «Удалить сохранение»: какая ячейка и что в ней, «нет» — первым.
 func _build_delete(box: VBoxContainer) -> void:
 	_delete_q = Label.new()
@@ -647,6 +689,9 @@ func _show(page: String) -> void:
 		_refresh()
 	if page == "delete":
 		_delete_q.text = "Удалить игру в ячейке %d (%s)?\nВернуть её будет нельзя." % [SettingsManager.slot, SaveManager.slot_info(SettingsManager.slot)]
+	if page == "profile":
+		_name_edits[0].text = SettingsManager.first_name
+		_name_edits[1].text = SettingsManager.last_name
 	if page == "controls":
 		_controls_text.text = _controls_bbcode()
 		_refresh_keys()
@@ -695,6 +740,8 @@ func _refresh() -> void:
 	_new.visible = not (_main_mode and not has)
 	_save.visible = not _main_mode
 	_delete.text = "Удалить сохранение %d" % SettingsManager.slot
+	var who := SettingsManager.full_name()
+	_profile.text = "Профиль: %s" % who if who != "" else "Создать профиль: имя и фамилия"
 	_delete.visible = FileAccess.file_exists(SaveManager.path_for(SettingsManager.slot))
 	_load.visible = not _main_mode and has
 

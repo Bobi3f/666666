@@ -90,6 +90,7 @@ func _ready() -> void:
 	_edit.custom_minimum_size = Vector2(220, 46)
 	_edit.add_theme_font_size_override("font_size", 22)
 	_edit.max_length = 14
+	TextInput.attach(_edit, "Свой номер: буква, 4 цифры, 2 буквы области")
 	_edit.text_submitted.connect(func(_t: String) -> void: _buy_custom())
 	row.add_child(_edit)
 	var mine := _button("Взять свой", Color(0.25, 0.4, 0.3))

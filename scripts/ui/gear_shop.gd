@@ -162,12 +162,17 @@ static func price_text(i: int, cur := "") -> String:
 
 
 static func _thousands(n: int) -> String:
-	var s := str(n)
-	return s if s.length() <= 3 else s.substr(0, s.length() - 3) + " " + s.substr(s.length() - 3)
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = " " + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
 
 
 func _refresh() -> void:
-	_balance.text = "У тебя: %s GEARCOIN" % _thousands(Progress.gearcoins)
+	var who := SettingsManager.full_name()
+	_balance.text = ("%s · " % who if who != "" else "") + "У тебя: %s GEARCOIN" % _thousands(Progress.gearcoins)
 	for c in _body.get_children():
 		c.queue_free()
 	match _tab:
@@ -255,19 +260,43 @@ func _page_code() -> void:
 	edit.placeholder_text = "XXXX-XXXX-XXXX"
 	edit.custom_minimum_size = Vector2(0, 44)
 	edit.add_theme_font_size_override("font_size", 18)
+	edit.max_length = 20
+	TextInput.attach(edit, "Код с оплаты или подарочный код")
 	_body.add_child(edit)
 	var b := _button("Активировать", Color(0.45, 0.33, 0.1))
 	b.pressed.connect(func() -> void: redeem(edit.text))
 	_body.add_child(b)
 
 
-## Ввести код. Пока оплаты нет — кодов тоже нет.
+## Подарочные коды: sha256 кода → [GEARCOIN, гривны]. Сам код в игре
+## не хранится — только отпечаток. Каждый — раз на сохранение.
+static var CODES := {
+	"816e671fa3df16c28510cd7edb84b09f34f32c69de5bd4cc958c7cf83cc8ef35": [1000000, 1000000],
+}
+
+
+## Ввести код: верный — монеты и деньги на счёт, один раз на сохранение.
 func redeem(code: String) -> bool:
-	if code.strip_edges() == "":
+	var c := code.strip_edges().to_upper()
+	if c == "":
 		_status.text = "Введи код"
 		return false
-	_status.text = "Коды появятся вместе с оплатой — скоро."
-	return false
+	var h := c.sha256_text()
+	if not CODES.has(h):
+		_status.text = "Такого кода нет"
+		return false
+	if Progress.codes.has(h):
+		_status.text = "Этот код уже активирован"
+		return false
+	var gift: Array = CODES[h]
+	Progress.codes.append(h)
+	Progress.gearcoins += int(gift[0])
+	GameManager.add_money(int(gift[1]))
+	SoundLibrary.play("cash")
+	_status.text = "Код принят: +%s GEARCOIN и +%s грн" % [_thousands(int(gift[0])), _thousands(int(gift[1]))]
+	GameManager.notify(_status.text)
+	_refresh()
+	return true
 
 
 static func item(id: String) -> Array:

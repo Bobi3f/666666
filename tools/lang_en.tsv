@@ -2282,3 +2282,15 @@ E — %s: %d × %d грн	E — %s: %d × %d UAH
 Чиним «Карпаты» с Владиком	Fixing the Karpaty with Vladik
 Разбираю «копейку»	Dismantling the Kopeyka
 Роюсь в куче лома	Digging through the scrap pile
+Код с оплаты или подарочный код	Payment or gift code
+Такого кода нет	No such code
+Этот код уже активирован	This code has already been used
+Код принят: +%s GEARCOIN и +%s грн	Code accepted: +%s GEARCOIN and +%s UAH
+%s    %s грн%s    %s	%s    %s UAH%s    %s
+Профиль игрока	Player profile
+Имя	First name
+Фамилия	Surname
+Имя видно в меню, на водительских правах и в окне GEARCOIN.	Your name shows in the menu, on the driving licence and in the GEARCOIN window.
+Профиль: %s	Profile: %s
+Создать профиль: имя и фамилия	Create profile: first name and surname
+Свой номер: буква, 4 цифры, 2 буквы области	Your own plate: a letter, 4 digits, 2 region letters

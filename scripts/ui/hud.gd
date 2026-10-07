@@ -209,7 +209,9 @@ func _process(delta: float) -> void:
 
 
 func _slow_update() -> void:
-	_top.text = "%s    %d грн    %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
+	# Деньги — с пробелами по тысячам; GEARCOIN — когда они есть
+	var gc := "    %s GC" % GearShop._thousands(Progress.gearcoins) if Progress.gearcoins > 0 else ""
+	_top.text = "%s    %s грн%s    %s" % [TimeManager.clock_text(), GearShop._thousands(GameManager.money), gc, WeatherManager.name_text()]
 	# В ту же строку — кольца сытости, бодрости и воды, за ними запас еды
 	var tw := _top.get_combined_minimum_size().x
 	_needs.position = Vector2(16.0 + tw + 14.0, 6.0)

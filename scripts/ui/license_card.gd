@@ -150,6 +150,9 @@ func _draw_card() -> void:
 	# Номер бланка и кто выдал; без прав — пометка поперёк
 	var no := Progress.license_no if Progress.license_no != "" else "ВХХ № 000000"
 	_text(Vector2(W - 330, H - 64), "%s  ГАИ района · автошкола «Каменка»" % no, 12, ink)
+	# Владелец — из профиля (меню → «Профиль»)
+	if SettingsManager.full_name() != "":
+		_text(Vector2(22, H - 64), SettingsManager.full_name().to_upper(), 13, ink)
 	if not _any():
 		_card.draw_set_transform(Vector2(W * 0.5 + 40, H * 0.5), -0.35, Vector2.ONE)
 		_text(Vector2(-200, 10), "ПРАВ ПОКА НЕТ — СДАЙ В АВТОШКОЛЕ", 24, Color(0.75, 0.15, 0.12, 0.85))
