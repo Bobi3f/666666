@@ -1437,6 +1437,8 @@ func _village_shop(b: MeshBuilder, glow: MeshBuilder) -> void:
 	glow.xf = Transform3D.IDENTITY
 	# Тропинка от деревенского съезда к крыльцу
 	b.box(Vector3(-57.0, 0, -25.0), Vector3(SHOP_POS.x - 4.4, 0.03, -23.0), Color(0.46, 0.39, 0.28))
+	# Лавка уличного музыканта у торца магазина
+	Busker.bench(b)
 
 	var sign := Label3D.new()
 	sign.text = "ПРОДУКТЫ"
@@ -3396,6 +3398,7 @@ func _block_grass() -> void:
 	v.block(SHOP_POS.x - 5, SHOP_POS.z - 5, SHOP_POS.x + 3.5, SHOP_POS.z + 5)
 	v.block(PUMP_POS.x - 0.8, PUMP_POS.z - 0.6, PUMP_POS.x + 0.8, PUMP_POS.z + 1.0)
 	v.block(-57, -25, SHOP_POS.x - 4, -23)
+	v.block(Busker.POS.x - 1.5, Busker.POS.z - 2.0, Busker.POS.x + 1.5, Busker.POS.z + 1.0)
 	v.block(BARN_POS.x - 6.5, BARN_POS.z - 4.5, BARN_POS.x + 6.5, BARN_POS.z + 6)
 	v.block(-57, -42.2, BARN_POS.x, -40.8)
 	v.block(POND_POS.x - 13, POND_POS.z - 10, POND_POS.x + 13, POND_POS.z + 10)
@@ -3587,6 +3590,10 @@ func _build_clubs() -> void:
 	var girl := Girl.new()
 	girl.name = "Girl"
 	add_child(girl)
+	# Уличный музыкант с гитарой у сельмага
+	var busker := Busker.new()
+	busker.name = "Busker"
+	add_child(busker)
 	# Своя ферма — за трассой напротив Каменки, продаётся у ворот
 	var farm := Farm.new()
 	farm.name = "Farm"

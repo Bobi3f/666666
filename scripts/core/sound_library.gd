@@ -80,6 +80,9 @@ func _ready() -> void:
 	_makers["cheer"] = func() -> AudioStreamWAV: return _make(_cheer(), false)
 	_makers["auu"] = func() -> AudioStreamWAV: return _make(_auu(), false)
 	_makers["chatter"] = func() -> AudioStreamWAV: return _make(_chatter(), true)
+	# Уличный музыкант: дворовая песня под «восьмёрку» и перебор
+	_makers["busker_0"] = func() -> AudioStreamWAV: return _make(_busker_song(0), false)
+	_makers["busker_1"] = func() -> AudioStreamWAV: return _make(_busker_song(1), false)
 	for n in _makers:
 		_streams[n] = Assets.sound("effects/" + n, _makers[n])
 	SettingsManager.changed.connect(_apply_music_volume)
@@ -673,6 +676,120 @@ func _chatter() -> PackedFloat32Array:
 				vowels[_rng.randi() % vowels.size()], float(s[1]), _rng.randf_range(0.4, 1.0),
 				0.03 if _rng.randf() < 0.4 else 0.0, "", true)
 	return _norm(a, 0.5)
+
+
+## Аккорды на шести струнах (MIDI, −1 — струну не трогают).
+const GUITAR_CHORDS := {
+	"Am": [-1, 45, 52, 57, 60, 64], "Dm": [-1, -1, 50, 57, 62, 65], "E": [40, 47, 52, 56, 59, 64],
+	"C": [-1, 48, 52, 55, 60, 64], "G": [43, 47, 50, 55, 59, 67], "F": [41, 48, 53, 57, 60, 65],
+	"Em": [40, 47, 52, 55, 59, 64], "D": [-1, -1, 50, 57, 62, 66],
+}
+
+
+## Песня уличного музыканта. 0 — дворовая в ля миноре: бой «восьмёрка»
+## и голос без слов; 1 — перебор в ми миноре. По такту на аккорд.
+func _busker_song(n: int) -> PackedFloat32Array:
+	var bpm := 100.0 if n == 0 else 112.0
+	var prog: Array = ["Am", "Dm", "G", "C", "F", "Dm", "E", "Am"] if n == 0 else ["Em", "C", "G", "D", "Em", "C", "D", "Em"]
+	var eighth := 30.0 / bpm
+	var bar := eighth * 8.0
+	var a := _buf(bar * (prog.size() + 1) + 0.5)
+	# Ноты по струнам: [начало, MIDI, сила, яркость]
+	var strings: Array = [[], [], [], [], [], []]
+	for b in prog.size() + 1:
+		var last := b == prog.size()
+		var chord: Array = GUITAR_CHORDS[prog[mini(b, prog.size() - 1)]]
+		var t0 := b * bar
+		if last:
+			# Последний аккорд — один долгий удар
+			_strum(strings, chord, t0, true, 1.0)
+			break
+		if n == 0:
+			# Восьмёрка: вниз, вниз-вверх, вверх, вниз-вверх
+			for e in [[0, true, 1.0], [2, true, 0.8], [3, false, 0.55], [5, false, 0.6], [6, true, 0.8], [7, false, 0.55]]:
+				_strum(strings, chord, t0 + e[0] * eighth, e[1], e[2])
+		else:
+			# Перебор: бас, третья, вторая, первая, вторая, третья, бас, вторая
+			var bass := 0
+			while chord[bass] < 0:
+				bass += 1
+			var order := [bass, 3, 4, 5, 4, 3, mini(bass + 1, 2), 4]
+			for e in 8:
+				var s: int = order[e]
+				strings[s].append([t0 + e * eighth, chord[s], 0.9 if e == 0 else 0.6, 0.5])
+	for s in 6:
+		var ev: Array = strings[s]
+		for i in ev.size():
+			var end: float = ev[i + 1][0] if i + 1 < ev.size() else ev[i][0] + 2.5
+			_pluck(a, ev[i][0], minf(end, ev[i][0] + 2.5), _midi(ev[i][1]), ev[i][2], ev[i][3])
+	if n == 0:
+		# Голос без слов по нотам аккорда: четверть, четверть, половинка
+		var vowels := ["а", "о", "э", "а", "у", "о", "а", "о"]
+		for b in prog.size():
+			var chord: Array = GUITAR_CHORDS[prog[b]]
+			# Ноты аккорда в мужском голосе: от ми до ре
+			var top: Array = []
+			for m in chord:
+				if m >= 48:
+					var x: int = m
+					while x > 62:
+						x -= 12
+					if not top.has(x):
+						top.append(x)
+			top.sort()
+			var notes := [top[top.size() - 1], top[maxi(top.size() - 2, 0)], top[0]]
+			var lens := [2.0, 2.0, 3.6]
+			var t := b * bar + eighth * 0.1
+			for k in 3:
+				var f := _midi(notes[k])
+				_voice(a, t, eighth * lens[k], f, f * (0.99 if k == 2 else 1.0), vowels[(b + k) % vowels.size()], 1.0, 0.22, 0.0)
+				t += eighth * (lens[k] + 0.4 if k < 2 else 0.0)
+	# Корпус гитары: немного срезать верха; мягкий ограничитель — тихие
+	# удары громче, редкие пики не глушат всю песню
+	var lp := 0.0
+	for i in a.size():
+		lp += (a[i] - lp) * 0.55
+		a[i] = lp
+	_norm(a, 1.0)
+	for i in a.size():
+		a[i] = tanh(a[i] * 4.0)
+	return _norm(a, 0.7)
+
+
+## Удар по струнам: вниз — от баса к первой, вверх — по верхним четырём обратно.
+func _strum(strings: Array, chord: Array, t: float, down: bool, amp: float) -> void:
+	var order := [0, 1, 2, 3, 4, 5] if down else [5, 4, 3, 2]
+	var k := 0
+	for s in order:
+		if chord[s] < 0:
+			continue
+		strings[s].append([t + k * 0.011, chord[s], amp * (1.0 if down else 0.8), 0.6 if down else 0.8])
+		k += 1
+
+
+## Щипок струны (Карплус — Стронг): шум в линии задержки длиной в период
+## гаснет и мягчает сам. До end — следующая нота глушит струну.
+func _pluck(a: PackedFloat32Array, start: float, end: float, f: float, amp: float, bright: float) -> void:
+	var n := maxi(int(RATE / f), 2)
+	var line := PackedFloat32Array()
+	line.resize(n)
+	var lp := 0.0
+	var mean := 0.0
+	for i in n:
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * bright
+		line[i] = lp
+		mean += lp
+	mean /= n
+	for i in n:
+		line[i] -= mean
+	var i0 := int(start * RATE)
+	var i1 := mini(int(end * RATE), a.size())
+	var p := 0
+	for j in range(i0, i1):
+		var cur := line[p]
+		line[p] = (cur + line[(p + 1) % n]) * 0.4985
+		p = (p + 1) % n
+		a[j] += cur * amp * minf(float(i1 - j) / 220.0, 1.0)
 
 
 ## Стартер: визг с подвыванием, в конце мотор схватывает.

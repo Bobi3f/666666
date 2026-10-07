@@ -220,5 +220,5 @@ static func _graffiti(east: Node3D) -> void:
 		l.position = t[1]
 		l.rotation.y = t[2]
 		l.double_sided = false
-		l.visibility_range_end = 70.0
+		l.visibility_range_end = 120.0
 		east.add_child(l)
