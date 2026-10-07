@@ -13,7 +13,7 @@ const ROOM_Y := 400.0
 const ROOMS := {
 	"bank": ["Банк", Vector3(201.0, 0, 13.0), Vector3(201.0, 0, 10.8), 0.0, Vector3(14, 4.5, 10)],
 	"hospital": ["Больница", Vector3(170.0, 0, 42.7), Vector3(170.0, 0, 44.6), PI, Vector3(16, 3.8, 10)],
-	"college": ["ПТУ №17", Vector3(250.9, 0, 122.6), Vector3(252.8, 0, 122.6), -PI / 2.0, Vector3(12, 3.6, 10)],
+	"college": ["ПТУ №17", Vector3(250.9, 0, 122.6), Vector3(252.8, 0, 122.6), -PI / 2.0, Vector3(18, 3.6, 12)],
 	"factory": ["Завод «Искра»", Vector3(163.0, 0, 218.2), Vector3(163.0, 0, 216.4), 0.0, Vector3(26, 8.0, 18)],
 }
 const FACTORY_PAY := 120
@@ -355,6 +355,34 @@ func _college(room: Node3D) -> void:
 	var east := _world.get_node_or_null("TownEast")
 	if east:
 		_zone(room, Vector3(0, 0, -2.2), east._course_prompt, east.take_course)
+	# Развлечения на перемене: теннисный стол и стол для армрестлинга
+	var fb := MeshBuilder.new()
+	fb.ground_shade = false
+	ping = _fun(room, fb, "ping", "Настольный теннис", "Серёгой из группы", Vector3(-6.4, 0, 3.0), 2.6, 25)
+	arm = _fun(room, fb, "arm", "Армрестлинг", "Толяном-качком", Vector3(6.2, 0, 3.0), 1.0, 40)
+	room.add_child(fb.build_mesh())
+	room.add_child(fb.build_body())
+	_label(room, "КРУЖОК НАСТОЛЬНОГО ТЕННИСА", Vector3(-8.95, 2.4, 3.0), PI / 2.0, 0.005, Color(0.15, 0.35, 0.6))
+
+
+var ping: FunGame
+var arm: FunGame
+
+
+## Развлечение: стол в fb, соперник с той стороны, узел игры — в комнате.
+func _fun(room: Node3D, fb: MeshBuilder, kind: String, title: String, who: String, at: Vector3, length: float, prize: int) -> FunGame:
+	var g := FunGame.new()
+	g.kind = kind
+	g.title = title
+	g.opponent = who
+	g.prize = prize
+	g.table_len = length
+	g.position = at
+	g.name = "Fun_" + kind
+	g.build_table(fb, at)
+	room.add_child(g)
+	_person(room, at + Vector3(-length * 0.5 - 0.55, 0, 0), PI / 2.0, Color(0.55, 0.25, 0.2) if kind == "arm" else Color(0.25, 0.45, 0.3))
+	return g
 
 
 # --- Завод -----------------------------------------------------------------------

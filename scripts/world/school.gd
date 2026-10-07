@@ -197,6 +197,7 @@ func build(b: MeshBuilder, glow: MeshBuilder) -> void:
 	tb.ground_shade = false
 	_inside(ib, lamps)
 	_hall(ib)
+	_fun(ib)
 	_math(ib, kb, tb)
 	_literature(ib, kb, tb)
 	_art(ib, kb, tb)
@@ -546,6 +547,61 @@ func _zone(subject: String, p: Vector3, size: Vector3) -> void:
 	add_child(zone)
 
 
+## Развлечения в вестибюле: настольный футбол (кикер) и викторина
+## «Умники и умницы» у доски почёта — в любое время, пока школа открыта.
+var kicker: FunGame
+var _fun_quiz := false
+var quiz_day := -1
+const QUIZ_PRIZE := 40
+
+
+func _fun(ib: MeshBuilder) -> void:
+	kicker = FunGame.new()
+	kicker.kind = "ping"
+	kicker.title = "Кикер"
+	kicker.opponent = "Вовкой из 9-Б"
+	kicker.prize = 20
+	kicker.table_len = 1.4
+	kicker.position = Vector3(57.6, 0, Z0 + 6.4)
+	kicker.name = "Kicker"
+	kicker.build_table(ib, kicker.position)
+	add_child(kicker)
+	_person(ib, kicker.position + Vector3(-1.25, 0, 0), PI / 2.0, Color(0.3, 0.35, 0.6), Color(0.3, 0.25, 0.2), false, false, 0.85)
+	_label("КИКЕР", kicker.position + Vector3(0, 1.5, 0), 0.0, 0.004, Color(0.85, 0.2, 0.15), 15.0)
+	var quiz := InteractZone.create("", Vector3(1.6, 2.2, 2.4))
+	quiz.name = "FunQuiz"
+	quiz.position = Vector3(62.6, 0, Z0 + 6.6)
+	quiz.prompt_fn = func() -> String:
+		if quiz_day != TimeManager.day:
+			return "E — викторина «Умники и умницы»: 5 весёлых вопросов (приз %d грн)" % QUIZ_PRIZE
+		return "E — викторина «Умники и умницы»: 5 весёлых вопросов"
+	quiz.activated.connect(start_fun_quiz)
+	add_child(quiz)
+
+
+func start_fun_quiz() -> void:
+	if panel.visible:
+		return
+	_fun_quiz = true
+	var items: Array = FUN_QUIZ.duplicate()
+	items.shuffle()
+	panel.start_quiz("Викторина «Умники и умницы»", items.slice(0, 5))
+
+
+const FUN_QUIZ := [
+	["Сколько колёс у «Запорожца»?", "Четыре", "Три", "Шесть"],
+	["Что кричат в футболе, когда забили?", "Гол!", "Пас!", "Аут!"],
+	["Какого цвета «Скорая» в Каменке?", "Белая с красным", "Зелёная", "Чёрная"],
+	["Кто живёт в ГСК «Мотор»?", "Машины в гаражах", "Коровы", "Рыбы"],
+	["Что делает светофор на красный?", "Велит стоять", "Велит ехать", "Сигналит"],
+	["Из чего Оля варит борщ?", "Из свёклы", "Из шоколада", "Из гвоздей"],
+	["Что нужно «Карпатам», чтобы поехать?", "Бензин с маслом", "Солярка", "Молоко"],
+	["Где в Каменке ловят карасей?", "На пруду", "В колодце", "В сельмаге"],
+	["Сколько минут в часе?", "60", "100", "24"],
+	["Кто чинит машины на СТО?", "Механик", "Почтальон", "Доярка"],
+]
+
+
 ## Вестибюль: вахтёрша, вешалка, доска почёта и расписание.
 func _hall(ib: MeshBuilder) -> void:
 	var desk := Vector3(DOOR_X + 3.0, 0, Z0 + 2.5)
@@ -822,6 +878,20 @@ func lit_items() -> Array:
 
 
 func _on_done(grade: int, comment: String) -> void:
+	# Викторина на перемене — не урок: без оценки в журнал, приз раз в день
+	if _fun_quiz:
+		_fun_quiz = false
+		QuestManager.event("fun")
+		if grade >= 4:
+			QuestManager.event("fun_win")
+			if quiz_day != TimeManager.day:
+				quiz_day = TimeManager.day
+				GameManager.add_money(QUIZ_PRIZE)
+				SoundLibrary.play("cash")
+				GameManager.notify("Викторина: %s — умник! Приз %d грн" % [comment, QUIZ_PRIZE])
+				return
+		GameManager.notify("Викторина: %s" % comment)
+		return
 	var subject := _subject
 	grades.append([subject, grade])
 	lessons_today += 1

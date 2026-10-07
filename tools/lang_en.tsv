@@ -2428,3 +2428,69 @@ E — положить на вклад %d грн (10%% годовых)	E — dep
 сверлильный станок	drill press
 шлифовальный станок	grinder
 E — смена механиком на СТО: принять машину, починить, сдать — +%d грн (%s)	E — mechanic shift at the garage: take the car, fix it, hand it over — +%d UAH (%s)
+теннис	tennis
+E — отбить!	E — hit it back!
+E — жми чаще!	E — press faster!
+E — %s с %s: 10 подач, E — когда мяч у тебя (приз %d грн)	E — %s with %s: 10 serves, E when the ball reaches you (prize %d UAH)
+E — %s с %s: 10 подач, E — когда мяч у тебя	E — %s with %s: 10 serves, E when the ball reaches you
+E — %s с %s: жми E чаще, чем он давит (приз %d грн)	E — %s with %s: press E faster than he pushes (prize %d UAH)
+E — %s с %s: жми E чаще, чем он давит	E — %s with %s: press E faster than he pushes
+Сил нет даже на %s — отдохни	Too tired even for %s — get some rest
+%s: дожал руку %s!	%s: you pinned %s's arm!
+Ушёл из-за стола — игра не считается	Left the table — the game doesn't count
+%s: отбито %d из %d, подача %d/%d	%s: returned %d of %d, serve %d/%d
+%s: отбил %d из %d	%s: returned %d of %d
+%s: [%s%s] — жми E!	%s: [%s%s] — press E!
+%s: %s оказался сильнее	%s: %s was stronger
+%s — победа! Приз %d грн	%s — victory! Prize %d UAH
+%s — победа!	%s — victory!
+Настольный теннис	Table tennis
+Серёгой из группы	Seryoga from your group
+Армрестлинг	Arm wrestling
+Толяном-качком	Tolyan the bodybuilder
+КРУЖОК НАСТОЛЬНОГО ТЕННИСА	TABLE TENNIS CLUB
+Кикер	Foosball
+Вовкой из 9-Б	Vovka from 9-B
+КИКЕР	FOOSBALL
+E — викторина «Умники и умницы»: 5 весёлых вопросов (приз %d грн)	E — «Brainiacs» quiz: 5 fun questions (prize %d UAH)
+E — викторина «Умники и умницы»: 5 весёлых вопросов	E — «Brainiacs» quiz: 5 fun questions
+Викторина «Умники и умницы»	«Brainiacs» quiz
+Сколько колёс у «Запорожца»?	How many wheels does a «Zaporozhets» have?
+Четыре	Four
+Три	Three
+Шесть	Six
+Что кричат в футболе, когда забили?	What do people shout in football after scoring?
+Гол!	Goal!
+Пас!	Pass!
+Аут!	Out!
+Какого цвета «Скорая» в Каменке?	What colour is the ambulance in Kamenka?
+Белая с красным	White with red
+Зелёная	Green
+Чёрная	Black
+Кто живёт в ГСК «Мотор»?	Who lives in the «Motor» garage co-op?
+Машины в гаражах	Cars in garages
+Коровы	Cows
+Рыбы	Fish
+Что делает светофор на красный?	What does a red traffic light do?
+Велит стоять	Tells you to stop
+Велит ехать	Tells you to go
+Сигналит	Honks
+Из чего Оля варит борщ?	What does Olya make borscht from?
+Из свёклы	Beetroot
+Из шоколада	Chocolate
+Из гвоздей	Nails
+Что нужно «Карпатам», чтобы поехать?	What does the «Karpaty» need to run?
+Бензин с маслом	Petrol mixed with oil
+Солярка	Diesel
+Молоко	Milk
+Где в Каменке ловят карасей?	Where do people catch carp in Kamenka?
+На пруду	At the pond
+В колодце	In the well
+В сельмаге	In the village shop
+Сколько минут в часе?	How many minutes are in an hour?
+Кто чинит машины на СТО?	Who fixes cars at the garage?
+Механик	Mechanic
+Почтальон	Postman
+Доярка	Milkmaid
+Викторина: %s — умник! Приз %d грн	Quiz: %s — smart! Prize %d UAH
+Викторина: %s	Quiz: %s
