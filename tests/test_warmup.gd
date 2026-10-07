@@ -23,6 +23,17 @@ func _run() -> void:
 	ok(shaders.has(MeshBuilder.vehicle_material().shader), "среди них машины")
 	ok(shaders.has(PersonModel.material().shader), "и люди — один шейдер на всех")
 	ok(shaders.has(Vegetation.grass_material.shader), "и трава")
+	var tree_mat := false
+	for n in W.get_node("Vegetation").get_children():
+		var mmi := n as MultiMeshInstance3D
+		if mmi and n.name.begins_with("Trees_") and mmi.multimesh.mesh.get_surface_count() > 0:
+			var tm := mmi.multimesh.mesh.surface_get_material(0)
+			var key: Variant = (tm as ShaderMaterial).shader if tm is ShaderMaterial else tm
+			for m in mats:
+				var mk: Variant = (m as ShaderMaterial).shader if m is ShaderMaterial else m
+				if mk == key: tree_mat = true
+			break
+	ok(tree_mat, "и деревья (материал внутри пачки)")
 	var t := Time.get_ticks_msec()
 	var n: int = await ShaderWarmup.run(W)
 	print("  прогрев занял %d мс" % (Time.get_ticks_msec() - t))

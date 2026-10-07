@@ -21,7 +21,10 @@ func _run() -> void:
 	print("== Потолок кадров")
 	ok(SM.FPS_LIMITS[2] == 120, "на компьютере по умолчанию — 120 FPS")
 	SM.set_fps_limit(2)
-	ok(Engine.max_fps == 120, "120: потолок %d" % Engine.max_fps)
+	# Экран 60 Гц (так в тестах): 120 он не покажет — синхронизация, цель 60
+	ok(SM.screen_hz() < 119.0 and SM._vsync_on() and Engine.max_fps == 0 and is_equal_approx(SM.fps_target(), SM.screen_hz()),
+		"120 на экране %d Гц: синхронизация, цель %d — «Держать FPS» не портит картинку зря" % [int(SM.screen_hz()), int(SM.fps_target())])
+	ok(not SM._vsync_on() or SM.screen_hz() < 121.0, "на экране 144 Гц было бы без синхронизации с потолком 120")
 	SM.set_fps_limit(4)
 	ok(Engine.max_fps == 0, "без ограничения")
 	SM.set_fps_limit(0)

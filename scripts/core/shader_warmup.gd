@@ -18,20 +18,52 @@ static func run(world: Node, frames := 2) -> int:
 	world.add_child(holder)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.05, 0.05)
+	# Каждый материал — дважды: одиночным квадратиком и «пачкой» (MultiMesh):
+	# трава и деревья рисуются пачками, а это для видеокарты другой вариант
+	# шейдера — без прогрева он собирался при первом взгляде на лес
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = quad
+	mm.instance_count = 1
+	mm.set_instance_transform(0, Transform3D.IDENTITY)
 	var i := 0
 	for m in mats:
-		var mi := MeshInstance3D.new()
-		mi.mesh = quad
-		mi.material_override = m
-		# Сеткой перед камерой: все видны в кадре, тень тоже считается
-		mi.position = Vector3((i % 20) * 0.06 - 0.6, (i / 20) * 0.06 - 0.3, -2.0)
-		holder.add_child(mi)
-		i += 1
+		for batch in [false, true]:
+			var at := Vector3((i % 20) * 0.06 - 0.6, (i / 20) * 0.06 - 0.3, -2.0)
+			# Сеткой перед камерой: все видны в кадре, тень тоже считается
+			if batch:
+				var mmi := MultiMeshInstance3D.new()
+				mmi.multimesh = mm
+				mmi.material_override = m
+				mmi.position = at
+				holder.add_child(mmi)
+			else:
+				var mi := MeshInstance3D.new()
+				mi.mesh = quad
+				mi.material_override = m
+				mi.position = at
+				holder.add_child(mi)
+			i += 1
+	# Фонарь и фары: при точечном и направленном свете — свои варианты
+	# шейдеров (ночью у фонаря, первые фары). Светят прямо на квадратики
+	var omni := OmniLight3D.new()
+	omni.omni_range = 4.0
+	omni.position = Vector3(0, 0, -1.5)
+	holder.add_child(omni)
+	var spot := SpotLight3D.new()
+	spot.spot_range = 5.0
+	spot.position = Vector3(0, 0, -0.5)
+	holder.add_child(spot)
 	holder.global_transform = cam.global_transform
 	for f in frames:
 		await world.get_tree().process_frame
 	holder.queue_free()
 	return mats.size()
+
+
+## Сколько квадратиков рисует прогрев: каждый материал одиночным и пачкой.
+static func quads(world: Node) -> int:
+	return collect(world).size() * 2
 
 
 ## Разные материалы мира: у ShaderMaterial важен сам шейдер (один на всех
@@ -50,6 +82,13 @@ static func collect(root: Node) -> Array[Material]:
 				var sm := mi.mesh.surface_get_material(s)
 				if sm:
 					list.append(sm)
+		# Пачки (трава, деревья): материалы их меша
+		var mmi := g as MultiMeshInstance3D
+		if mmi and mmi.multimesh and mmi.multimesh.mesh:
+			for s in mmi.multimesh.mesh.get_surface_count():
+				var mm_mat := mmi.multimesh.mesh.surface_get_material(s)
+				if mm_mat:
+					list.append(mm_mat)
 		var cp := g as CPUParticles3D
 		if cp and cp.mesh:
 			for s in cp.mesh.get_surface_count():

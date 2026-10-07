@@ -343,9 +343,23 @@ func fps_target() -> float:
 	if hz <= 0.0:
 		hz = 60.0
 	var lim: int = FPS_LIMITS[fps_limit]
-	if lim == 0:
+	if lim == 0 or _vsync_on():
 		return hz
 	return float(mini(lim, 240))
+
+
+## Частота экрана, Гц (неизвестна — 60).
+func screen_hz() -> float:
+	var hz := DisplayServer.screen_get_refresh_rate()
+	return hz if hz > 0.0 else 60.0
+
+
+## Синхронизация с экраном: «Как экран» или потолок не ниже частоты экрана —
+## больше кадров экран всё равно не покажет, а без синхронизации картинка
+## рвётся и дёргается. Ниже частоты (120 на 144 Гц) — без неё, с потолком.
+func _vsync_on() -> bool:
+	var lim: int = FPS_LIMITS[fps_limit]
+	return lim == 0 or (lim < 1000 and float(lim) >= screen_hz() - 1.0)
 
 
 ## «Держать FPS»: шаги вниз по очереди — сглаживание, чёткость, детализация
@@ -523,9 +537,12 @@ func set_fps_limit(i: int) -> void:
 ## сам браузер (по экрану) — там только потолок.
 func _apply_fps() -> void:
 	var lim: int = FPS_LIMITS[fps_limit]
+	var sync := _vsync_on()
 	if not OS.has_feature("web") and DisplayServer.get_name() != "headless":
-		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if lim == 0 else DisplayServer.VSYNC_DISABLED)
-	Engine.max_fps = 0 if lim == 0 or lim >= 1000 else lim
+		# Адаптивная: не успевает кадр — показывает сразу, без провала до
+		# половины частоты (где не поддерживается — обычная синхронизация)
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ADAPTIVE if sync else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0 if sync or lim >= 1000 else lim
 
 
 func _apply() -> void:
