@@ -86,7 +86,7 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 
 
 ## Где дорога идёт по лесу — густые полосы деревьев по обе стороны в три
-## ряда с подлеском: въехал — и вокруг лес, а не поле с редкими ёлками.
+## ряда (ели и берёзы — те же породы, что в лесу: лишних вызовов отрисовки нет): въехал — и вокруг лес, а не поле с редкими ёлками.
 ## У быстрой дороги просека шире, у красивой лес подступает вплотную.
 static func _forest_corridor(r: Region, road: Array, near: float, step: float) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -113,7 +113,7 @@ static func _forest_corridor(r: Region, road: Array, near: float, step: float) -
 						if not Region.tree_ok(q.x, q.y):
 							continue
 						var roll := rng.randf()
-						var kind := Vegetation.TreeKind.SPRUCE if roll < 0.5 else (Vegetation.TreeKind.BIRCH if roll < 0.85 else Vegetation.TreeKind.BUSH)
+						var kind := Vegetation.TreeKind.SPRUCE if roll < 0.6 else Vegetation.TreeKind.BIRCH
 						r._world._tree(r._d, Vector3(q.x, 0, q.y), rng.randf() * TAU, kind)
 			t += step + rng.randf_range(-0.8, 0.8)
 
