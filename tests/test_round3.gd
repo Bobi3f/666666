@@ -173,8 +173,9 @@ func _run() -> void:
 	await frames(3)
 	ok(C.headlights_on(), "ночью включились сами")
 	TM.minutes = 13 * 60.0
-	key(KEY_L, true); await frames(2); key(KEY_L, false); await frames(2)
-	ok(C.headlights_on(), "L включает фары днём")
+	for i in 2:
+		key(KEY_L, true); await frames(2); key(KEY_L, false); await frames(2)
+	ok(C.headlights_on(), "L, L — ближний днём")
 	C.engine_on = false
 	await frames(2)
 	ok(not C.headlights_on(), "мотор заглушен — фары погасли")

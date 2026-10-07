@@ -64,7 +64,7 @@ const SPECS := {
 		"tank": 14.0, "fuel_k": 0.35, "grip": 11.0, "drag": 0.22, "brake": 8.0,
 		"shape": Vector3(0.7, 1.2, 2.0), "shape_y": 0.7,
 		"seat": Vector3(0, 1.45, 0.25), "exit": Vector3(-1.0, 0.2, 0.0),
-		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true,
+		"chase": Vector3(0, 2.0, 4.2), "roof": false, "two_wheels": true, "lamps": [Vector3(0, 0.94, -0.89)],
 		"tail": [Vector3(0, 0.775, 1.045)],
 	},
 	# «ИЖ Юпитер-5» из автосалона: двухцилиндровый, тяжелее и мощнее «Явы»,
@@ -76,7 +76,7 @@ const SPECS := {
 		"tank": 18.0, "fuel_k": 0.42, "grip": 11.0, "drag": 0.23, "brake": 8.0,
 		"shape": Vector3(0.75, 1.25, 2.1), "shape_y": 0.72,
 		"seat": Vector3(0, 1.52, 0.3), "exit": Vector3(-1.0, 0.2, 0.0),
-		"chase": Vector3(0, 2.1, 4.4), "roof": false, "two_wheels": true,
+		"chase": Vector3(0, 2.1, 4.4), "roof": false, "two_wheels": true, "lamps": [Vector3(0, 0.98, -0.79)],
 		"wheels": [Vector3(0, 0.32, -0.76), Vector3(0, 0.32, 0.64)], "tail": [Vector3(0, 0.86, 0.985)],
 	},
 	# Мопед «Карпаты» — первый транспорт: прав не нужно, медленный (до 50),
@@ -88,7 +88,7 @@ const SPECS := {
 		"tank": 6.0, "fuel_k": 0.12, "grip": 10.0, "drag": 0.3, "brake": 6.0,
 		"shape": Vector3(0.6, 1.1, 1.75), "shape_y": 0.6,
 		"seat": Vector3(0, 1.3, 0.2), "exit": Vector3(-0.9, 0.2, 0.0),
-		"chase": Vector3(0, 1.8, 3.8), "roof": false, "two_wheels": true,
+		"chase": Vector3(0, 1.8, 3.8), "roof": false, "two_wheels": true, "lamps": [Vector3(0, 0.8, -0.7)],
 		"wheels": [Vector3(0, 0.28, -0.62), Vector3(0, 0.28, 0.55)], "tail": [Vector3(0, 0.62, 0.81)],
 	},
 	# Машины из автосалона. offroad — насколько лучше держит вне асфальта,
@@ -297,7 +297,15 @@ var _headlights: Array[SpotLight3D] = []
 ## Свет в салоне и слой (бит слоя 3), на который он светит.
 const CABIN_LAYER := 4
 var _cabin_light: OmniLight3D
-var _lights_forced := false
+## Свет: L — по кругу «авто → габариты → ближний → выключен», K — дальний.
+## Авто — ближний сам в темноте, тумане и дождь.
+enum Light { AUTO, PARKING, LOW, OFF }
+const LIGHT_NAMES := ["авто (ближний в темноте сам)", "габариты", "ближний свет", "выключен"]
+var light_mode := Light.AUTO
+var high_beam := false
+## Габаритные огни спереди и светящиеся стёкла фар — свои материалы.
+var _marker_mat: StandardMaterial3D
+var _lamp_mat: StandardMaterial3D
 var _brake_mat: StandardMaterial3D
 var _shift_timer := 0.0
 var _rev_timer := 0.0
@@ -473,6 +481,7 @@ func _ready() -> void:
 		l.visible = false
 		_body.add_child(l)
 		_headlights.append(l)
+	_front_lamps(lamps)
 
 
 # --- Посадка ----------------------------------------------------------------
@@ -557,8 +566,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_X:
 			set_turn(0 if turn == 1 else 1)
 		KEY_L:
-			_lights_forced = not _lights_forced
-			SoundLibrary.play("click", -8.0)
+			set_light_mode((light_mode + 1) % LIGHT_NAMES.size())
+		KEY_K:
+			set_high_beam(not high_beam)
 		KEY_T:
 			SettingsManager.set_auto_gearbox(not SettingsManager.auto_gearbox)
 			if SettingsManager.auto_gearbox:
@@ -1215,17 +1225,98 @@ func _update_road_sound() -> void:
 	_road_snd.volume_db = linear_to_db(clampf(v / 14.0, 0.05, 1.0)) - (4.0 if spec.roof else 0.0)
 
 
-## Фары: сами — в темноте, тумане и дождь; L — в любое время.
-## Стоп-сигналы горят, пока жмут тормоз.
+## Режим света по L, с подсказкой на экране.
+func set_light_mode(m: int) -> void:
+	light_mode = m as Light
+	if light_mode != Light.LOW and light_mode != Light.AUTO:
+		high_beam = false
+	SoundLibrary.play("click", -8.0)
+	GameManager.notify("Свет: %s" % LIGHT_NAMES[light_mode])
+
+
+## Дальний свет по K: включает и ближний, если фары были выключены.
+func set_high_beam(on: bool) -> void:
+	high_beam = on
+	if on and light_mode != Light.LOW and light_mode != Light.AUTO:
+		light_mode = Light.LOW
+	SoundLibrary.play("click", -8.0)
+	GameManager.notify("Дальний свет: %s" % ("включён" if on else "выключен"))
+
+
+## Горит ли ближний (или дальний): фары светят на дорогу.
+func beams_on() -> bool:
+	if not engine_on:
+		return false
+	match light_mode:
+		Light.LOW:
+			return true
+		Light.AUTO:
+			var h := TimeManager.hour()
+			return high_beam or h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
+	return false
+
+
+## Габариты горят и с ближним — как в настоящей машине. Без мотора — от
+## аккумулятора, если включены руками.
+func markers_on() -> bool:
+	if light_mode == Light.PARKING:
+		return true
+	return beams_on()
+
+
+## Фары: ближний — недалеко и вниз, дальний — далеко и выше, ярче.
+## Габариты — маленькие огни спереди и задние фонари. Стоп-сигналы горят,
+## пока жмут тормоз.
 func _update_lights() -> void:
-	var h := TimeManager.hour()
-	var dark := h < 6.3 or h > 19.7 or WeatherManager.fog > 0.5 or WeatherManager.rain > 0.5
-	var lit := engine_on and (dark or _lights_forced)
+	var beams := beams_on()
+	var far := beams and high_beam
 	for l in _headlights:
-		l.visible = lit
+		l.visible = beams
+		l.spot_range = 75.0 if far else 40.0
+		l.spot_angle = 22.0 if far else 28.0
+		l.rotation.x = 0.0 if far else -0.09
+		l.light_energy = (6.5 if far else 3.0) if spec.roof else (4.8 if far else 2.4)
+	var marks := markers_on()
+	if _marker_mat:
+		_marker_mat.albedo_color = Color(1.0, 0.86, 0.55) if marks else Color(0.35, 0.33, 0.3)
+	if _lamp_mat:
+		_lamp_mat.albedo_color = Color(1.0, 1.0, 0.95) if far else (Color(0.95, 0.92, 0.8) if beams else Color(0.3, 0.3, 0.29))
 	if _brake_mat:
 		var on := braking and driver != null
-		_brake_mat.albedo_color = Color(1.0, 0.1, 0.05) if on else (Color(0.55, 0.05, 0.03) if lit else Color(0.3, 0.04, 0.03))
+		_brake_mat.albedo_color = Color(1.0, 0.1, 0.05) if on else (Color(0.6, 0.06, 0.03) if marks else Color(0.3, 0.04, 0.03))
+
+
+## Стёкла фар и габаритные огни спереди — светятся, когда включены.
+func _front_lamps(lamps: Array) -> void:
+	_lamp_mat = StandardMaterial3D.new()
+	_lamp_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_lamp_mat.albedo_color = Color(0.3, 0.3, 0.29)
+	_marker_mat = _lamp_mat.duplicate()
+	_marker_mat.albedo_color = Color(0.35, 0.33, 0.3)
+	var glass := CylinderMesh.new()
+	var r := 0.085 if spec.roof else 0.06
+	glass.top_radius = r
+	glass.bottom_radius = r
+	glass.height = 0.01
+	glass.radial_segments = 16
+	glass.rings = 1
+	var mark := BoxMesh.new()
+	mark.size = Vector3(0.07, 0.04, 0.01) if spec.roof else Vector3(0.04, 0.025, 0.01)
+	for p: Vector3 in lamps:
+		var g := MeshInstance3D.new()
+		g.mesh = glass
+		g.material_override = _lamp_mat
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		g.position = p + Vector3(0, 0, -0.012)
+		g.rotation.x = PI / 2.0
+		_body.add_child(g)
+		var m := MeshInstance3D.new()
+		m.mesh = mark
+		m.material_override = _marker_mat
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# У машин — снаружи от фары, у мотоцикла — под фарой
+		m.position = p + (Vector3(signf(p.x) * 0.16, -0.06, -0.01) if spec.roof else Vector3(0, -0.1, -0.01))
+		_body.add_child(m)
 
 
 ## Камера закреплена за машиной, как в Car Parking: стоит всегда на одном
@@ -1265,6 +1356,11 @@ func on_asphalt() -> bool:
 
 func headlights_on() -> bool:
 	return _headlights[0].visible
+
+
+## Дальний горит (лампа на щитке).
+func high_beam_on() -> bool:
+	return high_beam and beams_on()
 
 
 func tank() -> float:
@@ -2006,6 +2102,8 @@ func save_state() -> Dictionary:
 		"plate": plate_text,
 		"parts": parts.duplicate(),
 		"health": health.duplicate(),
+		"light": light_mode,
+		"high": high_beam,
 	}
 
 
@@ -2016,6 +2114,8 @@ func load_state(d: Dictionary) -> void:
 	lateral = 0.0
 	velocity = Vector3.ZERO
 	fuel = float(d.get("fuel", 25.0))
+	light_mode = clampi(int(d.get("light", Light.AUTO)), 0, LIGHT_NAMES.size() - 1) as Light
+	high_beam = bool(d.get("high", false))
 	condition = float(d.get("condition", 100.0))
 	tires = bool(d.get("tires", false))
 	engine_tuned = bool(d.get("engine_tuned", false))

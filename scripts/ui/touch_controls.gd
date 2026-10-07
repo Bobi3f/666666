@@ -104,6 +104,9 @@ func _ready() -> void:
 	# Поворотники — стрелки над спидометром, между рулём и педалями
 	_add_button("◀", KEY_Z, "drive", "bc", Vector2(-36, -172), 24)
 	_add_button("▶", KEY_X, "drive", "bc", Vector2(36, -172), 24)
+	# Свет: режимы по кругу и дальний — над поворотниками
+	_add_button("Свет", KEY_L, "drive", "bc", Vector2(-36, -228), 24)
+	_add_button("Дальн", KEY_K, "drive", "bc", Vector2(36, -228), 24)
 	_add_button("Меню", KEY_ESCAPE, "all", "tr", Vector2(-50, 130), 30)
 	_add_button("Карта", KEY_M, "all", "tr", Vector2(-50, 205), 30)
 	_add_button("Журнал", KEY_J, "all", "tr", Vector2(-50, 280), 30)

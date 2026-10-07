@@ -2052,3 +2052,16 @@ GEARCOIN — монеты и эксклюзив	GEARCOIN — coins and exclusive
 грн	UAH
 E — кинуть %d грн в кепку музыканту	E — toss %d UAH into the busker's cap
 Музыкант кивнул: «Спасибо, друг! Эту — для тебя»	The busker nods: "Thanks, friend! This one's for you"
+Свет: авто, габариты, ближний, выкл	Lights: auto, parking, low beam, off
+Дальний свет	High beam
+L — свет: авто / габариты / ближний / выкл   K — дальний   V — вид из салона / сзади   T — автомат / механика   B — радио	L — lights: auto / parking / low / off   K — high beam   V — cabin / rear view   T — automatic / manual   B — radio
+Пробел — ручник, H — сигнал, L — свет, K — дальний, V — вид, B — радио, E — выйти	Space — handbrake, H — horn, L — lights, K — high beam, V — view, B — radio, E — get out
+Свет	Lights
+Дальн	High
+авто (ближний в темноте сам)	auto (low beam by itself in the dark)
+габариты	parking lights
+ближний свет	low beam
+выключен	off
+Свет: %s	Lights: %s
+Дальний свет: %s	High beam: %s
+включён	on

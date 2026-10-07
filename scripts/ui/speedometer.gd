@@ -185,7 +185,7 @@ func _draw_jawa(v: Vehicle) -> void:
 	var jt := "JAWA"
 	var jf := fs + 1
 	draw_string(_font, Vector2(plate.get_center().x - _font.get_string_size(jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf).x * 0.5, plate.get_center().y + jf * 0.35), jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf, Color(0.62, 0.62, 0.65))
-	var on := [not v.engine_on, v.headlights_on(), v.gear == 0, v.blink_on()]
+	var on := [not v.engine_on, v.high_beam_on(), v.gear == 0, v.blink_on()]
 	var cols := [Color(0.95, 0.15, 0.15), Color(0.2, 0.45, 1.0), Color(0.15, 0.85, 0.4), Color(0.1, 0.85, 0.75)]
 	var names := ["DYNAMO", "HIGH BEAM", "NEUTRAL", "TURN"]
 	var lr := r * 0.12
@@ -374,7 +374,7 @@ func _draw_izh(v: Vehicle) -> void:
 	var lamps := [
 		["ПОВОРОТ", Color(0.9, 0.42, 0.18), v.blink_on(), "turn"],
 		["ЗАЖИГАНИЕ", Color(0.6, 0.15, 0.25), not v.engine_on, "battery"],
-		["ДАЛЬНИЙ СВЕТ", Color(0.3, 0.45, 0.95), v.headlights_on(), "beam"],
+		["ДАЛЬНИЙ СВЕТ", Color(0.3, 0.45, 0.95), v.high_beam_on(), "beam"],
 		["НЕЙТРАЛЬ", Color(0.25, 0.3, 0.55), v.gear == 0, "N"],
 		["МАСЛО", Color(0.6, 0.15, 0.25), not v.engine_on, "oil"],
 	]
