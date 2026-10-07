@@ -334,6 +334,8 @@ func _build_settings(box: VBoxContainer) -> void:
 			SoundLibrary.play("click", -6.0)
 			SettingsManager.set_text_scale(v))
 		ts.add_child(b)
+	_choice_row(box, "Ход времени", SettingsManager.TIME_NAMES, SettingsManager.time_speed, SettingsManager.set_time_speed)
+	_hint(box, "Обычный — сутки за 24 минуты. Медленный — за 48, очень медленный — за полтора часа: работа, дорога и день тянутся ближе к жизни.")
 	var mm := CheckButton.new()
 	mm.text = "Мини-карта в углу экрана"
 	mm.button_pressed = SettingsManager.minimap

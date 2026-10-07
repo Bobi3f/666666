@@ -50,6 +50,10 @@ var _perf_step := 0
 var _perf_slow := 0.0
 ## Пешком — вид от третьего лица (персонаж виден со спины).
 var third_person := true
+## Ход времени: сутки за 24, 48 или 96 минут — медленнее, ближе к жизни.
+const TIME_RATES := [1.0, 0.5, 0.25]
+const TIME_NAMES := ["Обычный", "Медленный", "Очень медл."]
+var time_speed := 0
 ## Ячейка сохранения 1–3.
 var slot := 1
 ## Язык: "ru" или "en". В браузере и на телефоне при первом запуске — по
@@ -127,6 +131,7 @@ func _ready() -> void:
 		scale_i = clampi(int(cfg.get_value("graphics", "scale", scale_i)), 0, RENDER_SCALES.size() - 1)
 		auto_perf = bool(cfg.get_value("graphics", "auto_perf", auto_perf))
 		third_person = bool(cfg.get_value("ui", "third_person", true))
+		time_speed = clampi(int(cfg.get_value("game", "time_speed", 0)), 0, TIME_RATES.size() - 1)
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 		lang = "en" if str(cfg.get_value("ui", "lang", lang)) == "en" else "ru"
 		var km: Variant = cfg.get_value("controls", "keys", {})
@@ -378,6 +383,17 @@ func set_auto_perf(v: bool) -> void:
 	changed.emit()
 
 
+## Во сколько раз медленнее обычного идут игровые часы.
+func time_rate() -> float:
+	return TIME_RATES[time_speed]
+
+
+func set_time_speed(i: int) -> void:
+	time_speed = clampi(i, 0, TIME_RATES.size() - 1)
+	_save()
+	changed.emit()
+
+
 func set_fps_limit(i: int) -> void:
 	fps_limit = clampi(i, 0, FPS_LIMITS.size() - 1)
 	_perf_step = 0
@@ -421,6 +437,7 @@ func _save() -> void:
 	cfg.set_value("ui", "show_fps", show_fps)
 	cfg.set_value("ui", "lang", lang)
 	cfg.set_value("ui", "third_person", third_person)
+	cfg.set_value("game", "time_speed", time_speed)
 	cfg.set_value("save", "slot", slot)
 	cfg.set_value("controls", "keys", key_map)
 	cfg.set_value("controls", "touch", touch_layout)

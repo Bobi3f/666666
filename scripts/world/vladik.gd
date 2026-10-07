@@ -525,7 +525,7 @@ func work_on_moped() -> void:
 		QuestManager._take("plug", 1)
 		QuestManager._take("oil2t", 1)
 	SoundLibrary.play("hammer", -6.0)
-	TimeManager.advance(15.0)
+	TimeManager.work(15.0, "Чиним «Карпаты» с Владиком")
 	_body.position = VladikGarage.SPOTS.inspect[0]
 	_body.rotation.y = VladikGarage.SPOTS.inspect[1]
 	_set_state(State.INSPECT_VEHICLE)
@@ -546,7 +546,7 @@ func _wreck_prompt() -> String:
 func dismantle() -> void:
 	if _quest_step("vl_dismantle") != 0:
 		return
-	TimeManager.advance(40.0)
+	TimeManager.work(40.0, "Разбираю «копейку»")
 	SoundLibrary.play("hammer")
 	var got: String = VladikData.DISMANTLE_LOOT[_rng.randi() % VladikData.DISMANTLE_LOOT.size()]
 	QuestManager.give_item(got)
@@ -563,7 +563,7 @@ func _junk_prompt() -> String:
 
 
 func search_junk() -> void:
-	TimeManager.advance(30.0)
+	TimeManager.work(30.0, "Роюсь в куче лома")
 	SoundLibrary.play("hammer", -4.0)
 	if _quest_step("vl_junk") == 0:
 		GameManager.notify("Под ржавым капотом — колесо. Старое, но целое")

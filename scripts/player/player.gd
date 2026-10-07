@@ -271,6 +271,9 @@ func _physics_process(delta: float) -> void:
 	if input == Vector2.ZERO and GameManager.move_axis != Vector2.ZERO:
 		input = GameManager.move_axis
 		amount = clampf(input.length(), 0.0, 1.0)
+	# За работой стоим на месте, пока часы не отсчитают своё
+	if TimeManager.busy():
+		input = Vector2.ZERO
 	var running := Input.is_physical_key_pressed(KEY_SHIFT) and not crouching and input.y < 0.0
 	var speed := CROUCH if crouching else (RUN if running else WALK)
 	speed *= NeedsManager.walk_factor()
@@ -470,6 +473,10 @@ func _nearest_zone() -> InteractZone:
 
 
 func _use() -> void:
+	# За работой не отвлекаемся: дело надо доделать
+	if TimeManager.busy():
+		GameManager.notify(TimeManager.work_text())
+		return
 	if car != null:
 		car.exit_car()
 		return

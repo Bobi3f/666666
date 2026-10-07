@@ -223,6 +223,8 @@ func _slow_update() -> void:
 		_fps.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5) if f >= 28.0 else (Color(1.0, 0.85, 0.3) if f >= 18.0 else Color(1.0, 0.4, 0.35)))
 	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
 	var lines: Array[String] = []
+	if TimeManager.busy():
+		lines.append("» " + TimeManager.work_text())
 	if GameManager.challenge_line != "":
 		lines.append("» " + GameManager.challenge_line)
 	if Progress.delivery_active:

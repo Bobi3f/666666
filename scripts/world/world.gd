@@ -3354,6 +3354,7 @@ func _faint(reason: String) -> void:
 	if p:
 		p.global_position = bed
 		p.velocity = Vector3.ZERO
+	TimeManager.finish_work()
 	TimeManager.advance(8.0 * 60.0)
 	NeedsManager.rest(70.0)
 	NeedsManager.food = maxf(NeedsManager.food, 30.0)

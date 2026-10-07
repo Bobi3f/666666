@@ -350,7 +350,7 @@ func milk_cows() -> bool:
 		GameManager.notify("Сил нет доить — выспись")
 		return false
 	milk_day = TimeManager.day
-	TimeManager.advance(MILK_MIN)
+	TimeManager.work(MILK_MIN, "Дою коров")
 	NeedsManager.rest(-8.0)
 	GameManager.add_money(MILK_PAY)
 	SoundLibrary.play("cash")

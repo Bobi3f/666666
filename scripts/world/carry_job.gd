@@ -111,7 +111,7 @@ func _slot(i: int) -> Vector3:
 func start_prompt() -> String:
 	if active:
 		return ""
-	return "E — %s: %d × %d грн, по %d мин на каждый" % [title, total, pay_each, int(minutes_each)]
+	return "E — %s: %d × %d грн" % [title, total, pay_each]
 
 
 func start() -> void:
@@ -146,7 +146,7 @@ func put_down() -> void:
 		return
 	carrying = false
 	done += 1
-	TimeManager.advance(minutes_each)
+	# Пока носил, время и так шло — часы не перематываем
 	NeedsManager.rest(-energy_each)
 	GameManager.add_money(pay_each)
 	SoundLibrary.play("cash", -6.0)

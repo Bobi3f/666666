@@ -132,7 +132,7 @@ func _run() -> void:
 		P.global_position = ZJ.stops[i][1] + Vector3(0, 0.1, 0)
 		await frames(4)
 	ok(not ZJ.active and GM.money == money0 + 140, "заправил 4 машины: +140 грн")
-	ok(TM.minutes - t0 >= 59.0, "каждая — по 15 минут: прошло %d мин" % int(TM.minutes - t0))
+	ok(TM.minutes - t0 < 10.0, "часы не перемотаны: прошло %.1f мин" % (TM.minutes - t0))
 
 	print("== Вода")
 	NM.water = 10.0

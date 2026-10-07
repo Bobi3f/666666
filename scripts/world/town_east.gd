@@ -391,12 +391,12 @@ func _repair_done(grade: int, _comment: String) -> void:
 	var f: Array = STO_FAULTS[sto_fault]
 	if grade < 5:
 		sto_miss += 1
-		TimeManager.advance(20.0)
+		TimeManager.work(20.0, "Снимаю и проверяю")
 		GameManager.notify("Не то: снял, посмотрел — целое. Клиент ждёт, ищи дальше (премии уже не будет)")
 		return
 	sto_stage = 2
 	SoundLibrary.play("hammer")
-	TimeManager.advance(150.0)
+	TimeManager.work(150.0, "Меняю: %s" % String(f[1]).to_lower())
 	NeedsManager.energy = maxf(NeedsManager.energy - 15.0, 0.0)
 	_show_client()
 	GameManager.notify("Поменял: %s. Сдай машину мастеру — клиент ждёт" % String(f[1]).to_lower())
@@ -515,7 +515,7 @@ func use_garage() -> void:
 	if car == null or car.condition >= 99.5:
 		return
 	SoundLibrary.play("hammer")
-	TimeManager.advance(120.0)
+	TimeManager.work(120.0, "Чиню в гараже")
 	car.condition = minf(car.condition + 30.0, 100.0)
 	GameManager.notify("Подлатал сам: %s — %d%%. %s" % [car.spec.title, int(car.condition), TimeManager.clock_text()])
 

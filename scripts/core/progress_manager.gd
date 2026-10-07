@@ -223,7 +223,7 @@ func use_garden() -> void:
 				return
 			if not GameManager.spend(SEED_COST):
 				return
-			TimeManager.advance(90.0)
+			TimeManager.work(90.0, "Сажаю картошку")
 			NeedsManager.rest(-8.0)
 			planted = true
 			planted_at = now()
@@ -231,7 +231,7 @@ func use_garden() -> void:
 			watered_day = 0
 			GameManager.notify("Посадил картошку. Через трое суток — копать")
 		3:
-			TimeManager.advance(90.0)
+			TimeManager.work(90.0, "Копаю картошку")
 			NeedsManager.rest(-10.0)
 			var got := harvest_size()
 			NeedsManager.snacks += got
@@ -246,7 +246,7 @@ func use_garden() -> void:
 			if h < 5.0 or h > 22.0:
 				GameManager.notify("В темноте не полить. Приходи утром")
 				return
-			TimeManager.advance(20.0)
+			TimeManager.work(20.0, "Поливаю картошку")
 			NeedsManager.rest(-3.0)
 			watered_day = TimeManager.day
 			watered_days += 1

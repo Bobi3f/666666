@@ -61,7 +61,7 @@ func _run() -> void:
 	await frames(5)
 	zone_at(K, K.drop).activate()
 	ok(GM.money == 50 and K.done == 1 and K._stack[0].visible and not K._held.visible, "положил тюк в телегу: +50 грн")
-	ok(TM.minutes - t0 >= 21.0, "ушло время: %.0f мин" % (TM.minutes - t0))
+	ok(TM.minutes - t0 < 5.0 and not TM.busy(), "часы не перемотаны: %.1f мин" % (TM.minutes - t0))
 	for i in 7:
 		K.pick(); K.put_down()
 	ok(not K.active and GM.money == 400 and events.has("kolkhoz") and GM.challenge_line == "", "8 тюков — смена окончена, 400 грн: " + last())

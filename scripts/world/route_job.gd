@@ -289,8 +289,8 @@ func complete_all() -> void:
 
 
 func _reach() -> void:
+	# Время шло, пока ехал и носил, — часы не перематываем
 	if minutes_each > 0.0:
-		TimeManager.advance(minutes_each)
 		NeedsManager.rest(-1.5)
 	if cargo > 0:
 		var n := drop_each if drop_each > 0 and idx < stops.size() - 1 else _load
