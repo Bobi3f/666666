@@ -390,6 +390,8 @@ func _build_settings(box: VBoxContainer) -> void:
 		# T в машине тоже переключает — держим галочку в согласии
 		SettingsManager.changed.connect(func() -> void: gearbox.set_pressed_no_signal(SettingsManager.auto_gearbox))
 		box.add_child(gearbox)
+	# Лицензия движка: при распространении игры упоминание Godot обязательно
+	_hint(box, "Игра сделана на Godot Engine — godotengine.org/license (лицензия MIT).")
 
 
 func _build_controls(box: VBoxContainer) -> void:

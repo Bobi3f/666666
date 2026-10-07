@@ -43,7 +43,7 @@ if [ "$ONLY" = "all" ]; then
 	timeout 300 "$GODOT" --headless --export-release "Windows Desktop" build/win/FirstGear.exe 2>&1 | grep -iE "error" || true
 	if [ -s build/win/FirstGear.exe ]; then
 		# Рядом с игрой: окно с ошибками (console.exe), запуск через DirectX и инструкция
-		cp "$ROOT/tools/windows/FirstGear-DirectX.bat" "$ROOT/tools/windows/README-RU.txt" build/win/
+		cp "$ROOT/tools/windows/FirstGear-DirectX.bat" "$ROOT/tools/windows/README-RU.txt" "$ROOT/tools/windows/LICENSE-Godot.txt" build/win/
 		(cd build/win && rm -f "$ROOT/releases/FirstGear-Windows.zip" && zip -q -9 "$ROOT/releases/FirstGear-Windows.zip" ./*)
 	fi
 	if [ -n "${ANDROID_SDK:-}" ] && [ -n "${ANDROID_KEYSTORE:-}" ]; then

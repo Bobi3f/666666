@@ -2611,4 +2611,5 @@ const EN := {
 	"Тарань 30": "Dried fish 30",
 	"КВАС": "KVASS",
 	"E — %s: выбрать товар, поторговаться": "E — %s: choose goods, haggle",
+	"Игра сделана на Godot Engine — godotengine.org/license (лицензия MIT).": "Made with Godot Engine — godotengine.org/license (MIT license).",
 }
