@@ -2536,3 +2536,74 @@ E — Принцесса (%s): поговорить, гулять, брелоч�
 злая!	angry!
 Купил у Принцессы брелок: %s. В коллекции %d из %d	Bought a keychain from the Princess: %s. Collection: %d of %d
 Не пойду! Сначала помирись со мной.	I won't go! Make up with me first.
+Поторговаться	Haggle
+Базар — %s	Bazaar — %s
+Овощи с огорода	Garden vegetables
+Фрукты и арбузы	Fruit and watermelons
+Молоко, сметана, яйца	Milk, sour cream, eggs
+Сало и мясо	Salo and meat
+Мёд, тарань, семечки	Honey, dried fish, sunflower seeds
+Картошка, ведро	Potatoes, a bucket
+своя, рассыпчатая — жарить и варить	home-grown, floury — for frying and boiling
+Помидоры с огурцами	Tomatoes and cucumbers
+на салат, сочные — и поешь, и попьёшь	for a salad, juicy — food and drink at once
+Лук и морковка	Onions and carrots
+к борщу — дёшево	for borscht — cheap
+Яблоки «белый налив»	"White Transparent" apples
+кислые, хрустят	sour and crunchy
+Арбуз херсонский	Kherson watermelon
+продавец постучит — звонкий, спелый	the seller knocks on it — it rings, it's ripe
+Виноград	Grapes
+сладкий, без косточек почти	sweet, almost seedless
+Молоко, трёхлитровая банка	Milk, a three-litre jar
+утренней дойки, банку вернуть не надо	this morning's milking, keep the jar
+Сметана и творог	Sour cream and cottage cheese
+ложка стоит	a spoon stands up in it
+Яйца, десяток	Eggs, a dozen
+домашние, желток оранжевый	farm eggs, orange yolks
+Сало домашнее	Home-made salo
+с прослойкой, с чесноком	streaky, with garlic
+Колбаса «Докторская»	"Doktorskaya" sausage
+по ГОСТу, говорит продавец	made to the state standard, says the seller
+Курица домашняя	Farm chicken
+на суп хватит на три дня	soup for three days
+Мёд гречишный, банка	Buckwheat honey, a jar
+ложка мёда — и сил прибавилось	a spoon of honey — and you feel stronger
+Тарань вяленая	Dried taran fish
+солёная — потом пить захочется	salty — you'll be thirsty later
+Семечки, стакан	Sunflower seeds, a glass
+жареные, в кулёчке из газеты	roasted, in a newspaper cone
+Помидорчики свежие, сладкие!	Fresh tomatoes, sweet ones!
+Молодой человек, подходи — дешевле не найдёшь!	Young man, come over — you won't find it cheaper!
+Сало домашнее, попробуй кусочек!	Home-made salo, try a piece!
+Арбузы! Херсонские! Сахарные!	Watermelons! From Kherson! Sugar-sweet!
+Молочко утреннее, ещё тёплое!	Morning milk, still warm!
+Мёд гречишный, от всех болезней!	Buckwheat honey, cures everything!
+Девушка, берите яблочки — сама собирала!	Miss, take some apples — I picked them myself!
+Семечки! Жареные! Стакан — пять гривен!	Sunflower seeds! Roasted! Five hryvnias a glass!
+Уже торговался — больше не уступят	You already haggled — no more discounts
+Продавец ещё дуется — цена та же	The seller is still sulking — same price
+«Ладно, для тебя — уступлю!» Сегодня здесь на 20% дешевле	"Fine, for you — a discount!" Twenty percent off here today
+«Не нравится — иди к соседке!» Обиделся: на 10% дороже	"Don't like it — go to my neighbour!" Offended: ten percent dearer
+Бочка с квасом стоит пустая — квас продают весной и летом с 9:00 до 18:00	The kvass barrel is empty — kvass is sold in spring and summer, 9:00 to 18:00
+Кружка холодного кваса — хорошо! (−%d грн)	A mug of cold kvass — lovely! (−%d UAH)
+Квас — весной и летом, с 9:00 до 18:00	Kvass — spring and summer, 9:00 to 18:00
+E — кружка кваса (%d грн)	E — a mug of kvass (%d UAH)
+Помидоры 25	Tomatoes 25
+Огурцы 15	Cucumbers 15
+Картошка 6	Potatoes 6
+Капуста 8	Cabbage 8
+Яблоки 10	Apples 10
+Груши 15	Pears 15
+Виноград 30	Grapes 30
+Арбуз 3 / кг	Melon 3 / kg
+Молоко 10 / л	Milk 10 / l
+Сметана 20	Sour cream 20
+Яйца 25 / дес.	Eggs 25 / doz.
+Сало 60 / кг	Salo 60 / kg
+Курица 70	Chicken 70
+Мёд 50	Honey 50
+Семечки 5 / стакан	Seeds 5 / glass
+Тарань 30	Dried fish 30
+КВАС	KVASS
+E — %s: выбрать товар, поторговаться	E — %s: choose goods, haggle

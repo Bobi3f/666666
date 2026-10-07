@@ -22,6 +22,7 @@ func _run() -> void:
 		var p: Node3D = PR.pets[i]
 		p.position = g.position + basis * PR.PET_OFFSETS[i] * 0.8
 		p.rotation.y = g.rotation.y
+	PR._update_leashes()
 	root.get_node("GameManager").player.global_position = g.global_position + Vector3(8, 0.1, 8)
 	var cam := Camera3D.new(); cam.fov = 45; W.add_child(cam); cam.make_current()
 	cam.global_position = g.global_position + Vector3(1.2, 1.5, 3.2)
@@ -41,6 +42,7 @@ func _run() -> void:
 	for i in 8: await process_frame
 	root.get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOTS") + "/princess_panel.png")
 	PR.set_mood(20)
+	PR._update_leashes()
 	panel.open(PR)
 	for i in 8: await process_frame
 	root.get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOTS") + "/princess_panel_angry.png")
@@ -49,4 +51,8 @@ func _run() -> void:
 	cam.look_at(g.global_position + Vector3(0, 1.9, 0))
 	for i in 8: await process_frame
 	root.get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOTS") + "/princess_angry.png")
+	cam.global_position = g.global_position + Basis(Vector3.UP, g.rotation.y) * Vector3(0.15, 1.55, -0.75)
+	cam.look_at(g.global_position + Vector3(0, 1.45, 0))
+	for i in 8: await process_frame
+	root.get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOTS") + "/princess_angry_face.png")
 	quit()

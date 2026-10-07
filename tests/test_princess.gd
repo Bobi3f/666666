@@ -47,11 +47,23 @@ func _run() -> void:
 	TM.day += 5
 	PR.catch_up()
 	ok(not PR.kind() and PR.price(3) == 90, "5 дней не приходил — злая, сердечко втридорога: %d грн" % PR.price(3))
+	ok(PR.girl.mesh == PR._poses[1] and PR._poses[0] != PR._poses[1], "злая — другая поза: руки скрещены, брови сдвинуты")
+	ok(PR._charms.mesh != null, "брелок-коронка висит у неё на сумочке")
 	PR.walk()
 	ok(not PR.following, "злая гулять не идёт")
 	PR.buy(3)
 	PR.buy(4)
 	ok(PR.kind(), "купил два брелочка — помирились (%d)" % int(PR.mood))
+	ok(PR.girl.mesh == PR._poses[0], "добрая — снова улыбается")
+	PR._update_leashes()
+	var hand: Vector3 = PR.girl.to_global(PrincessModel.LEASH_HAND)
+	var leash_ok := PR._leashes.size() == 2
+	for i in 2:
+		var lm: MeshInstance3D = PR._leashes[i]
+		var col: Vector3 = PR.pets[i].to_global(Princess.COLLAR)
+		if lm.visible:
+			leash_ok = leash_ok and absf(lm.global_transform.basis.y.length() - hand.distance_to(col)) < 0.01
+	ok(leash_ok, "поводки — от её руки до ошейников собак")
 	var st: Dictionary = PR.save_state()
 	PR.keychains = []
 	PR.load_state(st)

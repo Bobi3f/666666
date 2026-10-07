@@ -147,10 +147,16 @@ const STALLS := ["food", "home", "food", "parts", "food", "food", "parts", "wedd
 const STALL_SIGN := {"home": "ДЛЯ ДОМА", "parts": "АВТОЗАПЧАСТИ", "wedding": "К СВАДЬБЕ"}
 
 var market_panel: MarketPanel
+var bazaar: Bazaar
 
 
 func _market(b: MeshBuilder) -> void:
 	var r := MARKET
+	# Мелочь базара (товар, ценники, весы) — свой меш, вдали не рисуется
+	bazaar = Bazaar.new()
+	add_child(bazaar)
+	var gb := MeshBuilder.new()
+	var food_n := 0
 	b.box(Vector3(r.position.x, 0, r.position.y), Vector3(r.end.x, 0.05, r.end.y), Color(0.5, 0.5, 0.48))
 	var awn := [Color(0.8, 0.2, 0.15), Color(0.2, 0.45, 0.75), Color(0.25, 0.6, 0.3), Color(0.9, 0.7, 0.15)]
 	var k := 0
@@ -183,7 +189,7 @@ func _market(b: MeshBuilder) -> void:
 				"parts":
 					_parts_goods(b, x, row, k)
 				_:
-					_food_goods(b, x, row, k)
+					bazaar.food_goods(gb, x, row, Bazaar.FOOD_KINDS[food_n % Bazaar.FOOD_KINDS.size()])
 			if STALL_SIGN.has(kind):
 				# Вывеска над прилавком, к покупателю (−Z)
 				b.box(Vector3(x + 0.6, 2.05, row - 0.32), Vector3(x + 4.4, 2.4, row - 0.27), Color(0.95, 0.92, 0.85))
@@ -197,17 +203,28 @@ func _market(b: MeshBuilder) -> void:
 			seller.rotation.y = 0.0
 			seller.visibility_range_end = 150.0
 			add_child(seller)
+			bazaar.sellers.append(seller)
 			var zone := InteractZone.create("", Vector3(4.6, 2.0, 1.6))
 			zone.name = "Stall_%d_%s" % [k, kind]
 			zone.position = Vector3(x + 2.5, 0, row - 0.8)
-			zone.prompt_fn = _stall_prompt.bind(kind)
 			if kind == "food":
-				zone.activated.connect(buy)
+				var fk: String = Bazaar.FOOD_KINDS[food_n % Bazaar.FOOD_KINDS.size()]
+				food_n += 1
+				zone.prompt_fn = _food_prompt.bind(fk)
+				zone.activated.connect(open_food.bind(fk))
 			else:
+				zone.prompt_fn = _stall_prompt.bind(kind)
 				zone.activated.connect(open_stall.bind(kind))
 			add_child(zone)
 			x += 7.0
 			k += 1
+	bazaar.add_shoppers([r.position.y + 8.0, r.position.y + 22.0], r.position.x + 4.0, r.end.x - 6.0)
+	bazaar.kvass_barrel(gb, Vector3(r.end.x - 3.5, 0, r.position.y + 10.0))
+	Bazaar.clutter(gb, r)
+	var goods := gb.build_mesh()
+	goods.name = "BazaarGoods"
+	goods.visibility_range_end = 70.0
+	add_child(goods)
 	# Ворота с вывеской «РЫНОК» со стороны улицы
 	var g0 := r.position.y + 12.0
 	var g1 := r.position.y + 20.0
@@ -257,16 +274,6 @@ func _fence_run(b: MeshBuilder, a: Vector2, c: Vector2, posts := true) -> void:
 				b.box(Vector3(-0.22, 0, pz - 0.22), Vector3(0.22, 2.1, pz + 0.22), brick, true)
 				b.box(Vector3(-0.26, 2.1, pz - 0.26), Vector3(0.26, 2.18, pz + 0.26), Color(0.7, 0.7, 0.68))
 	b.xf = saved
-
-
-## Овощи, сало и банки — кучками и ящиками.
-func _food_goods(b: MeshBuilder, x: float, row: float, k: int) -> void:
-	var goods := [Color(0.85, 0.2, 0.1), Color(0.95, 0.6, 0.1), Color(0.5, 0.35, 0.2), Color(0.3, 0.55, 0.2), Color(0.9, 0.85, 0.3), Color(0.6, 0.2, 0.4)]
-	for g in 5:
-		var gc: Color = goods[(k * 3 + g) % goods.size()]
-		var gx := x + 0.3 + g * 0.95
-		b.box(Vector3(gx, 1.0, row + 0.15), Vector3(gx + 0.8, 1.12, row + 1.05), Color(0.6, 0.48, 0.3))
-		b.box(Vector3(gx + 0.08, 1.12, row + 0.25), Vector3(gx + 0.72, 1.3, row + 0.95), gc)
 
 
 ## Для дома: свёрнутые ковры, магнитофон, маленький холодильник, лампа.
@@ -346,6 +353,23 @@ func _stall_prompt(kind: String) -> String:
 		"wedding":
 			return "E — к свадьбе: золотое кольцо, свадебное платье"
 	return "E — купить овощи, сало и молоко (%d грн)" % MARKET_PRICE
+
+
+func _food_prompt(kind: String) -> String:
+	if not Bazaar.open_now():
+		return "Рынок работает с 7:00 до 16:00"
+	return "E — %s: выбрать товар, поторговаться" % Bazaar.FOOD_TITLE[kind].to_lower()
+
+
+## Лавка с едой: свой товар и торг (MarketPanel, режим "food").
+func open_food(kind: String) -> void:
+	if not Bazaar.open_now():
+		return
+	if market_panel == null:
+		market_panel = MarketPanel.new()
+		add_child(market_panel)
+	SoundLibrary.play("click", -4.0)
+	market_panel.open_food(bazaar, kind)
 
 
 ## Лавка «Для дома» или «Автозапчасти»: окно покупок.

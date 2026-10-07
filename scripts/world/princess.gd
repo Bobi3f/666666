@@ -51,6 +51,13 @@ var keychains: Array = []
 var _mood_label: Label3D
 
 var girl: MeshInstance3D
+var _poses: Array[Mesh] = []
+var _charms: MeshInstance3D
+var _leashes: Array[MeshInstance3D] = []
+## Поводки и ошейники: Снежке — красный, Рыжику — синий.
+const LEASH_COLORS := [Color(0.85, 0.15, 0.25), Color(0.2, 0.35, 0.85)]
+## Где у собаки ошейник (модель AnimalModel.dog).
+const COLLAR := Vector3(0, 0.53, -0.37)
 var pets: Array[Node3D] = []
 var _target := 0
 var _wait := 2.0
@@ -64,10 +71,17 @@ const PET_OFFSETS := [Vector3(-0.9, 0, 0.9), Vector3(0.9, 0, 1.1), Vector3(0.2, 
 func _ready() -> void:
 	name = "Princess"
 	add_to_group("persist")
-	var b := MeshBuilder.new()
-	b.ground_shade = false
-	PersonModel.girl(b, false, Color(0.95, 0.5, 0.72), Color(0.88, 0.68, 0.28))
-	girl = Villagers.walking_mesh(b)
+	# Две позы: добрая и злая — меш меняется вместе с настроением
+	for angry in [false, true]:
+		var b := MeshBuilder.new()
+		b.ground_shade = false
+		PrincessModel.build(b, angry)
+		if girl == null:
+			girl = Villagers.walking_mesh(b)
+			girl.material_override = PrincessModel.material()
+			_poses.append(girl.mesh)
+		else:
+			_poses.append(b.build_array_mesh())
 	girl.scale = Vector3.ONE * SCALE
 	girl.position = ROUTE[0]
 	add_child(girl)
@@ -76,30 +90,55 @@ func _ready() -> void:
 	crown.position = Vector3(0, top - 0.05, 0)
 	girl.add_child(crown)
 	_mood_label = Label3D.new()
-	_mood_label.font_size = 48
-	_mood_label.pixel_size = 0.005
+	_mood_label.font_size = 32
+	_mood_label.pixel_size = 0.004
 	_mood_label.outline_size = 10
 	_mood_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_mood_label.position = Vector3(0, top + 0.3, 0)
 	_mood_label.visibility_range_end = 25.0
 	girl.add_child(_mood_label)
+	_charms = MeshInstance3D.new()
+	girl.add_child(_charms)
+	_show_charms()
 	_show_mood()
 	var furs := [Color(0.96, 0.95, 0.92), Color(0.78, 0.45, 0.2)]
 	for i in 2:
 		var db := MeshBuilder.new()
 		db.ground_shade = false
 		AnimalModel.dog(db, furs[i])
+		PrincessModel.collar(db, LEASH_COLORS[i])
+		if i == 0:
+			# Снежка — болонка: пушистая чёлка и уши
+			for f in [Vector3(0, 0.72, -0.46), Vector3(-0.09, 0.62, -0.45), Vector3(0.09, 0.62, -0.45), Vector3(0, 0.5, 0.36)]:
+				PersonModel.ball(db, f, Vector3(0.06, 0.05, 0.06), furs[i].lightened(0.3), 3, 6)
 		var dog := Villagers.animal_mesh(db, 0.38, 0.47, 0.32, 11.0)
 		dog.scale = Vector3.ONE * (0.75 if i == 0 else 0.95)
 		pets.append(dog)
 	var cb := MeshBuilder.new()
 	cb.ground_shade = false
 	cat_model(cb, Color(0.55, 0.52, 0.48))
+	PrincessModel.collar(cb, Color(0.2, 0.7, 0.4), true)
 	pets.append(Villagers.animal_mesh(cb, 0.2, 0.26, 0.2, 2.5))
 	for i in pets.size():
 		var p: Node3D = pets[i]
 		p.position = ROUTE[0] + PET_OFFSETS[i]
 		add_child(p)
+	# Поводки от её руки к ошейникам собак (кот гуляет сам по себе)
+	for i in 2:
+		var lm := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.007
+		cyl.bottom_radius = 0.007
+		cyl.height = 1.0
+		cyl.radial_segments = 4
+		cyl.rings = 1
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = LEASH_COLORS[i]
+		cyl.material = mat
+		lm.mesh = cyl
+		lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(lm)
+		_leashes.append(lm)
 	_zone = InteractZone.create("", Vector3(2.6, 2.0, 2.6))
 	_zone.prompt_fn = func() -> String:
 		return "E — Принцесса (%s): поговорить, гулять, брелочки" % ("добрая" if kind() else "злая")
@@ -157,6 +196,9 @@ func talk() -> void:
 		var to := pl.global_position - girl.global_position
 		girl.rotation.y = atan2(-to.x, -to.z)
 	catch_up()
+	if pl and not kind():
+		# Обиделась — отворачивается, только косится через плечо
+		girl.rotation.y += PI
 	var panel := get_tree().get_first_node_in_group("princess_panel") as PrincessPanel
 	if panel:
 		panel.open(self)
@@ -186,6 +228,14 @@ func _show_mood() -> void:
 		return
 	_mood_label.text = "добрая" if kind() else "злая!"
 	_mood_label.modulate = Color(1.0, 0.55, 0.75) if kind() else Color(0.95, 0.2, 0.15)
+	if _poses.size() == 2:
+		girl.mesh = _poses[0 if kind() else 1]
+
+
+## Брелочки из коллекции висят на её сумочке.
+func _show_charms() -> void:
+	if _charms:
+		_charms.mesh = PrincessModel.charms(keychains).build_array_mesh() if not keychains.is_empty() else null
 
 
 ## Что она говорит сейчас — по настроению.
@@ -206,6 +256,7 @@ func buy(i: int) -> bool:
 	if keychains.has(id) or not GameManager.spend(price(i)):
 		return false
 	keychains.append(id)
+	_show_charms()
 	set_mood(mood + 20.0)
 	SoundLibrary.play("cash", -4.0)
 	QuestManager.event("keychain")
@@ -314,6 +365,23 @@ func _process(delta: float) -> void:
 			p.rotation.y = atan2(-to.x, -to.z)
 		elif moving:
 			p.rotation.y = girl.rotation.y
+	_update_leashes()
+
+
+## Поводок — тонкая палочка от кулака до ошейника, натянута.
+func _update_leashes() -> void:
+	var hand := girl.to_global(PrincessModel.LEASH_HAND if kind() else PrincessModel.LEASH_HAND_ANGRY)
+	for i in _leashes.size():
+		var lm := _leashes[i]
+		var dog: Node3D = pets[i]
+		var c := dog.to_global(COLLAR)
+		var d := c - hand
+		lm.visible = d.length() < 3.5 and d.length() > 0.05
+		if not lm.visible:
+			continue
+		var up := d.normalized()
+		var side := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
+		lm.global_transform = Transform3D(Basis(side, up * d.length(), side.cross(up)), (hand + c) * 0.5)
 
 
 func save_state() -> Dictionary:
@@ -327,4 +395,5 @@ func load_state(d: Dictionary) -> void:
 	seen_day = int(d.get("seen", TimeManager.day))
 	var k: Variant = d.get("keys", [])
 	keychains = (k as Array).duplicate() if k is Array else []
+	_show_charms()
 	_show_mood()

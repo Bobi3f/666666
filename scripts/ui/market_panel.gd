@@ -32,6 +32,10 @@ signal closed
 var shop_fn: Callable
 
 var mode := "home"
+## Лавка с едой: базар и что за лавка (Bazaar.FOOD_KINDS)
+var bazaar: Bazaar
+var food_kind := ""
+var _haggle: Button
 var _vehicles: Array = []
 var _car: Vehicle
 var _root: PanelContainer
@@ -84,6 +88,11 @@ func _ready() -> void:
 	_cars_box.add_theme_constant_override("h_separation", 8)
 	_cars_box.add_theme_constant_override("v_separation", 6)
 	v.add_child(_cars_box)
+	_haggle = _button("Поторговаться", Color(0.55, 0.38, 0.15))
+	_haggle.pressed.connect(func() -> void:
+		_status.text = bazaar.haggle(food_kind)
+		_refresh())
+	v.add_child(_haggle)
 	_goods = VBoxContainer.new()
 	_goods.add_theme_constant_override("separation", 6)
 	v.add_child(_goods)
@@ -129,6 +138,7 @@ func open(m: String, vehicles: Array = []) -> void:
 	_title.text = {"home": "Базар — для дома", "wedding": "Базар — к свадьбе", "shop": "Сельмаг «Продукты»"}.get(mode, "Базар — автозапчасти")
 	if mode == "shop":
 		_status.text = _stock()
+	_haggle.visible = mode == "food"
 	_cars_label.visible = mode == "parts"
 	_cars_box.visible = mode == "parts"
 	for c in _cars_box.get_children():
@@ -141,6 +151,15 @@ func open(m: String, vehicles: Array = []) -> void:
 		select(vehicles[0] if not vehicles.is_empty() else null)
 	else:
 		_refresh()
+
+
+## Лавка с едой kind на базаре: свой товар, цены по торгу.
+func open_food(b: Bazaar, kind: String) -> void:
+	bazaar = b
+	food_kind = kind
+	open("food")
+	_title.text = "Базар — %s" % Bazaar.FOOD_TITLE[kind]
+	_status.text = _stock()
 
 
 func select(car: Vehicle) -> void:
@@ -184,6 +203,8 @@ func _refresh() -> void:
 func _list() -> Dictionary:
 	if mode == "shop":
 		return get_parent().SHOP_MENU
+	if mode == "food":
+		return bazaar.food_list(food_kind)
 	return {"home": HOME, "wedding": WEDDING}.get(mode, PARTS)
 
 
@@ -193,7 +214,7 @@ func _stock() -> String:
 
 
 func _has(id: String) -> bool:
-	if mode == "shop":
+	if mode == "shop" or mode == "food":
 		return false
 	if mode == "home" or mode == "wedding":
 		return Progress.has_item(id)
@@ -208,6 +229,11 @@ func buy(id: String) -> bool:
 	if not list.has(id) or _has(id) or (mode == "parts" and _car == null):
 		return false
 	var it: Array = list[id]
+	if mode == "food":
+		var got := bazaar.buy_food(food_kind, id)
+		_status.text = ("Купил: %s. " % it[0] if got else "Не хватает денег: «%s» стоит %d грн. " % [it[0], it[1]]) + _stock()
+		_refresh()
+		return got
 	if mode == "shop":
 		var got: bool = shop_fn.call(id)
 		_status.text = ("Купил: %s. " % it[0] if got else "Не хватает денег: «%s» стоит %d грн. " % [it[0], it[1]]) + _stock()
