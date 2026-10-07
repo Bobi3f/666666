@@ -671,6 +671,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["Колхоз", _world.BARN_POS, Color(0.9, 0.8, 0.5)],
 		["АЗС", _world.FUEL_POS, Color(0.4, 0.85, 0.5)],
 		["СТО", _world.GARAGE_POS, Color(0.5, 0.65, 1.0)],
+		["Гараж Владика", VladikGarage.POS, Color(0.85, 0.6, 0.25)],
 		["Автобус", _world.STOP_VILLAGE, Color(1.0, 0.9, 0.3)],
 		["Автобус", Town.w(_world.STOP_TOWN), Color(1.0, 0.9, 0.3)],
 		["Склад", Town.w(Vector3(27.5, 0, 37)), Color(0.9, 0.9, 0.9)],

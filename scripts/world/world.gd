@@ -1291,6 +1291,10 @@ func _build_village_life(b: MeshBuilder, glow: MeshBuilder) -> void:
 	for x in LAMP_X:
 		_street_lamp(b, glow, Vector3(x, 0, LAMP_Z))
 	_village_shop(b, glow)
+	# Гараж Дяди Владика — западная окраина у трассы
+	add_child(VladikGarage.build(b, glow))
+	var gs := _label("ГАРАЖ · РЕМОНТ", VladikGarage.w(Vector3(0, 2.91, VladikGarage.SIZE.z * 0.5 + 0.06)), VladikGarage.YAW, 0.0035, Color(0.25, 0.2, 0.15))
+	gs.name = "VladikGarageSign"
 	_bus_stop(b, STOP_VILLAGE, 0.0, true, "Каменка")
 	_village_sign(b, Vector3(-54.5, 0, -7.2))
 	_pond(b, POND_POS)
@@ -1975,7 +1979,7 @@ func _build_tree_belts(b: MeshBuilder) -> void:
 							ok = false
 					if ok and _polyline_dist(Vector2(px, pz), GROVE_PATHS[0]) < 3.5:
 						ok = false
-					if ok and Roads.tree_ok(px, pz) and not Farm.occupied(px, pz) and Region.road_dist(px, pz) > 8.0 \
+					if ok and Roads.tree_ok(px, pz) and not Farm.occupied(px, pz) and not VladikGarage.clear_rect().grow(2.0).has_point(Vector2(px, pz)) and Region.road_dist(px, pz) > 8.0 \
 							and Railway.dist(px, pz) > 10.0 and not Landscape.occupied(px, pz) and not Landmarks.occupied(px, pz):
 						_tree(b, Vector3(px, 0, pz), yaw, Vegetation.TreeKind.BIRCH)
 					x += r.randf_range(6.5, 9.0)
@@ -2311,6 +2315,7 @@ func buy_canister() -> bool:
 	if not GameManager.spend(CAN_PRICE):
 		return false
 	Progress.canister_l += Progress.CAN_L
+	QuestManager.event("canister_bought")
 	SoundLibrary.play("cash", -6.0)
 	GameManager.notify("Купил канистру бензина (в запасе %d л). Залить — в инвентаре (I), рядом со своей машиной или мотоциклом" % int(round(Progress.canister_l)))
 	return true
@@ -3399,6 +3404,8 @@ func _block_grass() -> void:
 	v.block(PUMP_POS.x - 0.8, PUMP_POS.z - 0.6, PUMP_POS.x + 0.8, PUMP_POS.z + 1.0)
 	v.block(-57, -25, SHOP_POS.x - 4, -23)
 	v.block(Busker.POS.x - 1.5, Busker.POS.z - 2.0, Busker.POS.x + 1.5, Busker.POS.z + 1.0)
+	var gr := VladikGarage.clear_rect()
+	v.block(gr.position.x, gr.position.y, gr.end.x, gr.end.y)
 	v.block(BARN_POS.x - 6.5, BARN_POS.z - 4.5, BARN_POS.x + 6.5, BARN_POS.z + 6)
 	v.block(-57, -42.2, BARN_POS.x, -40.8)
 	v.block(POND_POS.x - 13, POND_POS.z - 10, POND_POS.x + 13, POND_POS.z + 10)
@@ -3590,6 +3597,10 @@ func _build_clubs() -> void:
 	var girl := Girl.new()
 	girl.name = "Girl"
 	add_child(girl)
+	# Дядя Владик — механик в своём гараже на окраине
+	var vladik := Vladik.new()
+	vladik.name = "Vladik"
+	add_child(vladik)
 	# Уличный музыкант с гитарой у сельмага
 	var busker := Busker.new()
 	busker.name = "Busker"

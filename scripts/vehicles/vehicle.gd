@@ -193,6 +193,8 @@ const EDITIONS := {
 	"black": {"title": "«Волга» Чёрная", "paint": Color(0.04, 0.04, 0.05), "parts": {"rims": 3}, "tuned": true},
 	"gold": {"title": "«Ява» Золотая", "paint": Color(0.86, 0.66, 0.2), "parts": {"rims": 3, "exhaust": true}, "tuned": false},
 	"hunter": {"title": "«Нива» Охотник", "paint": Color(0.33, 0.37, 0.22), "parts": {"wheels": true, "tank": true}, "tuned": false},
+	# Награда Дяди Владика — «копейка», поднятая вместе с ним
+	"vladik": {"title": "«Копейка» Владика", "paint": Color(0.62, 0.08, 0.07), "parts": {"rims": 0, "exhaust": true}, "tuned": true},
 }
 var driver: Player
 var engine_on := false

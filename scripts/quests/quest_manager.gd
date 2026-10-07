@@ -191,6 +191,67 @@ const QUESTS := {
 		"thanks": "Трофей! Ну, рыбак. Уважаю.",
 		"steps": [{"text": "Поймай трофейную рыбу", "event": "trophy", "count": 1},
 			{"text": "Вернись к рыбаку Лёне в Малиновку", "talk": true}]},
+
+	# Дядя Владик, гараж на западе Каменки у трассы. "manual" — задание
+	# дают только по кнопке «Получить работу» (или при первой встрече),
+	# "gets" — что игрок получает, когда шаг выполнен.
+	"vl_karpaty": {"title": "Оживить Карпаты", "giver": "Дядя Владик", "manual": true, "reward": 300,
+		"offer": "Пригоняй свои «Карпаты» — глянем, чего он у тебя не едет.",
+		"thanks": "Слышишь, как поёт? Вот теперь это мопед. Держи за работу — и приходи ещё.",
+		"steps": [{"text": "Пригони «Карпаты» в гараж Дяди Владика (запад Каменки, у трассы)", "event": "vl_moped_here", "count": 1},
+			{"text": "Осмотри двигатель с Владиком и найди неисправность (E у мопеда в гараже)", "event": "vl_inspect", "count": 1},
+			{"text": "Купи свечу зажигания у Владика («Купить запчасти»)", "event": "vl_buy_plug", "count": 1},
+			{"text": "Купи масло для двухтактника у Владика", "event": "vl_buy_oil", "count": 1},
+			{"text": "Проверь и подтяни цепь (E у мопеда)", "event": "vl_chain", "count": 1},
+			{"text": "Проверь бензокран и топливный фильтр (E у мопеда)", "event": "vl_fuel", "count": 1},
+			{"text": "Ремонт: поставь свечу и залей масло (E у мопеда)", "event": "vl_repair", "count": 1},
+			{"text": "Заведи «Карпаты» (сядь и нажми R)", "event": "vl_started", "count": 1},
+			{"text": "Вернись к Дяде Владику", "talk": true}]},
+	"vl_fuel": {"title": "Привези бензин", "giver": "Дядя Владик", "manual": true, "reward": 150,
+		"offer": "Генератор встал, а мне до АЗС некогда. Привези канистру бензина.",
+		"thanks": "Во, выручил. Генератор скажет спасибо. Ну и я тоже.",
+		"steps": [{"text": "Купи канистру бензина на АЗС (в Каменке или на трассе)", "event": "canister_bought", "count": 1},
+			{"text": "Отдай канистру (10 л) Дяде Владику", "give": "canister", "count": 1}]},
+	"vl_junk": {"title": "Съезди на свалку", "giver": "Дядя Владик", "manual": true, "reward": 200,
+		"offer": "Съезди к Грише на свалку, поройся в куче покрышек. Колесо мне нужно, старое, но целое.",
+		"thanks": "Целое? Целое. Глаз у тебя есть — уже полдела.",
+		"steps": [{"text": "Найди старое колесо на свалке (E у кучи лома)", "event": "vl_junk_found", "count": 1, "gets": {"old_wheel": 1}},
+			{"text": "Отдай колесо Дяде Владику", "give": "old_wheel", "count": 1}]},
+	"vl_dismantle": {"title": "Помоги разобрать машину", "giver": "Дядя Владик", "manual": true, "reward": 300,
+		"offer": "Во дворе «копейка» битая. Раскрути её — что снимешь, то твоё, а за работу заплачу.",
+		"thanks": "Аккуратно разобрал, болты не сорвал. Уважаю.",
+		"steps": [{"text": "Разбери битую «копейку» во дворе гаража: 3 захода (E у машины)", "event": "vl_dismantle", "count": 3},
+			{"text": "Вернись к Дяде Владику", "talk": true}]},
+	"vl_battery": {"title": "Привези аккумулятор", "giver": "Дядя Владик", "manual": true, "reward": 250,
+		"offer": "У Петровича в колхозе старый аккумулятор валяется. Забери — мне на банки пойдёт.",
+		"thanks": "Тяжёлый, зараза? Зато свинец живой.",
+		"steps": [{"text": "Забери старый аккумулятор у бригадира Петровича (колхоз)", "talk": true, "to": "Бригадир Петрович",
+			"say": "Аккумулятор? Да забирай, весь сарай им провонял. Владику привет!", "gets": {"old_battery": 1}},
+			{"text": "Отдай аккумулятор Дяде Владику", "give": "old_battery", "count": 1}]},
+	"vl_deliver": {"title": "Доставь запчасть", "giver": "Дядя Владик", "manual": true, "reward": 300,
+		"start_items": {"vl_carb": 1},
+		"offer": "Отвези Ваське на СТО у трассы карбюратор — он заказывал. Только не урони.",
+		"thanks": "Довёз? Ну и ладно. Васька небось опять про пиво говорил?",
+		"steps": [{"text": "Отвези карбюратор механику Ваську (СТО у трассы)", "give": "vl_carb", "count": 1, "to": "Механик Васёк",
+			"say": "О, от Владика! Наконец-то. Передай — с меня пиво."},
+			{"text": "Вернись к Дяде Владику", "talk": true}]},
+	"vl_engine": {"title": "Найди двигатель", "giver": "Дядя Владик", "manual": true, "reward": 800,
+		"offer": "Нужен мотор от «Минска» или «Восхода». У Гриши на свалке в куче лома поройся — там всё есть, если искать.",
+		"thanks": "Живой мотор! Переберу — ещё сто лет отходит. Держи, заслужил.",
+		"steps": [{"text": "Найди старый двигатель на свалке (E у кучи лома)", "event": "vl_engine_found", "count": 1, "gets": {"old_engine": 1}},
+			{"text": "Привези двигатель Дяде Владику", "give": "old_engine", "count": 1}]},
+	"vl_bike": {"title": "Переберём мотоцикл", "giver": "Дядя Владик", "manual": true, "reward": 600,
+		"offer": "Пригоняй свой мотоцикл — «Яву» или ИЖ. Переберём вместе: научу, а он как с завода станет.",
+		"thanks": "Всё. Теперь он у тебя как с конвейера. Только не гоняй его на холодную.",
+		"steps": [{"text": "Пригони свой мотоцикл («Ява» или ИЖ) в гараж Владика", "event": "vl_bike_here", "count": 1},
+			{"text": "Поговори с Дядей Владиком — перебрать мотор", "talk": true}]},
+	"vl_restore": {"title": "«Копейка» Владика", "giver": "Дядя Владик", "manual": true, "reward": 1000,
+		"offer": "Есть у меня «копейка» семьдесят девятого. Кузов живой, мотора нет. Поднимем вместе — ездить будешь ты.",
+		"thanks": "Ну, принимай. Красная, хромированные диски, прямоток. Стоит у твоего дома. Береги её.",
+		"steps": [{"text": "Найди на свалке двигатель для «копейки» (E у кучи лома)", "event": "vl_engine_found", "count": 1, "gets": {"old_engine": 1}},
+			{"text": "Привези двигатель Дяде Владику", "give": "old_engine", "count": 1},
+			{"text": "Заработай 2000 грн на краску и резину", "event": "earned", "count": 2000},
+			{"text": "Вернись к Дяде Владику — собрать машину", "talk": true}]},
 }
 
 ## Состояние: id → {"state": 0 — не начато, 1 — идёт, 2 — выполнено, "step": шаг, "n": счётчик}
@@ -274,7 +335,7 @@ func talk(npc: String) -> String:
 		var def: Dictionary = QUESTS[id]
 		var q: Dictionary = quests[id]
 		# Сюжетные задания начинаются сами, просьбу даёт житель
-		if q.state != 0 or def.get("giver", "") != npc or def.get("main", false):
+		if q.state != 0 or def.get("giver", "") != npc or def.get("main", false) or def.get("manual", false):
 			continue
 		q.state = 1
 		q.step = 0
@@ -292,7 +353,7 @@ func has_line_for(npc: String) -> bool:
 	for id in quests:
 		var def: Dictionary = QUESTS[id]
 		var q: Dictionary = quests[id]
-		if q.state == 0 and def.get("giver", "") == npc and not def.get("main", false):
+		if q.state == 0 and def.get("giver", "") == npc and not def.get("main", false) and not def.get("manual", false):
 			return true
 		if q.state == 1:
 			var step: Dictionary = def.steps[q.step]
@@ -307,6 +368,8 @@ func _has(item: String, n: int) -> bool:
 			return NeedsManager.fish >= n
 		"snacks":
 			return NeedsManager.snacks >= n
+		"canister":
+			return Progress.canister_l >= Progress.CAN_L * n - 0.01
 	return int(items.get(item, 0)) >= n
 
 
@@ -316,6 +379,8 @@ func _take(item: String, n: int) -> void:
 			NeedsManager.fish -= n
 		"snacks":
 			NeedsManager.snacks -= n
+		"canister":
+			Progress.canister_l = maxf(Progress.canister_l - Progress.CAN_L * n, 0.0)
 		_:
 			items[item] = int(items.get(item, 0)) - n
 			if items[item] <= 0:
@@ -327,9 +392,25 @@ func give_item(item: String, n := 1) -> void:
 	changed.emit()
 
 
+## Начать задание, которое дают не в разговоре сами, а по кнопке ("manual").
+## false — уже начато или выполнено.
+func start(id: String) -> bool:
+	if not quests.has(id) or quests[id].state != 0:
+		return false
+	_start_main(id)
+	SoundLibrary.play("click")
+	GameManager.notify("Новое задание: «%s» — J" % QUESTS[id].title)
+	changed.emit()
+	return true
+
+
 func _advance(id: String) -> void:
 	var q: Dictionary = quests[id]
 	var def: Dictionary = QUESTS[id]
+	# Что выдают за выполненный шаг (колесо со свалки, аккумулятор)
+	var gets: Dictionary = def.steps[q.step].get("gets", {})
+	for k in gets:
+		items[k] = int(items.get(k, 0)) + int(gets[k])
 	q.step += 1
 	q.n = 0.0
 	if q.step >= def.steps.size():
@@ -404,6 +485,10 @@ func _step_done(id: String, step: int) -> bool:
 			return Daily.rival == Daily.Rival.BOUGHT or Daily.rival == Daily.Rival.RUINED
 		["m_district", 2]:
 			return Daily.owns("fleet")
+		["vl_karpaty", 2]:
+			return int(items.get("plug", 0)) > 0
+		["vl_karpaty", 3]:
+			return int(items.get("oil2t", 0)) > 0
 	return false
 
 
