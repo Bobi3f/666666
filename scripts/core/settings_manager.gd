@@ -29,6 +29,25 @@ var vibration := true
 var minimap := true
 ## Частота кадров на экране — понять, где игра тормозит.
 var show_fps := false
+## Ограничение кадров: индекс в FPS_LIMITS. 0 — как экран (вертикальная
+## синхронизация: 60 кадров на обычном мониторе), дальше — без синхронизации
+## до 60, 120, 144 кадров или без ограничения. На компьютере — 120: на
+## мониторе 120–144 Гц игра идёт плавнее, а видеокарта не греется зря.
+const FPS_LIMITS := [0, 60, 120, 144, 1000]
+const FPS_NAMES := ["Как экран", "60", "120", "144", "Без огранич."]
+var fps_limit := 0 if (OS.has_feature("mobile") or OS.has_feature("web")) else 2
+## Сглаживание краёв на компьютере: 0 — выкл, 1 — 2x, 2 — 4x (на высокой детализации).
+const AA_NAMES := ["Выкл", "2x", "4x"]
+var aa := 1
+## Чёткость 3D на компьютере: доля разрешения экрана (интерфейс всегда чёткий).
+const RENDER_SCALES := [1.0, 0.85, 0.75]
+var scale_i := 0
+## Держать FPS: не хватает кадров — сама по шагам выключает сглаживание и
+## снижает чёткость 3D (мир, свет, тени и трава остаются). Только на этот
+## запуск — в настройки не пишется.
+var auto_perf := true
+var _perf_step := 0
+var _perf_slow := 0.0
 ## Пешком — вид от третьего лица (персонаж виден со спины).
 var third_person := true
 ## Ячейка сохранения 1–3.
@@ -66,8 +85,10 @@ var _auto := not ("--no-menu" in OS.get_cmdline_user_args())
 func _process(delta: float) -> void:
 	if not _auto or not GameManager.in_game or get_tree().paused:
 		_slow = 0.0
+		_perf_slow = 0.0
 		return
 	var fps := Engine.get_frames_per_second()
+	_keep_fps(fps, delta)
 	# Ниже 28 кадров дольше 8 секунд — проще картинку (раньше ждали 15 с при 24)
 	_slow = _slow + delta if fps > 0 and fps < 28 else maxf(_slow - delta * 2.0, 0.0)
 	if _slow < 8.0:
@@ -101,6 +122,10 @@ func _ready() -> void:
 		vibration = bool(cfg.get_value("ui", "vibration", true))
 		minimap = bool(cfg.get_value("ui", "minimap", true))
 		show_fps = bool(cfg.get_value("ui", "show_fps", false))
+		fps_limit = clampi(int(cfg.get_value("graphics", "fps_limit", fps_limit)), 0, FPS_LIMITS.size() - 1)
+		aa = clampi(int(cfg.get_value("graphics", "aa", aa)), 0, AA_NAMES.size() - 1)
+		scale_i = clampi(int(cfg.get_value("graphics", "scale", scale_i)), 0, RENDER_SCALES.size() - 1)
+		auto_perf = bool(cfg.get_value("graphics", "auto_perf", auto_perf))
 		third_person = bool(cfg.get_value("ui", "third_person", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 		lang = "en" if str(cfg.get_value("ui", "lang", lang)) == "en" else "ru"
@@ -295,7 +320,82 @@ func shadow_range() -> float:
 	return [0.0, 45.0, 85.0][detail]
 
 
+## Сколько кадров хотим: потолок из настроек, но не больше частоты экрана
+## при синхронизации.
+func fps_target() -> float:
+	var hz := DisplayServer.screen_get_refresh_rate()
+	if hz <= 0.0:
+		hz = 60.0
+	var lim: int = FPS_LIMITS[fps_limit]
+	if lim == 0:
+		return hz
+	return float(mini(lim, 240))
+
+
+## Держать FPS на компьютере: меньше 85 % от цели дольше 5 секунд — шаг
+## вниз (сглаживание выкл → 3D 85 % → 3D 75 %), потом 10 секунд ждём.
+func _keep_fps(fps: float, delta: float) -> void:
+	if not auto_perf or GameManager.touch_mode or _perf_step >= 3 or fps <= 0.0:
+		return
+	_perf_slow = _perf_slow + delta if fps < fps_target() * 0.85 else maxf(_perf_slow - delta, minf(_perf_slow, 0.0))
+	if _perf_slow < 5.0:
+		return
+	_perf_slow = -10.0
+	_perf_step += 1
+	changed.emit()
+	var what: String = ["", "сглаживание краёв выключено", "чёткость 3D — 85 %", "чёткость 3D — 75 %"][_perf_step]
+	GameManager.notify("Чтобы держать %d FPS: %s. Вернуть — в «Настройках»" % [int(fps_target()), what])
+
+
+## Сглаживание сейчас (с учётом «Держать FPS»).
+func effective_aa() -> int:
+	return 0 if _perf_step >= 1 else aa
+
+
+## Доля разрешения 3D сейчас (с учётом «Держать FPS»).
+func effective_scale() -> float:
+	return RENDER_SCALES[clampi(maxi(scale_i, _perf_step - 1), 0, RENDER_SCALES.size() - 1)]
+
+
+func set_aa(i: int) -> void:
+	aa = clampi(i, 0, AA_NAMES.size() - 1)
+	_perf_step = 0
+	_save()
+	changed.emit()
+
+
+func set_scale(i: int) -> void:
+	scale_i = clampi(i, 0, RENDER_SCALES.size() - 1)
+	_perf_step = 0
+	_save()
+	changed.emit()
+
+
+func set_auto_perf(v: bool) -> void:
+	auto_perf = v
+	_perf_step = 0
+	_save()
+	changed.emit()
+
+
+func set_fps_limit(i: int) -> void:
+	fps_limit = clampi(i, 0, FPS_LIMITS.size() - 1)
+	_perf_step = 0
+	_apply_fps()
+	_save()
+
+
+## Синхронизация с экраном и потолок кадров. В браузере частоту задаёт
+## сам браузер (по экрану) — там только потолок.
+func _apply_fps() -> void:
+	var lim: int = FPS_LIMITS[fps_limit]
+	if not OS.has_feature("web") and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if lim == 0 else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0 if lim == 0 or lim >= 1000 else lim
+
+
 func _apply() -> void:
+	_apply_fps()
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(volume, 0.0001)))
 	AudioServer.set_bus_mute(0, volume <= 0.001)
 	changed.emit()
@@ -310,6 +410,10 @@ func _save() -> void:
 	cfg.set_value("driving", "auto_gearbox", auto_gearbox)
 	cfg.set_value("graphics", "detail", detail)
 	cfg.set_value("graphics", "v", 2)
+	cfg.set_value("graphics", "fps_limit", fps_limit)
+	cfg.set_value("graphics", "aa", aa)
+	cfg.set_value("graphics", "scale", scale_i)
+	cfg.set_value("graphics", "auto_perf", auto_perf)
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)

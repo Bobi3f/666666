@@ -304,6 +304,7 @@ var _cabin_light: OmniLight3D
 enum Light { AUTO, PARKING, LOW, OFF }
 const LIGHT_NAMES := ["авто (ближний в темноте сам)", "габариты", "ближний свет", "выключен"]
 var light_mode := Light.AUTO
+var _lights_key := -1
 var high_beam := false
 ## Габаритные огни спереди и светящиеся стёкла фар — свои материалы.
 var _marker_mat: StandardMaterial3D
@@ -1272,6 +1273,12 @@ func markers_on() -> bool:
 func _update_lights() -> void:
 	var beams := beams_on()
 	var far := beams and high_beam
+	# Свет и материалы трогаем, только когда что-то поменялось: иначе каждая
+	# машина каждый кадр перезаливает их в видеокарту
+	var key := int(beams) + 2 * int(far) + 4 * int(markers_on()) + 8 * int(braking and driver != null)
+	if key == _lights_key:
+		return
+	_lights_key = key
 	for l in _headlights:
 		l.visible = beams
 		l.spot_range = 75.0 if far else 40.0
@@ -1290,6 +1297,7 @@ func _update_lights() -> void:
 
 ## Стёкла фар и габаритные огни спереди — светятся, когда включены.
 func _front_lamps(lamps: Array) -> void:
+	_lights_key = -1
 	_lamp_mat = StandardMaterial3D.new()
 	_lamp_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_lamp_mat.albedo_color = Color(0.3, 0.3, 0.29)
@@ -1894,6 +1902,7 @@ func _wheel_mesh(moto: bool, r: float, w: float, disc: Variant) -> MeshInstance3
 
 ## Стоп-сигналы — отдельный меш со своим материалом: его яркость меняется.
 func _brake_lights(points: Array, size: Vector3) -> void:
+	_lights_key = -1
 	var box := BoxMesh.new()
 	box.size = size
 	_brake_mat = StandardMaterial3D.new()

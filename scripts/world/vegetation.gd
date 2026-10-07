@@ -30,6 +30,8 @@ uniform float clouds = 0.0;
 uniform vec2 cloud_wind = vec2(3.0, 1.2);
 
 varying vec3 gpos;
+// Тень облака — по вершинам (травинки мелкие), а не по каждой точке экрана
+varying float cshade;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -56,6 +58,7 @@ void vertex() {
 	float t = TIME;
 	VERTEX.x += sin(t * 1.7 + wp.x * 0.35 + wp.z * 0.21) * sway * h * 2.5;
 	VERTEX.z += cos(t * 1.3 + wp.z * 0.31 + wp.x * 0.12) * sway * h * 1.8;
+	cshade = clouds > 0.0 ? 1.0 - clouds * 0.42 * cloud_shadow(wp) : 1.0;
 }
 
 void fragment() {
@@ -64,9 +67,7 @@ void fragment() {
 	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
 	// Зимой трава под снегом, торчат только кончики
 	c = mix(c, vec3(0.88, 0.9, 0.94), snow * 0.85);
-	if (clouds > 0.0) {
-		c *= 1.0 - clouds * 0.42 * cloud_shadow(gpos);
-	}
+	c *= cshade;
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	// Освещаем как землю, с обеих сторон травинки: иначе изнанка

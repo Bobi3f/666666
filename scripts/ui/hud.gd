@@ -27,6 +27,8 @@ var nav: Control
 
 func _ready() -> void:
 	layer = 10
+	QuestManager.changed.connect(refresh_soon)
+	GameManager.money_changed.connect(func(_v: int) -> void: refresh_soon())
 	add_child(preload("res://scripts/ui/speedometer.gd").new())
 	nav = preload("res://scripts/ui/nav_arrow.gd").new()
 	add_child(nav)
@@ -139,41 +141,25 @@ func show_message(text: String) -> void:
 	_msg_time = MSG_TIME
 
 
+## Строки, кольца и трекер меняются редко — обновляем 10 раз в секунду (и
+## сразу, как изменились задания), а не каждый кадр: на 120 FPS это
+## заметная экономия. Подсказка, сообщения и приборы — каждый кадр.
+const SLOW_UPDATE := 0.1
+var _tick := 0.0
+
+
+func refresh_soon() -> void:
+	_tick = 0.0
+
+
 func _process(delta: float) -> void:
-	_top.text = "%s    %d грн    %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
-	# В ту же строку — кольца сытости, бодрости и воды, за ними запас еды
-	var tw := _top.get_combined_minimum_size().x
-	_needs.position = Vector2(16.0 + tw + 14.0, 6.0)
-	_needs.queue_redraw()
-	_snacks.position = Vector2(_needs.position.x + (RINGS.size() - 1) * (RING_R * 2.0 + 30.0) + RING_R * 2.0 + 18.0, 14.0)
-	_fps.visible = SettingsManager.show_fps
-	if _fps.visible:
-		var f := Engine.get_frames_per_second()
-		_fps.text = "FPS %d" % int(f)
-		_fps.position = Vector2(_snacks.position.x + _snacks.get_combined_minimum_size().x + 16.0, 15.0)
-		_fps.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5) if f >= 28.0 else (Color(1.0, 0.85, 0.3) if f >= 18.0 else Color(1.0, 0.4, 0.35)))
-	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
-	var lines: Array[String] = []
-	if GameManager.challenge_line != "":
-		lines.append("» " + GameManager.challenge_line)
-	if Progress.delivery_active:
-		lines.append(Progress.goal_text())
-	lines.append_array(QuestManager.tracker_lines())
-	var daily := Daily.tracker_line()
-	if daily != "":
-		lines.append(daily)
-	_goal.text = GameManager.touch_text("\n".join(lines))
-	var vw := get_viewport().get_visible_rect().size.x
-	# Справа — кнопки (телефон) и мини-карта: строки заданий их не заходят
-	var right := 140.0 if GameManager.touch_mode else 270.0
-	if SettingsManager.minimap and GameManager.touch_mode:
-		right = 240.0
-	_goal.size.x = vw - right
-	_goal.size.y = 0.0
+	_tick -= delta
+	if _tick <= 0.0:
+		_tick = SLOW_UPDATE
+		_slow_update()
 	_update_money_pop(delta)
 	# Подсказка по клавишам на телефоне не нужна — там кнопки
 	_keys_hint.visible = not GameManager.touch_mode
-	_snacks.text = "Еды: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еды: %d (Q)" % NeedsManager.snacks
 	var car := GameManager.vehicle as Vehicle
 	var p := GameManager.player as Player
 	if car and car.driver:
@@ -219,6 +205,40 @@ func _process(delta: float) -> void:
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)
 	else:
 		_msg.text = ""
+
+
+func _slow_update() -> void:
+	_top.text = "%s    %d грн    %s" % [TimeManager.clock_text(), GameManager.money, WeatherManager.name_text()]
+	# В ту же строку — кольца сытости, бодрости и воды, за ними запас еды
+	var tw := _top.get_combined_minimum_size().x
+	_needs.position = Vector2(16.0 + tw + 14.0, 6.0)
+	_needs.queue_redraw()
+	_snacks.position = Vector2(_needs.position.x + (RINGS.size() - 1) * (RING_R * 2.0 + 30.0) + RING_R * 2.0 + 18.0, 14.0)
+	_fps.visible = SettingsManager.show_fps
+	if _fps.visible:
+		var f := Engine.get_frames_per_second()
+		_fps.text = "FPS %d" % int(f)
+		_fps.position = Vector2(_snacks.position.x + _snacks.get_combined_minimum_size().x + 16.0, 15.0)
+		_fps.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5) if f >= 28.0 else (Color(1.0, 0.85, 0.3) if f >= 18.0 else Color(1.0, 0.4, 0.35)))
+	# Трекер: развоз (если идёт), сюжетное задание и просьбы жителей
+	var lines: Array[String] = []
+	if GameManager.challenge_line != "":
+		lines.append("» " + GameManager.challenge_line)
+	if Progress.delivery_active:
+		lines.append(Progress.goal_text())
+	lines.append_array(QuestManager.tracker_lines())
+	var daily := Daily.tracker_line()
+	if daily != "":
+		lines.append(daily)
+	_goal.text = GameManager.touch_text("\n".join(lines))
+	var vw := get_viewport().get_visible_rect().size.x
+	# Справа — кнопки (телефон) и мини-карта: строки заданий их не заходят
+	var right := 140.0 if GameManager.touch_mode else 270.0
+	if SettingsManager.minimap and GameManager.touch_mode:
+		right = 240.0
+	_goal.size.x = vw - right
+	_goal.size.y = 0.0
+	_snacks.text = "Еды: %d" % NeedsManager.snacks if GameManager.touch_mode else "Еды: %d (Q)" % NeedsManager.snacks
 
 
 ## Три кольца: доля заполнения дугой, процент в середине, подпись справа

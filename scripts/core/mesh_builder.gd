@@ -295,96 +295,111 @@ void fragment() {
 		float red = clamp((c.r - c.g * 1.3) * 6.0, 0.0, 1.0) * (1.0 - smoothstep(0.7, 0.78, sat));
 		float vert = 1.0 - smoothstep(0.2, 0.45, abs(wnrm.y));
 		float slope = smoothstep(0.22, 0.4, wnrm.y) * (1.0 - smoothstep(0.86, 0.95, wnrm.y)) * smoothstep(1.6, 2.4, wpos.y);
-		// Рисунок вблизи, издалека — ровный цвет (без ряби)
+		// Рисунок вблизи, издалека — ровный цвет (без ряби). Дальше 55 м
+		// мелкий рисунок гаснет до нуля — там его и не считаем: дальние точки
+		// экрана обходятся без восьми выборок из текстуры
 		float dist = length(wpos - CAMERA_POSITION_WORLD);
 		float near = 1.0 - smoothstep(22.0, 55.0, dist);
 		vec3 big3 = texture(grain, wpos.xz * 0.031).rgb;
-		vec3 fine3 = texture(grain, wpos.xz * 3.7).rgb;
-		// Средний масштаб: кочки и стебли травы, проплешины, пятна на асфальте
-		vec3 mid3 = texture(grain, wpos.xz * 0.27).rgb;
 		float big = big3.r;
-		float fine = fine3.r;
-		// Трава: крупные пятна посветлее и потемнее, выгоревшие места, мелкая крупка
+		// Трава: крупные пятна посветлее и потемнее, выгоревшие места
 		float grass = ground_lvl * green;
 		c *= mix(1.0, mix(0.84, 1.16, (big - 0.78) / 0.28), grass);
-		c = mix(c, c * vec3(1.12, 1.06, 0.78), grass * smoothstep(0.98, 1.04, texture(grain, wpos.xz * 0.011).r) * 0.8);
-		c *= mix(1.0, 0.88 + 0.16 * (fine - 0.78) / 0.28, grass * near);
-		// Кочки и стебли: тёмные промежутки между кочками, светлые макушки;
-		// сухие желтоватые проплешины и сочные тёмные пятна
-		c *= mix(1.0, 0.68 + 0.48 * mid3.g, grass * near);
-		c = mix(c, c * vec3(1.16, 1.04, 0.62), grass * smoothstep(0.62, 0.8, mid3.b) * 0.7);
-		c = mix(c, c * vec3(0.78, 0.92, 0.82), grass * (1.0 - smoothstep(0.2, 0.36, mid3.b)) * 0.6);
-		// Цветы в траве: редкие точки — белые, жёлтые, лиловые
-		vec2 fc = wpos.xz * 1.6;
-		float fh = hash(floor(fc));
-		float fdot = 1.0 - smoothstep(0.05, 0.09, length(fract(fc) - 0.5));
-		vec3 flower = fh > 0.995 ? vec3(0.75, 0.55, 0.95) : (fh > 0.985 ? vec3(1.0, 0.9, 0.25) : vec3(0.97, 0.97, 0.92));
-		c = mix(c, flower, grass * fdot * step(0.975, fh) * (1.0 - smoothstep(10.0, 25.0, dist)) * (1.0 - autumn) * (1.0 - snow));
-		// Асфальт: крошка и трещины
+		if (grass > 0.0) {
+			c = mix(c, c * vec3(1.12, 1.06, 0.78), grass * smoothstep(0.98, 1.04, texture(grain, wpos.xz * 0.011).r) * 0.8);
+		}
 		float asph = ground_lvl * grey * (1.0 - smoothstep(0.34, 0.5, lum));
-		float crack_n = texture(grain, wpos.xz * 0.19).r;
-		// Трещины — редкие: тонкая линия шума и только там, где асфальт старый
-		float old = smoothstep(0.99, 1.03, big);
-		float crack = (1.0 - smoothstep(0.0, 0.004, abs(crack_n - 0.925))) * old;
-		c *= mix(1.0, 0.82 + 0.3 * (fine - 0.78) / 0.28, asph * near);
-		c *= 1.0 - asph * crack * 0.35 * near;
-		// Щебёнка в асфальте и тёмные заплатки, где латали ямы
-		c = mix(c, c * 1.28 + 0.02, asph * near * smoothstep(0.82, 0.92, fine3.g) * 0.7);
-		c *= mix(1.0, 0.84 + 0.26 * mid3.g, asph * near);
-		// Масляные пятна и колеи — темнее
-		c *= 1.0 - 0.1 * asph * smoothstep(0.7, 0.85, mid3.b);
-		c *= 1.0 - 0.16 * asph * (1.0 - smoothstep(0.14, 0.2, big3.g));
-		// Грунт и гравий: камешки светлее, выбоины темнее
 		float dirt = ground_lvl * brown * (1.0 - green);
-		float pebble = smoothstep(1.015, 1.045, fine);
-		c = mix(c, c * 1.3 + 0.03, dirt * pebble * near);
 		c *= mix(1.0, mix(0.86, 1.08, (big - 0.78) / 0.28), dirt);
-		// Камешки покрупнее и сырые низинки (темнее, с отливом)
-		c = mix(c, vec3(0.62, 0.6, 0.56), dirt * near * smoothstep(0.88, 0.95, mid3.g) * 0.8);
-		c *= mix(1.0, 0.85 + 0.25 * mid3.r, dirt * near);
 		float damp = dirt * (1.0 - smoothstep(0.25, 0.4, big3.b));
 		c *= 1.0 - 0.18 * damp;
 		rough = mix(rough, 0.6, damp);
-		// Стены из досок: щели между досками и волокна дерева
+		c *= 1.0 - 0.16 * asph * (1.0 - smoothstep(0.14, 0.2, big3.g));
 		float wood = vert * brown * (1.0 - red) * (1.0 - smoothstep(0.45, 0.6, lum));
-		float along = wpos.x * abs(wnrm.z) + wpos.z * abs(wnrm.x);
-		float fy = fract(wpos.y / 0.19);
-		float gap = smoothstep(0.9, 0.97, fy) + (1.0 - smoothstep(0.0, 0.03, fy));
-		vec3 fib3 = texture(grain, vec2(along * 0.35, wpos.y * 7.0)).rgb;
-		float fibre = fib3.r * 0.5 + (0.78 + fib3.b * 0.28) * 0.5;
-		// Сучки — тёмные пятнышки на досках
-		float knot = smoothstep(0.9, 0.97, fib3.g);
-		float board = hash(vec2(floor(wpos.y / 0.19), floor(along / 2.3)));
-		c *= mix(1.0, (1.0 - 0.45 * gap) * (0.82 + 0.28 * (fibre - 0.78) / 0.28) * (0.9 + 0.2 * board) * (1.0 - 0.35 * knot), wood * near);
-		// Кирпич: ряды со сдвигом, светлый шов, кирпичи разного тона
 		float brick = vert * red * smoothstep(0.2, 0.3, lum) * (1.0 - wood);
-		float row = floor(wpos.y / 0.075);
-		float u = along / 0.26 + row * 0.5;
-		float seam = max(1.0 - smoothstep(0.0, 0.07, fract(u)), 1.0 - smoothstep(0.0, 0.14, fract(wpos.y / 0.075)));
-		float tone = hash(vec2(floor(u), row));
-		vec3 bc = c * (0.86 + 0.26 * tone);
-		c = mix(c, mix(bc, vec3(0.72, 0.7, 0.64), seam * 0.8), brick * near);
-		// Штукатурка и панели: подтёки и швы между плитами
 		float plaster = vert * grey * smoothstep(0.4, 0.55, lum) * step(0.9, wpos.y);
-		float pseam = max(1.0 - smoothstep(0.0, 0.012, abs(fract(wpos.y / 2.8) - 0.5) - 0.488),
-			1.0 - smoothstep(0.0, 0.01, abs(fract(along / 3.2) - 0.5) - 0.49));
-		vec3 st3 = texture(grain, vec2(along * 0.4, wpos.y * 0.12)).rgb;
-		float stain = st3.r;
-		c *= mix(1.0, (0.9 + 0.14 * (stain - 0.78) / 0.28) * (1.0 - 0.18 * pseam), plaster * near);
-		// Облезлая краска пятнами и потёки от дождя сверху вниз
-		c = mix(c, c * vec3(0.9, 0.88, 0.84), plaster * near * smoothstep(0.86, 0.93, st3.g));
-		float streak = texture(grain, vec2(along * 1.7, wpos.y * 0.03)).b;
-		c *= 1.0 - 0.12 * plaster * near * smoothstep(0.62, 0.8, streak);
-		// Крыши: ряды черепицы или шифера вдоль ската и волна поперёк
-		float fr = fract(wpos.y * 5.0);
-		float wave = 0.5 + 0.5 * sin((wpos.x + wpos.z) * 11.0);
-		c *= mix(1.0, (1.0 - 0.3 * smoothstep(0.82, 0.98, fr)) * (0.9 + 0.12 * wave), slope * near);
-		rough = mix(rough, 0.75, slope);
-		// Шифер серый — с зелёными пятнами мха и лишайника
-		float moss = slope * grey * smoothstep(0.75, 0.9, big3.g) * (0.6 + 0.4 * fine3.g);
-		c = mix(c, vec3(0.38, 0.45, 0.25) * (0.8 + 0.3 * fine), moss * 0.55);
-		// Грязь у низа стен: брызги с земли, тёмная полоса цоколя
 		float base = vert * (1.0 - smoothstep(0.05, 0.55, wpos.y)) * (1.0 - green);
+		float moss = slope * grey * smoothstep(0.75, 0.9, big3.g);
+		rough = mix(rough, 0.75, slope);
+		// Мелкая крупка — для близкого рисунка, мха и низа стен
+		vec3 fine3 = vec3(0.78);
+		if (near > 0.0 || moss > 0.0 || base > 0.0) {
+			fine3 = texture(grain, wpos.xz * 3.7).rgb;
+		}
+		float fine = fine3.r;
+		if (near > 0.0) {
+			// Средний масштаб: кочки и стебли травы, проплешины, пятна на асфальте
+			vec3 mid3 = texture(grain, wpos.xz * 0.27).rgb;
+			c *= mix(1.0, 0.88 + 0.16 * (fine - 0.78) / 0.28, grass * near);
+			// Кочки и стебли: тёмные промежутки между кочками, светлые макушки;
+			// сухие желтоватые проплешины и сочные тёмные пятна
+			c *= mix(1.0, 0.68 + 0.48 * mid3.g, grass * near);
+			c = mix(c, c * vec3(1.16, 1.04, 0.62), grass * smoothstep(0.62, 0.8, mid3.b) * 0.7);
+			c = mix(c, c * vec3(0.78, 0.92, 0.82), grass * (1.0 - smoothstep(0.2, 0.36, mid3.b)) * 0.6);
+			// Цветы в траве: редкие точки — белые, жёлтые, лиловые
+			vec2 fc = wpos.xz * 1.6;
+			float fh = hash(floor(fc));
+			float fdot = 1.0 - smoothstep(0.05, 0.09, length(fract(fc) - 0.5));
+			vec3 flower = fh > 0.995 ? vec3(0.75, 0.55, 0.95) : (fh > 0.985 ? vec3(1.0, 0.9, 0.25) : vec3(0.97, 0.97, 0.92));
+			c = mix(c, flower, grass * fdot * step(0.975, fh) * (1.0 - smoothstep(10.0, 25.0, dist)) * (1.0 - autumn) * (1.0 - snow));
+			// Асфальт: крошка и трещины (редкие — только там, где асфальт старый)
+			if (asph > 0.0) {
+				float crack_n = texture(grain, wpos.xz * 0.19).r;
+				float old = smoothstep(0.99, 1.03, big);
+				float crack = (1.0 - smoothstep(0.0, 0.004, abs(crack_n - 0.925))) * old;
+				c *= mix(1.0, 0.82 + 0.3 * (fine - 0.78) / 0.28, asph * near);
+				c *= 1.0 - asph * crack * 0.35 * near;
+				// Щебёнка в асфальте и тёмные заплатки, где латали ямы
+				c = mix(c, c * 1.28 + 0.02, asph * near * smoothstep(0.82, 0.92, fine3.g) * 0.7);
+				c *= mix(1.0, 0.84 + 0.26 * mid3.g, asph * near);
+				// Масляные пятна и колеи — темнее
+				c *= 1.0 - 0.1 * asph * smoothstep(0.7, 0.85, mid3.b);
+			}
+			// Грунт и гравий: камешки светлее, выбоины темнее, камешки покрупнее
+			float pebble = smoothstep(1.015, 1.045, fine);
+			c = mix(c, c * 1.3 + 0.03, dirt * pebble * near);
+			c = mix(c, vec3(0.62, 0.6, 0.56), dirt * near * smoothstep(0.88, 0.95, mid3.g) * 0.8);
+			c *= mix(1.0, 0.85 + 0.25 * mid3.r, dirt * near);
+			float along = wpos.x * abs(wnrm.z) + wpos.z * abs(wnrm.x);
+			// Стены из досок: щели между досками, волокна дерева, сучки
+			if (wood > 0.0) {
+				float fy = fract(wpos.y / 0.19);
+				float gap = smoothstep(0.9, 0.97, fy) + (1.0 - smoothstep(0.0, 0.03, fy));
+				vec3 fib3 = texture(grain, vec2(along * 0.35, wpos.y * 7.0)).rgb;
+				float fibre = fib3.r * 0.5 + (0.78 + fib3.b * 0.28) * 0.5;
+				float knot = smoothstep(0.9, 0.97, fib3.g);
+				float board = hash(vec2(floor(wpos.y / 0.19), floor(along / 2.3)));
+				c *= mix(1.0, (1.0 - 0.45 * gap) * (0.82 + 0.28 * (fibre - 0.78) / 0.28) * (0.9 + 0.2 * board) * (1.0 - 0.35 * knot), wood * near);
+			}
+			// Кирпич: ряды со сдвигом, светлый шов, кирпичи разного тона
+			if (brick > 0.0) {
+				float row = floor(wpos.y / 0.075);
+				float u = along / 0.26 + row * 0.5;
+				float seam = max(1.0 - smoothstep(0.0, 0.07, fract(u)), 1.0 - smoothstep(0.0, 0.14, fract(wpos.y / 0.075)));
+				float tone = hash(vec2(floor(u), row));
+				vec3 bc = c * (0.86 + 0.26 * tone);
+				c = mix(c, mix(bc, vec3(0.72, 0.7, 0.64), seam * 0.8), brick * near);
+			}
+			// Штукатурка и панели: подтёки, швы между плитами, облезлая краска
+			if (plaster > 0.0) {
+				float pseam = max(1.0 - smoothstep(0.0, 0.012, abs(fract(wpos.y / 2.8) - 0.5) - 0.488),
+					1.0 - smoothstep(0.0, 0.01, abs(fract(along / 3.2) - 0.5) - 0.49));
+				vec3 st3 = texture(grain, vec2(along * 0.4, wpos.y * 0.12)).rgb;
+				c *= mix(1.0, (0.9 + 0.14 * (st3.r - 0.78) / 0.28) * (1.0 - 0.18 * pseam), plaster * near);
+				c = mix(c, c * vec3(0.9, 0.88, 0.84), plaster * near * smoothstep(0.86, 0.93, st3.g));
+				float streak = texture(grain, vec2(along * 1.7, wpos.y * 0.03)).b;
+				c *= 1.0 - 0.12 * plaster * near * smoothstep(0.62, 0.8, streak);
+			}
+			// Крыши: ряды черепицы или шифера вдоль ската и волна поперёк
+			if (slope > 0.0) {
+				float fr = fract(wpos.y * 5.0);
+				float wave = 0.5 + 0.5 * sin((wpos.x + wpos.z) * 11.0);
+				c *= mix(1.0, (1.0 - 0.3 * smoothstep(0.82, 0.98, fr)) * (0.9 + 0.12 * wave), slope * near);
+			}
+		}
+		// Шифер серый — с зелёными пятнами мха и лишайника
+		c = mix(c, vec3(0.38, 0.45, 0.25) * (0.8 + 0.3 * fine), moss * (0.6 + 0.4 * fine3.g) * 0.55);
+		// Грязь у низа стен: брызги с земли, тёмная полоса цоколя
 		c = mix(c, c * vec3(0.7, 0.64, 0.56), base * (0.5 + 0.5 * fine3.g) * 0.8);
 	}
 	c = mix(c, vec3(c.g * 1.05 + 0.04, c.g * 0.7, c.b * 0.4), autumn * green);
@@ -458,7 +473,23 @@ static func vehicle_material() -> ShaderMaterial:
 
 
 ## Тени облаков по земле (0 — нет): всему миру, машинам и траве.
+## Последние заданные значения: те же — материал не трогаем (иначе каждый
+## кадр все материалы мира перезаливаются в видеокарту).
+static var _last := {}
+
+
+static func _changed(key: String, v: Variant) -> bool:
+	if _last.get(key) == v:
+		return false
+	_last[key] = v
+	return true
+
+
 static func set_clouds(k: float) -> void:
+	k = snappedf(k, 0.005)
+	# Трава строится позже мира — её материал тоже часть ключа
+	if not _changed("clouds", [k, Vegetation.grass_material]):
+		return
 	for m in [world_material(), detail_material(), vehicle_material()]:
 		m.set_shader_parameter("clouds", k)
 	if Vegetation.grass_material:
@@ -467,6 +498,8 @@ static func set_clouds(k: float) -> void:
 
 ## Сезон для всего мира: снег, осень, весна — от 0 до 1.
 static func set_season(snow: float, autumn: float, spring: float) -> void:
+	if not _changed("season", Vector3(snappedf(snow, 0.002), snappedf(autumn, 0.002), snappedf(spring, 0.002))):
+		return
 	for m in [world_material(), detail_material(), vehicle_material()]:
 		m.set_shader_parameter("snow", snow)
 		m.set_shader_parameter("autumn", autumn)
@@ -475,6 +508,8 @@ static func set_season(snow: float, autumn: float, spring: float) -> void:
 
 ## Мокрая земля после дождя (0..1) и качество рисунка из настроек.
 static func set_surface(wet: float, quality: float) -> void:
+	if not _changed("surface", Vector2(snappedf(wet, 0.005), quality)):
+		return
 	for m in [world_material(), detail_material(), vehicle_material()]:
 		m.set_shader_parameter("wet", wet)
 		m.set_shader_parameter("quality", quality)

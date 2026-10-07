@@ -339,6 +339,17 @@ func _build_settings(box: VBoxContainer) -> void:
 	mm.button_pressed = SettingsManager.minimap
 	mm.toggled.connect(SettingsManager.set_minimap)
 	box.add_child(mm)
+	# Кадры, сглаживание и чёткость — на компьютере (телефон подстраивается сам)
+	if not GameManager.touch_mode:
+		_choice_row(box, "Кадров в секунду (FPS)", SettingsManager.FPS_NAMES, SettingsManager.fps_limit, SettingsManager.set_fps_limit)
+		_hint(box, "«Как экран» — плавно и без разрывов картинки, но не выше частоты монитора. 120 и 144 — для мониторов 120–144 Гц.")
+		_choice_row(box, "Сглаживание краёв (на высокой детализации)", SettingsManager.AA_NAMES, SettingsManager.aa, SettingsManager.set_aa)
+		_choice_row(box, "Чёткость 3D", ["100 %", "85 %", "75 %"], SettingsManager.scale_i, SettingsManager.set_scale)
+		var keep := CheckButton.new()
+		keep.text = "Держать FPS: не хватает кадров — проще сглаживание и чёткость"
+		keep.button_pressed = SettingsManager.auto_perf
+		keep.toggled.connect(SettingsManager.set_auto_perf)
+		box.add_child(keep)
 	var fps := CheckButton.new()
 	fps.text = "Показывать FPS (кадры в секунду)"
 	fps.button_pressed = SettingsManager.show_fps
@@ -731,3 +742,37 @@ func _new_game() -> void:
 	if not GameManager.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	get_tree().change_scene_to_file("res://scenes/Boot.tscn")
+
+
+## Строка выбора из нескольких кнопок (одна нажата): заголовок и варианты.
+func _choice_row(box: Container, title: String, names: Array, current: int, fn: Callable) -> void:
+	var l := Label.new()
+	l.text = title
+	box.add_child(l)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
+	var g := ButtonGroup.new()
+	for i in names.size():
+		var b := Button.new()
+		b.text = names[i]
+		b.toggle_mode = true
+		b.button_group = g
+		b.button_pressed = current == i
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, _btn_h())
+		b.pressed.connect(func() -> void:
+			SoundLibrary.play("click", -6.0)
+			fn.call(i))
+		row.add_child(b)
+
+
+## Мелкая серая подсказка под настройкой.
+func _hint(box: Container, text: String) -> void:
+	var h := Label.new()
+	h.text = text
+	h.modulate = Color(1, 1, 1, 0.55)
+	h.add_theme_font_size_override("font_size", 14)
+	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	h.custom_minimum_size = Vector2(380, 0)
+	box.add_child(h)

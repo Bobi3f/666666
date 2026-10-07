@@ -354,12 +354,15 @@ func ui_height() -> float:
 	return clampf(css / 0.75, 460.0, 600.0)
 
 
+## Компьютер: 3D в доле разрешения из настроек «Чёткость 3D» (и «Держать FPS»).
 ## Телефон: экран с высокой плотностью точек, а видеочип слабый — 3D рисуем
 ## с постоянным числом строк (SettingsManager.render_lines, около 560 на
 ## низкой детализации, но не больше 65 % экрана), а не во всё разрешение;
 ## интерфейс остаётся чётким.
 func _fit_render_scale() -> void:
 	if not GameManager.touch_mode:
+		# Компьютер: чёткость 3D из настроек (и «Держать FPS»)
+		get_viewport().scaling_3d_scale = SettingsManager.effective_scale()
 		return
 	var h := maxf(float(get_window().size.y), 1.0)
 	get_viewport().scaling_3d_scale = clampf(SettingsManager.render_lines() / h, 0.35, 0.65)
@@ -512,8 +515,18 @@ func _apply_detail() -> void:
 		_vignette.visible = SettingsManager.detail >= 2 and not GameManager.touch_mode
 	# На компьютере на высокой — сглаживание краёв (на телефоне дорого)
 	# В браузере сглаживание дорого встроенной видеокарте ноутбука — только в программе
-	get_viewport().msaa_3d = Viewport.MSAA_2X if SettingsManager.detail >= 2 and not GameManager.touch_mode \
-		and not OS.has_feature("web") else Viewport.MSAA_DISABLED
+	var aa := SettingsManager.effective_aa() if SettingsManager.detail >= 2 and not GameManager.touch_mode \
+		and not OS.has_feature("web") else 0
+	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][aa]
+	_fit_render_scale()
+
+
+var _water_last := []
+
+
+## Цвет сдвинулся настолько, что это видно глазом (на 1/256 и больше).
+static func _color_moved(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) > 0.004 or absf(a.g - b.g) > 0.004 or absf(a.b - b.b) > 0.004
 
 
 func _update_daylight() -> void:
@@ -527,10 +540,15 @@ func _update_daylight() -> void:
 	_sun.rotation = Vector3(-lerpf(0.08, 1.1, elev), lerpf(-1.9, 1.9, clampf(t, 0.0, 1.0)), 0.0)
 	_sun.light_energy = lerpf(0.0, 1.15, day) * (1.0 - cloud * 0.65)
 	var grey := Color(0.52, 0.54, 0.56)
-	_sky.sky_top_color = _sky_top.lerp(grey, cloud * 0.8)
 	# На рассвете и закате край неба теплеет
 	var dusk := clampf(1.0 - absf(absf(h - 13.0) - 6.6) / 1.4, 0.0, 1.0) * (1.0 - cloud * 0.7)
-	_sky.sky_horizon_color = _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8).lerp(Color(0.98, 0.62, 0.4), dusk * 0.75)
+	# Небо меняем, только когда цвет заметно сдвинулся: каждая смена цвета
+	# заставляет видеокарту заново считать освещение от неба
+	var top := _sky_top.lerp(grey, cloud * 0.8)
+	var hor := _sky_horizon.lerp(grey.lightened(0.15), cloud * 0.8).lerp(Color(0.98, 0.62, 0.4), dusk * 0.75)
+	if _color_moved(_sky.sky_top_color, top) or _color_moved(_sky.sky_horizon_color, hor):
+		_sky.sky_top_color = top
+		_sky.sky_horizon_color = hor
 	# Утром над полями стелется дымка: гуще всего на рассвете, к 9 уходит
 	var mist := clampf(1.0 - absf(h - 6.2) / 2.6, 0.0, 1.0) * (1.0 - WeatherManager.rain)
 	if WeatherManager.season() == 1:
@@ -551,14 +569,20 @@ func _update_daylight() -> void:
 	# В воде — небо: днём голубое, на закате тёплое, ночью тёмное
 	if _water_mat:
 		var sky_col := _sky.sky_horizon_color.lerp(_sky.sky_top_color, 0.35) * lerpf(0.08, 1.0, day)
-		_water_mat.set_shader_parameter("sky", Vector3(sky_col.r, sky_col.g, sky_col.b))
-		_water_mat.set_shader_parameter("deep", Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day))
-		_water_mat.set_shader_parameter("ice", clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0))
+		var water := [Vector3(sky_col.r, sky_col.g, sky_col.b).snappedf(0.004), (Vector3(0.1, 0.2, 0.24) * lerpf(0.15, 1.0, day)).snappedf(0.004),
+			snappedf(clampf(WeatherManager.snow * 1.2 - 0.2, 0.0, 1.0), 0.004)]
+		if water != _water_last:
+			_water_last = water
+			_water_mat.set_shader_parameter("sky", water[0])
+			_water_mat.set_shader_parameter("deep", water[1])
+			_water_mat.set_shader_parameter("ice", water[2])
 	# Рисунок поверхностей — со средней детализации: на низкой (телефон)
 	# шейдер обходится тремя выборками зерна, без узоров травы и кирпича
 	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.detail >= 1 else 0.0)
 	if _glow_mat:
-		_glow_mat.albedo_color = Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
+		var gc := Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
+		if _color_moved(_glow_mat.albedo_color, gc):
+			_glow_mat.albedo_color = gc
 	# Фонари зажигаются в сумерках
 	var lit := day < 0.35
 	for l in _street_lights:
