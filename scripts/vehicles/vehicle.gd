@@ -221,6 +221,8 @@ var price := 0
 var sale_xf := Transform3D()
 ## Учебная машина автошколы: сесть можно, только пока allowed() — на экзамене.
 var school := false
+## Стоит в личном гараже (MyGarage): не видна, не считается, не мешает.
+var garaged := false
 var allowed: Callable
 var blurb := ""
 var engine_tuned := false
@@ -1403,6 +1405,38 @@ func speed_kmh() -> float:
 
 # --- Внешний вид ------------------------------------------------------------
 
+## Своя техника игрока — то, что можно держать в личном гараже: куплена или
+## своя с начала, но не учебная автошколы и не колхозный трактор.
+func mine() -> bool:
+	return owned() and not school and kind != "tractor"
+
+
+## В гараж (on) — спрятать под землю и выключить; из гаража — поставить в at.
+func set_garaged(on: bool, at := Transform3D()) -> void:
+	if on:
+		if driver:
+			_drop_driver()
+		engine_on = false
+		rpm = 0.0
+		gear = 0
+		speed = 0.0
+		lateral = 0.0
+		velocity = Vector3.ZERO
+		# Под землю: ни столкновений, ни подсказки «сесть», ни лишней работы
+		global_position = Vector3(global_position.x, -300.0, global_position.z)
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
+	else:
+		visible = true
+		process_mode = Node.PROCESS_MODE_INHERIT
+		global_transform = at
+		speed = 0.0
+		lateral = 0.0
+		velocity = Vector3.ZERO
+		reset_physics_interpolation()
+	garaged = on
+
+
 func owned() -> bool:
 	if EDITIONS.has(edition):
 		return true
@@ -2115,6 +2149,7 @@ func save_state() -> Dictionary:
 		"health": health.duplicate(),
 		"light": light_mode,
 		"high": high_beam,
+		"garaged": garaged,
 	}
 
 
@@ -2154,3 +2189,8 @@ func load_state(d: Dictionary) -> void:
 	# Игрок загружается отдельно — сажаем его после всех загрузок
 	if bool(d.get("driver", false)):
 		_on_enter.call_deferred()
+	if bool(d.get("garaged", false)) != garaged:
+		if bool(d.get("garaged", false)):
+			set_garaged(true)
+		else:
+			set_garaged(false, global_transform)

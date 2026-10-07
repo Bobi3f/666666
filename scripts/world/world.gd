@@ -113,6 +113,7 @@ var _fishing: FishingGame
 var _fishing_water := Vector3.ZERO
 ## Деревья, трава и цветы — отдельными MultiMesh (vegetation.gd).
 var _veg := Vegetation.new()
+var my_garage: MyGarage
 var _sky_top: Color
 ## Туман в ясную погоду: густеет так, чтобы у края видимости всё тонуло в дымке
 var _fog_base := 0.0025
@@ -155,6 +156,11 @@ func _ready() -> void:
 	# Двор игрока — до сборки растительности: его яблоня и кусты регистрируются
 	# один раз, при перестройке дома они стоят на тех же местах
 	_build_player_yard()
+	# Личный гараж справа от дома: вся своя техника — внутри, выбирай любую
+	my_garage = MyGarage.new()
+	add_child(my_garage)
+	my_garage.build(self)
+	_veg.block(MyGarage.BOX.position.x - 1.0, MyGarage.BOX.position.y - 1.0, MyGarage.BOX.end.x + 1.0, MyGarage.BOX.end.y + 3.5)
 	region = Region.new()
 	region.name = "Region"
 	add_child(region)

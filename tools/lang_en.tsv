@@ -2334,3 +2334,23 @@ E — %s: %d × %d грн	E — %s: %d × %d UAH
 чёткость 3D — 50 %	3D sharpness — 50 %
 «ЛИПКИ»	«LIPKI»
 Видеокарта: %s. Качество подобрано под неё и дальше подстраивается само.	Graphics card: %s. Quality was picked for it and keeps adjusting itself.
+Машины на дорогах (трафик)	Cars on the roads (traffic)
+Мой гараж	My garage
+ГАРАЖ	GARAGE
+Закрыть	Close
+Загнать всю технику в гараж	Put all vehicles in the garage
+Загнал в гараж: %d	Put in the garage: %d
+Вся техника уже в гараже	All vehicles are already in the garage
+Выбери, на чём ехать — выкатится на дорожку у дома	Pick what to drive — it rolls out onto the driveway by the house
+Своей техники пока нет — купи мопед, мотоцикл или машину	No vehicles yet — buy a moped, motorcycle or car
+в гараже	in the garage
+едешь на ней	you are driving it
+на улице	outside
+%s — %s, бензин %d л, состояние %d%%	%s — %s, fuel %d L, condition %d%%
+Выкатить	Roll out
+В гараж	To garage
+«%s» — в гараже	«%s» is in the garage
+E — гараж: выбрать технику (в гараже %d из %d)	E — garage: choose a vehicle (%d of %d inside)
+Выкатил из гаража «%s». Стоит на дорожке у дома	Rolled «%s» out of the garage. It's on the driveway by the house
+В гараже вся техника: загнал %d	All vehicles in the garage: put away %d
+К дому	To the house

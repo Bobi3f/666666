@@ -57,6 +57,8 @@ var last_name := ""
 const TIME_RATES := [1.0, 0.5, 0.25]
 const TIME_NAMES := ["Обычный", "Медленный", "Очень медл."]
 var time_speed := 0
+## Машины на трассе (попутки и рейсовые автобусы): выключил — дороги пустые.
+var traffic := true
 ## Ячейка сохранения 1–3.
 var slot := 1
 ## Язык: "ru" или "en". В браузере и на телефоне при первом запуске — по
@@ -141,6 +143,7 @@ func _ready() -> void:
 		first_name = str(cfg.get_value("profile", "first", ""))
 		last_name = str(cfg.get_value("profile", "last", ""))
 		time_speed = clampi(int(cfg.get_value("game", "time_speed", 0)), 0, TIME_RATES.size() - 1)
+		traffic = bool(cfg.get_value("game", "traffic", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
 		lang = "en" if str(cfg.get_value("ui", "lang", lang)) == "en" else "ru"
 		var km: Variant = cfg.get_value("controls", "keys", {})
@@ -520,6 +523,12 @@ func time_rate() -> float:
 	return TIME_RATES[time_speed]
 
 
+func set_traffic(v: bool) -> void:
+	traffic = v
+	_save()
+	changed.emit()
+
+
 func set_time_speed(i: int) -> void:
 	time_speed = clampi(i, 0, TIME_RATES.size() - 1)
 	_save()
@@ -578,6 +587,7 @@ func _save() -> void:
 	cfg.set_value("profile", "first", first_name)
 	cfg.set_value("profile", "last", last_name)
 	cfg.set_value("game", "time_speed", time_speed)
+	cfg.set_value("game", "traffic", traffic)
 	cfg.set_value("save", "slot", slot)
 	cfg.set_value("controls", "keys", key_map)
 	cfg.set_value("controls", "touch", touch_layout)

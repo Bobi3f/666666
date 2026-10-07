@@ -340,6 +340,11 @@ func _build_settings(box: VBoxContainer) -> void:
 		ts.add_child(b)
 	_choice_row(box, "Ход времени", SettingsManager.TIME_NAMES, SettingsManager.time_speed, SettingsManager.set_time_speed)
 	_hint(box, "Обычный — сутки за 24 минуты. Медленный — за 48, очень медленный — за полтора часа: работа, дорога и день тянутся ближе к жизни.")
+	var tr_btn := CheckButton.new()
+	tr_btn.text = "Машины на дорогах (трафик)"
+	tr_btn.button_pressed = SettingsManager.traffic
+	tr_btn.toggled.connect(SettingsManager.set_traffic)
+	box.add_child(tr_btn)
 	var mm := CheckButton.new()
 	mm.text = "Мини-карта в углу экрана"
 	mm.button_pressed = SettingsManager.minimap

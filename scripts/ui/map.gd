@@ -683,6 +683,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["АЗС", _world.FUEL_POS, Color(0.4, 0.85, 0.5)],
 		["СТО", _world.GARAGE_POS, Color(0.5, 0.65, 1.0)],
 		["Гараж Владика", VladikGarage.POS, Color(0.85, 0.6, 0.25)],
+		["Мой гараж", Vector3(MyGarage.BOX.get_center().x, 0, MyGarage.BOX.end.y), Color(0.45, 0.8, 0.55)],
 		["Липки", Vector3(EliteDistrict.RING_C.x - 150.0, 0, EliteDistrict.RING_C.y), Color(0.95, 0.8, 0.35)],
 		["Хлебозавод", Town.w(MoreJobs.BAKERY), Color(0.9, 0.7, 0.4)],
 		["Дворник", Town.w(MoreJobs.SWEEP_GIVER), Color(0.7, 0.6, 0.3)],

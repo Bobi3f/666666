@@ -61,6 +61,28 @@ func _ready() -> void:
 			i += 1
 	_spawn(-1, 120.0, Color(0.95, 0.75, 0.2), "bus")
 	_spawn(1, -900.0, Color(0.9, 0.9, 0.85), "bus")
+	SettingsManager.changed.connect(_apply_setting)
+	_apply_setting()
+
+
+## Трафик в настройках: выключен — машин не видно, не слышно, они не
+## сталкиваются и не считаются (дороги пустые, кадр легче).
+var _on := true
+
+
+func _apply_setting() -> void:
+	var on := SettingsManager.traffic
+	if on == _on:
+		return
+	_on = on
+	visible = on
+	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	for v in _vehicles:
+		var body := v.body as AnimatableBody3D
+		body.collision_layer = 1 if on else 0
+		var snd := v.snd as AudioStreamPlayer3D
+		if not on:
+			snd.stop()
 
 
 func _spawn(dir: int, x: float, color: Color, kind: String) -> void:
