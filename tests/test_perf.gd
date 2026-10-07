@@ -68,6 +68,25 @@ func _run() -> void:
 	SM._perf_slow = 0.0
 	for k in 60: SM._keep_fps(SM.fps_target() * 0.95, 0.1)
 	ok(SM._perf_step == 0, "кадров хватает — ничего не трогает")
+	print("== Запас кадров — качество обратно")
+	SM._perf_step = 3
+	SM._ceiling = 0
+	SM._good = 0.0
+	for k in 220: SM._try_better(SM.fps_target(), 0.1)
+	ok(SM._perf_step == 2, "20 секунд с запасом — шаг вверх")
+	SM._perf_slow = 0.0
+	for k in 60: SM._keep_fps(SM.fps_target() * 0.5, 0.1)
+	ok(SM._perf_step == 3 and SM._ceiling == 3, "снова не хватило — назад, выше не лезет")
+	SM._good = 0.0
+	for k in 300: SM._try_better(SM.fps_target(), 0.1)
+	ok(SM._perf_step == 3, "второй раз не пробует")
+	SM._ceiling = 0
+	SM.set_auto_perf(true)
+	print("== Под видеокарту")
+	ok(SM.hardware_preset("NVIDIA GeForce RTX 3060", 12) == 0, "мощная видеокарта — полное качество")
+	ok(SM.hardware_preset("Intel(R) UHD Graphics 620", 8) == 3, "встроенная Intel — сразу три шага вниз")
+	ok(SM.hardware_preset("AMD Radeon(TM) Graphics", 4) == 4, "встроенная AMD и 4 ядра — четыре шага")
+	ok(SM.hardware_preset("llvmpipe (LLVM 15.0.7, 256 bits)", 8) == 5, "программная — пять шагов")
 	SM._auto = false
 	print("== Без лишней работы каждый кадр")
 	MeshBuilder.set_clouds(0.5)

@@ -2338,4 +2338,5 @@ const EN := {
 	"чёткость 3D — 62 %": "3D sharpness — 62 %",
 	"чёткость 3D — 50 %": "3D sharpness — 50 %",
 	"«ЛИПКИ»": "«LIPKI»",
+	"Видеокарта: %s. Качество подобрано под неё и дальше подстраивается само.": "Graphics card: %s. Quality was picked for it and keeps adjusting itself.",
 }

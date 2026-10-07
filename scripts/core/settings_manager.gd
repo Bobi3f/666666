@@ -96,6 +96,7 @@ func _process(delta: float) -> void:
 		return
 	var fps := Engine.get_frames_per_second()
 	_keep_fps(fps, delta)
+	_try_better(fps, delta)
 	# Ниже 28 кадров дольше 8 секунд — проще картинку (раньше ждали 15 с при 24)
 	_slow = _slow + delta if fps > 0 and fps < 28 else maxf(_slow - delta * 2.0, 0.0)
 	if _slow < 8.0:
@@ -134,6 +135,8 @@ func _ready() -> void:
 		scale_i = clampi(int(cfg.get_value("graphics", "scale", scale_i)), 0, RENDER_SCALES.size() - 1)
 		auto_perf = bool(cfg.get_value("graphics", "auto_perf", auto_perf))
 		_perf_step = clampi(int(cfg.get_value("graphics", "perf_step", 0)), 0, PERF_LADDER.size())
+		_hw_checked = cfg.has_section_key("graphics", "hw")
+		gpu_name = str(cfg.get_value("graphics", "hw", ""))
 		third_person = bool(cfg.get_value("ui", "third_person", true))
 		first_name = str(cfg.get_value("profile", "first", ""))
 		last_name = str(cfg.get_value("profile", "last", ""))
@@ -149,6 +152,7 @@ func _ready() -> void:
 	get_tree().root.add_child.call_deferred(remap)
 	_apply_lang()
 	_apply()
+	_first_run_hw.call_deferred()
 
 
 func set_mouse_sens(v: float) -> void:
@@ -365,10 +369,74 @@ func _keep_fps(fps: float, delta: float) -> void:
 	if _perf_slow < (2.0 if fps < target * 0.5 else 5.0):
 		return
 	_perf_slow = -4.0
+	# Только что поднимались и снова не хватает — выше этого шага не пробуем
+	if _tried_up:
+		_ceiling = _perf_step + 1
+		_tried_up = false
 	_perf_step += 1
 	_save()
 	changed.emit()
 	GameManager.notify("Чтобы держать %d FPS: %s. Вернуть — в «Настройках»" % [int(target), PERF_TEXT[_perf_step - 1]])
+
+
+## Запас кадров держится 20 секунд — шаг обратно вверх (картинка лучше).
+## Если на этом шаге снова не хватило — выше него в этом запуске не лезем.
+var _good := 0.0
+var _ceiling := 0
+
+
+func _try_better(fps: float, delta: float) -> void:
+	if not auto_perf or GameManager.touch_mode or _perf_step <= _ceiling or fps <= 0.0:
+		_good = 0.0
+		return
+	# Потолок кадров срезает FPS ровно на цели — «хватает» уже с 97 %
+	_good = _good + delta if fps >= fps_target() * 0.97 else 0.0
+	if _good < 20.0:
+		return
+	_good = 0.0
+	_perf_slow = -6.0
+	_perf_step -= 1
+	_tried_up = true
+	_save()
+	changed.emit()
+
+
+var _tried_up := false
+
+
+## Видеокарта компьютера — при первом запуске: встроенная (Intel, AMD
+## Radeon Graphics) или программная — сразу несколько шагов вниз, чтобы
+## не начинать с самой тяжёлой картинки. Дальше «Держать FPS» подстроит.
+func hardware_preset(adapter: String, cores: int) -> int:
+	var a := adapter.to_lower()
+	var step := 0
+	if a.contains("llvmpipe") or a.contains("swiftshader") or a.contains("basic render") or a.contains("software"):
+		step = 5
+	elif (a.contains("intel") and not a.contains("arc")) or a.contains("radeon(tm) graphics") or a.contains("radeon graphics") \
+			or a.contains("vega") or a.contains("uhd") or a.contains("iris") or a.contains("mali") or a.contains("adreno"):
+		step = 3
+	if cores > 0 and cores <= 4:
+		step += 1
+	return mini(step, PERF_LADDER.size())
+
+
+func _first_run_hw() -> void:
+	if not _auto or _phone() or OS.has_feature("web"):
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(PATH)
+	if cfg.has_section_key("graphics", "hw"):
+		return
+	gpu_name = RenderingServer.get_video_adapter_name()
+	_perf_step = hardware_preset(gpu_name, OS.get_processor_count())
+	_hw_checked = true
+	_save()
+	changed.emit()
+
+
+## Видеокарта — для строки в настройках.
+var gpu_name := ""
+var _hw_checked := false
 
 
 ## Сколько ступеней детализации снял «Держать FPS».
@@ -481,6 +549,8 @@ func _save() -> void:
 	cfg.set_value("graphics", "scale", scale_i)
 	cfg.set_value("graphics", "auto_perf", auto_perf)
 	cfg.set_value("graphics", "perf_step", _perf_step)
+	if _hw_checked:
+		cfg.set_value("graphics", "hw", gpu_name)
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)

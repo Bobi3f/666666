@@ -356,6 +356,10 @@ func _build_settings(box: VBoxContainer) -> void:
 		keep.button_pressed = SettingsManager.auto_perf
 		keep.toggled.connect(SettingsManager.set_auto_perf)
 		box.add_child(keep)
+		# Какая видеокарта — от неё подобрано качество при первом запуске
+		var gpu := RenderingServer.get_video_adapter_name()
+		if gpu != "":
+			_hint(box, "Видеокарта: %s. Качество подобрано под неё и дальше подстраивается само." % gpu)
 	var fps := CheckButton.new()
 	fps.text = "Показывать FPS (кадры в секунду)"
 	fps.button_pressed = SettingsManager.show_fps
