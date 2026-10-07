@@ -265,6 +265,7 @@ func _page_code() -> void:
 	_body.add_child(edit)
 	var b := _button("Активировать", Color(0.45, 0.33, 0.1))
 	b.pressed.connect(func() -> void: redeem(edit.text))
+	edit.text_submitted.connect(func(t: String) -> void: redeem(t))
 	_body.add_child(b)
 
 
@@ -275,15 +276,34 @@ static var CODES := {
 }
 
 
+## Русские буквы, похожие на латинские: код набирают в любой раскладке.
+## (коды букв: А В С Е Н К М О Р Т Х У І — чтобы их не брался переводить словарь)
+const LOOKALIKE := {0x410: "A", 0x412: "B", 0x421: "C", 0x415: "E", 0x41D: "H", 0x41A: "K", 0x41C: "M", 0x41E: "O", 0x420: "P", 0x422: "T", 0x425: "X", 0x423: "Y", 0x406: "I"}
+
+
+## Код как в списке: только буквы и цифры, заглавные, по 4 через дефис —
+## пробелы, дефисы и русские буквы-двойники при вводе не мешают.
+static func normalize(code: String) -> String:
+	var raw := ""
+	for ch in code.to_upper():
+		var c: String = LOOKALIKE.get(ch.unicode_at(0), ch)
+		if (c >= "A" and c <= "Z") or (c >= "0" and c <= "9"):
+			raw += c
+	var parts: PackedStringArray = []
+	for i in range(0, raw.length(), 4):
+		parts.append(raw.substr(i, 4))
+	return "-".join(parts)
+
+
 ## Ввести код: верный — монеты и деньги на счёт, один раз на сохранение.
 func redeem(code: String) -> bool:
-	var c := code.strip_edges().to_upper()
+	var c := normalize(code)
 	if c == "":
 		_status.text = "Введи код"
 		return false
 	var h := c.sha256_text()
 	if not CODES.has(h):
-		_status.text = "Такого кода нет"
+		_status.text = "Такого кода нет: %s — проверь буквы и цифры" % c
 		return false
 	if Progress.codes.has(h):
 		_status.text = "Этот код уже активирован"

@@ -85,5 +85,10 @@ func _run() -> void:
 	ok(hud._tick <= 0.0, "деньги изменились — строка обновится в этот же кадр")
 	await frames(2)
 	ok(hud._top.text != t0, "строка сверху обновилась: " + hud._top.text)
+	print("== Память")
+	var reg = W.get_node("Region")
+	ok(reg._d.triangle_count() == 0 and reg._d._chunks.is_empty(), "заготовки округи освобождены после постройки")
+	var mem: float = Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
+	ok(mem < 600.0, "память игры: %.0f МБ (было ~950 — iPhone не тянул)" % mem)
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

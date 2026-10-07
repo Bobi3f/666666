@@ -120,6 +120,15 @@ const FORESTS := [
 	Rect2(1000, -600, 200, 500), Rect2(-1200, -300, 250, 500), Rect2(-1200, 950, 500, 250),
 	Rect2(-300, 850, 600, 350), Rect2(1000, 300, 200, 500), Rect2(450, 1050, 450, 150),
 ]
+## Полоса леса через весь район (как на плане игрока): к югу от трассы с
+## запада до реки, за рекой — уходит на юго-восток. Отделяет сёла и город
+## от дорогого района «Липки» (EliteDistrict.ZONE). Реже ближних лесов —
+## деревьев и так тысячи, телефону хватит.
+const FOREST_BAND := [
+	Rect2(-2000, 420, 2100, 480),
+	Rect2(100, 600, 600, 1400),
+	Rect2(700, 1000, 1300, 1000),
+]
 const FIELDS := [
 	[Rect2(-520, -270, 100, 40), Color(0.78, 0.68, 0.33)],
 	[Rect2(420, -420, 110, 40), Color(0.4, 0.3, 0.2)],
@@ -476,6 +485,9 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	var body := _d.build_body()
 	body.name = "RegionCollision"
 	add_child(body)
+	# Меши и формы готовы — заготовки (сотни мегабайт вершин) больше не нужны.
+	# Без этого iPhone не хватало памяти и Safari перезагружал страницу
+	_d = MeshBuilder.new()
 
 
 ## Земля вокруг Каменки: сетка 20 м, пятна того же шума, что и в Каменке.
@@ -1172,6 +1184,25 @@ func _forests(b: MeshBuilder) -> void:
 			if not tree_ok(x, z):
 				continue
 			var kind := Vegetation.TreeKind.SPRUCE if _rng.randf() < 0.6 else Vegetation.TreeKind.BIRCH
+			_world._tree(b, Vector3(x, 0, z), _rng.randf() * TAU, kind)
+	# Полоса леса: там, где уже есть лес, второй раз не сажаем
+	var dense: Array = FORESTS + FAR_FORESTS + EliteDistrict.FORESTS
+	for area in FOREST_BAND:
+		var r: Rect2 = area
+		for i in int(r.get_area() / 1000.0):
+			var x := r.position.x + _rng.randf() * r.size.x
+			var z := r.position.y + _rng.randf() * r.size.y
+			var p := Vector2(x, z)
+			var taken := false
+			for f in dense:
+				if (f as Rect2).has_point(p):
+					taken = true
+					break
+			if taken:
+				continue
+			if not tree_ok(x, z):
+				continue
+			var kind := Vegetation.TreeKind.SPRUCE if _rng.randf() < 0.55 else Vegetation.TreeKind.BIRCH
 			_world._tree(b, Vector3(x, 0, z), _rng.randf() * TAU, kind)
 
 

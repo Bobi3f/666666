@@ -414,6 +414,9 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(-330, 30), 12, true)
 			_label_at(font, "Тёмный лес", Vector2(-1000, -1050), 13, true)
 			_label_at(font, "Дубрава", Vector2(0, 1000), 13, true)
+			_label_at(font, "Лес", Vector2(-1500, 600), 14, true)
+			_label_at(font, "Лес", Vector2(1300, 1350), 14, true)
+			_label_at(font, "Дорогой район «Липки»", Vector2(-1150, 1480), 15, true)
 		else:
 			_label_at(font, "Сосновый бор", Vector2(-120, -150), 14, true)
 			_label_at(font, "Дубрава", Vector2(-135, 120), 14, true)
@@ -616,7 +619,15 @@ func _draw_region() -> void:
 			_t.draw_circle(_p(hc.x, hc.y), _m(hr * (1.0 - k * 0.3)), Color(0.8, 0.74, 0.6, 0.35))
 	for pd in Landscape.ponds:
 		_t.draw_circle(_p((pd[0] as Vector2).x, (pd[0] as Vector2).y), _m(float(pd[1]) * 1.2), WATER)
+	# Дорогой район «Липки» — золотистая заливка с границей, как на плане
+	var zr := EliteDistrict.ZONE
+	_rect(zr.position.x, zr.position.y, zr.end.x, zr.end.y, PAPER.lerp(Color(0.95, 0.8, 0.45), 0.35))
+	var zb := PackedVector2Array([_p(zr.position.x, zr.position.y), _p(zr.end.x, zr.position.y), _p(zr.end.x, zr.end.y)])
+	_line(zb, 22.0, Color(0.8, 0.25, 0.2, 0.8))
 	var seed := 30
+	for r in Region.FOREST_BAND:
+		_blob(r, FOREST_COL, seed, FOREST_EDGE)
+		seed += 1
 	for r in Region.FORESTS:
 		_blob(r, FOREST_COL, seed, FOREST_EDGE)
 		seed += 1

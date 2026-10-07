@@ -2300,4 +2300,8 @@ const EN := {
 	"Профиль: %s": "Profile: %s",
 	"Создать профиль: имя и фамилия": "Create profile: first name and surname",
 	"Свой номер: буква, 4 цифры, 2 буквы области": "Your own plate: a letter, 4 digits, 2 region letters",
+	"Такого кода нет: %s — проверь буквы и цифры": "No such code: %s — check the letters and digits",
+	"Лес": "Forest",
+	"Дорогой район «Липки»": "Lipki — the rich district",
+	"ДОРОГОЙ РАЙОН": "RICH DISTRICT",
 }

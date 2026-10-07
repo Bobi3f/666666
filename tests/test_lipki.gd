@@ -72,5 +72,18 @@ func _run() -> void:
 	ok(not Region.tree_ok(c.x, c.y), "на поляне деревьев нет")
 	var veg: Vegetation = W.get_node("Vegetation")
 	ok(int(veg.counts.get("tree_%d" % Vegetation.TreeKind.POPLAR, 0)) > 100, "в посадках и вдоль трассы — тополя: %d" % int(veg.counts.get("tree_4", 0)))
+	print("== План района: полоса леса и дорогой район")
+	var zsigns := 0
+	for l in W.find_children("*", "Label3D", true, false):
+		if (l as Label3D).text.begins_with("ДОРОГОЙ РАЙОН"): zsigns += 1
+	ok(zsigns == 2, "таблички на въездах в дорогой район: %d" % zsigns)
+	ok(EliteDistrict.ZONE.encloses(EliteDistrict.AREA), "Липки внутри дорогого района")
+	var in_band := 0
+	var vg = W.get_node("Vegetation")
+	for kind in vg._trees:
+		for xf in vg._trees[kind]:
+			var o: Vector3 = (xf as Transform3D).origin
+			if Rect2(-2000, 420, 2100, 480).has_point(Vector2(o.x, o.z)): in_band += 1
+	ok(in_band > 900, "полоса леса к югу от трассы: %d деревьев" % in_band)
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

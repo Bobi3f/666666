@@ -16,12 +16,16 @@ var ground_shade := true
 ## ноги и руки (1 — туловище, 0.9/0.8 — ноги, 0.7/0.6 — руки).
 var alpha := 1.0
 
-var _st := SurfaceTool.new()
+## Вершины копятся в упакованных массивах [места, нормали, цвета]: так
+## в 5–6 раз меньше памяти, чем в SurfaceTool (тот хранит на вершину ещё
+## UV, касательные, кости). Округа — миллионы вершин; с SurfaceTool пик
+## загрузки доходил до гигабайта, и Safari на iPhone падал.
+var _st := _new_buf()
 ## Нарезка на куски по chunk_size метров (0 — одним куском). Невидимые куски
 ## не рисуются, а фонарь или лампа перерисовывают только соседние куски,
 ## а не весь мир — на телефоне ночью это главное.
 var chunk_size := 0.0
-var _chunks := {}  # Vector3i(x, z, мелочь 0/1) → SurfaceTool
+var _chunks := {}  # Vector3i(x, z, мелочь 0/1) → буфер вершин
 ## Мелочь — коробки меньше SMALL_SIZE метров по диагонали (штакетник, рамы,
 ## ящики): при нарезке идёт в свои куски по SMALL_CHUNK м, которые вдали не
 ## рисуются (SettingsManager.small_range). Это почти половина треугольников
@@ -29,7 +33,7 @@ var _chunks := {}  # Vector3i(x, z, мелочь 0/1) → SurfaceTool
 const SMALL_SIZE := 1.6
 const SMALL_CHUNK := 50.0
 var _small := false
-var _cur: SurfaceTool
+var _cur: Array
 var _boxes: Array = []  # [Transform3D, Vector3 size]
 var _count := 0
 
@@ -47,8 +51,25 @@ const FACE_TINT := [0.93, 0.9, 1.0, 0.86, 1.06, 0.7]
 
 
 func _init() -> void:
-	_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cur = _st
+
+
+static func _new_buf() -> Array:
+	return [PackedVector3Array(), PackedVector3Array(), PackedColorArray()]
+
+
+## Меш из буфера вершин (null — если пусто).
+static func _commit(buf: Array) -> ArrayMesh:
+	if (buf[0] as PackedVector3Array).is_empty():
+		return null
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = buf[0]
+	arrays[Mesh.ARRAY_NORMAL] = buf[1]
+	arrays[Mesh.ARRAY_COLOR] = buf[2]
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 ## Куда класть треугольники с центром в p (уже в мировых координатах).
@@ -57,12 +78,11 @@ func _pick(p: Vector3) -> void:
 		return
 	var size := SMALL_CHUNK if _small else chunk_size
 	var key := Vector3i(floori(p.x / size), floori(p.z / size), 1 if _small else 0)
-	var st: SurfaceTool = _chunks.get(key)
-	if st == null:
-		st = SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_chunks[key] = st
-	_cur = st
+	var buf: Variant = _chunks.get(key)
+	if buf == null:
+		buf = _new_buf()
+		_chunks[key] = buf
+	_cur = buf
 
 
 func triangle_count() -> int:
@@ -156,9 +176,10 @@ func _quad_raw(pts: Array, cols: Array, n: Vector3) -> void:
 
 
 func _emit(p: Vector3, n: Vector3, color: Color) -> void:
-	_cur.set_color(color)
-	_cur.set_normal((xf.basis * n).normalized())
-	_cur.add_vertex(xf * p + shift)
+	# Без приведения типа: «as» дал бы копию массива, и вершины потерялись бы
+	_cur[0].append(xf * p + shift)
+	_cur[1].append((xf.basis * n).normalized())
+	_cur[2].append(color)
 
 
 ## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size
@@ -167,7 +188,9 @@ func build_chunked() -> Node3D:
 	var root := Node3D.new()
 	var mat := detail_material()
 	for key in _chunks:
-		var mesh: ArrayMesh = (_chunks[key] as SurfaceTool).commit()
+		var mesh := _commit(_chunks[key])
+		if mesh == null:
+			continue
 		mesh.surface_set_material(0, mat)
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
@@ -218,7 +241,9 @@ func build_array_mesh(unshaded := false) -> ArrayMesh:
 		mat = world_material()
 	if _count == 0:
 		return null
-	var mesh := _st.commit()
+	var mesh := _commit(_st)
+	if mesh == null:
+		return null
 	mesh.surface_set_material(0, mat)
 	return mesh
 

@@ -16,8 +16,11 @@ extends RefCounted
 ## домами: игрок видит, к чему стремиться.
 
 const NAME := "Липки"
-## Весь район: здесь лес не растёт, трава подстрижена.
+## Посёлок: здесь лес не растёт, трава подстрижена.
 const AREA := Rect2(-1080, 1232, 360, 165)
+## Дорогой район целиком — юго-запад за полосой леса (Region.FOREST_BAND),
+## как на плане игрока: на карте своя заливка и граница, на въездах — таблички.
+const ZONE := Rect2(-2000, 900, 2100, 1100)
 ## Бульвар (асфальт) вдоль X: въезд с востока, разворотное кольцо на западе.
 const BOULEVARD := Rect2(-1052, 1309, 310, 9)
 const RING_C := Vector2(-1063, 1313.5)
@@ -81,6 +84,8 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 	for i in 8:
 		_plot(r, d, glow, veg, i)
 	_entrance(r, d, glow)
+	for road in [ROAD_FAST, ROAD_SCENIC]:
+		_zone_sign(r, d, road)
 	_forest_corridor(r, ROAD_FAST, 7.5, 5.0)
 	_forest_corridor(r, ROAD_SCENIC, 5.0, 4.2)
 
@@ -91,7 +96,7 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 static func _forest_corridor(r: Region, road: Array, near: float, step: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 909 + road.size()
-	var woods: Array = Region.FORESTS + FORESTS + Region.FAR_FORESTS
+	var woods: Array = Region.FORESTS + FORESTS + Region.FAR_FORESTS + Region.FOREST_BAND
 	for i in road.size() - 1:
 		var a: Vector2 = road[i]
 		var c: Vector2 = road[i + 1]
@@ -216,6 +221,42 @@ static func _entrance(r: Region, d: MeshBuilder, glow: MeshBuilder) -> void:
 		l.position = st + Vector3(s * 0.42, 1.3, 0)
 		l.rotation.y = s * PI / 2.0
 		r.add_child(l)
+
+
+## Где дорога пересекает границу района (ZONE, z = край) — или INF.
+static func zone_entry(road: Array) -> Vector3:
+	var z0 := ZONE.position.y
+	for i in road.size() - 1:
+		var a: Vector2 = road[i]
+		var b: Vector2 = road[i + 1]
+		if (a.y - z0) * (b.y - z0) <= 0.0 and a.y != b.y:
+			var t := (z0 - a.y) / (b.y - a.y)
+			var p := a.lerp(b, t)
+			return Vector3(p.x, 0, p.y)
+	return Vector3.INF
+
+
+## Синий щит у дороги на въезде в район: «Дорогой район «Липки»».
+static func _zone_sign(r: Region, d: MeshBuilder, road: Array) -> void:
+	var at := zone_entry(road)
+	if at == Vector3.INF:
+		return
+	# Справа по ходу (едут на юг, +z — справа меньший x)
+	var p := at + Vector3(-6.0, 0, -2.0)
+	for s in [-1.4, 1.4]:
+		d.box(p + Vector3(s - 0.06, 0, -0.06), p + Vector3(s + 0.06, 2.2, 0.06), Color(0.55, 0.55, 0.58), true)
+	d.box(p + Vector3(-1.9, 2.2, -0.05), p + Vector3(1.9, 3.5, 0.05), Color(0.12, 0.3, 0.62))
+	d.box(p + Vector3(-1.8, 2.3, -0.08), p + Vector3(1.8, 3.4, -0.06), Color(0.95, 0.95, 0.95))
+	d.box(p + Vector3(-1.72, 2.36, -0.09), p + Vector3(1.72, 3.34, -0.08), Color(0.12, 0.3, 0.62))
+	var l := Label3D.new()
+	l.text = "ДОРОГОЙ РАЙОН\n«%s»" % NAME.to_upper()
+	l.font_size = 72
+	l.pixel_size = 0.006
+	l.outline_size = 0
+	l.modulate = Color(1, 1, 1)
+	l.position = p + Vector3(0, 2.85, -0.1)
+	l.rotation.y = PI
+	r.add_child(l)
 
 
 ## Участок i: забор с воротами, газон, заезд, гараж, дом, бассейн, деревья, машина.
