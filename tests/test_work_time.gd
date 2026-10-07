@@ -95,6 +95,8 @@ func _run() -> void:
 	ok(not K.start_prompt().contains("мин"), "подсказка без «по N мин»: " + K.start_prompt())
 	TM.minutes = 10 * 60.0
 	root.get_node("NeedsManager").energy = 100.0
+	# В дождь сено не грузят — для проверки нужна ясная погода
+	root.get_node("WeatherManager").set_kind(0, 9999.0)
 	K.start()
 	t0 = TM.minutes
 	K.pick(); K.put_down()
