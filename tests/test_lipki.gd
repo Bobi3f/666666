@@ -84,6 +84,6 @@ func _run() -> void:
 		for xf in vg._trees[kind]:
 			var o: Vector3 = (xf as Transform3D).origin
 			if Rect2(-2000, 420, 2100, 480).has_point(Vector2(o.x, o.z)): in_band += 1
-	ok(in_band > 900, "полоса леса к югу от трассы: %d деревьев" % in_band)
+	ok(in_band > 600, "полоса леса к югу от трассы: %d деревьев" % in_band)
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

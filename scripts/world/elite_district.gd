@@ -96,7 +96,7 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 static func _forest_corridor(r: Region, road: Array, near: float, step: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 909 + road.size()
-	var woods: Array = Region.FORESTS + FORESTS + Region.FAR_FORESTS + Region.FOREST_BAND
+	var woods: Array = Region.FORESTS + FORESTS + Region.FAR_FORESTS
 	for i in road.size() - 1:
 		var a: Vector2 = road[i]
 		var c: Vector2 = road[i + 1]

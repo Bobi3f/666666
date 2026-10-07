@@ -1189,7 +1189,7 @@ func _forests(b: MeshBuilder) -> void:
 	var dense: Array = FORESTS + FAR_FORESTS + EliteDistrict.FORESTS
 	for area in FOREST_BAND:
 		var r: Rect2 = area
-		for i in int(r.get_area() / 1000.0):
+		for i in int(r.get_area() / 1600.0):
 			var x := r.position.x + _rng.randf() * r.size.x
 			var z := r.position.y + _rng.randf() * r.size.y
 			var p := Vector2(x, z)
@@ -1202,7 +1202,10 @@ func _forests(b: MeshBuilder) -> void:
 				continue
 			if not tree_ok(x, z):
 				continue
-			var kind := Vegetation.TreeKind.SPRUCE if _rng.randf() < 0.55 else Vegetation.TreeKind.BIRCH
+			# Одна порода на квадрат 100 м (куски Vegetation): ельник или
+			# березняк — вдвое меньше вызовов отрисовки, и выглядит как лес
+			var cell := Vector2i(floori(x / Vegetation.TREE_CHUNK), floori(z / Vegetation.TREE_CHUNK))
+			var kind := Vegetation.TreeKind.SPRUCE if (cell.x * 7 + cell.y * 13) % 5 < 3 else Vegetation.TreeKind.BIRCH
 			_world._tree(b, Vector3(x, 0, z), _rng.randf() * TAU, kind)
 
 
