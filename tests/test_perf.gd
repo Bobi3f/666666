@@ -91,6 +91,19 @@ func _run() -> void:
 	ok(SM.hardware_preset("AMD Radeon(TM) Graphics", 4) == 4, "встроенная AMD и 4 ядра — четыре шага")
 	ok(SM.hardware_preset("llvmpipe (LLVM 15.0.7, 256 bits)", 8) == 5, "программная — пять шагов")
 	SM._auto = false
+	print("== Люди вдали")
+	var d_keep: int = SM.detail
+	SM._perf_step = 0
+	SM.set_detail(0)
+	var far := 0
+	var people := 0
+	for p in W.get_tree().get_nodes_in_group("people"):
+		var gi := p as GeometryInstance3D
+		if gi and gi.visibility_range_end > 0.0:
+			people += 1
+			if gi.visibility_range_end > 90.5: far += 1
+	ok(people > 50 and far == 0, "низкая детализация: людей видно не дальше 90 м (%d человек)" % people)
+	SM.set_detail(d_keep)
 	print("== Без лишней работы каждый кадр")
 	MeshBuilder.set_clouds(0.5)
 	var m: ShaderMaterial = MeshBuilder.world_material()

@@ -301,6 +301,7 @@ func _ready() -> void:
 	# на мониторе (иначе на плотном экране надписи крошечные), плюс размер
 	# текста из настроек
 	_limit_view_ranges.call_deferred()
+	SettingsManager.changed.connect(_limit_people)
 	_fit_ui()
 	get_window().size_changed.connect(_fit_ui)
 	SettingsManager.changed.connect(_fit_ui)
@@ -374,7 +375,32 @@ func _fit_render_scale() -> void:
 	get_viewport().scaling_3d_scale = clampf(SettingsManager.render_lines() / h, 0.35, 0.65)
 
 
+## Дальность людей по детализации: человек за сотню метров на телефоне —
+## пара пикселей, а рисуется целиком (полторы тысячи треугольников и свой
+## вызов отрисовки). Своя дальность каждого — в метке range0, берём меньшую.
+func _limit_people() -> void:
+	var cap: float = [90.0, 150.0, 400.0][SettingsManager.eff_detail()]
+	for p in get_tree().get_nodes_in_group("people"):
+		var gi := p as GeometryInstance3D
+		# Без дальности — её ещё не поставил _limit_view_ranges, подождём
+		if gi == null or (gi.visibility_range_end <= 0.0 and not gi.has_meta("range0")):
+			continue
+		if not gi.has_meta("range0"):
+			gi.set_meta("range0", gi.visibility_range_end)
+		var r := minf(float(gi.get_meta("range0")), cap)
+		if absf(gi.visibility_range_end - r) > 0.5:
+			gi.visibility_range_end = r
+
+
+var _people_t := 0.0
+
+
 func _process(_delta: float) -> void:
+	# Новые люди (ярмарка, гости) появляются по ходу игры — раз в 3 секунды
+	_people_t -= _delta
+	if _people_t <= 0.0:
+		_people_t = 3.0
+		_limit_people()
 	_spawn_exclusives()
 	_update_view()
 	_update_daylight()
