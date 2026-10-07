@@ -118,7 +118,8 @@ func _run() -> void:
 	for k in keys.slice(0, 25): print("   ", procs[k], "  ", k)
 	var spots := [["дом", Vector3(-125, 0.3, -40), 0.0], ["сельмаг", Vector3(-55, 0.3, -30), PI / 2],
 		["трасса", Vector3(-20, 0.3, 2), -PI / 2], ["город", Town.w(Vector3(110, 0.3, 30)), 0.0],
-		["гаражи", Town.w(Vector3(270, 0.3, 150)), 0.0], ["Владик", VladikGarage.w(Vector3(0, 0.3, 3)), PI]]
+		["гаражи", Town.w(Vector3(270, 0.3, 150)), 0.0], ["Владик", VladikGarage.w(Vector3(0, 0.3, 3)), PI],
+		["Липки", Vector3(-760, 0.3, 1313.5), PI / 2], ["лес-асф", Vector3(-640, 0.3, 790), PI], ["лес-грунт", Vector3(-1130, 0.3, 1000), PI]]
 	for s in spots:
 		P.global_position = s[1]; P.rotation.y = s[2]
 		await measure(s[0])
