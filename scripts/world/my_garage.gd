@@ -49,7 +49,7 @@ func build(world: Node3D) -> void:
 	lbl.outline_size = 8
 	lbl.modulate = Color(1.0, 0.9, 0.6)
 	lbl.position = Vector3((x0 + x1) * 0.5, 2.55, z1 + 0.02)
-	lbl.visibility_range_end = 80.0
+	lbl.visibility_range_end = 130.0
 	add_child(lbl)
 	var zone := InteractZone.create("", Vector3(4.0, 2.2, 3.0))
 	zone.position = Vector3((x0 + x1) * 0.5, 0, z1 + 1.6)
