@@ -176,6 +176,12 @@
   <button id="fs" type="button" hidden>На весь экран</button>
 </div>
 
+<script>
+  // Оплата Pi Network (только в Pi Browser): адрес сервера оплаты и режим
+  // песочницы. Сервер — server/cloudflare (Cloudflare Pages Functions).
+  window.FIRSTGEAR_PI = { api: "api/pi", sandbox: false };
+</script>
+<script src="pi.js"></script>
 <script src="index.js"></script>
 <script>
   // Язык страницы — как у браузера (игра выбирает так же): русский для ru,
@@ -253,7 +259,7 @@
       canvas: canvas,
       canvasResizePolicy: 2,
       executable: "index",
-      fileSizes: { "index.pck": 3710196, "index.wasm": 38034280 },
+      fileSizes: { "index.pck": 3716852, "index.wasm": 38034280 },
       focusCanvas: true,
       ensureCrossOriginIsolationHeaders: false,
       experimentalVK: false,
