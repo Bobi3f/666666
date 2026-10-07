@@ -81,6 +81,41 @@ static func build(r: Region, glow: MeshBuilder, veg: Vegetation) -> void:
 	for i in 8:
 		_plot(r, d, glow, veg, i)
 	_entrance(r, d, glow)
+	_forest_corridor(r, ROAD_FAST, 7.5, 5.0)
+	_forest_corridor(r, ROAD_SCENIC, 5.0, 4.2)
+
+
+## Где дорога идёт по лесу — густые полосы деревьев по обе стороны в три
+## ряда с подлеском: въехал — и вокруг лес, а не поле с редкими ёлками.
+## У быстрой дороги просека шире, у красивой лес подступает вплотную.
+static func _forest_corridor(r: Region, road: Array, near: float, step: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 909 + road.size()
+	var woods: Array = Region.FORESTS + FORESTS + Region.FAR_FORESTS
+	for i in road.size() - 1:
+		var a: Vector2 = road[i]
+		var c: Vector2 = road[i + 1]
+		var len := a.distance_to(c)
+		var dir := (c - a) / len
+		var side := Vector2(-dir.y, dir.x)
+		var t := 0.0
+		while t < len:
+			var p := a + dir * t
+			var in_wood := false
+			for w in woods:
+				if (w as Rect2).grow(25.0).has_point(p):
+					in_wood = true
+					break
+			if in_wood:
+				for sd in [-1.0, 1.0]:
+					for row in 3:
+						var q: Vector2 = p + side * sd * (near + row * 4.5 + rng.randf_range(-1.2, 1.2)) + dir * rng.randf_range(-1.5, 1.5)
+						if not Region.tree_ok(q.x, q.y):
+							continue
+						var roll := rng.randf()
+						var kind := Vegetation.TreeKind.SPRUCE if roll < 0.5 else (Vegetation.TreeKind.BIRCH if roll < 0.85 else Vegetation.TreeKind.BUSH)
+						r._world._tree(r._d, Vector3(q.x, 0, q.y), rng.randf() * TAU, kind)
+			t += step + rng.randf_range(-0.8, 0.8)
 
 
 ## Быстрая дорога: асфальт шириной 7 м поверх грунтовки, разметка, обочины.
@@ -101,7 +136,7 @@ static func _fast_road(d: MeshBuilder) -> void:
 			var p := a.lerp(c, t)
 			d.box_rot(Vector3(p.x, 0.065, p.y), Vector3(0.15, 0.01, 3.0), yaw, white)
 		for s in [-1.0, 1.0]:
-			var off := Vector2(dir.y, -dir.x).normalized() * (FAST_HALF - 0.3) * s
+			var off: Vector2 = Vector2(dir.y, -dir.x).normalized() * (FAST_HALF - 0.3) * s
 			d.box_rot(Vector3(mid.x + off.x, 0.065, mid.y + off.y), Vector3(0.12, 0.01, dir.length()), yaw, white)
 		# Знак «Липки →» в начале
 	var s0: Vector2 = ROAD_FAST[1]

@@ -10,7 +10,7 @@ extends Node3D
 ## Мир сначала регистрирует деревья (add_tree) и места, где травы быть не
 ## должно (block: дороги, дома, площадки), потом вызывает build().
 
-enum TreeKind { SPRUCE, APPLE, BIRCH, BUSH }
+enum TreeKind { SPRUCE, APPLE, BIRCH, BUSH, POPLAR }
 
 const CHUNK := 25.0
 ## Деревья — кусками 100×100 м: вызовов отрисовки вчетверо меньше, чем при 50 м,
@@ -76,7 +76,7 @@ void fragment() {
 }
 """
 
-var _trees := {TreeKind.SPRUCE: [], TreeKind.APPLE: [], TreeKind.BIRCH: [], TreeKind.BUSH: []}
+var _trees := {TreeKind.SPRUCE: [], TreeKind.APPLE: [], TreeKind.BIRCH: [], TreeKind.BUSH: [], TreeKind.POPLAR: []}
 var _blocked: Array[Rect2] = []
 var _rng := RandomNumberGenerator.new()
 var _grass_mat: ShaderMaterial
@@ -111,14 +111,16 @@ func build() -> void:
 		TreeKind.APPLE: _apple_mesh(),
 		TreeKind.BIRCH: _birch_mesh(),
 		TreeKind.BUSH: _bush_mesh(),
+		TreeKind.POPLAR: _poplar_mesh(),
 	}
 	var mid_models := {
 		TreeKind.SPRUCE: _mid_spruce(),
 		TreeKind.APPLE: _mid_apple(),
 		TreeKind.BIRCH: _mid_birch(),
 		TreeKind.BUSH: _mid_bush(),
+		TreeKind.POPLAR: _mid_poplar(),
 	}
-	var far_models := {TreeKind.SPRUCE: _far_spruce(), TreeKind.BIRCH: _far_birch()}
+	var far_models := {TreeKind.SPRUCE: _far_spruce(), TreeKind.BIRCH: _far_birch(), TreeKind.POPLAR: _far_poplar()}
 	for kind in _trees:
 		var list: Array = _trees[kind]
 		if list.is_empty():
@@ -191,7 +193,7 @@ func apply_detail() -> void:
 		if c.name.begins_with("TreesMid"):
 			# Яблони и кусты силуэтов не имеют — они и так у домов
 			gi.visibility_range_begin = lod
-			gi.visibility_range_end = near if (c.name.begins_with("TreesMid_0") or c.name.begins_with("TreesMid_2")) else minf(near, 300.0)
+			gi.visibility_range_end = near if (c.name.begins_with("TreesMid_0") or c.name.begins_with("TreesMid_2") or c.name.begins_with("TreesMid_4")) else minf(near, 300.0)
 			continue
 		if c.name.begins_with("Trees"):
 			gi.visibility_range_end = lod
@@ -421,6 +423,52 @@ func _mid_spruce() -> ArrayMesh:
 			var p1 := Vector3(cos(a1) * r, y0, sin(a1) * r)
 			b.tri(p0, top, p1, green)
 			b.tri(p0, p1, Vector3(0, y0 + 0.3, 0), green.darkened(0.3))
+	return b.build_array_mesh()
+
+
+## Тополь вблизи: серый ствол и высокая узкая крона-колонна из комков
+## листвы — как вдоль украинских дорог.
+func _poplar_mesh() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var bark := Color(0.5, 0.48, 0.42)
+	_limb(b, Vector3.ZERO, Vector3(0, 9.5, 0), 0.2, bark)
+	var leaf := Color(0.26, 0.45, 0.2)
+	for i in 40:
+		var y := rng.randf_range(2.2, 12.5)
+		var k := sin(clampf((y - 2.0) / 10.8, 0.0, 1.0) * PI)
+		var r := 1.15 * k * rng.randf_range(0.3, 1.0) + 0.2
+		var a := rng.randf() * TAU
+		var c := Vector3(cos(a) * r, y, sin(a) * r)
+		b.box_rot(c, Vector3(0.7, 0.9, 0.7) * rng.randf_range(0.7, 1.2), rng.randf() * TAU, leaf.lightened(rng.randf() * 0.12 - 0.04))
+	return b.build_array_mesh()
+
+
+## Тополь на средней дальности: ствол и три вытянутых комка.
+func _mid_poplar() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.box(Vector3(-0.16, 0, -0.16), Vector3(0.16, 3.0, 0.16), Color(0.5, 0.48, 0.42))
+	var leaf := Color(0.26, 0.45, 0.2)
+	b.box_rot(Vector3(0, 4.6, 0), Vector3(2.0, 3.4, 2.0), 0.3, leaf)
+	b.box_rot(Vector3(0, 7.8, 0), Vector3(2.1, 3.4, 2.1), 1.0, leaf.lightened(0.05))
+	b.box_rot(Vector3(0, 10.9, 0), Vector3(1.3, 2.8, 1.3), 0.6, leaf.lightened(0.09))
+	return b.build_array_mesh()
+
+
+## Силуэт тополя издали: высокий узкий ромб.
+func _far_poplar() -> ArrayMesh:
+	var b := MeshBuilder.new()
+	b.ground_shade = false
+	var n := 6
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var p0 := Vector3(cos(a0) * 1.25, 6.8, sin(a0) * 1.25)
+		var p1 := Vector3(cos(a1) * 1.25, 6.8, sin(a1) * 1.25)
+		b.tri(p0, Vector3(0, 12.8, 0), p1, Color(0.27, 0.45, 0.21))
+		b.tri(p0, p1, Vector3(0, 2.2, 0), Color(0.22, 0.38, 0.17))
+	b.box(Vector3(-0.15, 0, -0.15), Vector3(0.15, 2.4, 0.15), Color(0.5, 0.48, 0.42))
 	return b.build_array_mesh()
 
 

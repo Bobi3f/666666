@@ -28,6 +28,7 @@ var nav: Control
 func _ready() -> void:
 	layer = 10
 	QuestManager.changed.connect(refresh_soon)
+	SettingsManager.changed.connect(refresh_soon)
 	GameManager.money_changed.connect(func(_v: int) -> void: refresh_soon())
 	add_child(preload("res://scripts/ui/speedometer.gd").new())
 	nav = preload("res://scripts/ui/nav_arrow.gd").new()

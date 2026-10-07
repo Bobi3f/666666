@@ -271,7 +271,7 @@ const FENCE := Color(0.5, 0.4, 0.3)
 const GARDEN := Color(0.62, 0.5, 0.36)
 const FURROW := Color(0.5, 0.39, 0.27)
 const PATH := Color(0.74, 0.66, 0.52)
-const TREE_COL := [Color(0.3, 0.46, 0.32), Color(0.45, 0.6, 0.3), Color(0.5, 0.64, 0.38), Color(0.48, 0.6, 0.36)]
+const TREE_COL := [Color(0.3, 0.46, 0.32), Color(0.45, 0.6, 0.3), Color(0.5, 0.64, 0.38), Color(0.48, 0.6, 0.36), Color(0.36, 0.52, 0.3)]
 ## Деревья по клеткам 100 × 100 м: на кусок карты — только свои клетки.
 const TREE_CELL := 100.0
 var _tree_cells := {}
@@ -672,6 +672,7 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["АЗС", _world.FUEL_POS, Color(0.4, 0.85, 0.5)],
 		["СТО", _world.GARAGE_POS, Color(0.5, 0.65, 1.0)],
 		["Гараж Владика", VladikGarage.POS, Color(0.85, 0.6, 0.25)],
+		["Липки", Vector3(EliteDistrict.RING_C.x - 150.0, 0, EliteDistrict.RING_C.y), Color(0.95, 0.8, 0.35)],
 		["Автобус", _world.STOP_VILLAGE, Color(1.0, 0.9, 0.3)],
 		["Автобус", Town.w(_world.STOP_TOWN), Color(1.0, 0.9, 0.3)],
 		["Склад", Town.w(Vector3(27.5, 0, 37)), Color(0.9, 0.9, 0.9)],

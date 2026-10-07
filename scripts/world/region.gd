@@ -102,6 +102,9 @@ const ROADS := [
 	[Vector2(-1380, -4.5), Vector2(-1380, -120), Vector2(-1442, -150)],
 	[Vector2(1420, 4.5), Vector2(1420, 120), Vector2(1492, 150)],
 	[Vector2(250, 4.5), Vector2(250, 600), Vector2(260, 1200), Vector2(208, 1600)],
+	# В Липки: быстрая асфальтовая из города и красивая грунтовка из Заречья
+	EliteDistrict.ROAD_FAST,
+	EliteDistrict.ROAD_SCENIC,
 ]
 ## Дальние леса — реже: их почти всегда видно только издали.
 const FAR_FORESTS := [
@@ -366,7 +369,7 @@ static func tree_ok(x: float, z: float) -> bool:
 	for i in VILLAGES.size():
 		if village_rect(i).has_point(p):
 			return false
-	if KamenkaNorth.AREA.has_point(p):
+	if KamenkaNorth.AREA.has_point(p) or EliteDistrict.AREA.has_point(p) or ForestLife.occupied(x, z):
 		return false
 	for f in FIELDS:
 		if (f[0] as Rect2).grow(3.0).has_point(p):
@@ -426,6 +429,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	for i in VILLAGES.size():
 		_village(i, b, glow, veg)
 	KamenkaNorth.build(self, glow, veg)
+	EliteDistrict.build(self, glow, veg)
 	# Холмы, поля, пруды и лесополосы — до лесов: лес их обходит
 	Landscape.build(b, _d, _world._water_b, self, func(p: Vector3, yaw: float, kind: int) -> void:
 		_world._tree(_d, p, yaw, kind))
@@ -442,6 +446,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	lm.name = "Landmarks"
 	add_child(lm)
 	lm.build(_world, b, _d)
+	ForestLife.build(_d)
 	_forests(_d)
 	_district_bus()
 	var ground := b.build_chunked()
@@ -1158,7 +1163,7 @@ func _villager(i: int, p: Vector3) -> void:
 
 ## Леса района: ели и берёзы, по-разному густые.
 func _forests(b: MeshBuilder) -> void:
-	for area in FORESTS + FAR_FORESTS:
+	for area in FORESTS + EliteDistrict.FORESTS + FAR_FORESTS:
 		var r: Rect2 = area
 		var count := int(r.get_area() / (280.0 if FORESTS.has(area) else 800.0))
 		for i in count:

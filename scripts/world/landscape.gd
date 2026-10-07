@@ -297,6 +297,9 @@ static func _shelterbelts(place_tree: Callable, rng: RandomNumberGenerator) -> v
 				continue
 			var dir := (c - a) / len
 			var side := Vector2(-dir.y, dir.x) * (1.0 if (i + pts.size()) % 2 == 0 else -1.0)
+			# Посадки разные: где берёзы, где тополя, где сосны с елями —
+			# по участкам дороги; под деревьями кое-где кусты
+			var mix := (i * 7 + pts.size() * 3) % 3
 			# Полоса с одной стороны, а через каждые 400 м — и с другой
 			var t := 30.0
 			while t < len - 30.0:
@@ -307,6 +310,16 @@ static func _shelterbelts(place_tree: Callable, rng: RandomNumberGenerator) -> v
 				var sd := side if fmod(t, 800.0) < 400.0 else -side
 				var p := a + dir * t + sd * rng.randf_range(12.0, 14.0)
 				if Region.tree_ok(p.x, p.y) and height_at(p.x, p.y) < 0.1:
-					var kind := Vegetation.TreeKind.BIRCH if rng.randf() < 0.75 else Vegetation.TreeKind.SPRUCE
+					var roll := rng.randf()
+					var kind: int
+					match mix:
+						0:
+							kind = Vegetation.TreeKind.BIRCH if roll < 0.75 else Vegetation.TreeKind.SPRUCE
+						1:
+							kind = Vegetation.TreeKind.POPLAR if roll < 0.8 else Vegetation.TreeKind.BIRCH
+						_:
+							kind = Vegetation.TreeKind.SPRUCE if roll < 0.7 else Vegetation.TreeKind.BIRCH
+					if roll > 0.93:
+						kind = Vegetation.TreeKind.BUSH
 					place_tree.call(Vector3(p.x, 0, p.y), rng.randf() * TAU, kind)
 				t += rng.randf_range(4.0, 5.5)

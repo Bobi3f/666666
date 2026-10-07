@@ -2263,4 +2263,11 @@ const EN := {
 	"Сглаживание краёв (на высокой детализации)": "Anti-aliasing (on high detail)",
 	"Чёткость 3D": "3D sharpness",
 	"Держать FPS: не хватает кадров — проще сглаживание и чёткость": "Keep FPS: if frames drop — simpler anti-aliasing and sharpness",
+	"Липки": "Lipki",
+	"частное владение": "private property",
+	"ТВОЙ ДОМ": "YOUR HOME",
+	"ПРОДАЁТСЯ — %d грн": "FOR SALE — %d UAH",
+	"Дом №1 в Липках — %d грн. E — купить": "House No. 1 in Lipki — %d UAH. E — buy",
+	"%s, %d — частный дом, не продаётся": "%s, %d — private house, not for sale",
+	"Дом №1 в Липках — твой! Здесь можно спать (E у двери)": "House No. 1 in Lipki is yours! You can sleep here (E at the door)",
 }

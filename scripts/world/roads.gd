@@ -64,6 +64,9 @@ static func all_rects() -> Array:
 static func on_asphalt(x: float, z: float) -> bool:
 	if absf(z) < 4.2:
 		return true
+	# Липки: бульвар и быстрая дорога из города
+	if x < -500.0 and EliteDistrict.on_asphalt(x, z):
+		return true
 	if x > -120.0 and x < -78.0 and z > 0.0 and z < 21.0:
 		return true
 	# Город (в своих координатах): автошкола на западе, улицы и дворы

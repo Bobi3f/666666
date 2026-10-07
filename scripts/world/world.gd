@@ -2005,7 +2005,8 @@ func _build_tree_belts(b: MeshBuilder) -> void:
 						ok = false
 					if ok and Roads.tree_ok(px, pz) and not Farm.occupied(px, pz) and not VladikGarage.clear_rect().grow(2.0).has_point(Vector2(px, pz)) and Region.road_dist(px, pz) > 8.0 \
 							and Railway.dist(px, pz) > 10.0 and not Landscape.occupied(px, pz) and not Landmarks.occupied(px, pz):
-						_tree(b, Vector3(px, 0, pz), yaw, Vegetation.TreeKind.BIRCH)
+						# На восток к городу — тополя вдоль трассы, на запад — берёзы
+						_tree(b, Vector3(px, 0, pz), yaw, Vegetation.TreeKind.POPLAR if stretch.x > 0.0 else Vegetation.TreeKind.BIRCH)
 					x += r.randf_range(6.5, 9.0)
 
 

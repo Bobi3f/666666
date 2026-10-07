@@ -32,7 +32,7 @@ func _run() -> void:
 	ok(not Roads.on_asphalt(mid.x, mid.y) and Region.on_road(mid.x, mid.y), "красивая — грунтовка")
 	var crosses := false
 	for c in Railway.road_crossings():
-		if absf((c as Vector2).x - f0.x) < 10.0: crosses = true
+		if absf((c as Vector2).x - f0.x) < 25.0 and absf((c as Vector2).y - 205.0) < 10.0: crosses = true
 	ok(crosses, "через железную дорогу — переезд")
 	var through := [0, 0]
 	for k in 2:
