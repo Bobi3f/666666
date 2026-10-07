@@ -352,7 +352,7 @@ func _build_settings(box: VBoxContainer) -> void:
 		_choice_row(box, "Сглаживание краёв (на высокой детализации)", SettingsManager.AA_NAMES, SettingsManager.aa, SettingsManager.set_aa)
 		_choice_row(box, "Чёткость 3D", ["100 %", "85 %", "75 %"], SettingsManager.scale_i, SettingsManager.set_scale)
 		var keep := CheckButton.new()
-		keep.text = "Держать FPS: не хватает кадров — проще сглаживание и чёткость"
+		keep.text = "Держать FPS: не хватает кадров — игра сама упрощает картинку"
 		keep.button_pressed = SettingsManager.auto_perf
 		keep.toggled.connect(SettingsManager.set_auto_perf)
 		box.add_child(keep)

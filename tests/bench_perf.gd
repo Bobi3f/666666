@@ -93,7 +93,16 @@ func breakdown(tag: String) -> void:
 func _run() -> void:
 	print("max_fps=", Engine.max_fps, " low_cpu=", OS.low_processor_usage_mode, " vsync=", DisplayServer.window_get_vsync_mode(), " phys=", Engine.physics_ticks_per_second)
 	Engine.max_fps = 0
+	# PERF_STEP=n — замер с n шагами «Держать FPS» (проверить, сколько дают)
+	var SM = root.get_node("SettingsManager")
+	SM.auto_perf = false
+	SM._perf_step = int(OS.get_environment("PERF_STEP")) if OS.get_environment("PERF_STEP") != "" else 0
+	SM.changed.emit()
 	for i in 10: await process_frame
+	# HIDE_UI=1 — без интерфейса: сколько вызовов отрисовки съедает 2D
+	if OS.get_environment("HIDE_UI") == "1":
+		for cl in W.find_children("*", "CanvasLayer", true, false):
+			(cl as CanvasLayer).visible = false
 	for c in W.get_children():
 		if c.get_script() and c.get_script().resource_path.ends_with("pause_menu.gd"): c._close()
 		if c.get_script() and c.get_script().resource_path.ends_with("tutorial.gd"): c._finish()

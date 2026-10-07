@@ -133,6 +133,7 @@ func _ready() -> void:
 		aa = clampi(int(cfg.get_value("graphics", "aa", aa)), 0, AA_NAMES.size() - 1)
 		scale_i = clampi(int(cfg.get_value("graphics", "scale", scale_i)), 0, RENDER_SCALES.size() - 1)
 		auto_perf = bool(cfg.get_value("graphics", "auto_perf", auto_perf))
+		_perf_step = clampi(int(cfg.get_value("graphics", "perf_step", 0)), 0, PERF_LADDER.size())
 		third_person = bool(cfg.get_value("ui", "third_person", true))
 		first_name = str(cfg.get_value("profile", "first", ""))
 		last_name = str(cfg.get_value("profile", "last", ""))
@@ -181,6 +182,7 @@ func set_auto_gearbox(v: bool) -> void:
 
 func set_detail(v: int) -> void:
 	detail = clampi(v, 0, 2)
+	_perf_step = 0
 	_save()
 	changed.emit()
 
@@ -296,28 +298,28 @@ func set_slot(v: int) -> void:
 
 ## Дальность травы по детализации, метры (0 — травы нет).
 func grass_range() -> float:
-	return [22.0, 45.0, 85.0][detail]
+	return [22.0, 45.0, 85.0][eff_detail()]
 
 
 ## Дальность обзора, метры: до этого расстояния видно землю и лес
 ## (дальше — туман и холмы на горизонте).
 func view_range() -> float:
-	return [900.0, 1300.0, 1800.0][detail]
+	return [900.0, 1300.0, 1800.0][eff_detail()]
 
 
 ## Дальность деревьев целиком (дальше — простые силуэты леса), метры.
 func tree_range() -> float:
-	return [260.0, 380.0, 520.0][detail]
+	return [260.0, 380.0, 520.0][eff_detail()]
 
 
 ## Дальность подробных деревьев, метры: дальше — упрощённые (до tree_range).
 func tree_lod_range() -> float:
-	return [110.0, 150.0, 200.0][detail]
+	return [110.0, 150.0, 200.0][eff_detail()]
 
 
 ## Дальность мелких деталей мира (штакетник, рамы, ящики), метры.
 func small_range() -> float:
-	return [100.0, 140.0, 200.0][detail]
+	return [100.0, 140.0, 200.0][eff_detail()]
 
 
 ## Телефон: сколько строк по высоте у 3D-картинки (дальше растягивается).
@@ -327,7 +329,7 @@ func render_lines() -> float:
 
 ## Дальность теней от солнца (0 — без теней).
 func shadow_range() -> float:
-	return [0.0, 45.0, 85.0][detail]
+	return [0.0, 45.0, 85.0][eff_detail()]
 
 
 ## Сколько кадров хотим: потолок из настроек, но не больше частоты экрана
@@ -342,19 +344,45 @@ func fps_target() -> float:
 	return float(mini(lim, 240))
 
 
-## Держать FPS на компьютере: меньше 85 % от цели дольше 5 секунд — шаг
-## вниз (сглаживание выкл → 3D 85 % → 3D 75 %), потом 10 секунд ждём.
+## «Держать FPS»: шаги вниз по очереди — сглаживание, чёткость, детализация
+## (тени, блеск, трава, дальность), снова чёткость — пока не наберётся цель.
+## [что, значение]: aa — выключить; scale — доля разрешения; detail — на
+## сколько ступеней ниже выбранной детализации.
+const PERF_LADDER := [["aa", 0], ["scale", 0.85], ["detail", 1], ["scale", 0.75], ["detail", 2],
+	["scale", 0.62], ["scale", 0.5]]
+const PERF_TEXT := ["сглаживание краёв выключено", "чёткость 3D — 85 %", "тени и блеск попроще, трава ближе",
+	"чёткость 3D — 75 %", "детализация низкая", "чёткость 3D — 62 %", "чёткость 3D — 50 %"]
+
+
+## Держать FPS на компьютере: меньше 85 % от цели — шаг вниз. Совсем мало
+## (меньше половины) — через 2 секунды, иначе через 5; после шага ждём 4 с,
+## пока картинка перестроится. Шаг запоминается до следующего запуска.
 func _keep_fps(fps: float, delta: float) -> void:
-	if not auto_perf or GameManager.touch_mode or _perf_step >= 3 or fps <= 0.0:
+	if not auto_perf or GameManager.touch_mode or _perf_step >= PERF_LADDER.size() or fps <= 0.0:
 		return
-	_perf_slow = _perf_slow + delta if fps < fps_target() * 0.85 else maxf(_perf_slow - delta, minf(_perf_slow, 0.0))
-	if _perf_slow < 5.0:
+	var target := fps_target()
+	_perf_slow = _perf_slow + delta if fps < target * 0.85 else maxf(_perf_slow - delta, minf(_perf_slow, 0.0))
+	if _perf_slow < (2.0 if fps < target * 0.5 else 5.0):
 		return
-	_perf_slow = -10.0
+	_perf_slow = -4.0
 	_perf_step += 1
+	_save()
 	changed.emit()
-	var what: String = ["", "сглаживание краёв выключено", "чёткость 3D — 85 %", "чёткость 3D — 75 %"][_perf_step]
-	GameManager.notify("Чтобы держать %d FPS: %s. Вернуть — в «Настройках»" % [int(fps_target()), what])
+	GameManager.notify("Чтобы держать %d FPS: %s. Вернуть — в «Настройках»" % [int(target), PERF_TEXT[_perf_step - 1]])
+
+
+## Сколько ступеней детализации снял «Держать FPS».
+func _perf_detail_drop() -> int:
+	var drop := 0
+	for i in mini(_perf_step, PERF_LADDER.size()):
+		if PERF_LADDER[i][0] == "detail":
+			drop = int(PERF_LADDER[i][1])
+	return drop
+
+
+## Детализация сейчас (с учётом «Держать FPS»): от неё дальности, тени, блеск.
+func eff_detail() -> int:
+	return maxi(detail - _perf_detail_drop(), 0)
 
 
 ## Сглаживание сейчас (с учётом «Держать FPS»).
@@ -364,7 +392,11 @@ func effective_aa() -> int:
 
 ## Доля разрешения 3D сейчас (с учётом «Держать FPS»).
 func effective_scale() -> float:
-	return RENDER_SCALES[clampi(maxi(scale_i, _perf_step - 1), 0, RENDER_SCALES.size() - 1)]
+	var s: float = RENDER_SCALES[scale_i]
+	for i in mini(_perf_step, PERF_LADDER.size()):
+		if PERF_LADDER[i][0] == "scale":
+			s = minf(s, float(PERF_LADDER[i][1]))
+	return s
 
 
 func set_aa(i: int) -> void:
@@ -448,6 +480,7 @@ func _save() -> void:
 	cfg.set_value("graphics", "aa", aa)
 	cfg.set_value("graphics", "scale", scale_i)
 	cfg.set_value("graphics", "auto_perf", auto_perf)
+	cfg.set_value("graphics", "perf_step", _perf_step)
 	cfg.set_value("ui", "text_scale", text_scale)
 	cfg.set_value("ui", "left_hand", left_hand)
 	cfg.set_value("ui", "vibration", vibration)

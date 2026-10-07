@@ -2332,4 +2332,9 @@ const EN := {
 	"Хлебозавод": "Bakery",
 	"Садовник": "Gardener",
 	"Делянка": "Logging site",
+	"Держать FPS: не хватает кадров — игра сама упрощает картинку": "Keep FPS: when frames drop, the game simplifies the picture itself",
+	"тени и блеск попроще, трава ближе": "simpler shadows and glow, shorter grass range",
+	"детализация низкая": "low detail",
+	"чёткость 3D — 62 %": "3D sharpness — 62 %",
+	"чёткость 3D — 50 %": "3D sharpness — 50 %",
 }

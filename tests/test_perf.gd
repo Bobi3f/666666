@@ -46,13 +46,22 @@ func _run() -> void:
 	GM.in_game = true
 	SM._auto = true
 	SM.set_auto_perf(true)
+	var d0: int = SM.detail
 	for i in 3:
 		SM._perf_slow = 0.0
 		for k in 60: SM._keep_fps(SM.fps_target() * 0.5, 0.1)
 	await frames(2)
 	ok(SM._perf_step == 3, "кадров мало — три шага вниз")
-	ok(vp.msaa_3d == Viewport.MSAA_DISABLED and is_equal_approx(vp.scaling_3d_scale, 0.75), "сглаживание выкл, чёткость 75 %")
-	ok(SM.aa == 1 and SM.scale_i == 0, "настройки не тронуты — только на этот запуск")
+	ok(vp.msaa_3d == Viewport.MSAA_DISABLED and is_equal_approx(vp.scaling_3d_scale, 0.85) and SM.eff_detail() == maxi(d0 - 1, 0), "сглаживание выкл, чёткость 85 %, детализация ниже")
+	for i in 10:
+		SM._perf_slow = 0.0
+		for k in 60: SM._keep_fps(SM.fps_target() * 0.3, 0.1)
+	await frames(2)
+	ok(SM._perf_step == SM.PERF_LADDER.size() and is_equal_approx(vp.scaling_3d_scale, 0.5) and SM.eff_detail() == maxi(d0 - 2, 0), "совсем мало — до низкой детализации и чёткости 50 %")
+	var cfg := ConfigFile.new()
+	cfg.load(SM.PATH)
+	ok(int(cfg.get_value("graphics", "perf_step", 0)) == SM.PERF_LADDER.size(), "шаг запомнен до следующего запуска")
+	ok(SM.aa == 1 and SM.scale_i == 0, "свои настройки не тронуты")
 	SM.set_auto_perf(true)
 	await frames(2)
 	ok(vp.msaa_3d == Viewport.MSAA_2X and is_equal_approx(vp.scaling_3d_scale, 1.0), "вернул в настройках — снова полное качество")

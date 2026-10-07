@@ -306,7 +306,7 @@ func _ready() -> void:
 ## Каждый такой предмет — отдельный вызов отрисовки, а вдали его не видно.
 func _limit_view_ranges() -> void:
 	# Крупные предметы (машины, будки) на высокой детализации видно дальше
-	var far_props: float = [180.0, 240.0, 320.0][SettingsManager.detail]
+	var far_props: float = [180.0, 240.0, 320.0][SettingsManager.eff_detail()]
 	var skip := ["Horizon", "WorldMesh", "WindowGlow", "Vegetation", "PlayerYardMesh", "Water", "Birds"]
 	var stack: Array[Node] = []
 	for c in get_children():
@@ -501,21 +501,21 @@ void fragment() {
 ## (дешевле вдвое), на низкой — без теней.
 func _apply_detail() -> void:
 	# На низкой детализации — без свечения и рисунка поверхностей
-	_env.glow_enabled = SettingsManager.detail >= 1
+	_env.glow_enabled = SettingsManager.eff_detail() >= 1
 	_sun.shadow_blur = 1.5
 	var r := SettingsManager.shadow_range()
 	_sun.shadow_enabled = r > 0.0
 	_sun.directional_shadow_max_distance = maxf(r, 1.0)
-	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if SettingsManager.detail >= 2 \
+	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if SettingsManager.eff_detail() >= 2 \
 		else DirectionalLight3D.SHADOW_ORTHOGONAL
 	# На высокой — картинка сочнее, по краям экрана мягкое затемнение
-	_env.adjustment_contrast = 1.1 if SettingsManager.detail >= 2 else 1.06
-	_env.adjustment_saturation = 1.1 if SettingsManager.detail >= 2 else 1.04
+	_env.adjustment_contrast = 1.1 if SettingsManager.eff_detail() >= 2 else 1.06
+	_env.adjustment_saturation = 1.1 if SettingsManager.eff_detail() >= 2 else 1.04
 	if _vignette:
-		_vignette.visible = SettingsManager.detail >= 2 and not GameManager.touch_mode
+		_vignette.visible = SettingsManager.eff_detail() >= 2 and not GameManager.touch_mode
 	# На компьютере на высокой — сглаживание краёв (на телефоне дорого)
 	# В браузере сглаживание дорого встроенной видеокарте ноутбука — только в программе
-	var aa := SettingsManager.effective_aa() if SettingsManager.detail >= 2 and not GameManager.touch_mode \
+	var aa := SettingsManager.effective_aa() if SettingsManager.eff_detail() >= 2 and not GameManager.touch_mode \
 		and not OS.has_feature("web") else 0
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][aa]
 	_fit_render_scale()
@@ -559,7 +559,7 @@ func _update_daylight() -> void:
 	_env.fog_sun_scatter = lerpf(0.25, 0.7, dusk)
 	# Тени облаков плывут по полям — при солнце, на высокой детализации;
 	# в сплошных тучах их не видно
-	MeshBuilder.set_clouds(day * lerpf(0.9, 0.0, cloud) if SettingsManager.detail >= 2 else 0.0)
+	MeshBuilder.set_clouds(day * lerpf(0.9, 0.0, cloud) if SettingsManager.eff_detail() >= 2 else 0.0)
 	_sun.visible = day > 0.01
 	# Молния на мгновение заливает всё холодным светом
 	var fl := WeatherManager.flash
@@ -578,7 +578,7 @@ func _update_daylight() -> void:
 			_water_mat.set_shader_parameter("ice", water[2])
 	# Рисунок поверхностей — со средней детализации: на низкой (телефон)
 	# шейдер обходится тремя выборками зерна, без узоров травы и кирпича
-	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.detail >= 1 else 0.0)
+	MeshBuilder.set_surface(WeatherManager.wetness, 1.0 if SettingsManager.eff_detail() >= 1 else 0.0)
 	if _glow_mat:
 		var gc := Color(0.3, 0.32, 0.36).lerp(Color(1.0, 1.0, 1.0), 1.0 - day)
 		if _color_moved(_glow_mat.albedo_color, gc):
