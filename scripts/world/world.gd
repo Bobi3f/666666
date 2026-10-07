@@ -115,6 +115,7 @@ var _fishing_water := Vector3.ZERO
 var _veg := Vegetation.new()
 var my_garage: MyGarage
 var interiors: Interiors
+var princess: Princess
 
 
 func _build_interiors() -> void:
@@ -278,6 +279,9 @@ func _ready() -> void:
 	biz.name = "Business"
 	add_child(biz)
 	add_child(preload("res://scripts/world/villagers.gd").new())
+	# Принцесса — девушка игрока, гуляет у его дома с собачками и котом
+	princess = Princess.new()
+	add_child(princess)
 	var home := preload("res://scripts/world/home_items.gd").new()
 	home.name = "HomeItems"
 	home.house_pos = Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y)

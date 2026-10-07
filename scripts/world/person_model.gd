@@ -328,12 +328,11 @@ static func _head_parts(b: MeshBuilder, c: Vector3, skin: Color, hair: Color, ha
 
 ## Оля: платье в горошек с поясом и короткими рукавами, белые гольфы,
 ## туфли, длинные русые волосы с чёлкой и хвостом, белый бант, румянец.
-static func girl(b: MeshBuilder, sit: bool) -> void:
+## dress и hair — свои цвета (Принцесса — розовое платье, золотые волосы).
+static func girl(b: MeshBuilder, sit: bool, dress := Color(0.85, 0.2, 0.3), hair := Color(0.62, 0.42, 0.22)) -> void:
 	_mark(b, sit)
 	var skin := Color(0.93, 0.76, 0.65)
-	var dress := Color(0.85, 0.2, 0.3)
 	var dots := Color(0.98, 0.95, 0.9)
-	var hair := Color(0.62, 0.42, 0.22)
 	var socks := Color(0.97, 0.97, 0.95)
 	var shoe := Color(0.45, 0.12, 0.12)
 	var base := 0.5 if sit else 0.86
