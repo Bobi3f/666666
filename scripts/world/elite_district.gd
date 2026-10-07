@@ -1,14 +1,14 @@
 class_name EliteDistrict
 extends RefCounted
-## «Липки» — дорогой район на юго-востоке, за лесом: бульвар с фонарями и
+## «Липки» — дорогой район на юго-западе, за южным лесом (к югу от Берёзовки): бульвар с фонарями и
 ## деревьями, пост охраны со шлагбаумом и восемь больших участков — высокие
 ## заборы с воротами, газоны, мощёные заезды, гаражи, дома четырёх видов
 ## (классика с колоннами, современный с панорамными окнами, «замок» с
 ## башенкой, шале), у некоторых бассейн и беседка, у ворот — дорогие машины.
 ##
-## Сюда две дороги: быстрая асфальтовая из города (с Восточной улицы, через
-## переезд и лес) и красивая грунтовка из Заречья — через перелески, мимо
-## Лужков, по лесу. Обе — в Region.ROADS (переезды, карта, трафик, лес их
+## Сюда две дороги: быстрая асфальтовая — с трассы у Каменки на юг, через
+## переезд и лес, мимо Тошиков (въезд с востока); и красивая грунтовка из
+## Берёзовки — петляет по лесу и выходит к кольцу с запада. Обе — в Region.ROADS (переезды, карта, трафик, лес их
 ## обходит); быстрая ещё и асфальт (on_asphalt).
 ##
 ## Купить можно только дом №1 (Progress.has_item("lipki_house")) — после
@@ -17,23 +17,25 @@ extends RefCounted
 
 const NAME := "Липки"
 ## Весь район: здесь лес не растёт, трава подстрижена.
-const AREA := Rect2(1030, 985, 335, 190)
-## Бульвар (асфальт) вдоль X и разворотное кольцо в конце.
-const BOULEVARD := Rect2(1035, 1075.5, 310, 9)
-const RING_C := Vector2(1352, 1080)
+const AREA := Rect2(-1080, 1232, 360, 165)
+## Бульвар (асфальт) вдоль X: въезд с востока, разворотное кольцо на западе.
+const BOULEVARD := Rect2(-1052, 1309, 310, 9)
+const RING_C := Vector2(-1063, 1313.5)
 const RING_R := 11.0
 const SIDEWALK := 2.0
 ## Быстрая дорога из города (асфальт) и красивая — из Заречья (грунт).
-const ROAD_FAST := [Vector2(965, 199), Vector2(968, 330), Vector2(990, 520), Vector2(1020, 720), Vector2(1036, 900), Vector2(1038, 1076)]
-const ROAD_SCENIC := [Vector2(548, 300), Vector2(610, 335), Vector2(650, 420), Vector2(640, 520), Vector2(700, 640), Vector2(790, 700),
-	Vector2(860, 760), Vector2(930, 860), Vector2(975, 950), Vector2(995, 1040), Vector2(1015, 1098), Vector2(1040, 1088)]
+const ROAD_FAST := [Vector2(-560, 4.5), Vector2(-575, 300), Vector2(-600, 560), Vector2(-650, 820), Vector2(-700, 1000),
+	Vector2(-745, 1150), Vector2(-746, 1311)]
+const ROAD_SCENIC := [Vector2(-955, 750), Vector2(-1010, 800), Vector2(-1050, 880), Vector2(-1110, 940), Vector2(-1140, 1030),
+	Vector2(-1115, 1110), Vector2(-1135, 1190), Vector2(-1100, 1270), Vector2(-1074, 1313)]
 const FAST_HALF := 3.6
 ## Леса, через которые идут обе дороги.
-const FORESTS := [Rect2(900, 420, 200, 380), Rect2(915, 880, 110, 170), Rect2(600, 430, 120, 200)]
-## Участки: левый край по X, сторона (-1 — север, 1 — юг).
-const PLOT_X := [1065.0, 1135.0, 1205.0, 1275.0]
+const FORESTS := [Rect2(-680, 430, 150, 330), Rect2(-1190, 880, 120, 120)]
+## Участки: левый край по X (№1 — у въезда, дальше к кольцу); первые
+## четыре — к северу от бульвара, следующие — к югу.
+const PLOT_X := [-825.0, -895.0, -965.0, -1035.0]
 const PLOT_W := 66.0
-const PLOT_D := 80.0
+const PLOT_D := 70.0
 const HOUSE_PRICE := 150000
 const STYLES := ["classic", "modern", "castle", "chalet", "modern", "classic", "chalet", "castle"]
 
@@ -56,7 +58,7 @@ static func gate_pos(i: int) -> Vector3:
 ## Асфальт: бульвар, кольцо, быстрая дорога, заезды к участкам.
 static func on_asphalt(x: float, z: float) -> bool:
 	var p := Vector2(x, z)
-	if x < 955.0 or z < 195.0 or x > 1370.0 or z > 1180.0:
+	if x > -520.0 or x < -1090.0 or z < 0.0 or z > 1405.0:
 		return false
 	if BOULEVARD.grow(0.3).has_point(p) or p.distance_to(RING_C) < RING_R:
 		return true
@@ -151,35 +153,34 @@ static func _boulevard(d: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> vo
 		PersonModel.ball(d, rc + Vector3(cos(a) * 1.4, 0.45, sin(a) * 1.4), Vector3(0.22, 0.12, 0.22), [Color(0.85, 0.2, 0.25), Color(0.95, 0.85, 0.3), Color(0.9, 0.9, 0.95)][k % 3], 2, 6)
 
 
-## Пост охраны на въезде: будка, шлагбаум (поднят), стела «Липки».
+## Пост охраны на въезде (восточный конец бульвара): будка, шлагбаум
+## (поднят), каменная стела «Липки» лицом к дороге.
 static func _entrance(r: Region, d: MeshBuilder, glow: MeshBuilder) -> void:
-	var p := Vector3(1046, 0, 1070.5)
+	var ex := BOULEVARD.end.x
+	var p := Vector3(ex + 7.0, 0, BOULEVARD.end.y + 6.0)
 	var wall := Color(0.86, 0.84, 0.78)
-	d.box(p + Vector3(-1.6, 0, -1.4), p + Vector3(1.6, 2.6, 1.4), wall, true)
-	d.box(p + Vector3(-1.8, 2.6, -1.6), p + Vector3(1.8, 2.8, 1.6), Color(0.3, 0.3, 0.33))
-	glow.box(p + Vector3(-1.2, 1.1, 1.4), p + Vector3(1.2, 2.1, 1.43), Color(0.8, 0.9, 1.0))
+	d.box(p + Vector3(-1.4, 0, -1.6), p + Vector3(1.4, 2.6, 1.6), wall, true)
+	d.box(p + Vector3(-1.6, 2.6, -1.8), p + Vector3(1.6, 2.8, 1.8), Color(0.3, 0.3, 0.33))
+	glow.box(p + Vector3(-1.43, 1.1, -1.2), p + Vector3(-1.4, 2.1, 1.2), Color(0.8, 0.9, 1.0))
 	# Шлагбаум — поднят: днём въезд свободный
-	var bp := p + Vector3(2.2, 0, 2.6)
+	var bp := p + Vector3(-2.4, 0, -2.6)
 	d.box(bp + Vector3(-0.15, 0, -0.15), bp + Vector3(0.15, 1.1, 0.15), Color(0.35, 0.35, 0.38), true)
-	VehicleModels.tube(d, bp + Vector3(0, 1.05, 0), bp + Vector3(0.6, 5.2, 0.0), 0.06, Color(0.9, 0.2, 0.15))
-	VehicleModels.tube(d, bp + Vector3(0.15, 2.0, 0), bp + Vector3(0.35, 3.4, 0.0), 0.062, Color(0.95, 0.95, 0.95))
-	# Стела из камня с названием
-	var st := Vector3(1046, 0, 1091)
-	d.box(st + Vector3(-2.5, 0, -0.4), st + Vector3(2.5, 2.4, 0.4), Color(0.45, 0.42, 0.38), true)
-	d.box(st + Vector3(-2.7, 2.4, -0.5), st + Vector3(2.7, 2.6, 0.5), Color(0.6, 0.58, 0.52))
-	var l := Label3D.new()
-	l.text = NAME.to_upper()
-	l.font_size = 128
-	l.pixel_size = 0.008
-	l.outline_size = 0
-	l.modulate = Color(0.95, 0.85, 0.5)
-	l.position = st + Vector3(0, 1.3, -0.42)
-	l.rotation.y = PI
-	r.add_child(l)
-	var l2 := l.duplicate() as Label3D
-	l2.position = st + Vector3(0, 1.3, 0.42)
-	l2.rotation.y = 0.0
-	r.add_child(l2)
+	VehicleModels.tube(d, bp + Vector3(0, 1.05, 0), bp + Vector3(0, 5.2, -0.6), 0.06, Color(0.9, 0.2, 0.15))
+	VehicleModels.tube(d, bp + Vector3(0, 2.0, -0.15), bp + Vector3(0, 3.4, -0.35), 0.062, Color(0.95, 0.95, 0.95))
+	# Стела из камня с названием — у быстрой дороги
+	var st := Vector3(ex + 9.0, 0, BOULEVARD.position.y - 14.0)
+	d.box(st + Vector3(-0.4, 0, -2.5), st + Vector3(0.4, 2.4, 2.5), Color(0.45, 0.42, 0.38), true)
+	d.box(st + Vector3(-0.5, 2.4, -2.7), st + Vector3(0.5, 2.6, 2.7), Color(0.6, 0.58, 0.52))
+	for s in [-1.0, 1.0]:
+		var l := Label3D.new()
+		l.text = NAME.to_upper()
+		l.font_size = 128
+		l.pixel_size = 0.008
+		l.outline_size = 0
+		l.modulate = Color(0.95, 0.85, 0.5)
+		l.position = st + Vector3(s * 0.42, 1.3, 0)
+		l.rotation.y = s * PI / 2.0
+		r.add_child(l)
 
 
 ## Участок i: забор с воротами, газон, заезд, гараж, дом, бассейн, деревья, машина.
@@ -246,11 +247,11 @@ static func _plot(r: Region, d: MeshBuilder, glow: MeshBuilder, veg: Vegetation,
 	glow.xf = gsaved
 	# Туи вдоль забора и декоративные деревья в саду (в мире)
 	for k in 5:
-		var tz := -10.0 - k * 13.0
+		var tz := -10.0 - k * 11.5
 		for sx in [-hw + 1.5, hw - 1.5]:
 			veg.add_tree(Vegetation.TreeKind.SPRUCE, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(0.5, 0.75, 0.5)), xf * Vector3(sx, 0, tz)))
 	for k in 3:
-		veg.add_tree(Vegetation.TreeKind.APPLE if k != 1 else Vegetation.TreeKind.BIRCH, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), xf * Vector3(rng.randf_range(-20, 24), 0, rng.randf_range(-76, -50))))
+		veg.add_tree(Vegetation.TreeKind.APPLE if k != 1 else Vegetation.TreeKind.BIRCH, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), xf * Vector3(rng.randf_range(-20, 24), 0, rng.randf_range(-66, -48))))
 	for k in 4:
 		veg.add_tree(Vegetation.TreeKind.BUSH, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * 0.8), xf * Vector3(-10.0 + k * 6.0, 0, -4.0)))
 	_gate_sign(r, i)

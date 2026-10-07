@@ -20,9 +20,9 @@ func _run() -> void:
 	print("== Дороги в Липки")
 	ok(Region.ROADS.has(EliteDistrict.ROAD_FAST) and Region.ROADS.has(EliteDistrict.ROAD_SCENIC), "обе дороги — в дорогах района (карта, переезды, трафик)")
 	var f0: Vector2 = EliteDistrict.ROAD_FAST[0]
-	ok(Roads.on_asphalt(f0.x, f0.y - 2.0), "быстрая начинается с асфальта Восточной улицы города")
+	ok(Roads.on_asphalt(f0.x, f0.y - 2.0), "быстрая начинается с трассы у Каменки")
 	var s0: Vector2 = EliteDistrict.ROAD_SCENIC[0]
-	ok(s0.distance_to(Region.VILLAGES[3].c) < 80.0, "красивая — от Заречья")
+	ok(s0.distance_to(Region.VILLAGES[6].c) < 80.0, "красивая — от Берёзовки")
 	var fast_ok := true
 	for i in EliteDistrict.ROAD_FAST.size() - 1:
 		var m: Vector2 = (EliteDistrict.ROAD_FAST[i] + EliteDistrict.ROAD_FAST[i + 1]) * 0.5
@@ -47,8 +47,8 @@ func _run() -> void:
 	var end_s: Vector2 = EliteDistrict.ROAD_SCENIC[-1]
 	ok(EliteDistrict.AREA.has_point(end_f) and EliteDistrict.AREA.has_point(end_s), "обе приводят в Липки")
 	print("== Район")
-	ok(Roads.on_asphalt(1200, 1080) and Roads.on_asphalt(EliteDistrict.RING_C.x, EliteDistrict.RING_C.y), "бульвар и кольцо — асфальт")
-	ok(not Region.tree_ok(1200, 1030) and not Region.tree_ok(1200, 1120), "на участках лес не растёт")
+	ok(Roads.on_asphalt(EliteDistrict.BOULEVARD.get_center().x, EliteDistrict.BOULEVARD.get_center().y) and Roads.on_asphalt(EliteDistrict.RING_C.x, EliteDistrict.RING_C.y), "бульвар и кольцо — асфальт")
+	ok(not Region.tree_ok(-900, 1270) and not Region.tree_ok(-900, 1360), "на участках лес не растёт")
 	var signs := 0
 	for i in 8:
 		if W.find_child("LipkiSign%d" % (i + 1), true, false): signs += 1

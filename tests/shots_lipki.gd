@@ -26,12 +26,12 @@ func _run() -> void:
 	root.get_node("WeatherManager").set_kind(0, 9999.0)
 	root.get_node("TimeManager").minutes = 15 * 60.0
 	cam = Camera3D.new(); cam.fov = 60; W.add_child(cam)
-	await shot("lp_entrance", Vector3(1020, 4.0, 1062), Vector3(1080, 1.5, 1080))
-	await shot("lp_boulevard", Vector3(1150, 3.0, 1080), Vector3(1260, 2.0, 1080))
+	await shot("lp_entrance", Vector3(-720, 4.0, 1285), Vector3(-790, 1.5, 1313))
+	await shot("lp_boulevard", Vector3(-790, 3.0, 1313.5), Vector3(-900, 2.0, 1313.5))
 	for i in 4:
 		var xf := EliteDistrict.plot_xf(i)
 		await shot("lp_house_%d" % (i + 1), xf * Vector3(-2, 6.0, 22), xf * Vector3(4, 3.0, -34))
-	await shot("lp_ring", Vector3(1320, 8.0, 1060), Vector3(1352, 0.5, 1080))
+	await shot("lp_ring", Vector3(-1035, 8.0, 1295), Vector3(-1063, 0.5, 1313.5))
 	var f: Array = EliteDistrict.ROAD_FAST
 	await shot("lp_fast_forest", Vector3(f[2].x - 2, 2.0, f[2].y - 25), Vector3(f[3].x, 1.0, f[3].y))
 	var sr: Array = EliteDistrict.ROAD_SCENIC
@@ -39,4 +39,5 @@ func _run() -> void:
 	var g: Vector2 = ForestLife.glades()[0][0]
 	await shot("lp_glade", Vector3(g.x + 10, 3.0, g.y + 10), Vector3(g.x, 0.5, g.y))
 	await shot("lp_poplars", Vector3(300, 2.5, 10), Vector3(380, 4.0, 18))
+	await shot("lp_map_overview", Vector3(-900, 260, 1100), Vector3(-900, 0, 1300))
 	quit()
