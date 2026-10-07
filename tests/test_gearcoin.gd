@@ -28,7 +28,7 @@ func _run() -> void:
 	# Подарочный код: проверочный, добавлен только на время теста
 	GearShop.CODES["TEST-CODE".sha256_text()] = [1000000, 1000000]
 	var m0: int = GM.money
-	ok(GearShop.normalize(" su9k 27na-lcrт ") == "SU9K-27NA-LCRT" and GearShop.normalize("su9k27nalcrt") == "SU9K-27NA-LCRT", "код понимается без дефисов, с пробелами и русскими буквами")
+	ok(GearShop.normalize(" ab12 cd34-efт5 ") == "AB12-CD34-EFT5" and GearShop.normalize("ab12cd34eft5") == "AB12-CD34-EFT5", "код понимается без дефисов, с пробелами и русскими буквами")
 	ok(shop.redeem(" test-code ") and PR.gearcoins == 1000000 and GM.money == m0 + 1000000, "код: +1 000 000 GEARCOIN и +1 000 000 грн")
 	ok(shop._balance.text.contains("1 000 000"), "баланс с пробелами: " + shop._balance.text)
 	ok(not shop.redeem("TEST-CODE") and PR.gearcoins == 1000000, "второй раз тот же код не проходит")

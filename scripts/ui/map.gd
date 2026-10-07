@@ -684,6 +684,9 @@ func _draw_places(labels: bool, font: Font) -> void:
 		["СТО", _world.GARAGE_POS, Color(0.5, 0.65, 1.0)],
 		["Гараж Владика", VladikGarage.POS, Color(0.85, 0.6, 0.25)],
 		["Липки", Vector3(EliteDistrict.RING_C.x - 150.0, 0, EliteDistrict.RING_C.y), Color(0.95, 0.8, 0.35)],
+		["Хлебозавод", Town.w(MoreJobs.BAKERY), Color(0.9, 0.7, 0.4)],
+		["Дворник", Town.w(MoreJobs.SWEEP_GIVER), Color(0.7, 0.6, 0.3)],
+		["Садовник", Vector3(EliteDistrict.BOULEVARD.end.x + 3.0, 0, EliteDistrict.BOULEVARD.end.y + 4.0), Color(0.4, 0.8, 0.35)],
 		["Автобус", _world.STOP_VILLAGE, Color(1.0, 0.9, 0.3)],
 		["Автобус", Town.w(_world.STOP_TOWN), Color(1.0, 0.9, 0.3)],
 		["Склад", Town.w(Vector3(27.5, 0, 37)), Color(0.9, 0.9, 0.9)],
@@ -727,6 +730,10 @@ func _draw_places(labels: bool, font: Font) -> void:
 	# Конкурент — ларёк Жоры в Озерцово, пока торгует
 	if Daily.rival == Daily.Rival.ACTIVE:
 		places.append(["Ларёк Жоры", Vector3(-409.0, 0, -308.0), Color(0.85, 0.55, 0.2)])
+	# Делянка лесоруба — на поляне в лесу у дороги в Липки
+	var logs: Variant = _world.get("more_jobs").get("logs") if _world.get("more_jobs") is Dictionary else null
+	if logs is CarryJob:
+		places.append(["Делянка", (logs as CarryJob).pickup, Color(0.55, 0.4, 0.25)])
 	# Почта: отделения в Каменке, городе и ближних сёлах (если мир построен)
 	var post := _world.get_node_or_null("Post")
 	if post:

@@ -3502,6 +3502,8 @@ var post_job: RouteJob
 var post: PostService
 var hitch_job: RouteJob
 var pump_job: RouteJob
+## Хлебовоз, дворник, садовник в Липках, лесоруб (MoreJobs).
+var more_jobs := {}
 
 
 ## Работы на одном RouteJob, отличаются данными: почта (по домам и между
@@ -3571,6 +3573,7 @@ func _build_jobs() -> void:
 	pump_job.open_from = 7.0
 	pump_job.open_to = 21.0
 	add_child(pump_job)
+	more_jobs = MoreJobs.build(self, _rng)
 
 
 ## Почта: синий ящик и вывеска у окошка сбоку сельсовета.

@@ -32,6 +32,10 @@ var mode := "ride"
 var radius := 6.0
 ## Сколько игровых минут занимает каждая точка (заправить машину).
 var minutes_each := 0.0
+## Работа руками у каждой точки (подмести, подстричь): столько минут игрок
+## занят, часы идут своим ходом (TimeManager.work); work_what — что делает.
+var work_each := 0.0
+var work_what := "Работаю"
 var open_from := 7.0
 var open_to := 20.0
 ## Что поставить у точки (машина у колонки): (Vector3) -> Node3D
@@ -292,6 +296,9 @@ func _reach() -> void:
 	# Время шло, пока ехал и носил, — часы не перематываем
 	if minutes_each > 0.0:
 		NeedsManager.rest(-1.5)
+	if work_each > 0.0:
+		TimeManager.work(work_each, work_what)
+		NeedsManager.rest(-2.0)
 	if cargo > 0:
 		var n := drop_each if drop_each > 0 and idx < stops.size() - 1 else _load
 		# Третий элемент точки — где оставить коробки (у калитки, у окошка)
