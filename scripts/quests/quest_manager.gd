@@ -18,8 +18,13 @@ signal fired(name: String, amount: float)
 
 ## Главный путь: мопед → первые работы → права → первая машина → дом →
 ## город (парк с Олей, бурса, СТО) → своё СТО → свадьба → автобус → хозяин района.
+## После победы — вторая часть «Жизнь хозяина района»: новые работы,
+## Владик, гараж техники, дом в Липках и «Легенда района».
 const MAIN := ["m_morning", "m_wheels", "m_money", "m_license", "m_car", "m_neighbours", "m_house", "m_master",
-	"m_park", "m_college", "m_sto_work", "m_own_sto", "m_wedding", "m_bus", "m_district"]
+	"m_park", "m_college", "m_sto_work", "m_own_sto", "m_wedding", "m_bus", "m_district",
+	"p_jobs", "p_vladik", "p_collector", "p_lipki", "p_legend"]
+## Глава, после которой — экран победы (дальше вторая часть).
+const VICTORY_AT := "m_district"
 
 const QUESTS := {
 	"m_morning": {"title": "Первое утро", "main": true, "steps": [
@@ -70,6 +75,21 @@ const QUESTS := {
 		{"text": "Выкупи ларёк у склада в городе (5000 грн)", "event": "business_kiosk", "count": 1},
 		{"text": "Разберись с Жорой из Озерцово: перекупи его ларёк или устрой у своего три дня акции", "event": "rival_done", "count": 1},
 		{"text": "Открой автопарк: нужны три своих машины (табличка у гаражей в городе)", "event": "business_fleet", "count": 1}]},
+
+	"p_jobs": {"title": "Мастер на все руки", "main": true, "reward": 2000, "steps": [
+		{"text": "Развези хлеб по сёлам (хлебозавод у рынка в городе, с 5:00 до 12:00)", "event": "bread", "count": 1},
+		{"text": "Подмети площадь и парк — работа дворником в городе", "event": "sweep", "count": 1},
+		{"text": "Подстриги газоны в Липках — садовник у въезда", "event": "garden_job", "count": 1},
+		{"text": "Отработай смену лесорубом — «Делянка» в лесу у дороги в Липки", "event": "logs", "count": 1}]},
+	"p_vladik": {"title": "Правая рука Владика", "main": true, "reward": 4000, "steps": [
+		{"text": "Заслужи у Дяди Владика полное доверие — работа, запчасти, помощь (гараж у трассы)", "event": "vladik_top", "count": 1}]},
+	"p_collector": {"title": "Коллекционер", "main": true, "reward": 3000, "steps": [
+		{"text": "Собери 5 единиц своей техники и загляни в свой гараж у дома", "event": "garage_5", "count": 1},
+		{"text": "Наезди 30 км на своей технике", "event": "drive_m", "count": 30000}]},
+	"p_lipki": {"title": "Свой дом в Липках", "main": true, "reward": 5000, "steps": [
+		{"text": "Купи дом №1 в дорогом районе «Липки» (150 000 грн, юго-запад за лесом)", "event": "lipki_house", "count": 1}]},
+	"p_legend": {"title": "Легенда района", "main": true, "reward": 10000, "steps": [
+		{"text": "Заработай 100 000 грн", "event": "earned", "count": 100000}]},
 
 	"s_galya": {"title": "Уха для бабы Гали", "giver": "Баба Галя", "reward": 350, "snacks": 2,
 		"offer": "Сынок, поймай мне пару рыбок на уху — пирожками угощу.",
@@ -485,6 +505,13 @@ func _step_done(id: String, step: int) -> bool:
 			return Daily.rival == Daily.Rival.BOUGHT or Daily.rival == Daily.Rival.RUINED
 		["m_district", 2]:
 			return Daily.owns("fleet")
+		["p_vladik", 0]:
+			var vl := get_tree().get_first_node_in_group("vladik") if is_inside_tree() else null
+			return vl != null and int(vl.level()) >= VladikData.LEVELS.size()
+		["p_collector", 0]:
+			return is_inside_tree() and get_tree().get_nodes_in_group("vehicles").filter(func(v: Node) -> bool: return (v as Vehicle).mine()).size() >= 5
+		["p_lipki", 0]:
+			return Progress.has_item("lipki_house")
 		["vl_karpaty", 2]:
 			return int(items.get("plug", 0)) > 0
 		["vl_karpaty", 3]:
@@ -529,9 +556,12 @@ func _complete(id: String) -> void:
 	var i := MAIN.find(id)
 	if i >= 0 and i + 1 < MAIN.size():
 		_start_main(MAIN[i + 1])
-	elif id == MAIN[-1]:
+	if id == VICTORY_AT:
 		won = true
 		victory.emit()
+	elif id == MAIN[-1]:
+		SoundLibrary.play("cheer")
+		GameManager.notify("Ты — легенда района! Про тебя рассказывают в каждом селе")
 	changed.emit()
 
 
@@ -584,7 +614,7 @@ func tracker_lines() -> Array[String]:
 	if m != "":
 		lines.append("» %s: %s" % [QUESTS[m].title, step_text(m)])
 	elif won:
-		lines.append("» Ты — хозяин района! Играй дальше в своё удовольствие")
+		lines.append("» Ты — легенда района! Играй дальше в своё удовольствие")
 	var side := 0
 	for id in quests:
 		if QUESTS[id].get("main", false) or quests[id].state != 1:

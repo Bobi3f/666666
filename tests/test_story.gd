@@ -225,7 +225,7 @@ func _run() -> void:
 		await process_frame
 	ok(journal.is_open() and journal._title.text.contains("хозяин района"), "экран победы: " + journal._title.text)
 	journal._close()
-	ok(QM.tracker_lines()[0].contains("хозяин района"), "трекер после победы: " + QM.tracker_lines()[0])
+	ok(QM.tracker_lines()[0].contains("Мастер на все руки"), "после победы — вторая часть: " + QM.tracker_lines()[0])
 
 	print("== Главы засчитываются наперёд")
 	QM.reset()

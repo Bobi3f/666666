@@ -70,6 +70,9 @@ func prompt() -> String:
 
 
 func open() -> void:
+	# Пять своих машин и мотоциклов — для главы «Коллекционер»
+	if vehicles().size() >= 5:
+		QuestManager.event("garage_5")
 	panel.open()
 
 

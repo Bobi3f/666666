@@ -389,6 +389,9 @@ func add_rep(n: int) -> void:
 	var before := level()
 	rep = clampi(rep + n, 0, 100)
 	var after := level()
+	# Полное доверие — для главы «Правая рука Владика»
+	if after > before and after >= VladikData.LEVELS.size():
+		QuestManager.event("vladik_top")
 	if after > before:
 		SoundLibrary.play("quest", -4.0)
 		GameManager.notify("Дядя Владик доверяет больше: уровень %d — %s. «%s»" % [after, VladikData.LEVEL_TEXT[after - 1], VladikData.LEVEL_UP[after - 1]])
