@@ -12,6 +12,10 @@ cp tools/windows/LICENSE-Godot.txt "$TMP/"
 # Pi работает только в Pi Browser и со своим сервером — на itch.io не нужен
 sed -i '/<script src="pi.js"><\/script>/d' "$TMP/index.html"
 sed -i 's|Версия для Windows — <a [^>]*>FirstGear-Windows.zip</a>.|Версия для Windows и Android — ниже на этой странице.|' "$TMP/index.html"
+# По-английски страница вставляла ту же ссылку — теперь её нет
+sed -i '/const a = document.querySelector(".note a").outerHTML;/d' "$TMP/index.html"
+sed -i 's|Windows version — " + a + ".";|Windows and Android versions — below on this page.";|' "$TMP/index.html"
+grep -q 'FirstGear-Windows.zip\|outerHTML' "$TMP/index.html" && { echo "ссылка на GitHub осталась в index.html" >&2; exit 1; }
 grep -q 'pi.js' "$TMP/index.html" && { echo "pi.js остался в index.html" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT"
