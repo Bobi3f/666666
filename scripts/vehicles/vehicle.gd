@@ -196,7 +196,10 @@ const EDITIONS := {
 	# Награда Дяди Владика — «копейка», поднятая вместе с ним
 	"vladik": {"title": "«Копейка» Владика", "paint": Color(0.62, 0.08, 0.07), "parts": {"rims": 0, "exhaust": true}, "tuned": true},
 }
-var driver: Player
+## Игрок за рулём (Player). Тип — CharacterBody3D, а дороги (Roads) — по пути:
+## с именами этих классов скрипт машины тянул при сборке игрока и всю округу,
+## и экран загрузки в браузере замирал на этом куске на секунды.
+var driver: CharacterBody3D
 var engine_on := false
 var gear := 0
 var rpm := 0.0
@@ -492,7 +495,7 @@ func _ready() -> void:
 # --- Посадка ----------------------------------------------------------------
 
 func _on_enter() -> void:
-	var p := GameManager.player as Player
+	var p := GameManager.player as CharacterBody3D
 	if p == null or driver != null or p.car != null:
 		return
 	driver = p
@@ -1022,9 +1025,9 @@ func _surface() -> Dictionary:
 	var dirt := (p.x > -166.0 and p.x < -56.0 and p.z > -43.0 and p.z < -37.0) or (p.x > -63.0 and p.x < -56.0 and p.z > -43.0 and p.z < -4.0)
 	# Качение по грунту — вдвое тяжелее асфальта, по траве — в пять раз
 	# Гравийка полевого кольца — плотнее грунта, но не асфальт
-	if Roads.on_gravel(p.x, p.z):
+	if roads().on_gravel(p.x, p.z):
 		return {"roll": 1.4 * sqrt(mud), "grip": 0.88 / sqrt(sqrt(mud))}
-	if dirt or Roads.on_forest_road(p.x, p.z):
+	if dirt or roads().on_forest_road(p.x, p.z):
 		return {"roll": 2.0 * mud, "grip": 0.8 / sqrt(mud)}
 	return {"roll": 5.0 * mud, "grip": 0.6 / sqrt(mud)}
 
@@ -1212,7 +1215,7 @@ func _update_road_sound() -> void:
 	var kind := ""
 	if driver != null and v > 1.0 and not on_asphalt():
 		var p := global_position
-		var dirt: bool = Roads.on_gravel(p.x, p.z) or Roads.on_forest_road(p.x, p.z) or float(_surface().roll) < 3.0
+		var dirt: bool = roads().on_gravel(p.x, p.z) or roads().on_forest_road(p.x, p.z) or float(_surface().roll) < 3.0
 		kind = "gravel" if dirt else "grass"
 		# Зимой под колёсами снег — скрипит, как гравий, только тише
 		if WeatherManager.snow > 0.5:
@@ -1363,7 +1366,15 @@ func _update_camera(dt: float) -> void:
 
 ## Асфальт — трасса, город, площадки АЗС и СТО.
 func on_asphalt() -> bool:
-	return Roads.on_asphalt(global_position.x, global_position.z)
+	return roads().on_asphalt(global_position.x, global_position.z)
+
+
+## Скрипт дорог (roads.gd): грузится при первом вопросе «что под колёсами».
+static var _roads: Script
+static func roads() -> Script:
+	if _roads == null:
+		_roads = load("res://scripts/world/roads.gd")
+	return _roads
 
 
 func headlights_on() -> bool:
@@ -1881,7 +1892,8 @@ func _add_rider() -> void:
 		hands.append(g - _rider.position)
 	var b := MeshBuilder.new()
 	b.ground_shade = false
-	PersonModel.person(b, Player.SHIRT, Player.CAP, true, false, hands)
+	var pl: Script = load("res://scripts/player/player.gd")
+	PersonModel.person(b, pl.SHIRT, pl.CAP, true, false, hands)
 	var mi := b.build_mesh()
 	if moto:
 		# Шлем поверх кепки: макушка — у верха модели

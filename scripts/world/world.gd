@@ -131,9 +131,40 @@ var _horizon_r := 0.0
 ## Район вокруг Каменки: сёла, река, дороги (region.gd).
 var region: Region
 var _sky_horizon: Color
+## Стройка кусками (браузер, телефон): между кусками — кадр. Одним куском
+## мир на среднем телефоне строился больше минуты, страница всё это время не
+## отвечала — Chrome предлагал её закрыть, и игра «не запускалась».
+## Ставит boot.gd до add_child; в тестах — сразу целиком.
+var staged := false
+## Сколько мира построено (0..1) — для полоски на экране загрузки.
+signal build_progress(part: float)
+## Мир достроен. При стройке кусками — позже, чем закончился add_child.
+signal built
+var is_built := false
+var _breath_ms := 0
+var _was_paused := false
+
+
+## Передышка между кусками стройки: экран загрузки обновляется, браузер
+## отвечает на касания. Кадр — не чаще раза в 0,1 с, чтобы не тянуть время.
+func breathe(part: float) -> void:
+	if not staged or Time.get_ticks_msec() - _breath_ms < 100:
+		return
+	build_progress.emit(part)
+	await get_tree().process_frame
+	_breath_ms = Time.get_ticks_msec()
 
 
 func _ready() -> void:
+	# Пока мир строится кусками, всё недостроенное стоит на паузе: ни машин,
+	# ни часов, ни автосохранения полупустого мира
+	# 3D не рисуем: после появления игрока каждая передышка рисовала бы
+	# недостроенный мир и собирала все шейдеры разом (их греет boot.gd по частям)
+	if staged:
+		_was_paused = get_tree().paused
+		get_tree().paused = true
+		get_viewport().disable_3d = true
+		_breath_ms = Time.get_ticks_msec()
 	# Плавность: всё, что движется в физике (машины, игрок, трафик, прохожие),
 	# рисуется между её шагами — на экране 90–144 Гц и при просадке кадров
 	# не дёргается. Остальной мир — как есть: он двигается каждый кадр сам.
@@ -151,10 +182,13 @@ func _ready() -> void:
 	_build_roads(b)
 	_road_details(b)
 	_build_power_line(b)
+	await breathe(0.02)
 	_build_village(b)
 	_build_village_life(b, glow)
+	await breathe(0.05)
 	_build_roadside(b)
 	_build_town_all(b, glow)
+	await breathe(0.1)
 	_water_pump(b)
 	_build_country_roads(b)
 	_build_forest(b)
@@ -173,13 +207,15 @@ func _ready() -> void:
 	var world_mesh := Node3D.new()
 	world_mesh.name = "WorldMesh"
 	b.flush_into(world_mesh)
+	await breathe(0.13)
 	region = Region.new()
 	region.name = "Region"
 	add_child(region)
-	region.build(self, b, glow, _veg)
+	await region.build(self, b, glow, _veg)
 	var rural := RuralLife.new()
 	rural.name = "RuralLife"
 	add_child(rural)
+	await breathe(0.72)
 	# Южная часть города — в своих координатах, как и весь город
 	var south := TownSouth.new()
 	south.name = "TownSouth"
@@ -192,16 +228,19 @@ func _ready() -> void:
 	b.shift = Vector3.ZERO
 	glow.shift = Vector3.ZERO
 	_veg.shift = Vector3.ZERO
+	await breathe(0.78)
 
 	b.build_chunked(world_mesh)
 	add_child(world_mesh)
 	var body := b.build_body()
 	body.name = "WorldCollision"
 	add_child(body)
+	await breathe(0.8)
 	_veg.name = "Vegetation"
 	_veg.build()
 	add_child(_veg)
 	print("Растительность: ", _veg.counts)
+	await breathe(0.87)
 	# Вода — со своим шейдером
 	var sh := Shader.new()
 	sh.code = WATER_SHADER
@@ -220,7 +259,9 @@ func _ready() -> void:
 
 	Progress.house_changed.connect(func(_l: int) -> void: _build_player_yard())
 	NeedsManager.fainted.connect(_faint)
+	await breathe(0.89)
 	_spawn_player_and_car()
+	await breathe(0.91)
 	add_child(preload("res://scripts/world/ambience.gd").new())
 	var shop := GearShop.new()
 	shop.name = "GearShop"
@@ -235,6 +276,7 @@ func _ready() -> void:
 	var life := StreetLife.new()
 	life.name = "StreetLife"
 	add_child(life)
+	await breathe(0.93)
 	SoundLibrary.start_music()
 	var taxi := TaxiJob.new()
 	taxi.name = "Taxi"
@@ -246,8 +288,6 @@ func _ready() -> void:
 	var civic := Civic.new()
 	civic.name = "Civic"
 	add_child(civic)
-	# Интерьеры банка, больницы, бурсы и завода — когда город уже построен
-	_build_interiors.call_deferred()
 	var school := AutoSchool.new()
 	school.name = "AutoSchool"
 	school.position = Town.SHIFT
@@ -278,6 +318,7 @@ func _ready() -> void:
 	add_child(fair)
 	_build_clubs()
 	_build_jobs()
+	await breathe(0.96)
 	var biz := preload("res://scripts/world/business_spots.gd").new()
 	biz.name = "Business"
 	add_child(biz)
@@ -294,6 +335,10 @@ func _ready() -> void:
 	var garden: Node3D = preload("res://scripts/world/garden.gd").new()
 	garden.position = Vector3(PLAYER_HOUSE.x, 0, PLAYER_HOUSE.y)
 	add_child(garden)
+	# Дальше — одним куском, без передышек: меню паузы ставит паузу само
+	if staged:
+		get_tree().paused = _was_paused
+		get_viewport().disable_3d = false
 	add_child(preload("res://scripts/ui/map.gd").new())
 	add_child(preload("res://scripts/ui/hud.gd").new())
 	add_child(preload("res://scripts/ui/pause_menu.gd").new())
@@ -317,12 +362,17 @@ func _ready() -> void:
 	# Интерфейс под высоту экрана: на телефоне около 600 точек по высоте, как
 	# на мониторе (иначе на плотном экране надписи крошечные), плюс размер
 	# текста из настроек
+	# Интерьеры банка, больницы, бурсы и завода — когда весь мир уже построен;
+	# до урезания дальности: их надписи тоже не рисуются издалека
+	_build_interiors.call_deferred()
 	_limit_view_ranges.call_deferred()
 	SettingsManager.changed.connect(_limit_people)
 	_fit_ui()
 	get_window().size_changed.connect(_fit_ui)
 	SettingsManager.changed.connect(_fit_ui)
 	GameManager.notify("Утро в Каменке. Задание — слева вверху, журнал — J, управление — F1")
+	is_built = true
+	built.emit()
 
 
 ## Мелочь издалека не рисуем: надписи, куры, конусы, прилавки, детали машин.

@@ -485,7 +485,7 @@ func _step_done(id: String, step: int) -> bool:
 			return Daily.owns("sto")
 		["m_wedding", 0]:
 			var g := _girl()
-			return g != null and (g.rel >= Girl.LOVE or g.engaged or g.married)
+			return g != null and (g.rel >= g.LOVE or g.engaged or g.married)
 		["m_wedding", 1]:
 			var g2 := _girl()
 			return (Progress.has_item("ring") and Progress.has_item("dress")) or (g2 != null and (g2.engaged or g2.married))
@@ -507,9 +507,9 @@ func _step_done(id: String, step: int) -> bool:
 			return Daily.owns("fleet")
 		["p_vladik", 0]:
 			var vl := get_tree().get_first_node_in_group("vladik") if is_inside_tree() else null
-			return vl != null and int(vl.level()) >= VladikData.LEVELS.size()
+			return vl != null and vl.top_level()
 		["p_collector", 0]:
-			return is_inside_tree() and get_tree().get_nodes_in_group("vehicles").filter(func(v: Node) -> bool: return (v as Vehicle).mine()).size() >= 5
+			return is_inside_tree() and get_tree().get_nodes_in_group("vehicles").filter(func(v: Node) -> bool: return v.mine()).size() >= 5
 		["p_lipki", 0]:
 			return Progress.has_item("lipki_house")
 		["vl_karpaty", 2]:
@@ -519,10 +519,11 @@ func _step_done(id: String, step: int) -> bool:
 	return false
 
 
-func _girl() -> Girl:
+## Оля (Girl). Без типа: иначе при запуске собирались бы скрипты всего города.
+func _girl() -> Node:
 	if not is_inside_tree():
 		return null
-	return get_tree().get_first_node_in_group("girl") as Girl
+	return get_tree().get_first_node_in_group("girl")
 
 
 func _college_lessons() -> int:

@@ -432,24 +432,32 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	ground.name = "RegionGround"
 	var mesh := Node3D.new()
 	mesh.name = "RegionMesh"
+	# await _world.breathe(доля) — передышка при стройке кусками (world.gd):
+	# доля всего мира, округа — от 0,13 до 0,7
 	_ground(b)
 	_highway(b)
 	_find_bridges()
 	_river_build(b)
+	await _world.breathe(0.18)
 	_roads(b, veg)
 	_lake(b)
+	await _world.breathe(0.21)
 	for f in FIELDS:
 		var r: Rect2 = f[0]
 		b.box(Vector3(r.position.x, 0, r.position.y), Vector3(r.end.x, 0.03, r.end.y), f[1])
 		veg.block(r.position.x, r.position.y, r.end.x, r.end.y)
 	for i in VILLAGES.size():
 		_village(i, b, glow, veg)
+		await _world.breathe(0.21 + 0.12 * (i + 1) / VILLAGES.size())
 	KamenkaNorth.build(self, glow, veg)
+	await _world.breathe(0.4)
 	EliteDistrict.build(self, glow, veg)
 	_d.flush_into(mesh)
+	await _world.breathe(0.44)
 	# Холмы, поля, пруды и лесополосы — до лесов: лес их обходит
 	Landscape.build(b, _d, _world._water_b, self, func(p: Vector3, yaw: float, kind: int) -> void:
 		_world._tree(_d, p, yaw, kind))
+	await _world.breathe(0.47)
 	var rs := Roadside.new()
 	rs.name = "Roadside"
 	add_child(rs)
@@ -458,14 +466,16 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	rw.name = "Railway"
 	add_child(rw)
 	rw.build(b, _d)
+	await _world.breathe(0.5)
 	veg.block(-HALF, Railway.LINE[0].y - 4.0, Railway.LINE[1].x, Railway.LINE[0].y + 4.0)
 	var lm := Landmarks.new()
 	lm.name = "Landmarks"
 	add_child(lm)
 	lm.build(_world, b, _d)
 	_d.flush_into(mesh)
+	await _world.breathe(0.53)
 	ForestLife.build(_d)
-	_forests(_d)
+	await _forests(_d)
 	_district_bus()
 	b.build_chunked(ground)
 	for c in ground.get_children():
@@ -476,6 +486,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	var ground_body := b.build_body()
 	ground_body.name = "RegionGroundCollision"
 	add_child(ground_body)
+	await _world.breathe(0.68)
 	_d.build_chunked(mesh)
 	for c in mesh.get_children():
 		if not c.name.begins_with("Chunk_"):
@@ -1192,6 +1203,7 @@ func _forests(b: MeshBuilder) -> void:
 				continue
 			var kind := Vegetation.TreeKind.SPRUCE if _rng.randf() < 0.6 else Vegetation.TreeKind.BIRCH
 			_world._tree(b, Vector3(x, 0, z), _rng.randf() * TAU, kind)
+		await _world.breathe(0.6)
 	# Полоса леса: там, где уже есть лес, второй раз не сажаем
 	var dense: Array = FORESTS + FAR_FORESTS + EliteDistrict.FORESTS
 	for area in FOREST_BAND:
@@ -1214,6 +1226,7 @@ func _forests(b: MeshBuilder) -> void:
 			var cell := Vector2i(floori(x / Vegetation.TREE_CHUNK), floori(z / Vegetation.TREE_CHUNK))
 			var kind := Vegetation.TreeKind.SPRUCE if (cell.x * 7 + cell.y * 13) % 5 < 3 else Vegetation.TreeKind.BIRCH
 			_world._tree(b, Vector3(x, 0, z), _rng.randf() * TAU, kind)
+		await _world.breathe(0.65)
 
 
 # --- Районный автобус ----------------------------------------------------------

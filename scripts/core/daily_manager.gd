@@ -247,9 +247,10 @@ func own_cars() -> int:
 	var n := 0
 	if not is_inside_tree():
 		return 0
-	for v in get_tree().get_nodes_in_group("vehicles"):
-		var car := v as Vehicle
-		if car and car.owned() and car.price > 0 and not car.spec.two_wheels and not car.school and car.kind != "tractor":
+	# В группе только Vehicle; без приведения типа — скрипты машин и мира
+	# не собираются при запуске игры
+	for car in get_tree().get_nodes_in_group("vehicles"):
+		if car.owned() and car.price > 0 and not car.spec.two_wheels and not car.school and car.kind != "tractor":
 			n += 1
 	return n
 

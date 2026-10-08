@@ -20,6 +20,8 @@ var PATH: String:
 		return path_for(SettingsManager.slot)
 ## Автосохранение раз в столько секунд настоящей игры (не паузы).
 const AUTOSAVE_EVERY := 150.0
+## Город (town.gd) — по пути: грузится только для старых сохранений.
+const TOWN := "res://scripts/world/town.gd"
 
 var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager", "Daily", "Achievements"]
 var _since_save := 0.0
@@ -147,13 +149,16 @@ func _move_to_new_town() -> void:
 	var old_town := Rect2(-45.0, 0.5, 290.0, 250.0)
 	for node in get_tree().get_nodes_in_group("persist"):
 		var n := node as Node3D
-		if n == null or not (n is Vehicle or n is Player):
+		# Машины и игрок — без имён классов: иначе при запуске игры
+		# собирались бы скрипты машин, игрока и всего мира
+		var is_player := n == GameManager.player
+		if n == null or not (n.is_in_group("vehicles") or is_player):
 			continue
 		var p := n.global_position
 		if old_town.has_point(Vector2(p.x, p.z)):
-			n.global_position = Town.w(p)
-			if n is Player and (n as Player).camera:
-				(n as Player).camera.snap()
+			n.global_position = load(TOWN).w(p)
+			if is_player and n.camera:
+				n.camera.snap()
 
 
 # --- Помощники для сохранения векторов в JSON ----------------------------

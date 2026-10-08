@@ -7,6 +7,8 @@ extends Node
 ## в другом потоке на компьютерах — лишний риск вылета.
 
 const WORLD := "res://scenes/World.tscn"
+## Порядок сборки скриптов: от зависимостей к тем, кто их использует.
+const ORDER := "res://scripts/core/script_order.gd"
 
 ## Загрузить сохранение сразу после постройки мира.
 static var load_save := false
@@ -21,23 +23,71 @@ func _ready() -> void:
 	_build.call_deferred()
 
 
-## Сначала даём экрану загрузки отрисоваться, потом строим мир одним куском.
+## Сначала даём экрану загрузки отрисоваться, потом строим мир. В браузере
+## и на телефоне — кусками, с кадром между ними (world.gd → breathe):
+## одним куском страница минуту не отвечала, и браузер предлагал её закрыть.
 func _build() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var staged := in_steps()
+	# «FIRST GEAR: …» — этапы для «Сведений для разработчика» на странице игры:
+	# если телефон не дотянул, видно, на чём остановился
+	var t := Time.get_ticks_msec()
+	if staged:
+		print("FIRST GEAR: собираю скрипты")
+		await compile_scripts(get_tree(), func(p: float) -> void: screen.set_progress(0.05 + 0.25 * p))
+		print("FIRST GEAR: скрипты собраны за %.1f с" % _since(t))
 	var scene := load(WORLD) as PackedScene
-	screen.set_progress(0.5, "Строим Каменку…")
+	screen.set_progress(0.3, "Строим Каменку…")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var world := scene.instantiate()
+	world.staged = staged
+	world.build_progress.connect(func(p: float) -> void: screen.set_progress(0.3 + 0.55 * p))
+	print("FIRST GEAR: строю мир")
+	t = Time.get_ticks_msec()
 	get_tree().root.add_child(world)
 	get_tree().current_scene = world
+	if not world.is_built:
+		await world.built
+	print("FIRST GEAR: мир построен за %.1f с" % _since(t))
 	if load_save:
 		load_save = false
 		SaveManager.load_game()
 	# Шейдеры — пока закрыто экраном загрузки, иначе игра подвисает в пути
-	screen.set_progress(0.9, "Готовим картинку…")
-	await ShaderWarmup.run(world)
+	screen.set_progress(0.85, "Готовим картинку…")
+	t = Time.get_ticks_msec()
+	var mats: int = await ShaderWarmup.run(world, 2, 4 if staged else 0, func(p: float) -> void: screen.set_progress(0.85 + 0.15 * p))
+	print("FIRST GEAR: картинка готова за %.1f с (%d материалов)" % [_since(t), mats])
 	screen.set_progress(1.0, "Готово")
+	print("FIRST GEAR: игра готова, запуск занял %.1f с" % _since(0))
 	await get_tree().process_frame
 	queue_free()
+
+
+## Строить мир кусками: в браузере и на телефоне (или с --staged для проверки).
+static func in_steps() -> bool:
+	return OS.has_feature("web") or OS.has_feature("mobile") or "--staged" in OS.get_cmdline_user_args()
+
+
+## Собрать скрипты игры по одному, с кадром между ними: сборка всех разом
+## (загрузка World.tscn) замораживала страницу в браузере на десятки секунд.
+## Порядок — от зависимостей (tools/script_order.py), поэтому каждый скрипт
+## собирается сам, а не тянет за собой полмира. on_part(доля) — для полоски.
+static func compile_scripts(tree: SceneTree, on_part := Callable()) -> void:
+	var paths: Array = (load(ORDER) as Script).get_script_constant_map()["PATHS"]
+	var t := Time.get_ticks_msec()
+	for i in paths.size():
+		if ResourceLoader.exists(paths[i]):
+			load(paths[i])
+		# Кусок — до 0,15 с: каждый кадр между ними тоже стоит времени
+		if Time.get_ticks_msec() - t > 150:
+			if on_part.is_valid():
+				on_part.call(float(i + 1) / paths.size())
+			await tree.process_frame
+			t = Time.get_ticks_msec()
+
+
+## Секунд прошло с отметки Time.get_ticks_msec().
+static func _since(t: int) -> float:
+	return (Time.get_ticks_msec() - t) / 1000.0

@@ -50,6 +50,9 @@ def keys():
         for line in src.split('\n'):
             if line.strip().startswith('#'):
                 continue
+            # print() — журнал для разработчика, игрок его не видит
+            if re.match(r'\s*print(err)?\(', line):
+                continue
             # Готовый украинский текст в коде (const ..._UK := [...]) — не ключ
             if re.match(r'\s*const \w+_UK\b', line):
                 in_uk = True

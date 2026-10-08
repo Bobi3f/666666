@@ -60,6 +60,6 @@ func _run() -> void:
 		if not c.current and not c._ready_xf: still += 1
 	ok(idle > 5 and still == idle, "камеры, в которые не смотрят, не считаются: %d из %d" % [still, idle])
 	var boot := FileAccess.get_file_as_string("res://scripts/ui/boot.gd")
-	ok(boot.contains("ShaderWarmup.run(world)"), "при запуске — за экраном загрузки")
+	ok(boot.contains("ShaderWarmup.run(world"), "при запуске — за экраном загрузки")
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

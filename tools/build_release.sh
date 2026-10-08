@@ -21,6 +21,9 @@ if [ ! -f "$TPL/web_nothreads_release.zip" ]; then
 	exit 2
 fi
 
+# Порядок сборки скриптов на экране загрузки должен знать все скрипты
+python3 tools/script_order.py --check || { echo "Сначала: python3 tools/script_order.py и закоммитить" >&2; exit 2; }
+
 # Собираем из чистой копии: без .git, docs и releases (там тяжёлые сборки)
 WORK="$(mktemp -d /tmp/firstgear-build.XXXX)"
 tar --exclude=.git --exclude=docs --exclude=releases --exclude=.godot -cf - . | (cd "$WORK" && tar -xf -)

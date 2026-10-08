@@ -384,6 +384,11 @@ func level() -> int:
 	return l
 
 
+## Полное доверие — все уровни открыты (для задания «Правая рука Владика»).
+func top_level() -> bool:
+	return level() >= VladikData.LEVELS.size()
+
+
 ## Прибавить доверия; новый уровень — Владик говорит, что открылось.
 func add_rep(n: int) -> void:
 	var before := level()

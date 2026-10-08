@@ -13,8 +13,10 @@ extends Translation
 ## Что не нашлось — остаётся по-русски. Найденное кэшируется: одна и та же
 ## подсказка не ищется заново каждый кадр.
 
-const Dict := preload("res://scripts/core/lang_en.gd")
-const DictUk := preload("res://scripts/core/lang_uk.gd")
+## Словари — по пути, а не preload: грузится только выбранный язык. Иначе
+## 5 тысяч строк переводов собирались при каждом запуске — в браузере на
+## телефоне это секунды замершей страницы.
+const DICTS := {"en": ["res://scripts/core/lang_en.gd", "EN"], "uk": ["res://scripts/core/lang_uk.gd", "UK"]}
 const CACHE_MAX := 4000
 
 var _exact := {}
@@ -36,7 +38,8 @@ var _dict: Dictionary
 ## code — "en" или "uk".
 func _init(code := "en") -> void:
 	locale = code
-	_dict = DictUk.UK if code == "uk" else Dict.EN
+	var d: Array = DICTS.get(code, DICTS["en"])
+	_dict = (load(d[0]) as Script).get_script_constant_map()[d[1]]
 
 
 func _get_message(src: StringName, _context: StringName) -> StringName:

@@ -126,7 +126,9 @@ func buy_car(kind: String) -> void:
 
 
 ## Починить технику v ремнабором из запаса: +40% к состоянию, 20 минут.
-func use_repair_kit(v: Vehicle) -> bool:
+## v — Vehicle; тип не пишем, чтобы при запуске не собирать скрипты машин и
+## всего мира (в браузере на телефоне это секунды замершей страницы).
+func use_repair_kit(v: Node) -> bool:
 	if repair_kits <= 0 or v == null or not v.owned():
 		return false
 	if v.condition >= 99.5:
@@ -141,11 +143,11 @@ func use_repair_kit(v: Vehicle) -> bool:
 	return true
 
 
-## Залить в бак v бензин из канистр — сколько влезет. true — залил.
-func use_canister(v: Vehicle) -> bool:
+## Залить в бак v (Vehicle) бензин из канистр — сколько влезет. true — залил.
+func use_canister(v: Node) -> bool:
 	if canister_l < 0.5 or v == null or not v.owned():
 		return false
-	var need := v.tank() - v.fuel
+	var need: float = v.tank() - v.fuel
 	if need < 0.5:
 		GameManager.notify("У «%s» бак полный — канистра не нужна" % v.spec.title)
 		return false
