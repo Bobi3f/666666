@@ -25,9 +25,13 @@ func _run() -> void:
 		ok(r != null, "%s: есть водитель-игрок" % v.spec.title)
 		if r == null: continue
 		var meshes := r.find_children("*", "MeshInstance3D", true, false)
-		var verts := 0
-		for m in meshes: verts += (m as MeshInstance3D).mesh.surface_get_array_len(0)
-		ok(verts > 3000, "  человек, а не коробки: %d вершин" % verts)
+		# Треугольники, а не вершины: у мешей индексы, вершины общие у соседних
+		var tris := 0
+		for m in meshes:
+			var mesh: Mesh = (m as MeshInstance3D).mesh
+			var n: int = mesh.surface_get_array_index_len(0)
+			tris += (n if n > 0 else mesh.surface_get_array_len(0)) / 3
+		ok(tris > 1000, "  человек, а не коробки: %d треугольников" % tris)
 		ok((meshes.size() == 2) == v.spec.two_wheels, "  шлем — только на мотоцикле")
 		ok(not r.visible, "  без водителя — пусто")
 		v.driver = P
