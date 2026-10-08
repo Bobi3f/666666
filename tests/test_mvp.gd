@@ -261,6 +261,7 @@ func _run() -> void:
 	zone_with("прораб").activate()
 	await frames(3)
 	ok(not QM.won and state("m_master") == 2 and state("m_park") == 1, "кирпичный дом — сюжет идёт в город: «Огни города»")
+	hud._slow_update()
 	ok(hud._goal.text.contains("Огни города"), "трекер: " + hud._goal.text.split("\n")[0])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://save.json"))
 
