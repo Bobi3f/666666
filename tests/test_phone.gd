@@ -106,7 +106,7 @@ func _run() -> void:
 	car.fuel = 0.0
 	GM.money = 5000
 	ph.open("tow")
-	ok(labels(ph._content).contains("Жигули"), "Жигули в списке эвакуатора")
+	ok(labels(ph._content).contains("Семёрка"), "Жигули в списке эвакуатора")
 	ok(ph.tow(car), "эвакуатор вызван за %d грн" % (5000 - GM.money))
 	ok(car.global_position.distance_to(ph.tow_spots()[0]) < 12.0 and car.fuel >= 3.0, "Жигули у дома, в баке 3 л")
 

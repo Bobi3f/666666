@@ -97,7 +97,7 @@ func _take_order() -> void:
 	_rows_done = 0
 	challenge.arm()
 	SoundLibrary.play("click")
-	GameManager.notify("Бригадир: «Садись на МТЗ — и на поле за дорогой. Борозды ровно, через кольца!»")
+	GameManager.notify("Бригадир: «Садись на МТ-80 — и на поле за дорогой. Борозды ровно, через кольца!»")
 
 
 func _process(_delta: float) -> void:

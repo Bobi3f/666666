@@ -2769,7 +2769,7 @@ const TOWN_SQUARE := Rect2(103, 11, 38, 20)
 const CAFE_PRICE := 90
 ## «Хозтовары»: что продают, почём и как называется.
 const HOME_GOODS := {
-	"tv": {"title": "телевизор «Рубин»", "price": 2500, "where": "в комнате"},
+	"tv": {"title": "телевизор «Экран»", "price": 2500, "where": "в комнате"},
 	"dog": {"title": "щенка Шарика", "price": 800, "where": "у будки во дворе"},
 	"greenhouse": {"title": "теплицу на огород", "price": 3000, "where": "за домом — картошка растёт в полтора раза быстрее"},
 }
@@ -2921,7 +2921,7 @@ const SALON_CARS := [
 	["niva", 22000, "с авторынка, на ходу. Вездеход — грязь и лес ей нипочём", Vector3(243, 0.1, 24)],
 	["volga", 36000, "быстрая и мягкая, в такси платят больше", Vector3(60, 0.1, 17)],
 	["truck", 28000, "грузовик с авторынка, после колхоза — развоз хлеба вдвое дороже", Vector3(247, 0.1, 38.5)],
-	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Явы», два глушителя", Vector3(52, 0.1, 23.0)],
+	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Влтавы», два глушителя", Vector3(52, 0.1, 23.0)],
 	["vaz2107", 12000, "«семёрка»: хромированная решётка, мотор сильнее, чем у «шестёрки»", Vector3(61, 0.1, 23.4), PI / 2.0],
 ]
 
@@ -3061,7 +3061,7 @@ func _exam_prompt() -> String:
 	if Progress.license:
 		return "Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»" % EXAM_PRICE if not _exam.active() else ""
 	if _exam.active():
-		return "Инструктор: «Экзамен идёт — учебные «Жигули» на старте автодрома»"
+		return "Инструктор: «Экзамен идёт — учебная «Семёрка» на старте автодрома»"
 	if not Progress.has_doc("passport") or not Progress.has_doc("med"):
 		return "Инструктор: «На права нужны паспорт (сельсовет) и медсправка (больница)»"
 	return "E — сдать на права: змейка, разворот, стоянка (%d грн)" % EXAM_PRICE
@@ -3077,7 +3077,7 @@ func _exam_start() -> void:
 	var school := get_node_or_null("AutoSchool") as AutoSchool
 	if school:
 		school.seat_for_exam(school.car)
-	GameManager.notify("Инструктор: «Ты за рулём учебных «Жигулей» на старте. Змейка, разворот, в конце — встань в разметку «P». Конусы не сбивай»")
+	GameManager.notify("Инструктор: «Ты за рулём учебной «Семёрки» на старте. Змейка, разворот, в конце — встань в разметку «P». Конусы не сбивай»")
 
 
 func _exam_result(r: Dictionary) -> void:
@@ -3090,7 +3090,7 @@ func _exam_result(r: Dictionary) -> void:
 		SoundLibrary.play("quest")
 		QuestManager.event("license")
 		if first:
-			GameManager.notify("Сдал за %d с! Права в кармане (журнал J → «Водительское удостоверение»). Теперь — первая машина: соседские «Жигули» продаются напротив дома" % int(r.time))
+			GameManager.notify("Сдал за %d с! Права в кармане (журнал J → «Водительское удостоверение»). Теперь — первая машина: соседская «Семёрка» продаётся напротив дома" % int(r.time))
 		else:
 			GameManager.notify("Чисто прошёл за %d с, конусов сбито: %d" % [int(r.time), int(r.cones)])
 	else:
@@ -3114,7 +3114,7 @@ func _race_start() -> void:
 		return
 	Progress.race_day = TimeManager.day
 	_race.arm()
-	GameManager.notify("Колька: «Садись на Жигули или Яву и въезжай в жёлтый круг — время пойдёт»")
+	GameManager.notify("Колька: «Садись на «Семёрку» или «Влтаву» и въезжай в жёлтый круг — время пойдёт»")
 
 
 func _race_result(r: Dictionary) -> void:
@@ -3359,7 +3359,7 @@ func _take_delivery() -> void:
 	Progress.delivery_mult = 2.0 if car.kind == "truck" else 1.0
 	Progress.start_delivery()
 	if car.kind == "truck":
-		GameManager.notify("Полный кузов хлеба на ГАЗ-53 — за развоз заплатят вдвое")
+		GameManager.notify("Полный кузов хлеба на ГМЗ-53 — за развоз заплатят вдвое")
 
 
 func _wants_medicine() -> bool:
@@ -3763,7 +3763,7 @@ func _spawn_player_and_car() -> void:
 	car.kind = "car"
 	car.name = "Car"
 	car.price = CAR_PRICE
-	car.blurb = "соседские, 1978 года, на ходу. Ездить — только с правами"
+	car.blurb = "соседская, 1978 года, на ходу. Ездить — только с правами"
 	add_child(car)
 	GameManager.car = car
 	# Жигули на улице перед домом, носом вдоль улицы

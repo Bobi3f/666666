@@ -180,7 +180,7 @@ func _run() -> void:
 	C._on_enter()
 	await frames(3)
 	radio.toggle()
-	ok(radio.station == 0 and last().contains("Ретро"), "B — «Ретро FM»: " + last())
+	ok(radio.station == 0 and last().contains("Ретро"), "B — «Ретро-волна»: " + last())
 	var t0 := Time.get_ticks_msec()
 	for i in 1200:
 		await process_frame

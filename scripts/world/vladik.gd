@@ -572,7 +572,7 @@ func search_junk() -> void:
 		GameManager.notify("Под ржавым капотом — колесо. Старое, но целое")
 		QuestManager.event("vl_junk_found")
 	elif _quest_step("vl_engine") == 0 or _quest_step("vl_restore") == 0:
-		GameManager.notify("Из-под кузова «Москвича» торчит мотор. Тяжёлый, но живой — грузи")
+		GameManager.notify("Из-под кузова «Столичника» торчит мотор. Тяжёлый, но живой — грузи")
 		QuestManager.event("vl_engine_found")
 
 

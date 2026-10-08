@@ -100,7 +100,7 @@ func _run() -> void:
 	print("== Трактор и пахота")
 	var job = child("tractor_job.gd")
 	var T: Vehicle = job.tractor
-	ok(T != null and T.kind == "tractor" and T.owned() and T._needles.size() == 2, "у колхоза трактор МТЗ-80 с приборами")
+	ok(T != null and T.kind == "tractor" and T.owned() and T._needles.size() == 2, "у колхоза трактор МТ-80 с приборами")
 	TM.minutes = 10 * 60.0
 	ok(job._prompt().contains("наряд"), "щит: " + job._prompt())
 	job._take_order()

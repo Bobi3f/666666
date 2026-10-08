@@ -38,6 +38,15 @@ const TOUCH_NAMES_EN := [
 	["(W — start the engine)", "(\"Gas\" — start the engine)"],
 	["T — gearbox, V — view", "\"View\" — camera"],
 ]
+## То же по-украински.
+const TOUCH_NAMES_UK := [
+	[", журнал — J, керування — F1", ", журнал — кнопка «Журнал»"],
+	[" (Q)", " (кнопка «Їжа»)"],
+	[" — J)", " — «Журнал»)"],
+	[". Автомат: W — газ, S — гальмо і назад. T — механіка, V — вид", ": крути кермо пальцем, педалі праворуч, важіль D/R — вперед або назад"],
+	["(W — завести)", "(«Газ» — завести)"],
+	["T — коробка, V — вид", "«Вид» — камера"],
+]
 
 ## Плавное движение пешком от джойстика телефона или стика геймпада:
 ## x — вбок, y — вперёд(−)/назад(+), длина до 1 — насколько отклонён.
@@ -100,10 +109,11 @@ func vibrate(ms: int) -> void:
 func touch_text(text: String) -> String:
 	if not touch_mode:
 		return text
-	var en := SettingsManager.lang == "en"
-	if en:
+	var names: Array = TOUCH_NAMES
+	if SettingsManager.lang != "ru":
 		text = SettingsManager.t(text)
-	for pair in (TOUCH_NAMES_EN if en else TOUCH_NAMES):
+		names = TOUCH_NAMES_EN if SettingsManager.lang == "en" else TOUCH_NAMES_UK
+	for pair in names:
 		text = text.replace(pair[0], pair[1])
 	return text
 

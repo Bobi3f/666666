@@ -348,7 +348,7 @@ func _college(room: Node3D) -> void:
 	room.add_child(b.build_body())
 	_label(room, "ПДД · УСТРОЙСТВО АВТОМОБИЛЯ", Vector3(0, 2.3, -4.83), 0.0, 0.006, Color(0.95, 0.95, 0.9))
 	_label(room, "ТЕХНИКА БЕЗОПАСНОСТИ\nПРЕВЫШЕ ВСЕГО", Vector3(-5.95, 2.4, 0), PI / 2.0, 0.005, Color(0.7, 0.15, 0.15))
-	_label(room, "ДВС ВАЗ-2101", Vector3(5.1, 1.6, -3.5), 0.0, 0.004, Color(0.1, 0.1, 0.1))
+	_label(room, "ДВС ВМЗ-2101", Vector3(5.1, 1.6, -3.5), 0.0, 0.004, Color(0.1, 0.1, 0.1))
 	_person(room, Vector3(0, 0, -3.9), 0.0, Color(0.35, 0.35, 0.4))
 	for k in 4:
 		_person(room, Vector3(-3.0 + (k % 2) * 5.2, 0, -0.8 + (k / 2) * 1.7), PI, [Color(0.2, 0.3, 0.6), Color(0.6, 0.2, 0.2), Color(0.3, 0.5, 0.3), Color(0.5, 0.45, 0.2)][k], true, k == 1)

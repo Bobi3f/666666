@@ -65,7 +65,9 @@ var slot := 1
 ## языку системы (русский, украинский, белорусский — русский), на компьютере
 ## и в тестах — русский.
 var lang := _system_lang()
+## Переводчик текущего языка (null — русский) и все созданные, по языкам
 var _english: LangTranslation
+var _tr := {}
 ## Свои клавиши: клавиша действия в игре → какой её жмёт игрок (только
 ## изменённые). См. KeyRemap.
 var key_map := {}
@@ -145,7 +147,7 @@ func _ready() -> void:
 		time_speed = clampi(int(cfg.get_value("game", "time_speed", 0)), 0, TIME_RATES.size() - 1)
 		traffic = bool(cfg.get_value("game", "traffic", true))
 		slot = clampi(int(cfg.get_value("save", "slot", 1)), 1, 3)
-		lang = "en" if str(cfg.get_value("ui", "lang", lang)) == "en" else "ru"
+		lang = _known_lang(str(cfg.get_value("ui", "lang", lang)))
 		var km: Variant = cfg.get_value("controls", "keys", {})
 		key_map = (km as Dictionary).duplicate() if km is Dictionary else {}
 		var tl: Variant = cfg.get_value("controls", "touch", {})
@@ -225,38 +227,54 @@ func set_minimap(v: bool) -> void:
 
 
 func set_lang(v: String) -> void:
-	lang = "en" if v == "en" else "ru"
+	lang = _known_lang(v)
 	_apply_lang()
 	_save()
 	changed.emit()
 
 
+## Языки игры: русский (как в коде), украинский, английский.
+const LANGS := ["ru", "uk", "en"]
+
+
+static func _known_lang(v: String) -> String:
+	return v if v in LANGS else "ru"
+
+
 static func _system_lang() -> String:
 	if not (OS.has_feature("web") or OS.has_feature("mobile")):
 		return "ru"
-	return "ru" if OS.get_locale_language() in ["ru", "uk", "be"] else "en"
+	match OS.get_locale_language():
+		"uk":
+			return "uk"
+		"ru", "be":
+			return "ru"
+	return "en"
 
 
-## Английский — свой перевод «на лету» (LangTranslation), русский — как в коде.
+## Английский и украинский — свой перевод «на лету» (LangTranslation),
+## русский — как в коде.
 func _apply_lang() -> void:
-	if lang == "en" and _english == null:
-		_english = LangTranslation.new()
-		TranslationServer.add_translation(_english)
+	if lang != "ru" and not _tr.has(lang):
+		_tr[lang] = LangTranslation.new(lang)
+		TranslationServer.add_translation(_tr[lang])
+	_english = _tr.get(lang)
 	TranslationServer.set_locale(lang)
 
 
 ## Переводчик — скрипт: убрать его из TranslationServer, пока скрипты живы,
 ## иначе игра падает при выходе.
 func _exit_tree() -> void:
-	if _english:
-		TranslationServer.remove_translation(_english)
-		_english = null
+	for k in _tr:
+		TranslationServer.remove_translation(_tr[k])
+	_tr.clear()
+	_english = null
 
 
 ## Перевести строку для рисования (draw_string) — надписи и кнопки
 ## переводятся сами.
 func t(s: String) -> String:
-	return _english.text(s) if lang == "en" and _english else s
+	return _english.text(s) if lang != "ru" and _english else s
 
 
 func set_vibration(v: bool) -> void:

@@ -124,22 +124,22 @@ func _ready() -> void:
 	bus_job.name = "BusJob"
 	bus_job.id = "bus_shift"
 	bus_job.title = "Рейсовый автобус"
-	bus_job.describe = "рейс Каменка — город на ПАЗе, +%d грн" % BUS_TRIP_PAY
+	bus_job.describe = "рейс Каменка — город на ПМЗ, +%d грн" % BUS_TRIP_PAY
 	bus_job.giver = BUS_STOP + Vector3(-5.0, 0, 0)
 	bus_job.giver_size = Vector3(3.0, 2.2, 2.0)
 	bus_job.need_kind = "bus"
-	bus_job.ride_on = "на ПАЗе со стоянки автошколы"
+	bus_job.ride_on = "на ПМЗ со стоянки автошколы"
 	bus_job.radius = 7.0
 	bus_job.verb = "Пассажиры вышли"
 	bus_job.open_from = BUS_HOURS.x
 	bus_job.open_to = BUS_HOURS.y
 	bus_job.blocked_fn = _bus_blocked
 	bus_job.describe_fn = func(_o: Array, pay: int) -> String:
-		return "рейс Каменка — город на ПАЗе: +%d грн (сегодня %d из %d)" % [pay, trips_today(), BUS_TRIPS_DAY]
+		return "рейс Каменка — город на ПМЗ: +%d грн (сегодня %d из %d)" % [pay, trips_today(), BUS_TRIPS_DAY]
 	bus_job.stops_fn = func() -> Array:
 		return [["остановка «Каменка»", KAMENKA_STOP],
 			["городская остановка", Town.w(TOWN_STOP)],
-			["стоянка автошколы — поставить ПАЗ", Town.w(BUS_SPOT)]]
+			["стоянка автошколы — поставить ПМЗ", Town.w(BUS_SPOT)]]
 	bus_job.pay_fn = func(_s: Array) -> int: return BUS_TRIP_PAY
 	bus_job.finished.connect(_bus_done)
 	add_child(bus_job)

@@ -573,8 +573,8 @@ func _fun(ib: MeshBuilder) -> void:
 	quiz.position = Vector3(62.6, 0, Z0 + 6.6)
 	quiz.prompt_fn = func() -> String:
 		if quiz_day != TimeManager.day:
-			return "E — викторина «Умники и умницы»: 5 весёлых вопросов (приз %d грн)" % QUIZ_PRIZE
-		return "E — викторина «Умники и умницы»: 5 весёлых вопросов"
+			return "E — викторина «Знатоки»: 5 весёлых вопросов (приз %d грн)" % QUIZ_PRIZE
+		return "E — викторина «Знатоки»: 5 весёлых вопросов"
 	quiz.activated.connect(start_fun_quiz)
 	add_child(quiz)
 
@@ -585,11 +585,11 @@ func start_fun_quiz() -> void:
 	_fun_quiz = true
 	var items: Array = FUN_QUIZ.duplicate()
 	items.shuffle()
-	panel.start_quiz("Викторина «Умники и умницы»", items.slice(0, 5))
+	panel.start_quiz("Викторина «Знатоки»", items.slice(0, 5))
 
 
 const FUN_QUIZ := [
-	["Сколько колёс у «Запорожца»?", "Четыре", "Три", "Шесть"],
+	["Сколько колёс у «Ушастика»?", "Четыре", "Три", "Шесть"],
 	["Что кричат в футболе, когда забили?", "Гол!", "Пас!", "Аут!"],
 	["Какого цвета «Скорая» в Каменке?", "Белая с красным", "Зелёная", "Чёрная"],
 	["Кто живёт в ГСК «Мотор»?", "Машины в гаражах", "Коровы", "Рыбы"],

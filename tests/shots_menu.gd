@@ -16,6 +16,8 @@ func _run() -> void:
 	for c in W.get_children():
 		if c.get_script() and c.get_script().resource_path.ends_with("pause_menu.gd"): menu = c
 	var p: String = OS.get_environment("PFX")
+	if OS.get_environment("LANG_CODE") != "":
+		root.get_node("SettingsManager").set_lang(OS.get_environment("LANG_CODE"))
 	await snap(p + "1_main")
 	menu._close()
 	await process_frame

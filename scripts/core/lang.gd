@@ -1,11 +1,12 @@
 class_name LangTranslation
 extends Translation
-## Английский язык игры — перевод «на лету», когда текст попадает на экран.
+## Английский и украинский языки игры — перевод «на лету», когда текст
+## попадает на экран. Один и тот же переводчик, свой словарь у каждого языка.
 ##
 ## В коде все строки русские и собираются как угодно: "Купил %s — будет %s" %
 ## [что, где]. Godot показывает текст надписей, кнопок и табличек через
 ## TranslationServer, и сюда приходит уже собранная строка. Её ищем так:
-##   * целиком в словаре (lang_en.gd);
+##   * целиком в словаре (lang_en.gd / lang_uk.gd);
 ##   * по шаблону: русская строка с %s/%d → регулярное выражение, подставленные
 ##     куски переводятся отдельно (имена, названия — тоже из словаря);
 ##   * многострочный текст — по строкам, длинное сообщение — по предложениям.
@@ -13,6 +14,7 @@ extends Translation
 ## подсказка не ищется заново каждый кадр.
 
 const Dict := preload("res://scripts/core/lang_en.gd")
+const DictUk := preload("res://scripts/core/lang_uk.gd")
 const CACHE_MAX := 4000
 
 var _exact := {}
@@ -27,10 +29,14 @@ var _ph := RegEx.create_from_string("%(%|[-+0 #]*\\d*(?:\\.\\d+)?[sdfixXc])")
 var _sentence := RegEx.create_from_string("(?<=[.!?…»)])\\s+(?=[«А-ЯЁA-Z(])")
 var _tags := RegEx.create_from_string("^((?:\\[[^\\]/]+\\])*)(.*?)((?:\\[/[^\\]]+\\])*)$")
 var _built := false
+## Словарь этого языка: русская строка → перевод
+var _dict: Dictionary
 
 
-func _init() -> void:
-	locale = "en"
+## code — "en" или "uk".
+func _init(code := "en") -> void:
+	locale = code
+	_dict = DictUk.UK if code == "uk" else Dict.EN
 
 
 func _get_message(src: StringName, _context: StringName) -> StringName:
@@ -55,8 +61,8 @@ func text(s: String) -> String:
 
 func _build() -> void:
 	_built = true
-	for ru in Dict.EN:
-		var en: String = Dict.EN[ru]
+	for ru in _dict:
+		var en: String = _dict[ru]
 		if _ph.search(ru) == null:
 			_exact[ru] = en
 			_lower[ru.to_lower()] = en

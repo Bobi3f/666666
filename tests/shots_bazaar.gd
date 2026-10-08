@@ -19,6 +19,8 @@ func _run() -> void:
 		if c.get_script() and c.get_script().resource_path.ends_with("pause_menu.gd"): c._close()
 		if c.get_script() and c.get_script().resource_path.ends_with("tutorial.gd"): c._finish()
 	root.get_node("WeatherManager").set_kind(0, 9999.0)
+	if OS.get_environment("LANG_CODE") != "":
+		root.get_node("SettingsManager").set_lang(OS.get_environment("LANG_CODE"))
 	var TM = root.get_node("TimeManager")
 	TM.day = 2; TM.minutes = 11 * 60.0
 	var S = W.get_node("TownSouth")

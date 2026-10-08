@@ -11,7 +11,7 @@ const QUEST_TARGETS := {
 	"m_money:0": ["Почта — посылки", Vector3(-59.1, 0, -46.6)],
 	"m_license:0": ["", ""],
 	"m_license:1": ["Автошкола", "InstructorZone"],
-	"m_car:0": ["«Жигули» у соседа", "Car"],
+	"m_car:0": ["«Семёрка» у соседа", "Car"],
 }
 
 var _label: Label

@@ -15,6 +15,8 @@ sed -i 's|Версия для Windows — <a [^>]*>FirstGear-Windows.zip</a>.|В
 # По-английски страница вставляла ту же ссылку — теперь её нет
 sed -i '/const a = document.querySelector(".note a").outerHTML;/d' "$TMP/index.html"
 sed -i 's|Windows version — " + a + ".";|Windows and Android versions — below on this page.";|' "$TMP/index.html"
+sed -i '/const ua = document.querySelector(".note a").outerHTML;/d' "$TMP/index.html"
+sed -i 's|Версія для Windows — " + ua + ".";|Версії для Windows і Android — нижче на цій сторінці.";|' "$TMP/index.html"
 grep -q 'FirstGear-Windows.zip\|outerHTML' "$TMP/index.html" && { echo "ссылка на GitHub осталась в index.html" >&2; exit 1; }
 grep -q 'pi.js' "$TMP/index.html" && { echo "pi.js остался в index.html" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"

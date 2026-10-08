@@ -71,7 +71,7 @@ func _run() -> void:
 	var a_z: float = await accel(C, Vector3(-150, 0.1, 2.0), 6.0)
 	var a_v: float = await accel(V, Vector3(-150, 0.1, 2.0), 6.0)
 	var a_t: float = await accel(T, Vector3(-150, 0.1, -2.0), 6.0)
-	print("       за 6 с по трассе: Жигули %d, Волга %d, ГАЗ-53 %d км/ч" % [int(a_z), int(a_v), int(a_t)])
+	print("       за 6 с по трассе: Жигули %d, Волга %d, ГМЗ-53 %d км/ч" % [int(a_z), int(a_v), int(a_t)])
 	ok(a_v > a_z and a_t < a_z, "Волга быстрее Жигулей, грузовик медленнее")
 	var g_z: float = await accel(C, Vector3(2, 0.1, -100), 5.0)
 	var g_n: float = await accel(N, Vector3(2, 0.1, -100), 5.0)
@@ -85,7 +85,7 @@ func _run() -> void:
 	T._on_enter(); await frames(3)
 	for z in W.get_children():
 		if z is InteractZone and z.text().contains("развоз"): z.activate(); break
-	ok(PR.delivery_active and GM.delivery_vehicle == T and PR.delivery_mult == 2.0, "хлеб в кузове ГАЗ-53, плата вдвое")
+	ok(PR.delivery_active and GM.delivery_vehicle == T and PR.delivery_mult == 2.0, "хлеб в кузове ГМЗ-53, плата вдвое")
 	T.global_position = Vector3(-51, 0.1, -24); await frames(5)
 	ok(GM.money >= 1000, "развоз на грузовике: +%d грн" % GM.money)
 	T.exit_car(); await frames(3)

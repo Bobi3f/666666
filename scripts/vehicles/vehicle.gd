@@ -39,7 +39,7 @@ const DAMAGE_HIT := 4.5
 const BUS_SIZE := Vector3(2.45, 2.95, 7.2)
 const SPECS := {
 	"car": {
-		"title": "Жигули", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
+		"title": "Семёрка", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
 		"final": 4.1, "wheel_r": 0.29, "mass": 1050.0, "idle": 850.0, "redline": 6200.0,
 		"torque": 175.0, "peak_rpm": 3500.0, "inertia": 0.18, "wheelbase": 2.4, "max_steer": 0.6,
 		"tank": 40.0, "fuel_k": 1.0, "grip": 9.0, "drag": 0.42, "brake": 9.0,
@@ -49,7 +49,7 @@ const SPECS := {
 	},
 	# «Семёрка» ВАЗ-2107 из автосалона: та же база, мотор чуть сильнее.
 	"vaz2107": {
-		"title": "ВАЗ-2107", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
+		"title": "ВМЗ-2107", "ratios": {-1: -3.4, 0: 0.0, 1: 3.6, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.82},
 		"final": 4.1, "wheel_r": 0.29, "mass": 1050.0, "idle": 850.0, "redline": 6200.0,
 		"torque": 190.0, "peak_rpm": 3500.0, "inertia": 0.18, "wheelbase": 2.4, "max_steer": 0.6,
 		"tank": 40.0, "fuel_k": 1.0, "grip": 9.0, "drag": 0.42, "brake": 9.0,
@@ -58,7 +58,7 @@ const SPECS := {
 		"chase": Vector3(0, 2.6, 6.5), "roof": true, "two_wheels": false,
 	},
 	"moto": {
-		"title": "Ява", "ratios": {-1: -2.9, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
+		"title": "Влтава", "ratios": {-1: -2.9, 0: 0.0, 1: 2.9, 2: 1.9, 3: 1.4, 4: 1.1},
 		"final": 6.0, "wheel_r": 0.31, "mass": 210.0, "idle": 1300.0, "redline": 7800.0,
 		"torque": 34.0, "peak_rpm": 5000.0, "inertia": 0.035, "wheelbase": 1.35, "max_steer": 0.55,
 		"tank": 14.0, "fuel_k": 0.35, "grip": 11.0, "drag": 0.22, "brake": 8.0,
@@ -70,7 +70,7 @@ const SPECS := {
 	# «ИЖ Юпитер-5» из автосалона: двухцилиндровый, тяжелее и мощнее «Явы»,
 	# бак больше, разгоняется до 130.
 	"izh": {
-		"title": "ИЖ Юпитер-5", "ratios": {-1: -2.8, 0: 0.0, 1: 2.8, 2: 1.85, 3: 1.35, 4: 1.05},
+		"title": "«Иртыш-5»", "ratios": {-1: -2.8, 0: 0.0, 1: 2.8, 2: 1.85, 3: 1.35, 4: 1.05},
 		"final": 5.6, "wheel_r": 0.32, "mass": 235.0, "idle": 1200.0, "redline": 7000.0,
 		"torque": 42.0, "peak_rpm": 5200.0, "inertia": 0.04, "wheelbase": 1.4, "max_steer": 0.52,
 		"tank": 18.0, "fuel_k": 0.42, "grip": 11.0, "drag": 0.23, "brake": 8.0,
@@ -94,7 +94,7 @@ const SPECS := {
 	# Машины из автосалона. offroad — насколько лучше держит вне асфальта,
 	# mud — во сколько раз легче катится по грунту, траве и грязи.
 	"niva": {
-		"title": "Нива", "ratios": {-1: -3.5, 0: 0.0, 1: 3.7, 2: 2.2, 3: 1.4, 4: 1.0, 5: 0.82},
+		"title": "Тайга", "ratios": {-1: -3.5, 0: 0.0, 1: 3.7, 2: 2.2, 3: 1.4, 4: 1.0, 5: 0.82},
 		"final": 4.3, "wheel_r": 0.33, "mass": 1150.0, "idle": 850.0, "redline": 5600.0,
 		"torque": 215.0, "peak_rpm": 3000.0, "inertia": 0.2, "wheelbase": 2.2, "max_steer": 0.62,
 		"tank": 42.0, "fuel_k": 1.2, "grip": 9.5, "drag": 0.45, "brake": 9.0,
@@ -106,7 +106,7 @@ const SPECS := {
 		"tail": [Vector3(-0.75, 0.87, 1.9), Vector3(0.75, 0.87, 1.9)], "lamps": [Vector3(-0.56, 0.78, -1.92), Vector3(0.56, 0.78, -1.92)],
 	},
 	"volga": {
-		"title": "Волга", "ratios": {-1: -3.5, 0: 0.0, 1: 3.5, 2: 2.26, 3: 1.45, 4: 1.0, 5: 0.8},
+		"title": "Волжанка", "ratios": {-1: -3.5, 0: 0.0, 1: 3.5, 2: 2.26, 3: 1.45, 4: 1.0, 5: 0.8},
 		"final": 4.2, "wheel_r": 0.33, "mass": 1400.0, "idle": 800.0, "redline": 5600.0,
 		"torque": 295.0, "peak_rpm": 3000.0, "inertia": 0.25, "wheelbase": 2.8, "max_steer": 0.55,
 		"tank": 55.0, "fuel_k": 1.4, "grip": 9.8, "drag": 0.36, "brake": 9.5,
@@ -118,7 +118,7 @@ const SPECS := {
 		"tail": [Vector3(-0.79, 0.68, 2.39), Vector3(0.79, 0.68, 2.39)], "lamps": [Vector3(-0.74, 0.65, -2.4), Vector3(0.74, 0.65, -2.4)],
 	},
 	"truck": {
-		"title": "ГАЗ-53", "ratios": {-1: -6.4, 0: 0.0, 1: 6.5, 2: 3.1, 3: 1.7, 4: 1.0},
+		"title": "ГМЗ-53", "ratios": {-1: -6.4, 0: 0.0, 1: 6.5, 2: 3.1, 3: 1.7, 4: 1.0},
 		"final": 6.7, "wheel_r": 0.46, "mass": 3200.0, "idle": 700.0, "redline": 3800.0,
 		"torque": 430.0, "peak_rpm": 2200.0, "inertia": 0.5, "wheelbase": 3.9, "max_steer": 0.5,
 		"tank": 90.0, "fuel_k": 2.2, "grip": 8.5, "drag": 0.8, "brake": 7.0,
@@ -133,7 +133,7 @@ const SPECS := {
 	# Учебный ПАЗ автошколы: как настоящий ПАЗ-672 — 7,2 м в длину, 2,5 в
 	# ширину, 3 в высоту, база 3,5 м; тяжёлый, поворачивает широко.
 	"bus": {
-		"title": "ПАЗ-672", "ratios": {-1: -6.2, 0: 0.0, 1: 6.4, 2: 3.4, 3: 1.8, 4: 1.0},
+		"title": "ПМЗ-672", "ratios": {-1: -6.2, 0: 0.0, 1: 6.4, 2: 3.4, 3: 1.8, 4: 1.0},
 		"final": 6.8, "wheel_r": 0.5, "mass": 4500.0, "idle": 650.0, "redline": 3600.0,
 		"torque": 480.0, "peak_rpm": 2200.0, "inertia": 0.55, "wheelbase": 3.5, "max_steer": 0.55,
 		"tank": 110.0, "fuel_k": 2.6, "grip": 8.0, "drag": 1.0, "brake": 6.5,
@@ -147,7 +147,7 @@ const SPECS := {
 	# Колхозный трактор: медленный, тянет по пашне как по асфальту.
 	# Колёса — [где, радиус, ширина]: задние огромные, передние маленькие.
 	"tractor": {
-		"title": "МТЗ-80", "ratios": {-1: -9.0, 0: 0.0, 1: 9.0, 2: 5.5, 3: 3.4, 4: 2.2},
+		"title": "МТ-80", "ratios": {-1: -9.0, 0: 0.0, 1: 9.0, 2: 5.5, 3: 3.4, 4: 2.2},
 		"final": 8.0, "wheel_r": 0.72, "mass": 3400.0, "idle": 700.0, "redline": 2300.0,
 		"torque": 560.0, "peak_rpm": 1500.0, "inertia": 0.6, "wheelbase": 2.4, "max_steer": 0.62,
 		"tank": 130.0, "fuel_k": 1.8, "grip": 10.0, "drag": 1.2, "brake": 6.0,
@@ -190,9 +190,9 @@ var spec: Dictionary
 ## Эксклюзивный выпуск за GEARCOIN (EDITIONS): своё имя, цвет и запчасти.
 var edition := ""
 const EDITIONS := {
-	"black": {"title": "«Волга» Чёрная", "paint": Color(0.04, 0.04, 0.05), "parts": {"rims": 3}, "tuned": true},
-	"gold": {"title": "«Ява» Золотая", "paint": Color(0.86, 0.66, 0.2), "parts": {"rims": 3, "exhaust": true}, "tuned": false},
-	"hunter": {"title": "«Нива» Охотник", "paint": Color(0.33, 0.37, 0.22), "parts": {"wheels": true, "tank": true}, "tuned": false},
+	"black": {"title": "«Волжанка» Чёрная", "paint": Color(0.04, 0.04, 0.05), "parts": {"rims": 3}, "tuned": true},
+	"gold": {"title": "«Влтава» Золотая", "paint": Color(0.86, 0.66, 0.2), "parts": {"rims": 3, "exhaust": true}, "tuned": false},
+	"hunter": {"title": "«Тайга» Охотник", "paint": Color(0.33, 0.37, 0.22), "parts": {"wheels": true, "tank": true}, "tuned": false},
 	# Награда Дяди Владика — «копейка», поднятая вместе с ним
 	"vladik": {"title": "«Копейка» Владика", "paint": Color(0.62, 0.08, 0.07), "parts": {"rims": 0, "exhaust": true}, "tuned": true},
 }

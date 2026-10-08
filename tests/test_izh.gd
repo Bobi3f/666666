@@ -32,12 +32,12 @@ func _run() -> void:
 	var I: Vehicle = W.get_node("Izh")
 
 	print("== В салоне")
-	ok(I.spec.title == "ИЖ Юпитер-5" and I.price == 3500 and not I.owned(), "продаётся за 3500")
+	ok(I.spec.title == "«Иртыш-5»" and I.price == 3500 and not I.owned(), "продаётся за 3500")
 	ok(I.spec.two_wheels and I.category() == "A", "мотоцикл, категория A")
 	var labels := []
 	for c in I._paint_mesh.get_children():
 		if c is Label3D: labels.append(c.text)
-	ok(labels.has("ИЖ") and labels.has("ЮПИТЕР 5"), "надписи на баке и ящике: " + str(labels))
+	ok(labels.has("Иртыш") and labels.has("ИРТЫШ 5"), "надписи на баке и ящике: " + str(labels))
 	ok((I.spec.torque as float) > (W.get_node("Moto").spec.torque as float) and I.tank() > W.get_node("Moto").tank(), "мощнее и с баком больше, чем «Ява»")
 
 	# Надписи не выходят за рамки: ширина и высота текста — не больше рамки
@@ -57,10 +57,10 @@ func _run() -> void:
 	var ij: Label3D = null
 	var ju: Label3D = null
 	for c in I._paint_mesh.get_children():
-		if c is Label3D and c.text == "ИЖ": ij = c
-		if c is Label3D and c.text == "ЮПИТЕР 5": ju = c
-	var wij := font.get_string_size("ИЖ", HORIZONTAL_ALIGNMENT_LEFT, -1, ij.font_size).x * ij.pixel_size
-	var wju := font.get_string_size("ЮПИТЕР 5", HORIZONTAL_ALIGNMENT_LEFT, -1, ju.font_size).x * ju.pixel_size
+		if c is Label3D and c.text == "Иртыш": ij = c
+		if c is Label3D and c.text == "ИРТЫШ 5": ju = c
+	var wij := font.get_string_size("Иртыш", HORIZONTAL_ALIGNMENT_LEFT, -1, ij.font_size).x * ij.pixel_size
+	var wju := font.get_string_size("ИРТЫШ 5", HORIZONTAL_ALIGNMENT_LEFT, -1, ju.font_size).x * ju.pixel_size
 	ok(wij <= 0.171 and wju <= 0.201, "эмблемы в рамках: «ИЖ» %.2f ≤ 0.17 м, «ЮПИТЕР 5» %.2f ≤ 0.2 м" % [wij, wju])
 	ok(checked > 10 and worst <= 1.31, "все надписи на технике (%d) не шире своих рамок: самая широкая %.2f м" % [checked, worst])
 
@@ -75,12 +75,12 @@ func _run() -> void:
 	var jl := []
 	for c in JV._paint_mesh.get_children():
 		if c is Label3D: jl.append(c.text)
-	ok(jl.count("JAWA") == 3 and jl.count("350") == 2 and JV._dash_vp != null and JV._gauge_spots().is_empty(), "«Ява 350»: JAWA на баке и брызговике, 350 на крышках, живой щиток на руле")
+	ok(jl.count("VLTAVA") == 3 and jl.count("350") == 2 and JV._dash_vp != null and JV._gauge_spots().is_empty(), "«Ява 350»: VLTAVA на баке и брызговике, 350 на крышках, живой щиток на руле")
 
 	ok(I._dash_vp != null and I._dash_quad != null and I._gauge_spots().is_empty(), "у «ИЖа» на руле — живой щиток (лампочки и спидометр)")
 
 	var V7: Vehicle = W.get_node("Vaz2107")
-	ok(V7.spec.title == "ВАЗ-2107" and V7.price == 12000 and V7.category() == "B" and not V7.owned(), "«семёрка» ВАЗ-2107 в салоне за 12000, категория B")
+	ok(V7.spec.title == "ВМЗ-2107" and V7.price == 12000 and V7.category() == "B" and not V7.owned(), "«семёрка» ВМЗ-2107 в салоне за 12000, категория B")
 	var b7: AABB = V7._paint_mesh.get_aabb()
 	ok(b7.size.z > 4.1 and b7.size.z < 4.3 and V7._turn_lamps.size() == 6, "по чертежу: длина %.2f м, поворотники в углах фар" % b7.size.z)
 

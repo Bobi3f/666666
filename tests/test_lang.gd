@@ -35,8 +35,8 @@ func _run() -> void:
 	ok(TS.get_locale() == "en", "локаль en")
 	var t := func(s: String) -> String: return String(TS.translate(s))
 	ok(t.call("Новая игра") == "New game", "точная строка: " + t.call("Новая игра"))
-	ok(t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Рубин»", "в комнате"]) == "Bought a \"Rubin\" TV — it'll be delivered home, it'll be in the room",
-		"шаблон со вставками: " + t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Рубин»", "в комнате"]))
+	ok(t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Экран»", "в комнате"]) == "Bought an \"Ekran\" TV — it'll be delivered home, it'll be in the room",
+		"шаблон со вставками: " + t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Экран»", "в комнате"]))
 	ok(t.call("Оля: «%s»" % "Пойдём! Куда сегодня?") == "Olya: \"Let's go! Where to today?\"", "реплика Оли: " + t.call("Оля: «%s»" % "Пойдём! Куда сегодня?"))
 	ok(t.call("E — поговорить: %s%s" % ["Баба Галя", "  (!)"]) == "E — talk: Baba Galya  (!)", "подсказка жителя: " + t.call("E — поговорить: %s%s" % ["Баба Галя", "  (!)"]))
 	ok(t.call("День %d (%s), %02d:%02d" % [3, "ср", 9, 5]) == "Day 3 (Wed), 09:05", "часы: " + t.call("День %d (%s), %02d:%02d" % [3, "ср", 9, 5]))
@@ -79,7 +79,41 @@ func _run() -> void:
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	ok(ms < 400.0, "200 новых сообщений переводятся за %.0f мс" % ms)
 
+	print("== Українська")
+	SM.set_lang("uk")
+	ok(TS.get_locale() == "uk", "локаль uk")
+	ok(t.call("Новая игра") == "Нова гра", "точная строка: " + t.call("Новая игра"))
+	ok(t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Экран»", "в комнате"]) == "Купив телевізор «Екран» — привезуть додому, буде у кімнаті",
+		"шаблон со вставками: " + t.call("Купил %s — привезут домой, будет %s" % ["телевизор «Экран»", "в комнате"]))
+	ok(t.call("День %d (%s), %02d:%02d" % [3, "ср", 9, 5]) == "День 3 (ср), 09:05", "часы: " + t.call("День %d (%s), %02d:%02d" % [3, "ср", 9, 5]))
+	ok(SM.t("Каменка") == "Кам'янка", "надпись на карте: " + SM.t("Каменка"))
+	var uline: String = t.call("» Первое утро: Позавтракай — съешь что-нибудь из запаса (Q)")
+	ok(uline == "» Перший ранок: Поснідай — з'їж щось із запасу (Q)", "строка задания: " + uline)
+	GM.touch_mode = true
+	var touch: String = GM.touch_text("Позавтракай — съешь что-нибудь из запаса (Q)")
+	ok(touch.contains("(кнопка «Їжа»)"), "на телефоне клавиша — кнопка: " + touch)
+	GM.touch_mode = false
+	# Словарь целиком и таблички: русских букв (ы, э, ъ, ё) в переводе нет
+	var DU = load("res://scripts/core/lang_uk.gd")
+	var ru_only := RegEx.create_from_string("[ыэъёЫЭЪЁ]")
+	var umiss := []
+	for ru in DU.UK:
+		if ru_only.search(DU.UK[ru]):
+			umiss.append(DU.UK[ru])
+		elif not String(ru).contains("%") and t.call(ru) == ru and DU.UK[ru] != ru:
+			umiss.append(ru)
+	ok(umiss.is_empty(), "украинский словарь чистый и переводится: " + str(umiss.slice(0, 5)))
+	var signs := []
+	for l in W.find_children("*", "Label3D", true, false):
+		if l.get_parent().name == "Plates" or l.text.is_empty(): continue
+		if ru_only.search(t.call(l.text)): signs.append(l.text)
+	ok(signs.is_empty(), "таблички по-украински: " + str(signs.slice(0, 5)))
+	var ucfg := ConfigFile.new()
+	ucfg.load("user://settings.cfg")
+	ok(ucfg.get_value("ui", "lang", "") == "uk", "украинский записан в настройки")
+
 	print("== Сохраняется и переключается обратно")
+	SM.set_lang("en")
 	var cfg := ConfigFile.new()
 	cfg.load("user://settings.cfg")
 	ok(cfg.get_value("ui", "lang", "") == "en", "язык записан в настройки")

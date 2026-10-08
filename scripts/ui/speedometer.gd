@@ -182,7 +182,7 @@ func _draw_jawa(v: Vehicle) -> void:
 	var plate := Rect2(pc + Vector2(-gapw * 0.42, -r * 0.4), Vector2(gapw * 0.84, r * 0.2))
 	draw_rect(plate, Color(0.22, 0.22, 0.24))
 	draw_rect(plate, Color(0.45, 0.45, 0.47), false, 1.0)
-	var jt := "JAWA"
+	var jt := "VLTAVA"
 	var jf := fs + 1
 	draw_string(_font, Vector2(plate.get_center().x - _font.get_string_size(jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf).x * 0.5, plate.get_center().y + jf * 0.35), jt, HORIZONTAL_ALIGNMENT_LEFT, -1, jf, Color(0.62, 0.62, 0.65))
 	var on := [not v.engine_on, v.high_beam_on(), v.gear == 0, v.blink_on()]

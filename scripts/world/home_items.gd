@@ -30,7 +30,7 @@ func _fridge() -> void:
 	Progress.fridge_day = TimeManager.day
 	NeedsManager.snacks += 1
 	NeedsManager.changed.emit()
-	GameManager.notify("В холодильнике «ЗИЛ» нашлось что поесть: +1 еды в запас")
+	GameManager.notify("В холодильнике «Морозко» нашлось что поесть: +1 еды в запас")
 
 
 func _house() -> HouseInterior:
@@ -142,10 +142,10 @@ func _build_tape() -> void:
 	_tape.unit_size = 4.0
 	_tape.max_distance = 25.0
 	m.add_child(_tape)
-	var z := InteractZone.create("E — магнитофон «Весна»", Vector3(1.4, 1.6, 1.6))
+	var z := InteractZone.create("E — магнитофон «Ветерок»", Vector3(1.4, 1.6, 1.6))
 	z.name = "TapeZone"
 	z.prompt_fn = func() -> String:
-		return "E — выключить магнитофон" if _tape and _tape.playing else "E — включить магнитофон «Весна»"
+		return "E — выключить магнитофон" if _tape and _tape.playing else "E — включить магнитофон «Ветерок»"
 	z.position = p + Vector3(0.6, 0, 0.27)
 	z.activated.connect(toggle_tape)
 	m.add_child(z)

@@ -105,7 +105,7 @@ func _run() -> void:
 	Vehicle.exam_category = ""
 	await frames(5)
 
-	print("== Экзамен на учебных «Жигулях»")
+	print("== Экзамен на учебной «Семёрке»")
 	var AS = W.get_node("AutoSchool")
 	ok(AS.car != null and AS.car.school and AS.car.kind == "car", "учебные «Жигули» у автодрома")
 	ok(not AS.car.allowed.call(), "без экзамена — не сесть")

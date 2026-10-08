@@ -141,7 +141,7 @@ func _run() -> void:
 	P.global_position = C.global_position + Vector3(0, 0.1, 2.5)
 	await frames(3)
 	GM.money = 3000
-	zone_with("купить «Жигули»").activate()
+	zone_with("купить «Семёрка»").activate()
 	await frames(2)
 	ok(C.owned() and state("m_car") == 2 and state("m_neighbours") == 1, "купил «Жигули» — «Свой среди своих»")
 	P.global_position = Vector3(-60, 0.2, -30)

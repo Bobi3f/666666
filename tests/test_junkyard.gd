@@ -72,7 +72,7 @@ func _run() -> void:
 	print("== По-английски")
 	var tr := LangTranslation.new()
 	ok(tr.text(lm.junk_prompt()) == "E — Uncle Grisha: sell a car or motorbike, used parts", tr.text(lm.junk_prompt()))
-	ok(tr.text("Свалка: «%s» продана за %d грн" % ["Жигули", 1000]).begins_with("Junkyard:"), tr.text("Свалка: «%s» продана за %d грн" % ["Жигули", 1000]))
+	ok(tr.text("Свалка: «%s» продана за %d грн" % ["Семёрка", 1000]).begins_with("Junkyard:"), tr.text("Свалка: «%s» продана за %d грн" % ["Семёрка", 1000]))
 
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

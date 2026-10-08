@@ -268,7 +268,7 @@ func _run() -> void:
 	for z in _zones(W):
 		if z.text().contains("починить"):
 			garage = z
-	ok(garage != null and garage.text().contains("Ява"), "СТО чинит Яву: " + (garage.text() if garage else "-"))
+	ok(garage != null and garage.text().contains("Влтава"), "СТО чинит Яву: " + (garage.text() if garage else "-"))
 	garage.activate()
 	ok(M.condition == 100.0, "Ява как новая")
 

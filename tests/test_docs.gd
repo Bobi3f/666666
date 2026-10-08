@@ -123,7 +123,7 @@ func _run() -> void:
 	C2._on_enter()
 	C2.global_position = job.stops[0][1] + Vector3(0, 0.3, 0)
 	await frames(3)
-	ok(job.idx == 0, "на «Жигулях» остановка не засчитана")
+	ok(job.idx == 0, "на «Семёрке» остановка не засчитана")
 	C2.exit_car()
 	await frames(2)
 	AS.bus._on_enter()
@@ -131,7 +131,7 @@ func _run() -> void:
 		AS.bus.global_position = (st[1] as Vector3) + Vector3(0, 0.3, 0)
 		AS.bus.speed = 0.0
 		await frames(3)
-	ok(not job.active and GM.money == 500, "проехал три этапа на ПАЗе: +500")
+	ok(not job.active and GM.money == 500, "проехал три этапа на ПМЗ: +500")
 	ok(AS.bus.driver == null and AS.bus.global_position.distance_to(Town.w(AS.BUS_SPOT)) < 1.0, "ПАЗ поставлен на стоянку")
 	AS._bus_shift(); NM.energy = 100.0; AS._bus_shift()
 	ok(GM.money == 1500, "три рейса за день — 1500 грн")

@@ -155,7 +155,7 @@ func _process(delta: float) -> void:
 	_start_ring.rotate_y(-delta)
 	var v := _vehicle()
 	if state == State.ARMED:
-		var on := " (на Жигулях)" if only_car else ""
+		var on := " (на «Семёрке»)" if only_car else ""
 		if only_kind != "":
 			on = " (на тракторе)"
 		GameManager.challenge_line = "%s: въезжай на старт — жёлтый круг%s" % [title, on]

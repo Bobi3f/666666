@@ -132,7 +132,7 @@
   #play{background:#d0140f;color:#fff;border-radius:3px;text-transform:uppercase;font-style:italic}
   .bar{background:#2a2b2e;border-radius:0}.bar>i{background:#d0140f}
   #fs{border-color:#d0140f}
-  /* Поддержать игру: тёмные кнопки с красной рамкой — не спорят с «Играть» */
+  /* Поддержать автора: тёмные кнопки с красной рамкой — не спорят с «Играть» */
   .donate{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0}
   .donate span{color:#bdbdbd;font-size:15px}
   .donate a{flex:1 1 140px;text-align:center;padding:8px 12px;border:2px solid #d0140f;border-radius:3px;color:#fff;text-decoration:none;font-weight:700;font-size:15px;background:#1d1e20}
@@ -151,7 +151,7 @@
       </div>
       <button id="play" type="button">Играть</button>
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
-      <p id="donate" class="donate" hidden><span>♥ Поддержать игру:</span></p>
+      <p id="donate" class="donate" hidden><span>♥ Поддержать автора:</span></p>
       <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
       <p id="ios" class="hint" hidden>На iPhone: «Поделиться» → «На экран „Домой“» — игра откроется на весь экран, без панелей Safari, и кнопки станут удобнее.</p>
       <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
@@ -184,10 +184,11 @@
 <script src="pi.js"></script>
 <script src="index.js"></script>
 <script>
-  // Язык страницы — как у браузера (игра выбирает так же): русский для ru,
-  // uk, be, для остальных — английский. В игре язык меняется в меню.
-  const EN = !/^(ru|uk|be)\b/i.test(navigator.language || "ru");
-  function L(ru, en) { return EN ? en : ru; }
+  // Язык страницы — как у браузера (игра выбирает так же): украинский для uk,
+  // русский для ru и be, для остальных — английский. В игре язык меняется в меню.
+  const UK = /^uk\b/i.test(navigator.language || "");
+  const EN = !UK && !/^(ru|be)\b/i.test(navigator.language || "ru");
+  function L(ru, en, uk) { return EN ? en : (UK && uk ? uk : ru); }
   // iPhone в Safari: на весь экран — только с экрана «Домой», подсказываем
   (function () {
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -196,11 +197,12 @@
     if (ios && !standalone && tip) {
       tip.hidden = false;
       if (EN) tip.textContent = "On iPhone: Share → Add to Home Screen — the game opens full screen, without Safari bars, and the buttons get easier to use.";
+      if (UK) tip.textContent = "На iPhone: «Поділитися» → «На початковий екран» — гра відкриється на весь екран, без панелей Safari, і кнопки стануть зручнішими.";
     }
   })();
-  // Поддержать игру — те же ссылки, что в меню игры (pause_menu.gd → DONATE).
+  // Поддержать автора — те же ссылки, что в меню игры (pause_menu.gd → DONATE).
   // Пустая ссылка — кнопки нет; нет ни одной — нет и строки.
-  const DONATE = [["PayPal", ""], ["Buy Me a Coffee", ""]];
+  const DONATE = [["itch.io", ""], ["Monobank", ""]];
   (function () {
     const row = document.getElementById("donate");
     DONATE.forEach(function (d) {
@@ -210,7 +212,8 @@
       row.appendChild(a);
       row.hidden = false;
     });
-    if (EN) row.querySelector("span").textContent = "♥ Support the game:";
+    if (EN) row.querySelector("span").textContent = "♥ Support the author:";
+    if (UK) row.querySelector("span").textContent = "♥ Підтримати автора:";
   })();
   if (EN) {
     document.documentElement.lang = "en";
@@ -228,6 +231,22 @@
     document.querySelector(".note").innerHTML = "On a computer — keyboard and mouse. On a phone — joystick on the left, camera with your finger on the right, action buttons bottom right. Saves (F5 or \"Menu\") stay in this browser. If the game runs slowly, set detail to \"low\" in the Esc menu. Windows version — " + a + ".";
     document.getElementById("fs").textContent = "Fullscreen";
   }
+  if (UK) {
+    document.documentElement.lang = "uk";
+    document.querySelector(".sub").textContent = "Життя в Кам'янці на першій передачі. Від похиленої хати — до господаря всього району: своє СТО, весілля з Олею, рейсовий автобус.";
+    document.getElementById("play").textContent = "Грати";
+    document.getElementById("status").textContent = "Завантаження — близько 10 МБ. Звук увімкнеться після натискання.";
+    document.querySelector(".touch-only").textContent = "Ліворуч — джойстик, праворуч — палець крутить камеру, кнопки дій — праворуч унизу, «Меню» — праворуч угорі. У машині — кермо, яке крутиш пальцем, і педалі, як у Car Parking. Краще тримати телефон горизонтально.";
+    const ukeys = ["іти, їхати", "дивитися", "дія, сісти", "поїсти", "журнал завдань", "мапа", "меню, миша", "радіо в машині", "усе керування"];
+    document.querySelectorAll(".keys li").forEach(function (li, i) {
+      const k = li.querySelector("kbd");
+      if (i === 1) k.textContent = "Миша";
+      li.lastChild.textContent = " " + ukeys[i];
+    });
+    const ua = document.querySelector(".note a").outerHTML;
+    document.querySelector(".note").innerHTML = "На комп'ютері — клавіатура й миша. На телефоні — джойстик ліворуч, камера — пальцем праворуч, кнопки дій праворуч унизу. Збереження (F5 або «Меню») залишаються в цьому браузері. Якщо гра йде повільно — в меню Esc поставте деталізацію «низька». Версія для Windows — " + ua + ".";
+    document.getElementById("fs").textContent = "На весь екран";
+  }
   (function () {
     const cover = document.getElementById("cover");
     const play = document.getElementById("play");
@@ -240,16 +259,16 @@
       status.textContent = text;
       status.classList.add("err");
       play.disabled = false;
-      play.textContent = L("Попробовать ещё раз", "Try again");
+      play.textContent = L("Попробовать ещё раз", "Try again", "Спробувати ще раз");
     }
 
     if (typeof Engine === "undefined") {
-      fail(L("Не загрузился движок игры. Обновите страницу.", "The game engine didn't load. Refresh the page."));
+      fail(L("Не загрузился движок игры. Обновите страницу.", "The game engine didn't load. Refresh the page.", "Не завантажився рушій гри. Оновіть сторінку."));
       return;
     }
     const missing = Engine.getMissingFeatures({ threads: false });
     if (missing.length) {
-      fail(L("Браузеру не хватает: ", "Your browser lacks: ") + missing.join(", ") + L(". Откройте в свежем Chrome, Edge или Firefox.", ". Open it in a recent Chrome, Edge or Firefox."));
+      fail(L("Браузеру не хватает: ", "Your browser lacks: ", "Браузеру бракує: ") + missing.join(", ") + L(". Откройте в свежем Chrome, Edge или Firefox.", ". Open it in a recent Chrome, Edge or Firefox.", ". Відкрийте у свіжому Chrome, Edge або Firefox."));
       play.disabled = true;
       return;
     }
@@ -284,15 +303,15 @@
     play.addEventListener("click", function () {
       if (touch) goFullscreen();
       play.disabled = true;
-      play.textContent = L("Загружаю…", "Loading…");
+      play.textContent = L("Загружаю…", "Loading…", "Завантажую…");
       status.classList.remove("err");
-      status.textContent = L("Скачиваю движок и мир…", "Downloading the engine and the world…");
+      status.textContent = L("Скачиваю движок и мир…", "Downloading the engine and the world…", "Завантажую рушій і світ…");
       engine.startGame({
         onProgress: function (cur, total) {
           if (total > 0) {
             const pct = Math.min(100, Math.round(cur / total * 100));
             fill.style.width = pct + "%";
-            status.textContent = pct < 100 ? L("Загрузка: ", "Loading: ") + pct + "%" : L("Строю Каменку…", "Building Kamenka…");
+            status.textContent = pct < 100 ? L("Загрузка: ", "Loading: ", "Завантаження: ") + pct + "%" : L("Строю Каменку…", "Building Kamenka…", "Будую Кам'янку…");
           }
         }
       }).then(function () {
@@ -300,7 +319,7 @@
         fs.hidden = !!document.fullscreenElement;
         canvas.focus();
       }).catch(function (err) {
-        fail(L("Игра не запустилась: ", "The game didn't start: ") + (err && err.message ? err.message : err));
+        fail(L("Игра не запустилась: ", "The game didn't start: ", "Гра не запустилася: ") + (err && err.message ? err.message : err));
       });
     });
 

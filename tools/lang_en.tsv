@@ -207,9 +207,9 @@ E — полить картошку из колодца (урожай больш
 Заработай 800 грн: посылки на почте, склад, колхоз, АЗС, рыбалка	Earn 800 UAH: parcels at the post office, warehouse, kolkhoz, gas station, fishing
 Права	License
 Получи паспорт в сельсовете и медсправку в больнице	Get a passport at the village council and a medical certificate at the hospital
-Сдай на права в автошколе в городе (на учебных «Жигулях»)	Pass the driving test at the driving school in town (in the school "Zhiguli")
+Сдай на права в автошколе в городе (на учебной «Семёрке»)	Pass the driving test at the driving school in town (in the school "Semyorka")
 Первая машина	First Car
-Купи первую машину: соседские «Жигули» напротив дома или в автосалоне	Buy your first car: the neighbour's "Zhiguli" across the street or one from the dealership
+Купи первую машину: соседскую «Семёрку» напротив дома или в автосалоне	Buy your first car: the neighbour's "Semyorka" across the street or one from the dealership
 Свой среди своих	One of Our Own
 Выполни две просьбы жителей (поговори с ними — E)	Help two villagers with their requests (talk to them — E)
 Новый дом	New House
@@ -402,8 +402,8 @@ S — тормоз; стоя на месте держать S — задний �
 Клавиши можно поменять: Esc → «Управление»	Keys can be changed: Esc → "Controls"
 На асфальте держит дорогу, на траве и в грязи — скользит.	Grips the road on asphalt, slides on grass and in mud.
 Мопед «Карпаты» — твой с начала, стоит во дворе: прав не нужно, до 50 км/ч.	The "Karpaty" moped is yours from the start, it's in the yard: no license needed, up to 50 km/h.
-«Жигули» (2500) и «Ява» (1800) у соседей продаются; за руль — только с правами	The neighbours sell a "Zhiguli" (2500) and a "Jawa" (1800); you can only drive with a license
-(на «Яву» — категория A), без них не пустят.	(the "Jawa" needs category A), they won't let you without one.
+«Семёрка» (2500) и «Влтава» (1800) у соседей продаются; за руль — только с правами	The neighbours sell a "Semyorka" (2500) and a "Vltava" (1800); you can only drive with a license
+(на «Влтаву» — категория A), без них не пустят.	(the "Vltava" needs category A), they won't let you without one.
 ГЕЙМПАД	GAMEPAD
 Левый стик — идти / руль, правый — камера, RT — газ, LT — тормоз	Left stick — walk / steer, right — camera, RT — gas, LT — brake
 A — прыжок / ручник, X — действие / выйти, B — присесть / вид, Y — еда / сигнал	A — jump / handbrake, X — action / get out, B — crouch / view, Y — food / horn
@@ -495,7 +495,7 @@ F5 — сохранить  F9 — загрузить	F5 — save  F9 — load
 [center]Из покосившейся избы — в кирпичный дом под черепицей.	[center]From a crooked hut — to a brick house with a tiled roof.
 Своё СТО с Васьком, ларьки, автопарк, рейсовый автобус —	Your own garage with Vasyok, kiosks, a car fleet, a route bus —
 и Оля рядом. Весь район знает: этот своего добьётся.[/center]	and Olya by your side. The whole district knows: this one gets what he wants.[/center]
-[color=#9a9a9a]Игра продолжается: рыбачь, помогай соседям, катайся на Яве. Журнал — J.[/color]	[color=#9a9a9a]The game goes on: fish, help the neighbours, ride the Jawa. Journal — J.[/color]
+[color=#9a9a9a]Игра продолжается: рыбачь, помогай соседям, катайся на «Влтаве». Журнал — J.[/color]	[color=#9a9a9a]The game goes on: fish, help the neighbours, ride the Vltava. Journal — J.[/color]
 Заново	Start over
 %d из %d. %s	%d of %d. %s
 верно %d из %d	%d of %d correct
@@ -519,7 +519,7 @@ F5 — сохранить  F9 — загрузить	F5 — save  F9 — load
 ВХХ № 000000	VKh No. 000000
 %s  ГАИ района · автошкола «Каменка»	%s  District traffic police · "Kamenka" driving school
 ПРАВ ПОКА НЕТ — СДАЙ В АВТОШКОЛЕ	NO LICENSE YET — PASS THE TEST AT THE DRIVING SCHOOL
-Мопеду права не нужны, а «Жигулям» — нужны. Автошкола — в городе, автобус туда ходит с остановки у трассы.	The moped needs no license, but the "Zhiguli" does. The driving school is in town, the bus goes there from the stop by the highway.
+Мопеду права не нужны, а «Семёрке» — нужна. Автошкола — в городе, автобус туда ходит с остановки у трассы.	The moped needs no license, but the "Semyorka" does. The driving school is in town, the bus goes there from the stop by the highway.
 Паспорт делают в сельсовете, медсправку — в больнице в городе.	Passports are made at the village council, medical certificates — at the hospital in town.
 Мопед ест мало бензина, но в горку тянет еле-еле.	The moped uses little fuel but barely makes it uphill.
 Почта: посылки по домам или мешок в почту другого села — коробки везёшь на мопеде.	Post: parcels to houses or a sack to another village's post office — you carry the boxes on the moped.
@@ -583,9 +583,9 @@ F5 — сохранить  F9 — загрузить	F5 — save  F9 — load
 %s — закрыть карту	%s — close map
 Ковёр с узором	Patterned rug
 на пол в комнату — уютно	on the floor in your room — cosy
-Магнитофон «Весна»	"Vesna" tape recorder
+Магнитофон «Ветерок»	"Veterok" tape recorder
 играет кассету — включается по E	plays a cassette — switched on with E
-Холодильник «ЗИЛ»	"ZIL" fridge
+Холодильник «Морозко»	"Morozko" fridge
 каждое утро +1 еды в запас	+1 food to supplies every morning
 Кресло-качалка	Rocking chair
 у телевизора, само покачивается	by the TV, rocks by itself
@@ -618,7 +618,7 @@ F5 — сохранить  F9 — загрузить	F5 — save  F9 — load
 Базар: %s (−%d грн)	Market: %s (−%d UAH)
 Мопед	Moped
 Почта — посылки	Post office — parcels
-«Жигули» у соседа	Neighbour's "Zhiguli"
+«Семёрка» у соседа	Neighbour's "Semyorka"
 Сельмаг — хлеб	Village shop — bread
 Сельсовет — паспорт	Village council — passport
 Больница — медсправка	Hospital — medical certificate
@@ -706,15 +706,15 @@ Start — меню, Back — карта, крестовина вверх — ж�
 Задание — слева вверху. У кого просьба — в подсказке «(!)»	The task is top left. Whoever has a request shows "(!)" in the hint
 Рыбалка: закинь, жди, пока поплавок нырнёт, — и сразу подсекай	Fishing: cast, wait for the float to dip — and hook at once
 Развоз хлеба: вези аккуратно — битый хлеб вычтут, быстро — премия	Bread delivery: drive carefully — crushed bread is deducted, fast — bonus
-Автошкола в городе: экзамен на учебных «Жигулях» — змейка, разворот, стоянка. Без прав	Driving school in town: the test in the school "Zhiguli" — slalom, U-turn, parking. Without a license
-за руль машины не пустят. «Жигули» соседа (2500) — напротив дома	you can't drive a car. The neighbour's "Zhiguli" (2500) — across the street
+Автошкола в городе: экзамен на учебной «Семёрке» — змейка, разворот, стоянка. Без прав	Driving school in town: the test in the school "Semyorka" — slalom, U-turn, parking. Without a license
+за руль машины не пустят. «Семёрка» соседа (2500) — напротив дома	you can't drive a car. The neighbour's "Semyorka" (2500) — across the street
 Колька у съезда из деревни: спор на 200 — доехать до моста через Быструю за 22 с	Kolka at the village exit: a 200 bet — reach the bridge over the Bystraya in 22 s
 СТО у трассы: ремонт и тюнинг — резина, мотор, покраска	Garage by the highway: repairs and tuning — tyres, engine, paint
 Город: кафе «Встреча» — горячий обед, «Хозтовары» — телевизор, щенок, теплица	Town: "Vstrecha" café — hot lunch, "Household Goods" — TV, puppy, greenhouse
 Такси (с правами): подъедь на машине к пассажиру у кольца и остановись —	Taxi (with a license): drive up to a passenger at the roundabout and stop —
 отвези, куда скажет; быстро и мягко — чаевые	take them where they say; fast and smooth — tips
-Автосалон у въезда в город: Нива — вездеход, Волга — быстрее и в такси	Car dealership at the town entrance: Niva — off-roader, Volga — faster and taxi
-платят больше, ГАЗ-53 — развоз хлеба вдвое дороже	pays more, GAZ-53 — bread delivery pays double
+Автосалон у въезда в город: Тайга — вездеход, Волжанка — быстрее и в такси	Car dealership at the town entrance: Taiga — off-roader, Volzhanka — faster and taxi
+платят больше, ГМЗ-53 — развоз хлеба вдвое дороже	pays more, GMZ-53 — bread delivery pays double
 Каждое утро звонят с поручением (строка «Поручение» в задании) — выполни до полуночи	Every morning someone calls with an errand (the "Errand" line in the task) — finish it before midnight
 Воскресенье (каждый 7-й день) — ярмарка на площади: рыба вдвое дороже, лотерея	Sunday (every 7th day) — fair on the square: fish sells for double, lottery
 Банк на улице Заводской: вклад под 10% годовых, проценты каждое утро	Bank on Zavodskaya street: deposit at 10% a year, interest every morning
@@ -724,7 +724,7 @@ Start — меню, Back — карта, крестовина вверх — ж�
 и экзамен), смены на СТО, своё СТО, свадьба, рейсовый автобус — и хозяин района	and an exam), garage shifts, your own garage, wedding, route bus — and master of the district
 Свадьба: кольцо и платье — лавка «К свадьбе» на рынке, столик — в «Метелице», распишут — в сельсовете	Wedding: ring and dress — "For the Wedding" stall at the market, a table — at "Metelitsa", the marriage — at the village council
 В каждом селе района и в городе есть жители с просьбами — у кого просьба, в подсказке «(!)»	In every village of the district and in town there are people with requests — whoever has one shows "(!)" in the hint
-Колхоз: трактор МТЗ-80 у сарая, щит «ПАХОТА» — 6 борозд на поле, +700 грн	Kolkhoz: MTZ-80 tractor at the barn, "PLOUGHING" sign — 6 furrows in the field, +700 UAH
+Колхоз: трактор МТ-80 у сарая, щит «ПАХОТА» — 6 борозд на поле, +700 грн	Kolkhoz: MT-80 tractor at the barn, "PLOUGHING" sign — 6 furrows in the field, +700 UAH
 Лес: каждое утро растут грибы (осенью вдвое больше) — белый +2 еды, мухомор не бери	Forest: mushrooms grow every morning (double in autumn) — a porcini gives +2 food, don't take fly agarics
 Огород: поливай картошку каждый день (дождь польёт сам) — урожай больше	Garden: water the potatoes every day (rain waters them itself) — bigger harvest
 Неделя — сезон: лето, осень, зима (снег, скользко), весна	A week is a season: summer, autumn, winter (snow, slippery), spring
@@ -800,7 +800,7 @@ M — карта (ещё раз — весь район), J — журнал, F5
 Цель — первая своя машина:	Goal — your own first car:
 1. Подработай: почта, склад, колхоз, АЗС.	1. Earn some money: post office, warehouse, kolkhoz, gas station.
 2. Сделай паспорт и медсправку, сдай на права.	2. Get a passport and a medical certificate, pass the driving test.
-3. Купи «Жигули» у соседа и езжай дальше!	3. Buy the neighbour's "Zhiguli" and drive on!
+3. Купи «Семёрку» у соседа и езжай дальше!	3. Buy the neighbour's "Semyorka" and drive on!
 Пропустить	Skip
 FIRST GEAR — первая передача	FIRST GEAR
 Поехали!	Let's go!
@@ -822,16 +822,16 @@ S — тормоз, остановись	S — brake, stop
 Готово!	Done!
 Задание — слева вверху, все дела — в «Журнале». Удачи в Каменке!	The task is top left, everything else — in the "Journal". Good luck in Kamenka!
 Задание — слева вверху, все дела — в журнале (J). Удачи в Каменке!	The task is top left, everything else — in the journal (J). Good luck in Kamenka!
-Жигули	Zhiguli
-ВАЗ-2107	VAZ-2107
-Ява	Jawa
-ИЖ Юпитер-5	IZh Jupiter-5
+Семёрка	Semyorka
+ВМЗ-2107	VMZ-2107
+Влтава	Vltava
+«Иртыш-5»	Irtysh-5
 Карпаты	Karpaty
-Нива	Niva
-Волга	Volga
-ГАЗ-53	GAZ-53
-ПАЗ-672	PAZ-672
-МТЗ-80	MTZ-80
+Тайга	Taiga
+Волжанка	Volzhanka
+ГМЗ-53	GMZ-53
+ПМЗ-672	PMZ-672
+МТ-80	MT-80
 бежевый	beige
 вишнёвый	cherry
 синий	blue
@@ -881,8 +881,8 @@ E — купить «%s» за %d грн: %s	E — buy "%s" for %d UAH: %s
 У	L
 УЧЕБНАЯ	TRAINING
 автошкола «Каменка»	"Kamenka" driving school
-ИЖ	IZh
-ЮПИТЕР 5	JUPITER 5
+Иртыш	Irtysh
+ИРТЫШ 5	IRTYSH 5
 мотоцикл	motorcycle
 грузовик	truck
 автобус	bus
@@ -998,7 +998,7 @@ E — столик на двоих: ужин и шампанское (%d грн)
 Ужин при свечах в %s. Оля: «Как в кино… Спасибо тебе!»	Candlelit dinner at %s. Olya: "Like in the movies… Thank you!"
 Заезд	Run
 %s: въезжай на старт — жёлтый круг	%s: drive onto the start — the yellow circle
-(на Жигулях)	(in the Zhiguli)
+(на «Семёрке»)	(in the Semyorka)
 (на тракторе)	(on the tractor)
 %s: въезжай на старт — жёлтый круг%s	%s: drive onto the start — the yellow circle%s
 %s: пошёл отсчёт! Лимит %d с	%s: countdown started! Limit %d s
@@ -1104,10 +1104,10 @@ E — поговорить с %s	E — talk to %s
 Ветер в лицо — красота!	Wind in the face — wonderful!
 А куда мы едем?	Where are we going?
 Включи музыку погромче!	Turn the music up!
-В холодильнике «ЗИЛ» нашлось что поесть: +1 еды в запас	The "ZIL" fridge had something to eat: +1 food to supplies
-E — магнитофон «Весна»	E — "Vesna" tape recorder
+В холодильнике «Морозко» нашлось что поесть: +1 еды в запас	The "Morozko" fridge had something to eat: +1 food to supplies
+E — магнитофон «Ветерок»	E — "Veterok" tape recorder
 E — выключить магнитофон	E — turn off the tape recorder
-E — включить магнитофон «Весна»	E — turn on the "Vesna" tape recorder
+E — включить магнитофон «Ветерок»	E — turn on the "Veterok" tape recorder
 E — действие	E — action
 Заброшенная ферма	Abandoned farm
 Водонапорная башня	Water tower
@@ -1172,10 +1172,10 @@ E — дружинник: вечерний обход города, 5 точек
 вокзал	station
 дом %d в селе %s	house %d in the village of %s
 ПОЧТА	POST
-Ретро FM	Retro FM
+Ретро-волна	Retro Wave
 Эстрада	Pop
 В Каменке рекордный урожай картошки — не забывайте поливать огороды!	Record potato harvest in Kamenka — don't forget to water your gardens!
-Автосалон у въезда в город: «Нива», «Волга» и ГАЗ-53 ждут хозяев.	Car dealership at the town entrance: a "Niva", a "Volga" and a GAZ-53 are waiting for owners.
+Автосалон у въезда в город: «Тайга», «Волжанка» и ГМЗ-53 ждут хозяев.	Car dealership at the town entrance: a "Taiga", a "Volzhanka" and a GMZ-53 are waiting for owners.
 Бригадир колхоза «Заря» ищет трактористов на пахоту.	The foreman of the "Zarya" kolkhoz is looking for tractor drivers for ploughing.
 ГАИ напоминает: у Каменки — не быстрее шестидесяти!	The traffic police remind you: near Kamenka — no faster than sixty!
 Рыбаки говорят: на пруду снова видели щуку.	Fishermen say the pike was seen in the pond again.
@@ -1203,7 +1203,7 @@ E — дружинник: вечерний обход города, 5 точек
 Тошики	Toshiki
 Тошики — село маленькое, зато грибов в лесу — хоть косой коси.	Toshiki is a small village, but the forest is full of mushrooms.
 В Дубраве на юге кабаны ходят, осторожней там по вечерам.	Wild boars roam the Oak Grove in the south, be careful there in the evenings.
-У нас каждый второй на «Ниве». Дороги такие — иначе никак.	Every other person here drives a "Niva". With roads like these — there's no other way.
+У нас каждый второй на «Тайге». Дороги такие — иначе никак.	Every other person here drives a "Taiga". With roads like these — there's no other way.
 Заречье	Zarechye
 Заречье — потому что за Быстрой. Мост на трассе ещё при Союзе строили.	Zarechye — because it's across the Bystraya. The highway bridge was built back in Soviet times.
 Колхоз наш развалился, теперь кто во что горазд: кто пчёлы, кто картошка.	Our kolkhoz fell apart, now everyone does what they can: some keep bees, some grow potatoes.
@@ -1223,7 +1223,7 @@ E — дружинник: вечерний обход города, 5 точек
 Лужки	Luzhki
 Лужки — луга заливные, весной Быстрая разливается до самого села.	Luzhki — flood meadows, in spring the Bystraya floods right up to the village.
 Коров у нас больше, чем людей. Молоко в город возим.	We have more cows than people. We take milk to town.
-Из Заречья к нам на «Жигулях» доедешь, если сухо.	From Zarechye you can reach us in a "Zhiguli" if it's dry.
+Из Заречья к нам на «Семёрке» доедешь, если сухо.	From Zarechye you can reach us in a "Semyorka" if it's dry.
 Горки	Gorki
 Горки — на самом севере. Дорога от Каменки через поля, мимо леса.	Gorki is in the far north. The road from Kamenka goes through fields, past the forest.
 Зимой к нам только трактор пробьётся, а летом — красота.	In winter only a tractor gets through to us, but in summer — it's beautiful.
@@ -1231,7 +1231,7 @@ E — дружинник: вечерний обход города, 5 точек
 Заозерье	Zaozerye
 Заозерье — последнее село на западе по трассе. Дальше — соседний район.	Zaozerye is the last village to the west on the highway. Beyond is the next district.
 Дальнобойщики у нас ночуют, кафе бы открыть — да денег нет.	Truckers stay overnight here, we should open a café — but there's no money.
-До Каменки по трассе — минут пятнадцать на «Жигулях».	To Kamenka along the highway — about fifteen minutes in a "Zhiguli".
+До Каменки по трассе — минут пятнадцать на «Семёрке».	To Kamenka along the highway — about fifteen minutes in a "Semyorka".
 Степное	Stepnoye
 Степное — на востоке, за рекой и лесом. Тут ветер всегда.	Stepnoye is in the east, past the river and the forest. It's always windy here.
 Пшеницу сеем, зерно в город возим. Грузовик бы свой...	We sow wheat and take the grain to town. If only we had our own truck...
@@ -1425,7 +1425,7 @@ E — %s: %s (45 мин). %s	E — %s: %s (45 min). %s
 Такси: пассажира — %s, %d:%02d	Taxi: passenger — %s, %d:%02d
 Пассажир не дождался и ушёл пешком	The passenger didn't wait and left on foot
 Пассажир: «Мне %s. Быстро довезёшь — не обижу!»	Passenger: "I need to go %s. Get me there fast — I'll make it worth your while!"
-на «Волге» — с шиком	in a "Volga" — in style
+на «Волжанке» — с шиком	in a "Volzhanka" — in style
 чаевые за быстрый и мягкий ход	tip for a fast and smooth ride
 без чаевых — растряс пассажира	no tip — you shook the passenger up
 Приехали! +%d грн%s	Arrived! +%d UAH%s
@@ -1461,7 +1461,7 @@ E — %s: %s (45 мин). %s	E — %s: %s (45 min). %s
 Изношенные амортизаторы	Worn shock absorbers
 Пустой бак	An empty tank
 Громкое радио	Loud radio
-Какое давление в шинах «Жигулей»?	What is the tyre pressure of a "Zhiguli"?
+Какое давление в шинах «Семёрки»?	What is the tyre pressure of a "Semyorka"?
 Около двух атмосфер	About two atmospheres
 Десять атмосфер	Ten atmospheres
 Полатмосферы	Half an atmosphere
@@ -1557,7 +1557,7 @@ E — купить овощи, сало и молоко (%d грн)	E — buy ve
 Пахота: на сегодня наряд выполнен. Завтра приходи	Ploughing: today's work order is done. Come back tomorrow
 Пахота: наряды с 7:00 до 19:00	Ploughing: work orders from 7:00 to 19:00
 E — взять наряд на пахоту: 6 борозд на поле к востоку, +%d грн	E — take a ploughing order: 6 furrows in the field to the east, +%d UAH
-Бригадир: «Садись на МТЗ — и на поле за дорогой. Борозды ровно, через кольца!»	Foreman: "Get on the MTZ — and to the field across the road. Straight furrows, through the rings!"
+Бригадир: «Садись на МТ-80 — и на поле за дорогой. Борозды ровно, через кольца!»	Foreman: "Get on the MT-80 — and to the field across the road. Straight furrows, through the rings!"
 Пахота сорвана: %s. Наряд можно взять снова	Ploughing failed: %s. You can take the order again
 , премия за скорость +%d	, speed bonus +%d
 Поле вспахано за %d:%02d! +%d грн%s	Field ploughed in %d:%02d! +%d UAH%s
@@ -1576,7 +1576,7 @@ E — взять наряд на пахоту: 6 борозд на поле к �
 Ночью фонари горят, а раньше тут темень была — хоть глаз выколи.	The street lamps are on at night, and it used to be pitch dark here.
 Гремит твоя машина, как мой трактор в сорок девятом. К Ваське езжай!	Your car rattles like my tractor in forty-nine. Go to Vasyok!
 С правами, значит? В наше время права давали тому, кто трактор заведёт.	Got a license, then? In our day they gave licenses to whoever could start a tractor.
-Жигули твои без бензина не поедут. Заправка у трассы, напротив деревни.	Your Zhiguli won't run without petrol. The gas station is by the highway, across from the village.
+Семёрка твоя без бензина не поедет. Заправка у трассы, напротив деревни.	Your Semyorka won't run without petrol. The gas station is by the highway, across from the village.
 В дождь по грунтовке не гоняй — засядешь по самые пороги.	Don't race on dirt roads in the rain — you'll get stuck up to the sills.
 Со склада в городе хлеб к нам возят. Есть машина — бери заказ, пятьсот платят.	Bread is brought to us from the warehouse in town. Got a car — take an order, they pay five hundred.
 Скрежещешь коробкой? Сцепление выжимай, а то на СТО всё и оставишь.	Grinding the gears? Press the clutch, or you'll leave everything at the garage.
@@ -1678,7 +1678,7 @@ E — перекрасить %s: сейчас %s, будет %s (%d грн)	E �
 Лесная дорога ↑	Forest road ↑
 Мост · Поля	Bridge · Fields
 р. Каменка	Kamenka stream
-телевизор «Рубин»	a "Rubin" TV
+телевизор «Экран»	an "Ekran" TV
 в комнате	in the room
 щенка Шарика	Sharik the puppy
 у будки во дворе	by the kennel in the yard
@@ -1697,7 +1697,7 @@ E — купить %s (%d грн): будет %s	E — buy %s (%d UAH): it'll be
 с авторынка, на ходу. Вездеход — грязь и лес ей нипочём	from the car market, runs fine. An off-roader — mud and forest are nothing to it
 быстрая и мягкая, в такси платят больше	fast and smooth, taxi pays more
 грузовик с авторынка, после колхоза — развоз хлеба вдвое дороже	a truck from the car market, after the kolkhoz — bread delivery pays double
-двухцилиндровый мотоцикл, мощнее «Явы», два глушителя	two-cylinder motorcycle, more powerful than the "Jawa", two exhausts
+двухцилиндровый мотоцикл, мощнее «Влтавы», два глушителя	two-cylinder motorcycle, more powerful than the "Vltava", two exhausts
 «семёрка»: хромированная решётка, мотор сильнее, чем у «шестёрки»	the "Seven": chrome grille, a stronger engine than the "Six"
 АВТОСАЛОН	CAR DEALERSHIP
 СТАРТ	START
@@ -1708,17 +1708,17 @@ E — купить %s (%d грн): будет %s	E — buy %s (%d UAH): it'll be
 по трассе на восток	east along the highway
 финиш — у моста через Быструю	finish — at the bridge over the Bystraya
 Инструктор: «Права у тебя есть. Можешь потренироваться — %d грн»	Instructor: "You have a license. You can practise — %d UAH"
-Инструктор: «Экзамен идёт — учебные «Жигули» на старте автодрома»	Instructor: "The exam is on — the training "Zhiguli" is at the start of the course"
+Инструктор: «Экзамен идёт — учебная «Семёрка» на старте автодрома»	Instructor: "The exam is on — the training "Semyorka" is at the start of the course"
 Инструктор: «На права нужны паспорт (сельсовет) и медсправка (больница)»	Instructor: "For a license you need a passport (village council) and a medical certificate (hospital)"
 E — сдать на права: змейка, разворот, стоянка (%d грн)	E — take the driving test: slalom, U-turn, parking (%d UAH)
-Инструктор: «Ты за рулём учебных «Жигулей» на старте. Змейка, разворот, в конце — встань в разметку «P». Конусы не сбивай»	Instructor: "You're behind the wheel of the training "Zhiguli" at the start. Slalom, U-turn, and at the end — stop in the "P" box. Don't hit the cones"
-Сдал за %d с! Права в кармане (журнал J → «Водительское удостоверение»). Теперь — первая машина: соседские «Жигули» продаются напротив дома	Passed in %d s! License in your pocket (journal J → "Driver's License"). Now — your first car: the neighbour's "Zhiguli" is for sale across the street
+Инструктор: «Ты за рулём учебной «Семёрки» на старте. Змейка, разворот, в конце — встань в разметку «P». Конусы не сбивай»	Instructor: "You're behind the wheel of the training "Semyorka" at the start. Slalom, U-turn, and at the end — stop in the "P" box. Don't hit the cones"
+Сдал за %d с! Права в кармане (журнал J → «Водительское удостоверение»). Теперь — первая машина: соседская «Семёрка» продаётся напротив дома	Passed in %d s! License in your pocket (journal J → "Driver's License"). Now — your first car: the neighbour's "Semyorka" is for sale across the street
 Чисто прошёл за %d с, конусов сбито: %d	Clean run in %d s, cones hit: %d
 Не сдал: %s. Пересдача — у инструктора	Failed: %s. Retake — at the instructor
 Колька: «Ну, давай! Старт — жёлтый круг, финиш — у моста через Быструю»	Kolka: "Come on, then! Start — the yellow circle, finish — at the bridge over the Bystraya"
 Колька: «Сегодня уже гоняли. Приходи завтра»	Kolka: "We've already raced today. Come back tomorrow"
 E — Колька: «Спорим на %d, что до моста за %d с не доедешь?»	E — Kolka: "Bet %d you can't reach the bridge in %d s?"
-Колька: «Садись на Жигули или Яву и въезжай в жёлтый круг — время пойдёт»	Kolka: "Get on the Zhiguli or the Jawa and drive into the yellow circle — the clock starts"
+Колька: «Садись на «Семёрку» или «Влтаву» и въезжай в жёлтый круг — время пойдёт»	Kolka: "Get on the Semyorka or the Vltava and drive into the yellow circle — the clock starts"
 Успел за %.1f с! Колька отдаёт %d грн: «Ну ты гонщик!»	Made it in %.1f s! Kolka pays %d UAH: "You're a racer!"
 Колька: «Ха! %s — ставка моя. Завтра реванш?»	Kolka: "Ha! %s — the bet is mine. Rematch tomorrow?"
 не успел	too slow
@@ -1737,7 +1737,7 @@ E — купить батон и кефир (45 грн)	E — buy a loaf and kef
 Хлеб в машине — вези в сельмаг «Каменка»	The bread is in the car — take it to the "Kamenka" village shop
 E — развоз: хлеб в сельмаг на машине, +%d грн	E — delivery: bread to the village shop by car, +%d UAH
 Подгони машину к складу — хлеб грузят в багажник	Drive up to the warehouse — the bread is loaded into the boot
-Полный кузов хлеба на ГАЗ-53 — за развоз заплатят вдвое	A full load of bread in the GAZ-53 — delivery pays double
+Полный кузов хлеба на ГМЗ-53 — за развоз заплатят вдвое	A full load of bread in the GMZ-53 — delivery pays double
 Купил лекарство. Отвези тёте Люде на остановку у Каменки	Bought medicine. Take it to Aunt Lyuda at the stop near Kamenka
 Купил батон и кефир, кефир выпил сразу. Съесть батон — Q	Bought a loaf and kefir, drank the kefir right away. Eat the loaf — Q
 %s Очнулся дома — соседи дотащили. На лекарства ушло %d грн	%s You woke up at home — the neighbours dragged you there. %d UAH went on medicine
@@ -1756,12 +1756,12 @@ E — развоз: хлеб в сельмаг на машине, +%d грн	E �
 колонка справа	right pump
 КЛУБ «КАМЕНКА»	"KAMENKA" CLUB
 «МЕТЕЛИЦА»	"METELITSA"
-соседские, 1978 года, на ходу. Ездить — только с правами	the neighbour's, from 1978, runs fine. You can only drive with a license
+соседская, 1978 года, на ходу. Ездить — только с правами	the neighbour's, from 1978, runs fine. You can only drive with a license
 быстрее мопеда вдвое. Нужна категория A	twice as fast as the moped. Category A needed
 ул. Садовая	Sadovaya St
 ул. Ленина	Lenina St
 пр. Мира	Mira Ave
-Поддержать игру	Support the game
+Поддержать автора	Support the author
 Игру делает один человек.	The game is made by one person.
 Если нравится — можно угостить автора кофе.	If you like it, you can buy the author a coffee.
 %s, поворот	%s turn
@@ -1885,13 +1885,13 @@ I — инвентарь: еда, вещи, документы, техника. 
 «Вещи» — инвентарь, «Телефон» — звонки, такси, эвакуатор, музыка, фото — в верхнем ряду	"Items" — inventory, "Phone" — calls, taxi, tow truck, music, photos — in the top row
 F1 — все клавиши   Esc — меню	F1 — all keys   Esc — menu
 Рейсовый автобус	Route bus
-рейс Каменка — город на ПАЗе, +%d грн	Kamenka — town run on the PAZ, +%d UAH
-на ПАЗе со стоянки автошколы	on the PAZ from the driving school car park
+рейс Каменка — город на ПМЗ, +%d грн	Kamenka — town run on the PMZ, +%d UAH
+на ПМЗ со стоянки автошколы	on the PMZ from the driving school car park
 Пассажиры вышли	Passengers got off
-рейс Каменка — город на ПАЗе: +%d грн (сегодня %d из %d)	Kamenka — town run on the PAZ: +%d UAH (today %d of %d)
+рейс Каменка — город на ПМЗ: +%d грн (сегодня %d из %d)	Kamenka — town run on the PMZ: +%d UAH (today %d of %d)
 остановка «Каменка»	"Kamenka" bus stop
 городская остановка	town bus stop
-стоянка автошколы — поставить ПАЗ	driving school car park — park the PAZ
+стоянка автошколы — поставить ПМЗ	driving school car park — park the PMZ
 Рейс Каменка — город сделан. Сегодня %d из %d. %s	Kamenka — town run done. Today %d of %d. %s
 Клиент: «Скрипит и плохо тормозит»	Customer: "It squeaks and brakes badly"
 Клиент: «На кочках стучит спереди, машину бросает»	Customer: "It knocks at the front on bumps, the car bounces around"
@@ -2023,11 +2023,11 @@ E — магазин «24 часа»: хлеб, бургер, вода, ремн
 Не хватает GEARCOIN: «%s» стоит %s, у тебя %s	Not enough GEARCOIN: "%s" costs %s, you have %s
 Куплено: %s!	Bought: %s!
 GEARCOIN: %s — твоё!	GEARCOIN: %s is yours!
-«Волга» Чёрная	"Volga" Black
-ГАЗ-24 в чёрном лаке, золотые диски, форсированный мотор	GAZ-24 in black lacquer, gold rims, tuned engine
-«Ява» Золотая	"Jawa" Gold
+«Волжанка» Чёрная	"Volzhanka" Black
+ГМЗ-24 в чёрном лаке, золотые диски, форсированный мотор	GMZ-24 in black lacquer, gold rims, tuned engine
+«Влтава» Золотая	"Vltava" Gold
 золотой бак и диски, прямоток — слышно на всю Каменку	gold tank and rims, straight pipe — heard across Kamenka
-«Нива» Охотник	"Niva" Hunter
+«Тайга» Охотник	"Taiga" Hunter
 хаки, большие колёса и бак — по любому бездорожью	khaki, big wheels and tank — for any off-road
 Клуб «Каменка»	"Kamenka" club
 твой клуб: +900 грн каждое утро, вход бесплатный	your club: +900 UAH every morning, free entry
@@ -2104,14 +2104,14 @@ L — свет: авто / габариты / ближний / выкл   K — 
 Отвези карбюратор механику Ваську (СТО у трассы)	Take the carburettor to mechanic Vasya (garage by the highway)
 О, от Владика! Наконец-то. Передай — с меня пиво.	Oh, from Vladik! Finally. Tell him I owe him a beer.
 Найди двигатель	Find an engine
-Нужен мотор от «Минска» или «Восхода». У Гриши на свалке в куче лома поройся — там всё есть, если искать.	I need an engine from a Minsk or a Voskhod. Dig through the scrap pile at Grisha's junkyard — it's all there if you look.
+Нужен мотор от старого мотоцикла. У Гриши на свалке в куче лома поройся — там всё есть, если искать.	I need an engine from an old motorbike. Dig through the scrap pile at Grisha's junkyard — it's all there if you look.
 Живой мотор! Переберу — ещё сто лет отходит. Держи, заслужил.	A live engine! I'll rebuild it — it'll run another hundred years. Here, you've earned it.
 Найди старый двигатель на свалке (E у кучи лома)	Find an old engine at the junkyard (E by the scrap pile)
 Привези двигатель Дяде Владику	Bring the engine to Uncle Vladik
 Переберём мотоцикл	Let's rebuild a motorcycle
-Пригоняй свой мотоцикл — «Яву» или ИЖ. Переберём вместе: научу, а он как с завода станет.	Bring your motorcycle — the Jawa or the IZh. We'll rebuild it together: I'll teach you, and it'll be like new from the factory.
+Пригоняй свой мотоцикл — «Влтаву» или «Иртыш». Переберём вместе: научу, а он как с завода станет.	Bring your motorcycle — the Vltava or the Irtysh. We'll rebuild it together: I'll teach you, and it'll be like new from the factory.
 Всё. Теперь он у тебя как с конвейера. Только не гоняй его на холодную.	Done. Now it's like fresh off the line. Just don't rev it cold.
-Пригони свой мотоцикл («Ява» или ИЖ) в гараж Владика	Bring your motorcycle (Jawa or IZh) to Vladik's garage
+Пригони свой мотоцикл («Влтава» или «Иртыш») в гараж Владика	Bring your motorcycle (Vltava or Irtysh) to Vladik's garage
 Поговори с Дядей Владиком — перебрать мотор	Talk to Uncle Vladik — rebuild the engine
 «Копейка» Владика	Vladik's Kopeika
 Есть у меня «копейка» семьдесят девятого. Кузов живой, мотора нет. Поднимем вместе — ездить будешь ты.	I've got a '79 Kopeika. The body's alive, no engine. We'll raise it together — and you'll drive it.
@@ -2187,7 +2187,7 @@ E — разбирать «копейку» (заход %d из 3, 40 мин)	E 
 E — порыться в куче лома (колесо для Владика)	E — dig through the scrap pile (wheel for Vladik)
 E — порыться в куче лома (двигатель для Владика)	E — dig through the scrap pile (engine for Vladik)
 Под ржавым капотом — колесо. Старое, но целое	Under a rusty bonnet — a wheel. Old, but whole
-Из-под кузова «Москвича» торчит мотор. Тяжёлый, но живой — грузи	An engine sticks out from under a Moskvich body. Heavy, but alive — load it up
+Из-под кузова «Столичника» торчит мотор. Тяжёлый, но живой — грузи	An engine sticks out from under a Stolichnik body. Heavy, but alive — load it up
 Купил у Владика: %s (%s) — %d грн	Bought from Vladik: %s (%s) — %d UAH
 Владик поставил на «%s»: %s, %s (−%d грн)	Vladik fitted on the "%s": %s, %s (−%d UAH)
 Владик поставил на «%s»: %s (−%d грн)	Vladik fitted on the "%s": %s (−%d UAH)
@@ -2206,9 +2206,9 @@ E — порыться в куче лома (двигатель для Влад�
 Масло для двухтактника, литр	Two-stroke oil, a litre
 Цепь мопедная	Moped chain
 Аккумулятор 6 В	6 V battery
-Прямоток от гоночной «Явы»	Straight-through exhaust from a racing Jawa
-Бак от ИЖ «Планеты-Спорт»	Tank from an IZh Planeta-Sport
-Колёса от «Нивы» с внедорожной резиной	Niva wheels with off-road tyres
+Прямоток от гоночной «Влтавы»	Straight-through exhaust from a racing Vltava
+Бак от «Иртыша-Спорт»	Tank from an Irtysh Planeta-Sport
+Колёса от «Тайги» с внедорожной резиной	Taiga wheels with off-road tyres
 Прямоток «как у таксистов»	Straight-through exhaust "like the taxi drivers have"
 Дополнительный бак	Extra tank
 Металлолом	Scrap metal
@@ -2229,11 +2229,11 @@ E — порыться в куче лома (двигатель для Влад�
 Цепь провисает больше чем на палец — подтяни. Слетит на ходу — сам потом и побежишь.	If the chain sags more than a finger — tighten it. If it jumps off on the road, you'll be the one running.
 На двухтактнике масло в бензин — один к пятидесяти. Пожалеешь масла — пожалеешь мотор.	On a two-stroke, oil goes into the petrol one to fifty. Spare the oil — spare the engine.
 Не газуй на холодную. Мотор — как человек: с утра его сперва разбудить надо.	Don't rev it cold. An engine is like a person: in the morning you have to wake it up first.
-У меня «Ява» в восемьдесят девятом была. Красная, как пожарная. Ни одна девка мимо не проходила. И ни один гаишник.	I had a Jawa in eighty-nine. Red as a fire engine. Not a single girl walked past. And not a single traffic cop.
-«Запорожец» с одной отвёрткой разобрать можно. Собрать — уже не всегда.	You can take a Zaporozhets apart with one screwdriver. Putting it back together — not always.
+У меня «Влтава» в восемьдесят девятом была. Красная, как пожарная. Ни одна девка мимо не проходила. И ни один гаишник.	I had a Vltava in eighty-nine. Red as a fire engine. Not a single girl walked past. And not a single traffic cop.
+«Ушастик» с одной отвёрткой разобрать можно. Собрать — уже не всегда.	You can take a Ushastik apart with one screwdriver. Putting it back together — not always.
 Резину меняй вовремя. Лысая резина — это как лысый вратарь: красиво, но не держит.	Change your tyres on time. A bald tyre is like a bald goalkeeper: looks fine, doesn't hold.
 Если стучит — не делай музыку громче. Делай остановку.	If it knocks — don't turn the music up. Stop.
-Был у нас в колхозе тракторист, ГАЗ-53 на одной проволоке два года ездил. Потом проволока кончилась.	We had a tractor driver at the kolkhoz who drove a GAZ-53 held together by one wire for two years. Then the wire ran out.
+Был у нас в колхозе тракторист, ГМЗ-53 на одной проволоке два года ездил. Потом проволока кончилась.	We had a tractor driver at the kolkhoz who drove a GMZ-53 held together by one wire for two years. Then the wire ran out.
 Ключ на десять — первый друг. Второй — ключ на тринадцать. Третьего друга у механика не бывает.	A 10 spanner is the first friend. The second is a 13. A mechanic doesn't have a third friend.
 Деталь с рук бери, только если глянул сам. «Как новая» — это всегда не новая.	Buy a used part only if you've looked at it yourself. "Like new" is never new.
 Аккумулятор зимой домой забирай. Он мороз любит не больше твоего.	Take the battery home in winter. It likes the frost no more than you do.
@@ -2414,7 +2414,7 @@ E — положить на вклад %d грн (10%% годовых)	E — dep
 ПДД · УСТРОЙСТВО АВТОМОБИЛЯ	TRAFFIC RULES · CAR MECHANICS
 ТЕХНИКА БЕЗОПАСНОСТИ	SAFETY
 ПРЕВЫШЕ ВСЕГО	ABOVE ALL
-ДВС ВАЗ-2101	VAZ-2101 ENGINE
+ДВС ВМЗ-2101	VMZ-2101 ENGINE
 ЗАВОД «ИСКРА» · ЦЕХ №2	«ISKRA» FACTORY · SHOP No. 2
 ПЛАН — ЗАКОН!	THE PLAN IS LAW!
 смена у станков: 4 детали, по полчаса	machine shift: 4 parts, half an hour each
@@ -2452,10 +2452,10 @@ E — %s с %s: жми E чаще, чем он давит	E — %s with %s: pres
 Кикер	Foosball
 Вовкой из 9-Б	Vovka from 9-B
 КИКЕР	FOOSBALL
-E — викторина «Умники и умницы»: 5 весёлых вопросов (приз %d грн)	E — «Brainiacs» quiz: 5 fun questions (prize %d UAH)
-E — викторина «Умники и умницы»: 5 весёлых вопросов	E — «Brainiacs» quiz: 5 fun questions
-Викторина «Умники и умницы»	«Brainiacs» quiz
-Сколько колёс у «Запорожца»?	How many wheels does a «Zaporozhets» have?
+E — викторина «Знатоки»: 5 весёлых вопросов (приз %d грн)	E — «Know-it-alls» quiz: 5 fun questions (prize %d UAH)
+E — викторина «Знатоки»: 5 весёлых вопросов	E — «Know-it-alls» quiz: 5 fun questions
+Викторина «Знатоки»	«Know-it-alls» quiz
+Сколько колёс у «Ушастика»?	How many wheels does a «Ushastik» have?
 Четыре	Four
 Три	Three
 Шесть	Six
@@ -2498,7 +2498,7 @@ E — викторина «Умники и умницы»: 5 весёлых во
 Пойдём погуляем? Снежка с Рыжиком уже хвостами виляют.	Shall we go for a walk? Snezhka and Ryzhik are already wagging their tails.
 Ты сегодня опять на работе пропадал? Я соскучилась!	Were you stuck at work again today? I missed you!
 Барсик опять спал на твоём мопеде. Он тебя тоже любит.	Barsik slept on your moped again. He loves you too.
-Купишь мне розовую «Волгу»? Будем возить собачек на речку.	Will you buy me a pink «Volga»? We'll take the doggies to the river.
+Купишь мне розовую «Волжанку»? Будем возить собачек на речку.	Will you buy me a pink «Volzhanka»? We'll take the doggies to the river.
 Снежка, дай лапу! Видишь — она тебя уже слушается.	Snezhka, paw! See — she already listens to you.
 С тобой хоть на край района. Только не по грязи — у меня туфли.	With you — to the end of the district. Just not through the mud, I'm in my good shoes.
 Всё, мы домой — собачек кормить. Заходи вечером!	That's it, we're going home to feed the doggies. Come by tonight!
@@ -2529,7 +2529,7 @@ E — Принцесса: поговорить и позвать гулять	E 
 кот Барсик	Barsik the cat
 сердечко	little heart
 звёздочка	little star
-розовая «Волга»	pink "Volga"
+розовая «Волжанка»	pink "Volzhanka"
 E — Принцесса (%s): поговорить, гулять, брелочки	E — Princess (%s): talk, walk, keychains
 добрая	kind
 злая	angry

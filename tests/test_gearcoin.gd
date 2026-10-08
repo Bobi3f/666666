@@ -36,7 +36,7 @@ func _run() -> void:
 	PR.codes = []
 	PR.load_state(cst)
 	ok(PR.codes.size() == 1, "активированный код сохраняется")
-	ok(GearShop.CODES.size() == 2, "в игре есть личный код владельца")
+	ok(GearShop.CODES.size() == 1, "личного кода владельца в игре нет — только проверочный")
 	GearShop.CODES.erase("TEST-CODE".sha256_text())
 	PR.codes = []
 	GM.money = m0
@@ -71,11 +71,11 @@ func _run() -> void:
 	ok(not DM.buy("club_t"), "клуб за гривны не продаётся")
 	var club = W.get_node("ClubVillage")
 	ok(club.biz == "club_v", "клуб знает, что он твой — вход бесплатный")
-	ok(shop.buy("volga:black") and PR.owns("volga:black"), "«Волга» Чёрная куплена")
+	ok(shop.buy("volga:black") and PR.owns("volga:black"), "«Волжанка» Чёрная куплена")
 	shop.close_panel()
 	await create_timer(1.5).timeout
 	var v: Vehicle = W.get_node_or_null("Exclusive_volga_black")
-	ok(v != null and v.owned() and v.spec.title == "«Волга» Чёрная" and int(v.parts.get("rims", -1)) == 3, "стоит у дома: %s" % (v.spec.title if v else "нет"))
+	ok(v != null and v.owned() and v.spec.title == "«Волжанка» Чёрная" and int(v.parts.get("rims", -1)) == 3, "стоит у дома: %s" % (v.spec.title if v else "нет"))
 	ok(shop.buy("penthouse") and PR.has_item("penthouse"), "квартира на 9-м этаже")
 	await frames(2)
 	var bed: InteractZone = W.find_child("HomeSleep_penthouse", true, false)
