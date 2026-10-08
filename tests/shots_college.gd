@@ -33,4 +33,5 @@ func _run() -> void:
 		for i in 5: await process_frame
 		await shot("college_top_%s" % t, Town.w(Vector3(262, 38, 121)), Town.w(Vector3(254, 0, 120.5)))
 		await shot("college_street_%s" % t, Town.w(Vector3(270, 2.4, 96)), Town.w(Vector3(252, 1.0, 118)))
+		await shot("college_yard_%s" % t, Town.w(Vector3(261.5, 1.7, 139.0)), Town.w(Vector3(254.0, 0.8, 120.0)))
 	quit()
