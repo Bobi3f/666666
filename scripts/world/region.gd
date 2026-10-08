@@ -435,6 +435,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	# await _world.breathe(доля) — передышка при стройке кусками (world.gd):
 	# доля всего мира, округа — от 0,13 до 0,7
 	_ground(b)
+	await _world.breathe(0.15)
 	_highway(b)
 	_find_bridges()
 	_river_build(b)

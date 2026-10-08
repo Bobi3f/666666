@@ -37,6 +37,10 @@ const Villagers := preload("res://scripts/world/villagers.gd")
 var junk_panel: JunkPanel
 
 var _world: Node3D
+## Свой генератор с постоянным зерном: кирпичи развалин, бурьян, коровы
+## встают одинаково при каждом запуске (общий _r.randf() каждый раз другой —
+## мир чуть отличался, а на телефоне, где мир строится кусками, и подавно).
+var _r := RandomNumberGenerator.new()
 var _blades: Node3D
 
 
@@ -83,6 +87,7 @@ static func occupied(x: float, z: float) -> bool:
 
 func build(world: Node3D, b: MeshBuilder, d: MeshBuilder) -> void:
 	_world = world
+	_r.seed = 1961
 	for s in sites():
 		var c := Vector3((s[0] as Vector2).x, 0, (s[0] as Vector2).y)
 		match s[2]:
@@ -164,7 +169,7 @@ func _ruin_farm(d: MeshBuilder, c: Vector3) -> void:
 		var x := -18.0
 		while x < 18.0:
 			var h := 3.2 if int(x + z) % 7 != 0 else 1.2
-			d.box(c + Vector3(x, 0, z - 0.25), c + Vector3(x + 3.8, h, z + 0.25), brick.darkened(randf() * 0.1), true)
+			d.box(c + Vector3(x, 0, z - 0.25), c + Vector3(x + 3.8, h, z + 0.25), brick.darkened(_r.randf() * 0.1), true)
 			x += 4.0
 	for x in [-18.0, 18.0]:
 		d.box(c + Vector3(x - 0.25, 0, -6), c + Vector3(x + 0.25, 3.2, 6), brick, true)
@@ -176,8 +181,8 @@ func _ruin_farm(d: MeshBuilder, c: Vector3) -> void:
 	d.add_collider(c + Vector3(21.5, 0, -2.5), c + Vector3(26.5, 9, 2.5))
 	# Бурьян и ржавая телега
 	for i in 30:
-		var p := c + Vector3(randf_range(-20, 28), 0, randf_range(-9, 9))
-		d.box(p + Vector3(-0.04, 0, -0.04), p + Vector3(0.04, randf_range(0.6, 1.3), 0.04), Color(0.4, 0.45, 0.22))
+		var p := c + Vector3(_r.randf_range(-20, 28), 0, _r.randf_range(-9, 9))
+		d.box(p + Vector3(-0.04, 0, -0.04), p + Vector3(0.04, _r.randf_range(0.6, 1.3), 0.04), Color(0.4, 0.45, 0.22))
 
 
 func _water_tower(b: MeshBuilder, c: Vector3) -> void:
@@ -285,15 +290,15 @@ func _factory(b: MeshBuilder, d: MeshBuilder, c: Vector3) -> void:
 		var x := -hx
 		while x < hx:
 			var top := 7.0 - absf(sin(x * 0.7)) * 3.5
-			d.box(c + Vector3(x, 0, z - 0.3), c + Vector3(x + 1.6, top, z + 0.3), brick.darkened(0.05 + randf() * 0.1), true)
+			d.box(c + Vector3(x, 0, z - 0.3), c + Vector3(x + 1.6, top, z + 0.3), brick.darkened(0.05 + _r.randf() * 0.1), true)
 			d.box(c + Vector3(x + 1.6, 0, z - 0.3), c + Vector3(x + 2.0, 1.2, z + 0.3), brick, true)
 			x += 2.0
 	d.box(c + Vector3(-hx - 0.3, 0, -7), c + Vector3(-hx + 0.3, 6.5, 7), brick, true)
 	for i in 8:
-		var p := c + Vector3(randf_range(-14, 14), 0, randf_range(-5, 5))
+		var p := c + Vector3(_r.randf_range(-14, 14), 0, _r.randf_range(-5, 5))
 		for k in 3:
 			var s := 2.2 - k * 0.6
-			d.box_rot(p + Vector3(0, 0.25 + k * 0.4, 0), Vector3(s, 0.5, s * 0.8), randf() * TAU, brick.darkened(0.15))
+			d.box_rot(p + Vector3(0, 0.25 + k * 0.4, 0), Vector3(s, 0.5, s * 0.8), _r.randf() * TAU, brick.darkened(0.15))
 	_board(d, c + Vector3(-hx - 4, 0, 8), "Кирпичный завод «Красный Яр» · 1958")
 
 
@@ -327,7 +332,7 @@ func _dairy(d: MeshBuilder, c: Vector3) -> void:
 		var p := pen + Vector3(cos(a) * 18.0, 0, sin(a) * 9.0)
 		d.box(p + Vector3(-0.08, 0, -0.08), p + Vector3(0.08, 1.2, 0.08), Color(0.4, 0.32, 0.22))
 	for i in 9:
-		_cow(d, pen + Vector3(randf_range(-14, 14), 0, randf_range(-6, 6)), randf() * TAU)
+		_cow(d, pen + Vector3(_r.randf_range(-14, 14), 0, _r.randf_range(-6, 6)), _r.randf() * TAU)
 
 
 ## Корова: пятнистое туловище, голова, ноги.
@@ -392,7 +397,7 @@ func _junkyard(d: MeshBuilder, c: Vector3) -> void:
 		VehicleModels.zhiguli(b, rust[i % rust.size()], false)
 		var mi := b.build_mesh()
 		mi.position = p + Vector3(0, 0.05 if i % 3 != 0 else -0.25, 0)
-		mi.rotation = Vector3(0.0 if i % 4 != 1 else 0.3, randf() * TAU, 0.0 if i % 3 != 2 else 0.12)
+		mi.rotation = Vector3(0.0 if i % 4 != 1 else 0.3, _r.randf() * TAU, 0.0 if i % 3 != 2 else 0.12)
 		add_child(mi)
 		d.add_collider(p + Vector3(-1.0, 0, -1.0), p + Vector3(1.0, 1.3, 1.0))
 	# Остов автобуса и горы покрышек

@@ -44,6 +44,7 @@ func _run() -> void:
 	var pieces := [0]
 	var longest := 0
 	var t := Time.get_ticks_msec()
+	var t_all := t
 	var BootScript = load("res://scripts/ui/boot.gd")
 	var done := [false]
 	(func() -> void:
@@ -53,9 +54,11 @@ func _run() -> void:
 		await process_frame
 		longest = maxi(longest, Time.get_ticks_msec() - t)
 		t = Time.get_ticks_msec()
-	print("  скрипты собраны за %d кадров, самый долгий: %d мс" % [pieces[0], longest])
+	var total := Time.get_ticks_msec() - t_all
+	print("  скрипты собраны за %d кадров (%d мс), самый долгий: %d мс" % [pieces[0], total, longest])
 	ok(pieces[0] >= 20, "по кусочку за кадр")
-	ok(longest < 1000, "ни один кусок не тянется дольше 1 с")
+	# Доля, а не миллисекунды: машина то быстрее, то медленнее
+	ok(longest < total * 0.3, "ни один кусок не дольше 30%% всей сборки скриптов")
 	ok(ResourceLoader.has_cached("res://scripts/world/world.gd"), "к концу собран и мир")
 
 	print("== Кусками, как в браузере")
@@ -64,6 +67,7 @@ func _run() -> void:
 	var parts: Array[float] = []
 	W.build_progress.connect(func(p: float) -> void: parts.append(p))
 	t = Time.get_ticks_msec()
+	t_all = t
 	root.add_child(W)
 	ok(not W.is_built, "после add_child ещё строится")
 	ok(paused, "пока строится — пауза: часы, машины и автосохранение стоят")
@@ -78,8 +82,9 @@ func _run() -> void:
 		frames += 1
 	ok(W.is_built, "достроился за %d кадров" % frames)
 	ok(frames >= 15, "кусками, не разом")
-	print("  самый долгий кусок: %d мс" % longest)
-	ok(longest < 900, "ни один кусок не тянется дольше 0,9 с (на телефоне — около 8 с)")
+	total = Time.get_ticks_msec() - t_all
+	print("  мир построен за %d мс, самый долгий кусок: %d мс" % [total, longest])
+	ok(longest < total * 0.15, "ни один кусок не дольше 15%% всей стройки (одним куском было 100%%)")
 	ok(parts.size() >= 15 and parts[-1] > 0.9, "полоска загрузки двигалась: %d шагов" % parts.size())
 	var sorted := parts.duplicate()
 	sorted.sort()

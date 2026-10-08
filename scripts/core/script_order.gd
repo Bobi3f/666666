@@ -57,6 +57,7 @@ const PATHS := [
 	"res://scripts/world/region.gd",
 	"res://scripts/world/roadside.gd",
 	"res://scripts/world/backlot.gd",
+	"res://scripts/world/college_life.gd",
 	"res://scripts/ui/girl_panel.gd",
 	"res://scripts/world/girl.gd",
 	"res://scripts/ui/plate_panel.gd",

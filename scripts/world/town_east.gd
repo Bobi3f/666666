@@ -561,8 +561,13 @@ func _college(b: MeshBuilder, glow: MeshBuilder, veg: Vegetation) -> void:
 		_bench(b, Vector3(r.end.x + 9.5, 0, z), -PI / 2.0)
 	for p in [Vector3(r.end.x + 4.0, 0, r.position.y + 3.0), Vector3(r.end.x + 4.0, 0, r.end.y - 3.0)]:
 		_tree(b, veg, p, Vegetation.TreeKind.BIRCH)
+	# Трое у входа — в учебные дни (college_life.gd прячет их ночью и в выходные)
 	for i in 3:
-		_person(Vector3(r.end.x + 5.0 + i * 0.9, 0, cz - 6.0 + i * 0.7), PI / 2.0 + i, [Color(0.2, 0.3, 0.6), Color(0.6, 0.2, 0.2), Color(0.3, 0.5, 0.3)][i], i == 1)
+		_person(Vector3(r.end.x + 5.0 + i * 0.9, 0, cz - 6.0 + i * 0.7), PI / 2.0 + i, [Color(0.2, 0.3, 0.6), Color(0.6, 0.2, 0.2), Color(0.3, 0.5, 0.3)][i], i == 1).add_to_group("college_idle")
+	# Ученики приходят и приезжают к урокам, после уроков разъезжаются
+	var life := CollegeLife.new()
+	life.name = "CollegeLife"
+	add_child(life)
 	var zone := InteractZone.create("", Vector3(2.4, 2.2, 3.0))
 	zone.name = "CollegeZone"
 	zone.position = Vector3(r.end.x + 1.4, 0, cz)
@@ -1023,7 +1028,7 @@ func _tree(b: MeshBuilder, veg: Vegetation, p: Vector3, kind: int) -> void:
 	veg.add_tree(kind, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * s), p))
 
 
-func _person(p: Vector3, yaw: float, shirt: Color, woman: bool) -> void:
+func _person(p: Vector3, yaw: float, shirt: Color, woman: bool) -> MeshInstance3D:
 	var pb := MeshBuilder.new()
 	pb.ground_shade = false
 	Villagers.person_model(pb, shirt, Color(0.2, 0.18, 0.15), false, woman)
@@ -1031,6 +1036,7 @@ func _person(p: Vector3, yaw: float, shirt: Color, woman: bool) -> void:
 	mi.position = p
 	mi.rotation.y = yaw
 	add_child(mi)
+	return mi
 
 
 func _label(text: String, p: Vector3, yaw: float, px: float, color: Color) -> Label3D:
