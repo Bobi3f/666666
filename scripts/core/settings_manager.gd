@@ -152,6 +152,14 @@ func _ready() -> void:
 		key_map = (km as Dictionary).duplicate() if km is Dictionary else {}
 		var tl: Variant = cfg.get_value("controls", "touch", {})
 		touch_layout = (tl as Dictionary).duplicate(true) if tl is Dictionary else {}
+	# Облегчённый запуск: страница передаёт --lite, если в прошлый раз
+	# браузер закрыл игру (телефону не хватило памяти) — сразу самая простая
+	# картинка: низкая детализация и все ступени «Держать FPS»
+	if "--lite" in OS.get_cmdline_args():
+		detail = 0
+		_lines_k = 0.75
+		_perf_step = PERF_LADDER.size()
+		print("FIRST GEAR: облегчённый запуск (--lite)")
 	remap = KeyRemap.new()
 	remap.name = "KeyRemap"
 	get_tree().root.add_child.call_deferred(remap)

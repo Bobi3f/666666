@@ -153,6 +153,7 @@
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
       <p id="donate" class="donate" hidden><span>♥ Поддержать автора:</span></p>
       <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
+      <p id="lite" class="hint" hidden></p>
       <p id="ios" class="hint" hidden>На iPhone: «Поделиться» → «На экран „Домой“» — игра откроется на весь экран, без панелей Safari, и кнопки станут удобнее.</p>
       <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
         кнопки действий — справа внизу, «Меню» — справа вверху. В машине — руль, который крутишь пальцем, и педали, как в Car Parking. Лучше держать телефон горизонтально.</p>
@@ -273,12 +274,37 @@
       return;
     }
 
+    // Прошлый запуск сорвался: браузер закрыл вкладку (телефону не хватило
+    // памяти) — флаг так и остался «loading». Тогда облегчённый запуск:
+    // игра с --lite сразу ставит самую простую картинку. ?lite=1 — вручную.
+    let crashed = false;
+    try { crashed = localStorage.getItem("fg_boot") === "loading"; } catch (e) {}
+    const lite = crashed || /[?&]lite=1/.test(location.search);
+    const apk = "https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Android.apk";
+    if (lite) {
+      const note = document.getElementById("lite");
+      note.hidden = false;
+      note.innerHTML = L("Прошлый запуск не удался — похоже, телефону не хватило памяти. Сейчас запустится облегчённая версия. Закройте другие вкладки и приложения. На Android можно поставить игру приложением: ",
+        "The last launch failed — the phone probably ran out of memory. A lighter version will start now. Close other tabs and apps. On Android you can install the game as an app: ",
+        "Минулий запуск не вдався — схоже, телефону забракло пам'яті. Зараз запуститься полегшена версія. Закрийте інші вкладки й застосунки. На Android гру можна встановити застосунком: ") +
+        '<a href="' + apk + '">FirstGear-Android.apk</a>';
+    }
+    // Телефон отобрал у игры видеопамять — объясняем и предлагаем облегчённый запуск
+    canvas.addEventListener("webglcontextlost", function () {
+      cover.hidden = false;
+      fs.hidden = true;
+      fail(L("Телефону не хватило видеопамяти. Нажмите — запустим облегчённую версию.",
+        "The phone ran out of video memory. Tap to start the lighter version.",
+        "Телефону забракло відеопам'яті. Натисніть — запустимо полегшену версію."));
+      play.onclick = function (e) { e.stopImmediatePropagation(); location.search = "?lite=1"; };
+    });
+
     const engine = new Engine({
-      args: [],
+      args: lite ? ["--lite"] : [],
       canvas: canvas,
       canvasResizePolicy: 2,
       executable: "index",
-      fileSizes: { "index.pck": 3953584, "index.wasm": 38034280 },
+      fileSizes: { "index.pck": 3954928, "index.wasm": 38034280 },
       focusCanvas: true,
       ensureCrossOriginIsolationHeaders: false,
       experimentalVK: false,
@@ -302,6 +328,7 @@
 
     play.addEventListener("click", function () {
       if (touch) goFullscreen();
+      try { localStorage.setItem("fg_boot", "loading"); } catch (e) {}
       play.disabled = true;
       play.textContent = L("Загружаю…", "Loading…", "Завантажую…");
       status.classList.remove("err");
@@ -318,6 +345,13 @@
         cover.hidden = true;
         fs.hidden = !!document.fullscreenElement;
         canvas.focus();
+        // Мир построен и минуту отыграл — запуск удался. Свернул или закрыл
+        // вкладку сам — тоже не сбой (при нехватке памяти браузер убивает
+        // вкладку молча, и эти события не приходят)
+        const ok = function () { try { localStorage.setItem("fg_boot", "ok"); } catch (e) {} };
+        setTimeout(ok, 60000);
+        window.addEventListener("pagehide", ok);
+        document.addEventListener("visibilitychange", function () { if (document.hidden) ok(); });
       }).catch(function (err) {
         fail(L("Игра не запустилась: ", "The game didn't start: ", "Гра не запустилася: ") + (err && err.message ? err.message : err));
       });
