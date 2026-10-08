@@ -14,6 +14,8 @@ const ORDER := "res://scripts/core/script_order.gd"
 static var load_save := false
 
 var screen: LoadingScreen
+## Последний процент, что ушёл в консоль браузера.
+var _printed := -100
 
 
 func _ready() -> void:
@@ -35,15 +37,15 @@ func _build() -> void:
 	var t := Time.get_ticks_msec()
 	if staged:
 		print("FIRST GEAR: собираю скрипты")
-		await compile_scripts(get_tree(), func(p: float) -> void: screen.set_progress(0.05 + 0.25 * p))
+		await compile_scripts(get_tree(), func(p: float) -> void: _progress(0.05 + 0.25 * p))
 		print("FIRST GEAR: скрипты собраны за %.1f с" % _since(t))
 	var scene := load(WORLD) as PackedScene
-	screen.set_progress(0.3, "Строим Каменку…")
+	_progress(0.3, "Строим Каменку…")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var world := scene.instantiate()
 	world.staged = staged
-	world.build_progress.connect(func(p: float) -> void: screen.set_progress(0.3 + 0.55 * p))
+	world.build_progress.connect(func(p: float) -> void: _progress(0.3 + 0.55 * p))
 	print("FIRST GEAR: строю мир")
 	t = Time.get_ticks_msec()
 	get_tree().root.add_child(world)
@@ -55,14 +57,25 @@ func _build() -> void:
 		load_save = false
 		SaveManager.load_game()
 	# Шейдеры — пока закрыто экраном загрузки, иначе игра подвисает в пути
-	screen.set_progress(0.85, "Готовим картинку…")
+	_progress(0.85, "Готовим картинку…")
 	t = Time.get_ticks_msec()
-	var mats: int = await ShaderWarmup.run(world, 2, 4 if staged else 0, func(p: float) -> void: screen.set_progress(0.85 + 0.15 * p))
+	var mats: int = await ShaderWarmup.run(world, 2, 4 if staged else 0, func(p: float) -> void: _progress(0.85 + 0.15 * p))
 	print("FIRST GEAR: картинка готова за %.1f с (%d материалов)" % [_since(t), mats])
-	screen.set_progress(1.0, "Готово")
+	_progress(1.0, "Готово")
 	print("FIRST GEAR: игра готова, запуск занял %.1f с" % _since(0))
 	await get_tree().process_frame
 	queue_free()
+
+
+## Полоска экрана загрузки. В браузере ещё и «FIRST GEAR: 37%» в консоль:
+## страница игры держит свою заставку с процентами, пока игра не готова, —
+## даже если телефон почему-то не рисует картинку игры, видно, что идёт.
+func _progress(v: float, text := "") -> void:
+	screen.set_progress(v, text)
+	var pct := int(v * 100.0)
+	if OS.has_feature("web") and pct >= _printed + 2:
+		_printed = pct
+		print("FIRST GEAR: %d%%" % pct)
 
 
 ## Строить мир кусками: в браузере и на телефоне (или с --staged для проверки).
