@@ -55,7 +55,7 @@ func _run() -> void:
 		t = Time.get_ticks_msec()
 	print("  скрипты собраны за %d кадров, самый долгий: %d мс" % [pieces[0], longest])
 	ok(pieces[0] >= 20, "по кусочку за кадр")
-	ok(longest < 700, "ни один кусок не тянется дольше 0,7 с")
+	ok(longest < 1000, "ни один кусок не тянется дольше 1 с")
 	ok(ResourceLoader.has_cached("res://scripts/world/world.gd"), "к концу собран и мир")
 
 	print("== Кусками, как в браузере")

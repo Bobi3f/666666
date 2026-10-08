@@ -429,6 +429,7 @@ func _draw_static(labels: bool) -> void:
 			_label_at(font, "оз. Круглое", Region.LAKE + Vector2(0, 34), 12, true)
 			# Улицы
 			_label_at(font, "ул. Садовая", Vector2(-112, -37.5), 11, true)
+			_label_at(font, "дом Принцессы", _world.PRINCESS_HOUSE + Vector2(0, 7), 10, true)
 			_label_at(font, "ул. Ленина", Town.w2(Vector2(97, 128)), 11, true)
 			_label_at(font, "пр. Мира", Town.w2(Vector2(150, 55.5)), 11, true)
 			_label_at(font, "ул. Заводская", Town.w2(Vector2(265, 96)), 11, true)
@@ -485,11 +486,16 @@ func _draw_terrain() -> void:
 		_line(pts, float(r[1]), r[2])
 	var br: Rect2 = Roads.BRIDGE
 	_rect(br.position.x, br.position.y + 0.5, br.end.x, br.end.y - 0.5, Color(0.55, 0.45, 0.35))
-	# Дворы: забор, дом, дорожка к калитке, огород за домом; свой дом — золотой
+	# Дворы: забор, дом, дорожка к калитке, огород за домом; свой дом —
+	# золотой, дом Принцессы — розовый
 	for x in _world.VILLAGE_X:
 		for zz in [_world.ROW_A_Z, _world.ROW_B_Z]:
-			var own: bool = Vector2(x, zz) == _world.PLAYER_HOUSE
-			_yard(Vector2(x, zz), zz > _world.ROW_A_Z, Color(0.95, 0.72, 0.2) if own else HOUSE, Vector2(11, 9), Vector2(11, 12))
+			var col := HOUSE
+			if Vector2(x, zz) == _world.PLAYER_HOUSE:
+				col = Color(0.95, 0.72, 0.2)
+			elif Vector2(x, zz) == _world.PRINCESS_HOUSE:
+				col = Color(0.92, 0.55, 0.7)
+			_yard(Vector2(x, zz), zz > _world.ROW_A_Z, col, Vector2(11, 9), Vector2(11, 12))
 	_draw_town()
 	_draw_trees()
 

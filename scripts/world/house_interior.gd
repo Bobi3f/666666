@@ -48,6 +48,16 @@ enum Wealth { POOR, MIDDLE, RICH }
 @export var window_sill_height := 0.9
 ## Двери сами открываются перед персонажем и закрываются за ним.
 @export var auto_doors := true
+## Дом Принцессы (princess.gd): розовая обстановка, трюмо с зеркалом,
+## лежанки собачек в ногах кровати, чай с вареньем на кухонном столе.
+@export var princess := false
+
+## Где Принцесса вечером пьёт чай (у кухонного стола, напротив входа) и где
+## её питомцы: вечером — собачки рядом с ней, кот на коврике у двери; ночью —
+## собачки на лежанках, кот на кровати. Локально, для зажиточного дома.
+const PRINCESS_TEA := Vector3(-1.85, 0, 1.0)
+const PRINCESS_PETS_EVENING := [Vector3(-1.2, 0, 1.6), Vector3(-1.15, 0, 0.45), Vector3(-1.75, 0, 2.15)]
+const PRINCESS_PETS_NIGHT := [Vector3(2.8, 0.09, -0.45), Vector3(3.55, 0.09, -0.45), Vector3(3.45, 0.64, -1.55)]
 
 enum { WALLS, FLOOR, PLASTER, WOOD, FABRIC, GLASS }
 
@@ -64,6 +74,9 @@ const INSIDE_LAYER := 2
 var _tools: Array[SurfaceTool] = []
 var _mats: Array[StandardMaterial3D] = []
 var _body: StaticBody3D
+## Входная дверь: [петля, угол открытия, сколько тел в проёме] — её можно
+## открыть и без тела (entrance_door).
+var _entrance_door: Array = []
 ## Проёмы наружных стен для фасада: [a, dir, across, inward, s0, s1, низ, верх].
 var _openings: Array = []
 
@@ -565,6 +578,8 @@ func _kitchen_rich() -> void:
 	_table(c + Vector3(-0.45, 0, -0.6), c + Vector3(0.45, 0.76, 0.6), brown)
 	for p in [Vector3(-0.72, 0, -0.3), Vector3(-0.72, 0, 0.3), Vector3(0.72, 0, -0.3), Vector3(0.72, 0, 0.3)]:
 		_chair(c + p, brown, signf(p.x))
+	if princess:
+		_princess_tea(c + Vector3(0, 0.76, 0))
 
 	_rug(Vector3(entrance_offset - 0.6, 0, inner_size.z * 0.5 - 1.3), Vector3(entrance_offset + 0.6, 0, inner_size.z * 0.5 - 0.3), Color(0.35, 0.3, 0.45))
 
@@ -596,9 +611,9 @@ func _room_rich() -> void:
 	for gx in [s0.x + 0.45, s0.x + 2.25]:
 		_box(WOOD, Vector3(gx - 0.005, 0.05, z0 + 0.5), Vector3(gx + 0.005, 2.15, z0 + 0.51), seam)
 
-	# Диван напротив телевизора
+	# Диван напротив телевизора (у Принцессы всё розовое)
 	var d := Vector3(s0.x + 1.35, 0, z0 + 2.4)
-	var fabric := Color(0.35, 0.4, 0.3)
+	var fabric := Color(0.88, 0.52, 0.66) if princess else Color(0.35, 0.4, 0.3)
 	_solid(FABRIC, d + Vector3(-0.95, 0, -0.45), d + Vector3(0.95, 0.42, 0.45), fabric)
 	_box(FABRIC, d + Vector3(-0.95, 0.42, 0.25), d + Vector3(0.95, 0.85, 0.45), fabric)
 	_box(FABRIC, d + Vector3(-1.1, 0, -0.45), d + Vector3(-0.95, 0.6, 0.45), fabric.darkened(0.1))
@@ -613,7 +628,7 @@ func _room_rich() -> void:
 	_solid(WOOD, b0, b0 + Vector3(1.6, 0.42, 2.0), lacquer)
 	_box(WOOD, b0, b0 + Vector3(1.6, 1.1, 0.08), lacquer)
 	_box(FABRIC, b0 + Vector3(0.05, 0.42, 0.08), b0 + Vector3(1.55, 0.58, 1.95), Color(0.95, 0.93, 0.88))
-	_box(FABRIC, b0 + Vector3(0.03, 0.58, 0.7), b0 + Vector3(1.57, 0.64, 1.97), Color(0.6, 0.3, 0.35))
+	_box(FABRIC, b0 + Vector3(0.03, 0.58, 0.7), b0 + Vector3(1.57, 0.64, 1.97), Color(0.95, 0.6, 0.76) if princess else Color(0.6, 0.3, 0.35))
 	_box(FABRIC, b0 + Vector3(0.12, 0.58, 0.14), b0 + Vector3(0.72, 0.72, 0.5), Color.WHITE)
 	_box(FABRIC, b0 + Vector3(0.88, 0.58, 0.14), b0 + Vector3(1.48, 0.72, 0.5), Color.WHITE)
 
@@ -621,8 +636,73 @@ func _room_rich() -> void:
 	var w0 := Vector3(x1 - 0.6, 0, z1 - 1.5)
 	_solid(WOOD, w0, w0 + Vector3(0.6, 2.1, 1.4), lacquer)
 	_box(WOOD, w0 + Vector3(-0.01, 0.1, 0.69), w0 + Vector3(0.0, 2.0, 0.71), Color(0.1, 0.05, 0.03))
-	_rug(Vector3(x0 + 0.3, 0, z0 + 0.8), Vector3(x0 + 2.6, 0, z0 + 3.1), Color(0.55, 0.1, 0.1))
-	_box(FABRIC, Vector3(x1 - 0.015, 0.8, z0 + 0.3), Vector3(x1, 2.1, z0 + 2.2), Color(0.5, 0.1, 0.12))
+	_rug(Vector3(x0 + 0.3, 0, z0 + 0.8), Vector3(x0 + 2.6, 0, z0 + 3.1), Color(0.85, 0.45, 0.6) if princess else Color(0.55, 0.1, 0.1))
+	_box(FABRIC, Vector3(x1 - 0.015, 0.8, z0 + 0.3), Vector3(x1, 2.1, z0 + 2.2), Color(0.78, 0.36, 0.52) if princess else Color(0.5, 0.1, 0.12))
+	if princess:
+		_princess_room(r)
+
+
+## Чай у Принцессы: пузатый заварник, две чашки на блюдцах, банка малинового
+## варенья и вазочка с печеньем. top — середина столешницы.
+func _princess_tea(top: Vector3) -> void:
+	var china := Color(0.97, 0.95, 0.93)
+	var rose := Color(0.9, 0.45, 0.6)
+	_box(PLASTER, top + Vector3(-0.09, 0, 0.12), top + Vector3(0.09, 0.14, 0.3), china)
+	_box(PLASTER, top + Vector3(-0.06, 0.14, 0.15), top + Vector3(0.06, 0.17, 0.27), rose)
+	_box(PLASTER, top + Vector3(0.09, 0.06, 0.19), top + Vector3(0.16, 0.08, 0.23), china)
+	for z in [-0.3, 0.45]:
+		_box(PLASTER, top + Vector3(-0.08, 0, z - 0.08), top + Vector3(0.08, 0.008, z + 0.08), china)
+		_box(PLASTER, top + Vector3(-0.045, 0.008, z - 0.045), top + Vector3(0.045, 0.075, z + 0.045), rose)
+		_box(PLASTER, top + Vector3(-0.035, 0.07, z - 0.035), top + Vector3(0.035, 0.076, z + 0.035), Color(0.55, 0.3, 0.12))
+	# Варенье: стеклянная банка, малина внутри, крышка — тряпочка с ниткой
+	_box(PLASTER, top + Vector3(-0.25, 0, -0.06), top + Vector3(-0.15, 0.13, 0.04), Color(0.62, 0.08, 0.14))
+	_box(FABRIC, top + Vector3(-0.26, 0.13, -0.07), top + Vector3(-0.14, 0.15, 0.05), Color(0.95, 0.9, 0.85))
+	_box(PLASTER, top + Vector3(0.14, 0, -0.1), top + Vector3(0.3, 0.03, 0.06), china)
+	for p in [Vector2(0.18, -0.06), Vector2(0.25, -0.02), Vector2(0.2, 0.02)]:
+		_box(WOOD, top + Vector3(p.x - 0.03, 0.03, p.y - 0.03), top + Vector3(p.x + 0.03, 0.045, p.y + 0.03), Color(0.85, 0.65, 0.35))
+
+
+## Уголок Принцессы в комнате: трюмо с зеркалом у окна, розовый пуфик,
+## лежанки Снежки и Рыжика в ногах кровати, над трюмо — её портрет с собачками.
+func _princess_room(r: Rect2) -> void:
+	var white := Color(0.96, 0.94, 0.92)
+	var z1 := r.end.y
+	# Трюмо: тумба, столешница, три створки зеркала, флаконы и шкатулка
+	var t0 := Vector3(r.position.x + 0.15, 0, z1 - 0.45)
+	_solid(WOOD, t0, t0 + Vector3(1.0, 0.72, 0.42), white)
+	_box(WOOD, t0 + Vector3(-0.02, 0.72, -0.02), t0 + Vector3(1.02, 0.75, 0.44), Color(0.92, 0.72, 0.8))
+	for k in 3:
+		var mx0: float = t0.x + 0.05 + k * 0.32
+		var tall := 0.75 if k == 1 else 0.6
+		_box(WOOD, Vector3(mx0, 0.78, z1 - 0.06), Vector3(mx0 + 0.3, 0.78 + tall, z1 - 0.02), white)
+		_box(PLASTER, Vector3(mx0 + 0.03, 0.81, z1 - 0.065), Vector3(mx0 + 0.27, 0.75 + tall, z1 - 0.06), Color(0.72, 0.82, 0.9))
+	for p in [Vector3(0.2, 0, 0.15), Vector3(0.3, 0, 0.2), Vector3(0.82, 0, 0.18)]:
+		var c: Vector3 = t0 + p + Vector3(0, 0.75, 0)
+		_box(PLASTER, c - Vector3(0.025, 0, 0.025), c + Vector3(0.025, 0.12, 0.025), Color(0.95, 0.6, 0.75) if p.x < 0.5 else Color(0.7, 0.6, 0.95))
+	_box(WOOD, t0 + Vector3(0.48, 0.75, 0.1), t0 + Vector3(0.66, 0.84, 0.24), Color(0.85, 0.65, 0.2))
+	# Пуфик
+	_box(FABRIC, t0 + Vector3(0.3, 0, -0.55), t0 + Vector3(0.7, 0.42, -0.15), Color(0.95, 0.6, 0.76))
+	# Лежанки: круглые подушки с бортиком — красная у Снежки, синяя у Рыжика
+	var cols := [Color(0.85, 0.2, 0.3), Color(0.25, 0.38, 0.85)]
+	for i in 2:
+		var c: Vector3 = PRINCESS_PETS_NIGHT[i]
+		c.y = 0.0
+		_box(FABRIC, c + Vector3(-0.36, 0, -0.27), c + Vector3(0.36, 0.08, 0.27), cols[i].lightened(0.35))
+		for side in [Vector3(-0.36, 0, -0.27), Vector3(-0.36, 0, 0.2)]:
+			_box(FABRIC, c + side, c + side + Vector3(0.72, 0.16, 0.07), cols[i])
+		_box(FABRIC, c + Vector3(-0.36, 0, -0.27), c + Vector3(-0.29, 0.16, 0.27), cols[i])
+	# Портрет над трюмо: Принцесса в розовом с белой и рыжей собачками.
+	# Висит на фасадной стене — лицом в комнату (к −Z)
+	var pc := Vector3(t0.x + 0.5, 1.9, z1)
+	_box(WOOD, pc + Vector3(-0.35, -0.25, -0.025), pc + Vector3(0.35, 0.25, 0.0), Color(0.85, 0.65, 0.2), false)
+	_box(FABRIC, pc + Vector3(-0.31, -0.21, -0.03), pc + Vector3(0.31, 0.21, -0.025), Color(0.85, 0.9, 0.95), false)
+	var fig := [[Vector2(-0.08, -0.18), Vector2(0.08, 0.12), Color(0.95, 0.55, 0.72)],
+		[Vector2(-0.05, 0.12), Vector2(0.05, 0.2), Color(0.95, 0.82, 0.7)],
+		[Vector2(-0.05, 0.2), Vector2(0.05, 0.23), Color(1.0, 0.8, 0.2)],
+		[Vector2(-0.26, -0.18), Vector2(-0.14, -0.08), Color(0.98, 0.97, 0.94)],
+		[Vector2(0.14, -0.18), Vector2(0.27, -0.07), Color(0.78, 0.45, 0.2)]]
+	for f in fig:
+		_box(FABRIC, pc + Vector3(f[0].x, f[0].y, -0.035), pc + Vector3(f[1].x, f[1].y, -0.03), f[2], false)
 
 
 # --- Двери ---------------------------------------------------------------
@@ -716,6 +796,19 @@ func _door(hinge: Vector3, dir: Vector3, swing: Vector3, width: float, height: f
 			inside[0] = maxi(inside[0] - 1, 0)
 			if inside[0] == 0:
 				_swing(pivot, 0.0))
+	if entrance:
+		_entrance_door = [pivot, open_angle, inside]
+
+
+## Открыть или закрыть входную дверь самому: так через неё проходит
+## Принцесса — физического тела у неё нет, и дверь её не замечает.
+## Игрок стоит в проёме — перед ним не закрываем.
+func entrance_door(open: bool) -> void:
+	if _entrance_door.is_empty():
+		return
+	if not open and _entrance_door[2][0] > 0:
+		return
+	_swing(_entrance_door[0], _entrance_door[1] if open else 0.0)
 
 
 func _swing(pivot: Node3D, angle: float) -> void:

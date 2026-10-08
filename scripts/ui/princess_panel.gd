@@ -126,6 +126,8 @@ func _refresh() -> void:
 	_bar.value = princess.mood
 	_fill.bg_color = Color(1.0, 0.55, 0.75) if kind else Color(0.9, 0.2, 0.15)
 	_walk.text = "Отпустить домой" if princess.following else ("Позвать гулять" if kind else "Позвать гулять (она злится)")
+	if princess.where != Princess.OUT and not princess.following:
+		_walk.text = "Гулять — завтра с утра"
 	for c in _list.get_children():
 		c.queue_free()
 	var head := "Брелочки — %d из %d у тебя. %s" % [princess.keychains.size(), Princess.KEYCHAINS.size(),

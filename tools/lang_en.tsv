@@ -2608,3 +2608,12 @@ E — кружка кваса (%d грн)	E — a mug of kvass (%d UAH)
 КВАС	KVASS
 E — %s: выбрать товар, поторговаться	E — %s: choose goods, haggle
 Игра сделана на Godot Engine — godotengine.org/license (лицензия MIT).	Made with Godot Engine — godotengine.org/license (MIT license).
+дом Принцессы	Princess's house
+Гулять — завтра с утра	Walk — tomorrow morning
+E — Принцесса спит. Разбудить?	E — The Princess is asleep. Wake her?
+E — Принцесса дома (%s): чай, поговорить, брелочки	E — The Princess is home (%s): tea, talk, keychains
+Принцесса: «Ты чего?! Ночь на дворе — иди спать! Завтра поговорим»	Princess: "Are you crazy?! It's the middle of the night — go to sleep! We'll talk tomorrow"
+Принцесса напоила тебя чаем с малиновым вареньем — сил прибавилось	The Princess gave you tea with raspberry jam — you feel stronger
+Поздно уже — гулять не пойду. Завтра с утра, ладно?	It's too late for a walk. Tomorrow morning, okay?
+Принцесса: «Ой, уже девять! Мне домой — собачек кормить. Заходи на чай!»	Princess: "Oh, it's nine already! Time to go home and feed the dogs. Drop by for tea!"
+ПРИНЦЕССА	PRINCESS

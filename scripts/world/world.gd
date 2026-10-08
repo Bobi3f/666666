@@ -18,6 +18,9 @@ const ROW_A := [W.POOR, W.MIDDLE, W.RICH, W.MIDDLE]
 const ROW_B := [W.RICH, W.POOR, W.MIDDLE, W.POOR]
 ## Дом игрока — второй в первом ряду.
 const PLAYER_HOUSE := Vector2(-125.0, ROW_A_Z)
+## Дом Принцессы — пятый на Садовой, по соседству с игроком: розовый, с
+## короной над дверью и аркой «ПРИНЦЕССА» над воротами (princess.gd).
+const PRINCESS_HOUSE := Vector2(-100.0, ROW_A_Z)
 
 ## Фонари вдоль деревенской улицы — в просветах между дворами.
 const LAMP_X := [-162.0, -137.5, -112.5, -87.5, -63.0]
@@ -844,6 +847,8 @@ func _build_player_yard() -> void:
 
 ## Строится двор игрока-коттедж: второй этаж, балкон, беседка.
 var _cottage := false
+## Сейчас строится двор Принцессы: свои краски дома, забор, арка, будки.
+var _princess_yard := false
 
 
 ## Строит двор в b и возвращает созданные узлы (интерьер, зоны).
@@ -851,6 +856,8 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array
 	var nodes: Array[Node] = []
 	var hi: HouseInterior = HouseInteriorScript.new()
 	hi.wealth = wealth
+	_princess_yard = Vector2(pos.x, pos.z) == PRINCESS_HOUSE
+	hi.princess = _princess_yard
 	hi.position = pos + Vector3(0, HOUSE_Y, 0)
 	hi.rotation.y = yaw
 	hi.name = "House_%d_%d" % [int(pos.x), int(pos.z)]
@@ -861,6 +868,7 @@ func _build_yard(b: MeshBuilder, pos: Vector3, yaw: float, wealth: int) -> Array
 	_yard_fence(b, hi)
 	_yard_extras(b, hi)
 	b.xf = Transform3D.IDENTITY
+	_princess_yard = false
 	add_child(hi)
 	nodes.append(hi)
 	if Vector2(pos.x, pos.z) == PLAYER_HOUSE:
@@ -1021,6 +1029,8 @@ func _house_details(b: MeshBuilder, hi: HouseInterior, ox: float, oz: float, H: 
 	var door: Array = open.front[0]
 	var dx: float = door[0]
 	b.box(Vector3(dx - 0.85, 2.32, oz), Vector3(dx + 0.85, 2.4, oz + 0.95), style.roof)
+	if _princess_yard:
+		_gold_crown(b, Vector3(dx, 2.4, oz + 0.85), 0.2)
 	for x in [dx - 0.75, dx + 0.7]:
 		b.box(Vector3(x, 2.0, oz), Vector3(x + 0.05, 2.32, oz + 0.05), style.trim)
 		b.box(Vector3(x, 2.28, oz), Vector3(x + 0.05, 2.33, oz + 0.85), style.trim)
@@ -1062,6 +1072,11 @@ func _house_details(b: MeshBuilder, hi: HouseInterior, ox: float, oz: float, H: 
 
 
 func _house_style(wealth: int) -> Dictionary:
+	if _princess_yard:
+		# Дом Принцессы: розовая обшивка, белые наличники, малиновая крыша
+		return {"wall": Color(0.93, 0.66, 0.74), "line": Color(0.98, 0.88, 0.91), "step": 0.15,
+			"roof": Color(0.6, 0.2, 0.32), "roof_h": 2.2, "trim": Color(0.98, 0.97, 0.95),
+			"base": Color(0.55, 0.5, 0.52), "chimney": Color(0.8, 0.5, 0.56)}
 	match wealth:
 		W.POOR:
 			return {"wall": Color(0.45, 0.33, 0.22), "line": Color(0.3, 0.22, 0.15), "step": 0.27,
@@ -1207,10 +1222,22 @@ func _yard_fence(b: MeshBuilder, hi: HouseInterior) -> void:
 	b.box(Vector3(hi.entrance_offset - 0.6, 0, hi.inner_size.z * 0.5 + 0.9), Vector3(hi.entrance_offset + 0.6, 0.025, z1), Color(0.5, 0.44, 0.34))
 	# Створки распахнуты внутрь двора
 	var leaf := Color(0.3, 0.42, 0.32) if hi.wealth == W.RICH else Color(0.55, 0.44, 0.3)
+	if _princess_yard:
+		leaf = Color(0.96, 0.95, 0.93)
 	for gx in [gate0, gate1]:
 		b.box(Vector3(gx - 0.09, 0, z1 - 0.09), Vector3(gx + 0.09, 2.1, z1 + 0.09), Color(0.3, 0.3, 0.32))
 		var lx: float = gx + (0.08 if gx < hi.entrance_offset else -0.08)
 		b.box(Vector3(lx - 0.03, 0.12, z1 - 2.2), Vector3(lx + 0.03, 1.8, z1 - 0.05), leaf)
+	if _princess_yard:
+		# Арка над воротами: розовая доска с надписью и короной — дом видно
+		# издалека, с любого конца улицы
+		var ex := hi.entrance_offset
+		b.box(Vector3(gate0 - 0.09, 2.1, z1 - 0.09), Vector3(gate1 + 0.09, 2.22, z1 + 0.09), Color(0.3, 0.3, 0.32))
+		b.box(Vector3(ex - 1.3, 2.22, z1 - 0.04), Vector3(ex + 1.3, 2.72, z1 + 0.04), Color(0.9, 0.55, 0.68))
+		_gold_crown(b, Vector3(ex, 2.72, z1), 0.22)
+		var sign := _label("ПРИНЦЕССА", b.xf * Vector3(ex, 2.47, z1 + 0.05), b.xf.basis.get_euler().y, 0.0028, Color.WHITE)
+		sign.double_sided = false
+		sign.visibility_range_end = 60.0
 	# Огород за домом — тоже за забором; из двора в огород калитка в углу
 	var zg := -14.6
 	var runs := [
@@ -1233,6 +1260,9 @@ func _fence_run(b: MeshBuilder, a: Vector3, c: Vector3, wealth: int) -> void:
 	var mn := Vector3(minf(a.x, c.x), 0, minf(a.z, c.z))
 	var mx := Vector3(maxf(a.x, c.x), 0, maxf(a.z, c.z))
 	var thin := Vector3(0, 0, 0.04) if along_x else Vector3(0.04, 0, 0)
+	if _princess_yard:
+		_princess_fence(b, a, dir, length, mn, mx, thin, along_x)
+		return
 	match wealth:
 		W.RICH:
 			# Сплошной забор 1.9 м на кирпичных столбах
@@ -1270,6 +1300,81 @@ func _fence_run(b: MeshBuilder, a: Vector3, c: Vector3, wealth: int) -> void:
 				s += 0.22 if not poor else 0.26
 
 
+## Белый штакетник на розовых столбиках: двор Принцессы виден с улицы.
+func _princess_fence(b: MeshBuilder, a: Vector3, dir: Vector3, length: float, mn: Vector3, mx: Vector3,
+		thin: Vector3, along_x: bool) -> void:
+	var white := Color(0.96, 0.95, 0.93)
+	var pink := Color(0.9, 0.55, 0.68)
+	for y in [0.35, 0.95]:
+		b.box(mn - thin * 0.5 + Vector3(0, y, 0), mx + thin * 0.5 + Vector3(0, y + 0.06, 0), white.darkened(0.08))
+	b.add_collider(mn - thin, mx + thin + Vector3(0, 1.2, 0))
+	var s := 0.0
+	while s <= length:
+		var p := a + dir * s
+		b.box(p + Vector3(-0.08, 0, -0.08), p + Vector3(0.08, 1.4, 0.08), pink)
+		b.box(p + Vector3(-0.1, 1.4, -0.1), p + Vector3(0.1, 1.48, 0.1), white)
+		s += 2.5
+	s = 0.1
+	var off := thin * 1.5
+	var half := Vector3(0.04, 0, 0) if along_x else Vector3(0, 0, 0.04)
+	while s < length - 0.05:
+		var p := a + dir * s
+		b.box(p - half - off * 0.4, p + half + off * 0.4 + Vector3(0, 1.2, 0), white)
+		s += 0.2
+
+
+## Золотая корона из брусочков, плоская, лицом к +Z: обруч, пять зубцов
+## с шариками, красные и синий камешки. base — середина низа, r — полуширина.
+func _gold_crown(b: MeshBuilder, base: Vector3, r: float) -> void:
+	var gold := Color(1.0, 0.8, 0.2)
+	b.box(base + Vector3(-r, 0, -0.03), base + Vector3(r, r * 0.45, 0.03), gold)
+	for k in 5:
+		var x := -r * 0.92 + k * r * 0.46
+		var h := r * (0.95 if k == 2 else (0.7 if k % 2 == 1 else 0.82))
+		b.box(base + Vector3(x - r * 0.08, r * 0.45, -0.03), base + Vector3(x + r * 0.08, r * 0.45 + h, 0.03), gold)
+		b.box(base + Vector3(x - r * 0.12, r * 0.45 + h, -0.04), base + Vector3(x + r * 0.12, r * 0.69 + h, 0.04), gold.lightened(0.25))
+	for k in 3:
+		var x := -r * 0.6 + k * r * 0.6
+		b.box(base + Vector3(x - r * 0.1, r * 0.12, 0.03), base + Vector3(x + r * 0.1, r * 0.32, 0.045),
+			Color(0.15, 0.35, 0.95) if k == 1 else Color(0.9, 0.1, 0.2))
+
+
+## Двор Принцессы: розы вдоль забора, две будки — Снежки (красная крыша, как
+## её ошейник) и Рыжика (синяя), качели с розовым сиденьем. Без случайных
+## чисел: остальной мир от этого двора не меняется.
+func _princess_yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
+	var leaf := Color(0.2, 0.42, 0.18)
+	var roses := [Color(0.9, 0.12, 0.25), Color(0.98, 0.6, 0.75), Color(0.95, 0.95, 0.92)]
+	var x := -10.2
+	var k := 0
+	while x < 10.2:
+		if absf(x - hi.entrance_offset) > 2.7:
+			b.box(Vector3(x - 0.3, 0, 11.2), Vector3(x + 0.3, 0.55, 11.7), leaf)
+			for f in 3:
+				var fx := x - 0.2 + f * 0.2
+				b.box(Vector3(fx - 0.06, 0.5 + (f % 2) * 0.08, 11.35), Vector3(fx + 0.06, 0.62 + (f % 2) * 0.08, 11.5), roses[(k + f) % 3])
+		x += 0.9
+		k += 1
+	var roofs := [Color(0.85, 0.2, 0.3), Color(0.25, 0.38, 0.85)]
+	for i in 2:
+		var p := Vector3(5.8 + i * 1.7, 0, 8.4)
+		var wood := Color(0.96, 0.9, 0.9)
+		b.box(p + Vector3(-0.45, 0, -0.5), p + Vector3(0.45, 0.65, 0.5), wood, true)
+		b.box(p + Vector3(-0.17, 0.05, 0.5), p + Vector3(0.17, 0.45, 0.51), Color(0.08, 0.07, 0.06))
+		for s in [-1.0, 1.0]:
+			b.quad(p + Vector3(s * 0.56, 0.6, 0.58), p + Vector3(s * 0.56, 0.6, -0.58), p + Vector3(0, 0.92, -0.58), p + Vector3(0, 0.92, 0.58),
+				roofs[i], true)
+		b.box(p + Vector3(0.2, 0, 0.75), p + Vector3(0.42, 0.07, 0.97), roofs[i].lightened(0.3))
+	# Качели: два столба, перекладина, верёвки и розовая дощечка
+	var sw := Vector3(-8.0, 0, 6.5)
+	for s in [-1.0, 1.0]:
+		b.box(sw + Vector3(s * 0.9 - 0.06, 0, -0.06), sw + Vector3(s * 0.9 + 0.06, 2.2, 0.06), Color(0.96, 0.95, 0.93), true)
+	b.box(sw + Vector3(-1.0, 2.2, -0.06), sw + Vector3(1.0, 2.3, 0.06), Color(0.9, 0.55, 0.68))
+	for s in [-1.0, 1.0]:
+		b.box(sw + Vector3(s * 0.3 - 0.015, 0.55, -0.015), sw + Vector3(s * 0.3 + 0.015, 2.2, 0.015), Color(0.85, 0.82, 0.75))
+	b.box(sw + Vector3(-0.4, 0.5, -0.15), sw + Vector3(0.4, 0.56, 0.15), Color(0.95, 0.6, 0.76))
+
+
 ## Хозяйство во дворе по достатку.
 func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	# Яблоня во дворе у всех
@@ -1290,6 +1395,8 @@ func _yard_extras(b: MeshBuilder, hi: HouseInterior) -> void:
 	_vegetable_plot(b, hi.wealth, not own)
 	if hi.wealth != W.RICH:
 		_kennel(b, Vector3(6.6, 0, 8.2))
+	if _princess_yard:
+		_princess_yard_extras(b, hi)
 	match hi.wealth:
 		W.POOR:
 			# Уличный туалет

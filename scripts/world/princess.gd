@@ -6,6 +6,12 @@ extends Node3D
 ## Барсиком: питомцы бегут следом. E рядом — её окошко (PrincessPanel):
 ## позвать гулять (идёт рядом со всей свитой) или отпустить, купить брелочек.
 ##
+## Живёт в своём доме — розовом, пятом на Садовой, по соседству с игроком
+## (world.gd → PRINCESS_HOUSE). В 8:00 выходит из калитки, в 21:00 уводит
+## питомцев домой и сама открывает дверь. До полуночи пьёт чай на кухне —
+## можно зайти в гости (раз в вечер чай с вареньем: сил, воды и доброты);
+## потом уходит в комнату спать, собачки — на лежанки, кот — на кровать.
+##
 ## Настроение (mood 0–100): добрая (от 50) — ласковая, скидка на брелоки,
 ## гуляет охотно, над головой «добрая». Злая — каждый день без встречи она
 ## обижается сильнее: грубит, брелоки дороже, гулять не идёт. Помириться —
@@ -44,6 +50,24 @@ const KEYCHAINS := [
 ]
 ## Гуляет рядом с игроком (позвал), иначе — своя прогулка по улице.
 var following := false
+## Где она: гуляет, дома (вечер, кухня) или спит.
+enum { OUT, HOME, ASLEEP }
+var where := OUT
+## Её дом (HouseInterior с princess = true).
+var home: HouseInterior
+## Вечер, когда игрок заходил на чай: угощает раз в день.
+var visit_day := -1
+## Путь, которым она идёт сейчас (из дома на улицу и обратно):
+## [точка, что сделать на ней] — "open"/"close" дверь, "in"/"out", "sleep".
+var _path: Array = []
+## Её следы на пути: питомцы идут по ним гуськом, а не сквозь стены.
+var _trail: Array[Vector3] = []
+var _inside := false
+var _sleeping := false
+## Первый кадр (и после загрузки) — сразу на своём месте, без прогулки.
+var _fresh := true
+## Час прошлого кадра: время прыгнуло (сон, ожидание) — сразу на место.
+var _last_hour := -1.0
 var hug_day := -1
 var mood := 70.0
 var seen_day := 1
@@ -139,8 +163,15 @@ func _ready() -> void:
 		lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(lm)
 		_leashes.append(lm)
+	for c in (get_parent().get_children() if get_parent() else []):
+		if c is HouseInterior and (c as HouseInterior).princess:
+			home = c
 	_zone = InteractZone.create("", Vector3(2.6, 2.0, 2.6))
 	_zone.prompt_fn = func() -> String:
+		if _sleeping:
+			return "E — Принцесса спит. Разбудить?"
+		if where == HOME and _path.is_empty():
+			return "E — Принцесса дома (%s): чай, поговорить, брелочки" % ("добрая" if kind() else "злая")
 		return "E — Принцесса (%s): поговорить, гулять, брелочки" % ("добрая" if kind() else "злая")
 	_zone.activated.connect(talk)
 	girl.add_child(_zone)
@@ -189,8 +220,22 @@ static func cat_model(b: MeshBuilder, fur: Color) -> void:
 	b.alpha = 1.0
 
 
-## E: повернуться к игроку и открыть окошко Принцессы.
+## E: повернуться к игроку и открыть окошко Принцессы. Спит — разбудил,
+## обиделась; вечером дома — сначала угощает чаем.
 func talk() -> void:
+	if _sleeping:
+		set_mood(mood - 12.0)
+		SoundLibrary.play("bark", -6.0, 1.3)
+		GameManager.notify("Принцесса: «Ты чего?! Ночь на дворе — иди спать! Завтра поговорим»")
+		return
+	if where == HOME and _path.is_empty() and visit_day != TimeManager.day and kind():
+		visit_day = TimeManager.day
+		set_mood(mood + 10.0)
+		NeedsManager.drink(35.0)
+		NeedsManager.eat(10.0)
+		NeedsManager.rest(10.0)
+		QuestManager.event("princess_tea")
+		GameManager.notify("Принцесса напоила тебя чаем с малиновым вареньем — сил прибавилось")
 	var pl := GameManager.player as Node3D
 	if pl:
 		var to := pl.global_position - girl.global_position
@@ -266,6 +311,10 @@ func buy(i: int) -> bool:
 
 ## Позвать гулять / отпустить. Злая гулять не идёт. Что ответила.
 func walk() -> String:
+	if not following and where != OUT:
+		var late := "Поздно уже — гулять не пойду. Завтра с утра, ладно?"
+		GameManager.notify("Принцесса: «%s»" % late)
+		return late
 	if not following and not kind():
 		set_mood(mood + 2.0)
 		var no := "Не пойду! Сначала помирись со мной."
@@ -301,24 +350,208 @@ func _nearest_route() -> int:
 	return best
 
 
+## Где ей быть в час h: 8–21 гуляет, 21–24 дома (чай), ночью спит.
+static func plan(h: float) -> int:
+	if h >= 8.0 and h < 21.0:
+		return OUT
+	return HOME if h >= 21.0 else ASLEEP
+
+
 static func out_now() -> bool:
-	var h := TimeManager.hour()
-	return h >= 8.0 and h < 21.0
+	return plan(TimeManager.hour()) == OUT
+
+
+# --- Дом ------------------------------------------------------------------
+
+## Точка дома (локально, как в HouseInterior) в координатах Принцессы.
+## Внутри — на уровне пола дома, снаружи — на земле.
+func _at(local: Vector3, indoor := true) -> Vector3:
+	var g := home.to_global(local)
+	if not indoor:
+		g.y = 0.0
+	return to_local(g)
+
+
+func _door_in() -> Vector3:
+	return Vector3(home.entrance_offset, 0, home.inner_size.z * 0.5 - 0.5)
+
+
+func _door_out() -> Vector3:
+	return Vector3(home.entrance_offset, 0, home.inner_size.z * 0.5 + 1.1)
+
+
+## Проход в перегородке: со стороны кухни (k) и комнаты.
+func _pass(room: bool) -> Vector3:
+	var px := -home.inner_size.x * 0.5 + home.inner_size.x * home.partition_at
+	return Vector3(px + (0.5 if room else -0.5), 0, -home.inner_size.z * 0.45 * 0.5)
+
+
+## У кровати, со стороны комнаты: отсюда она ложится.
+func _bedside() -> Vector3:
+	var bed := home.bed_center()
+	return Vector3(bed.x - 1.15, 0, bed.z + 0.3)
+
+
+## Калитка и улица перед ней.
+func _gate() -> Vector3:
+	return _at(Vector3(home.entrance_offset, 0, 12.4), false)
+
+
+func _street() -> Vector3:
+	var g := _gate()
+	return Vector3(g.x, 0, ROUTE[0].z)
+
+
+func _to_bed() -> Array:
+	return [[_at(_pass(false)), ""], [_at(_pass(true)), ""], [_at(_bedside()), "sleep"]]
+
+
+## Домой: по улице к калитке, через двор к двери, открыла — вошла — закрыла.
+func _go_home(sleep: bool) -> void:
+	_path = [[_street(), ""], [_gate(), ""], [_at(_door_out(), false), "open"], [_at(_door_in()), "in"],
+		[_at(HouseInterior.PRINCESS_TEA), "close"]]
+	if sleep:
+		_path.append_array(_to_bed())
+	_trail.clear()
+
+
+## Из дома гулять: из комнаты (если спала) через кухню, дверь, двор, калитку.
+func _go_out() -> void:
+	_path = []
+	if _sleeping:
+		_sleeping = false
+		girl.visible = true
+		_path = [[_at(_pass(true)), ""], [_at(_pass(false)), ""]]
+	_path.append_array([[_at(_door_in()), "open"], [_at(_door_out(), false), "out"], [_gate(), "close"],
+		[_street(), ""]])
+	_target = _nearest_route_to(_street())
+	_path.append([ROUTE[_target], ""])
+	_trail.clear()
+
+
+## Сразу на своём месте — без прогулки (игрок далеко, загрузка, перемотка времени).
+func _snap(want: int) -> void:
+	_path.clear()
+	_trail.clear()
+	where = want
+	if want != OUT:
+		following = false
+	_inside = want != OUT
+	_sleeping = want == ASLEEP
+	girl.visible = not _sleeping
+	match want:
+		OUT:
+			girl.position = ROUTE[_target]
+		HOME:
+			girl.position = _at(HouseInterior.PRINCESS_TEA)
+			_face_door()
+		ASLEEP:
+			girl.position = _at(_bedside())
+	for i in pets.size():
+		(pets[i] as Node3D).position = _pet_spot(i)
+
+
+## Стоит у стола лицом ко входу — видно, кто пришёл.
+func _face_door() -> void:
+	var to := _at(_door_in()) - girl.position
+	girl.rotation.y = atan2(-to.x, -to.z)
+
+
+## Где питомцу быть, когда она не в пути: на улице — рядом с ней, дома — у
+## стола, ночью — на лежанке (кот — на кровати).
+func _pet_spot(i: int) -> Vector3:
+	if home and where == HOME:
+		return _at(HouseInterior.PRINCESS_PETS_EVENING[i])
+	if home and where == ASLEEP:
+		return _at(HouseInterior.PRINCESS_PETS_NIGHT[i])
+	return girl.position + Basis(Vector3.UP, girl.rotation.y) * (PET_OFFSETS[i] as Vector3)
+
+
+func _nearest_route_to(p: Vector3) -> int:
+	var best := 0
+	for i in ROUTE.size():
+		if p.distance_to(ROUTE[i]) < p.distance_to(ROUTE[best]):
+			best = i
+	return best
+
+
+## Пора менять место: на улицу, домой или спать.
+func _change(want: int) -> void:
+	if want == OUT:
+		_go_out()
+	elif where == OUT:
+		if following:
+			GameManager.notify("Принцесса: «Ой, уже девять! Мне домой — собачек кормить. Заходи на чай!»")
+		following = false
+		_go_home(want == ASLEEP)
+	else:
+		_path = _to_bed()
+		_trail.clear()
+	where = want
+
+
+## Шаг по пути; дошла до точки — делает, что там положено.
+func _walk_path(delta: float) -> bool:
+	var goal: Vector3 = _path[0][0]
+	var to := goal - girl.position
+	var step := SPEED * delta
+	if to.length() <= step:
+		girl.position = goal
+		match String(_path[0][1]):
+			"open":
+				home.entrance_door(true)
+			"close":
+				home.entrance_door(false)
+			"in":
+				_inside = true
+			"out":
+				_inside = false
+			"sleep":
+				_sleeping = true
+				girl.visible = false
+		_path.pop_front()
+		if _path.is_empty() and where == HOME:
+			_face_door()
+		return false
+	to.y = 0.0
+	girl.position += to.normalized() * step
+	girl.position.y = goal.y
+	girl.rotation.y = atan2(-to.x, -to.z)
+	_phase += step * 4.2 / SCALE
+	if _trail.is_empty() or _trail[-1].distance_to(girl.position) > 0.3:
+		_trail.append(girl.position)
+		if _trail.size() > 30:
+			_trail.pop_front()
+	return true
 
 
 func _process(delta: float) -> void:
-	var out := out_now()
-	visible = out
-	_zone.process_mode = Node.PROCESS_MODE_INHERIT if out else Node.PROCESS_MODE_DISABLED
-	if not out:
-		following = false
-		return
+	if home == null:
+		# Без дома (не в мире) — как раньше: ночью её просто не видно
+		visible = out_now()
+		if not visible:
+			following = false
+			return
 	var pl := GameManager.player as Node3D
+	var h := TimeManager.hour()
+	var want := plan(h) if home else OUT
+	var far := pl != null and pl.global_position.distance_to(girl.global_position) > 120.0
+	var jumped := _last_hour >= 0.0 and absf(wrapf(h - _last_hour, -12.0, 12.0)) > 0.5
+	_last_hour = h
+	if home and (_fresh or jumped or (far and (want != where or not _path.is_empty()))):
+		_fresh = false
+		_snap(want)
+	elif home and want != where:
+		_change(want)
 	# Далеко от игрока — не считаем шаги и лапы
-	if pl and pl.global_position.distance_to(girl.global_position) > 120.0:
+	if far:
 		return
 	var moving := false
-	if following and pl:
+	if not _path.is_empty():
+		moving = _walk_path(delta)
+	elif where != OUT:
+		pass
+	elif following and pl:
 		# Рядом с игроком, чуть сбоку и позади; уехал далеко — идёт домой
 		var goal := pl.global_position + Basis(Vector3.UP, pl.rotation.y) * Vector3(1.0, 0, 1.2)
 		goal.y = girl.position.y
@@ -350,21 +583,26 @@ func _process(delta: float) -> void:
 			girl.rotation.y = atan2(-to.x, -to.z)
 			moving = true
 			_phase += step * 4.2 / SCALE
-	Villagers.set_walk(girl, _phase, 1.0 if moving else 0.0)
-	# Питомцы бегут к своим местам возле девочки, с отставанием
+	if girl.visible:
+		Villagers.set_walk(girl, _phase, 1.0 if moving else 0.0)
+	# Питомцы: в пути — по её следам гуськом, иначе — к своим местам
 	var rot := Basis(Vector3.UP, girl.rotation.y)
 	for i in pets.size():
 		var p: Node3D = pets[i]
-		var want: Vector3 = girl.position + rot * PET_OFFSETS[i]
-		var to := want - p.position
+		var want_at := _pet_spot(i)
+		if not _path.is_empty():
+			var k := _trail.size() - 1 - int((1.0 + i * 0.6) / 0.3)
+			want_at = _trail[maxi(k, 0)] if not _trail.is_empty() else p.position
+		var to := want_at - p.position
 		to.y = 0.0
 		var d := to.length()
 		if d > 0.15:
 			var sp := minf(d * 2.2, 3.5) * delta
 			p.position += to.normalized() * minf(sp, d)
 			p.rotation.y = atan2(-to.x, -to.z)
-		elif moving:
+		elif moving and where == OUT:
 			p.rotation.y = girl.rotation.y
+		p.position.y = move_toward(p.position.y, want_at.y, delta * 2.0)
 	_update_leashes()
 
 
@@ -376,7 +614,8 @@ func _update_leashes() -> void:
 		var dog: Node3D = pets[i]
 		var c := dog.to_global(COLLAR)
 		var d := c - hand
-		lm.visible = d.length() < 3.5 and d.length() > 0.05
+		# Дома собачки без поводков
+		lm.visible = d.length() < 3.5 and d.length() > 0.05 and not _inside and girl.visible
 		if not lm.visible:
 			continue
 		var up := d.normalized()
@@ -385,7 +624,7 @@ func _update_leashes() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"line": _line, "hug": hug_day, "mood": mood, "seen": seen_day, "keys": keychains}
+	return {"line": _line, "hug": hug_day, "mood": mood, "seen": seen_day, "keys": keychains, "visit": visit_day}
 
 
 func load_state(d: Dictionary) -> void:
@@ -395,5 +634,7 @@ func load_state(d: Dictionary) -> void:
 	seen_day = int(d.get("seen", TimeManager.day))
 	var k: Variant = d.get("keys", [])
 	keychains = (k as Array).duplicate() if k is Array else []
+	visit_day = int(d.get("visit", -1))
+	_fresh = true
 	_show_charms()
 	_show_mood()

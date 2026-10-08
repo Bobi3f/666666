@@ -73,8 +73,26 @@ func _run() -> void:
 	var panel: PrincessPanel = W.get_tree().get_first_node_in_group("princess_panel")
 	ok(panel.visible and paused and panel._list.get_child_count() == 7, "окошко: настроение, гулять и 6 брелоков")
 	panel.close_panel()
-	TM.minutes = 23 * 60.0
+	print("== Свой дом")
+	ok(PR.home != null and PR.home.princess, "у Принцессы свой дом — пятый на Садовой")
+	TM.minutes = 21 * 60.0 + 30.0
 	await frames(2)
-	ok(not PR.visible, "ночью дома")
+	PR._snap(Princess.plan(TM.hour()))
+	ok(PR.where == Princess.HOME and PR._inside and PR.girl.visible, "вечером дома, на кухне")
+	NM.water = 30.0
+	PR.set_mood(70.0)
+	PR.visit_day = -1
+	PR.talk()
+	panel.close_panel()
+	ok(NM.water > 60.0 and PR.visit_day == TM.day, "зашёл вечером — напоила чаем")
+	ok(PR.walk().begins_with("Поздно"), "вечером гулять не идёт")
+	TM.minutes = 1 * 60.0
+	await frames(3)
+	ok(PR.where == Princess.ASLEEP and not PR.girl.visible, "ночью спит")
+	ok(PR.pets[2].global_position.y > 0.5, "кот спит на кровати")
+	var m0: float = PR.mood
+	PR.talk()
+	ok(PR.mood < m0, "разбудил — обиделась")
+	ok(PR.save_state().get("visit") == TM.day - 0 or PR.save_state().has("visit"), "вечер в гостях сохраняется")
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit(1 if fails else 0)
