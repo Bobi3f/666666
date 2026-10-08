@@ -169,6 +169,10 @@ func _ready() -> void:
 	add_child(my_garage)
 	my_garage.build(self)
 	_veg.block(MyGarage.BOX.position.x - 1.0, MyGarage.BOX.position.y - 1.0, MyGarage.BOX.end.x + 1.0, MyGarage.BOX.end.y + 3.5)
+	# Каменка и город готовы — в меши, пока строится округа (пик памяти ниже)
+	var world_mesh := Node3D.new()
+	world_mesh.name = "WorldMesh"
+	b.flush_into(world_mesh)
 	region = Region.new()
 	region.name = "Region"
 	add_child(region)
@@ -189,8 +193,7 @@ func _ready() -> void:
 	glow.shift = Vector3.ZERO
 	_veg.shift = Vector3.ZERO
 
-	var world_mesh := b.build_chunked()
-	world_mesh.name = "WorldMesh"
+	b.build_chunked(world_mesh)
 	add_child(world_mesh)
 	var body := b.build_body()
 	body.name = "WorldCollision"

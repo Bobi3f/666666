@@ -16,10 +16,11 @@ var ground_shade := true
 ## ноги и руки (1 — туловище, 0.9/0.8 — ноги, 0.7/0.6 — руки).
 var alpha := 1.0
 
-## Вершины копятся в упакованных массивах [места, нормали, цвета]: так
-## в 5–6 раз меньше памяти, чем в SurfaceTool (тот хранит на вершину ещё
+## Вершины копятся в упакованных массивах [места, нормали, цвета, индексы]:
+## так в 5–6 раз меньше памяти, чем в SurfaceTool (тот хранит на вершину ещё
 ## UV, касательные, кости). Округа — миллионы вершин; с SurfaceTool пик
-## загрузки доходил до гигабайта, и Safari на iPhone падал.
+## загрузки доходил до гигабайта, и Safari на iPhone падал. Четырёхугольник —
+## 4 вершины и 6 индексов (а не 6 вершин): на треть меньше вершин в памяти.
 var _st := _new_buf()
 ## Нарезка на куски по chunk_size метров (0 — одним куском). Невидимые куски
 ## не рисуются, а фонарь или лампа перерисовывают только соседние куски,
@@ -33,6 +34,8 @@ var _chunks := {}  # Vector3i(x, z, мелочь 0/1) → буфер верши�
 const SMALL_SIZE := 1.6
 const SMALL_CHUNK := 50.0
 var _small := false
+## Сколько раз куски уже сбрасывались в меши (flush_into) — для имён узлов
+var _flushes := 0
 var _cur: Array
 var _boxes: Array = []  # [Transform3D, Vector3 size]
 var _count := 0
@@ -55,11 +58,14 @@ func _init() -> void:
 
 
 static func _new_buf() -> Array:
-	return [PackedVector3Array(), PackedVector3Array(), PackedColorArray()]
+	return [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedInt32Array()]
 
 
-## Меш из буфера вершин (null — если пусто).
-static func _commit(buf: Array) -> ArrayMesh:
+## Меш из буфера вершин (null — если пусто). compress — вершины в сжатом
+## виде (место 16 бит в пределах меша, нормаль 32 бита): видеопамяти вдвое
+## меньше. Только для мешей до пары сотен метров — иначе точность в
+## сантиметрах, и тонкое (окна поверх стен) начинает мерцать.
+static func _commit(buf: Array, compress := false) -> ArrayMesh:
 	if (buf[0] as PackedVector3Array).is_empty():
 		return null
 	var arrays := []
@@ -67,8 +73,9 @@ static func _commit(buf: Array) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = buf[0]
 	arrays[Mesh.ARRAY_NORMAL] = buf[1]
 	arrays[Mesh.ARRAY_COLOR] = buf[2]
+	arrays[Mesh.ARRAY_INDEX] = buf[3]
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_COMPRESS_ATTRIBUTES if compress else 0)
 	return mesh
 
 
@@ -143,22 +150,31 @@ func smooth_quad(pts: Array, ns: Array, color: Color) -> void:
 	var c := Color(color.r, color.g, color.b, alpha)
 	if chunk_size > 0.0:
 		_pick(xf * ((pts[0] + pts[2]) * 0.5) + shift)
-	for i in [0, 2, 1, 0, 3, 2]:
+	var base: int = _cur[0].size()
+	for i in 4:
 		_emit(pts[i], ns[i], c)
+	_quad_index(base)
 	_count += 2
 
 
 func tri(a: Vector3, b: Vector3, c: Vector3, color: Color, two_sided := false) -> void:
 	var n := (b - a).cross(c - a).normalized()
 	_pick(xf * ((a + b + c) / 3.0) + shift)
+	var base: int = _cur[0].size()
 	_emit(a, n, color)
 	_emit(c, n, color)
 	_emit(b, n, color)
+	_cur[3].append(base)
+	_cur[3].append(base + 1)
+	_cur[3].append(base + 2)
 	_count += 1
 	if two_sided:
 		_emit(a, -n, color)
 		_emit(b, -n, color)
 		_emit(c, -n, color)
+		_cur[3].append(base + 3)
+		_cur[3].append(base + 4)
+		_cur[3].append(base + 5)
 		_count += 1
 
 
@@ -170,9 +186,23 @@ func _quad_raw(pts: Array, cols: Array, n: Vector3) -> void:
 	# В Godot лицевая сторона — по часовой стрелке, поэтому порядок 0-2-1, 0-3-2
 	if chunk_size > 0.0:
 		_pick(xf * ((pts[0] + pts[2]) * 0.5) + shift)
-	for i in [0, 2, 1, 0, 3, 2]:
+	var base: int = _cur[0].size()
+	for i in 4:
 		_emit(pts[i], n, cols[i])
+	_quad_index(base)
 	_count += 2
+
+
+## Два треугольника четырёхугольника из вершин base…base+3. В Godot лицевая
+## сторона — по часовой стрелке: 0-2-1, 0-3-2.
+## Без типизированной переменной: она дала бы копию массива на каждый вызов.
+func _quad_index(base: int) -> void:
+	_cur[3].append(base)
+	_cur[3].append(base + 2)
+	_cur[3].append(base + 1)
+	_cur[3].append(base)
+	_cur[3].append(base + 3)
+	_cur[3].append(base + 2)
 
 
 func _emit(p: Vector3, n: Vector3, color: Color) -> void:
@@ -183,19 +213,12 @@ func _emit(p: Vector3, n: Vector3, color: Color) -> void:
 
 
 ## Мир кусками: узел с мешем на каждый квадрат chunk_size × chunk_size
-## (Chunk_x_z) и куски мелочи (Small_x_z) с короткой дальностью.
-func build_chunked() -> Node3D:
-	var root := Node3D.new()
-	var mat := detail_material()
-	for key in _chunks:
-		var mesh := _commit(_chunks[key])
-		if mesh == null:
-			continue
-		mesh.surface_set_material(0, mat)
-		var mi := MeshInstance3D.new()
-		mi.mesh = mesh
-		mi.name = ("Small_%d_%d" if key.z == 1 else "Chunk_%d_%d") % [key.x, key.y]
-		root.add_child(mi)
+## (Chunk_x_z_n) и куски мелочи (Small_x_z_n) с короткой дальностью.
+## root — уже начатый узел (сюда раньше сбрасывали куски flush_into).
+func build_chunked(root: Node3D = null) -> Node3D:
+	if root == null:
+		root = Node3D.new()
+	flush_into(root)
 	set_small_range(root)
 	var watch := func() -> void:
 		if is_instance_valid(root):
@@ -205,6 +228,26 @@ func build_chunked() -> Node3D:
 		if SettingsManager.changed.is_connected(watch):
 			SettingsManager.changed.disconnect(watch))
 	return root
+
+
+## Сбросить накопленные куски в меши под root и освободить заготовки.
+## Округу и мир так строят частями: в памяти разом — только одна часть
+## вершин, а не весь мир (пик памяти браузера на телефоне ниже).
+## Коллизии остаются — их собирает build_body.
+func flush_into(root: Node3D) -> void:
+	var mat := detail_material()
+	for key in _chunks:
+		var mesh := _commit(_chunks[key], true)
+		if mesh == null:
+			continue
+		mesh.surface_set_material(0, mat)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.name = ("Small_%d_%d_%d" if key.z == 1 else "Chunk_%d_%d_%d") % [key.x, key.y, _flushes]
+		root.add_child(mi)
+	_chunks.clear()
+	_cur = _st
+	_flushes += 1
 
 
 ## Дальность мелочи — по детализации из настроек.

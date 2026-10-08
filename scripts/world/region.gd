@@ -425,6 +425,13 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	_d.chunk_size = 100.0
 	var b := MeshBuilder.new()
 	b.chunk_size = 500.0
+	# Готовые части домов и мелочи сразу уходят в меши (flush_into): в памяти
+	# разом не вся округа, а только одна часть — на телефоне пик памяти ниже.
+	# Землю (видна всегда, куски по 500 м) не делим — лишние вызовы отрисовки
+	var ground := Node3D.new()
+	ground.name = "RegionGround"
+	var mesh := Node3D.new()
+	mesh.name = "RegionMesh"
 	_ground(b)
 	_highway(b)
 	_find_bridges()
@@ -439,6 +446,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 		_village(i, b, glow, veg)
 	KamenkaNorth.build(self, glow, veg)
 	EliteDistrict.build(self, glow, veg)
+	_d.flush_into(mesh)
 	# Холмы, поля, пруды и лесополосы — до лесов: лес их обходит
 	Landscape.build(b, _d, _world._water_b, self, func(p: Vector3, yaw: float, kind: int) -> void:
 		_world._tree(_d, p, yaw, kind))
@@ -455,11 +463,11 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	lm.name = "Landmarks"
 	add_child(lm)
 	lm.build(_world, b, _d)
+	_d.flush_into(mesh)
 	ForestLife.build(_d)
 	_forests(_d)
 	_district_bus()
-	var ground := b.build_chunked()
-	ground.name = "RegionGround"
+	b.build_chunked(ground)
 	for c in ground.get_children():
 		# Дальность задана — общая настройка мелочи (world.gd) её не урежет
 		if c.name.begins_with("Chunk_"):
@@ -468,8 +476,7 @@ func build(world: Node3D, _world_b: MeshBuilder, glow: MeshBuilder, veg: Vegetat
 	var ground_body := b.build_body()
 	ground_body.name = "RegionGroundCollision"
 	add_child(ground_body)
-	var mesh := _d.build_chunked()
-	mesh.name = "RegionMesh"
+	_d.build_chunked(mesh)
 	for c in mesh.get_children():
 		if not c.name.begins_with("Chunk_"):
 			continue
