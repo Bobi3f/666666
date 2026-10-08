@@ -152,7 +152,7 @@
       <button id="play" type="button">Играть</button>
       <div class="bar" aria-hidden="true"><i id="fill"></i></div>
       <p id="donate" class="donate" hidden><span>♥ Поддержать автора:</span></p>
-      <p id="status">Загрузка — около 10 МБ (движок сжат сервером). Звук включится после нажатия.</p>
+      <p id="status">Загрузка — около 13 МБ. Звук включится после нажатия.</p>
       <p id="lite" class="hint" hidden></p>
       <p id="ios" class="hint" hidden>На iPhone: «Поделиться» → «На экран „Домой“» — игра откроется на весь экран, без панелей Safari, и кнопки станут удобнее.</p>
       <p class="touch-only hint">Слева — джойстик, справа — палец крутит камеру,
@@ -181,6 +181,25 @@
   // Оплата Pi Network (только в Pi Browser): адрес сервера оплаты и режим
   // песочницы. Сервер — server/cloudflare (Cloudflare Pages Functions).
   window.FIRSTGEAR_PI = { api: "api/pi", sandbox: false };
+</script>
+<script>
+  // Движок (index.wasm, 38 МБ) лежит на сайте ещё и сжатым — engine.gz.wasm,
+  // около 9 МБ: на телефоне по мобильному интернету качается вчетверо
+  // быстрее, браузер распаковывает его сам (DecompressionStream). Нет такой
+  // возможности или сжатого файла — берём обычный index.wasm.
+  (function () {
+    if (!("DecompressionStream" in window)) return;
+    const plainFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      const url = typeof input === "string" ? input : (input && input.url) || "";
+      if (!/(^|\/)index\.wasm(\?|$)/.test(url)) return plainFetch(input, init);
+      return plainFetch(url.replace("index.wasm", "engine.gz.wasm"), init).then(function (res) {
+        if (!res.ok || !res.body) return plainFetch(input, init);
+        const body = res.body.pipeThrough(new DecompressionStream("gzip"));
+        return new Response(body, { status: 200, headers: { "Content-Type": "application/wasm" } });
+      }).catch(function () { return plainFetch(input, init); });
+    };
+  })();
 </script>
 <script src="pi.js"></script>
 <script src="index.js"></script>
@@ -220,7 +239,7 @@
     document.documentElement.lang = "en";
     document.querySelector(".sub").textContent = "Life in Kamenka in first gear. From a crooked hut to master of the whole district: your own garage, a wedding with Olya, a route bus.";
     document.getElementById("play").textContent = "Play";
-    document.getElementById("status").textContent = "Download — about 10 MB. Sound turns on after you tap.";
+    document.getElementById("status").textContent = "Download — about 13 MB. Sound turns on after you tap.";
     document.querySelector(".touch-only").textContent = "Joystick on the left, swipe on the right to turn the camera, action buttons — bottom right, \"Menu\" — top right. In a car — a steering wheel you turn with your finger and pedals, like in Car Parking. Best played in landscape.";
     const keys = ["walk, drive", "look", "action, get in", "eat", "task journal", "map", "menu, mouse", "car radio", "all controls"];
     document.querySelectorAll(".keys li").forEach(function (li, i) {
@@ -236,7 +255,7 @@
     document.documentElement.lang = "uk";
     document.querySelector(".sub").textContent = "Життя в Кам'янці на першій передачі. Від похиленої хати — до господаря всього району: своє СТО, весілля з Олею, рейсовий автобус.";
     document.getElementById("play").textContent = "Грати";
-    document.getElementById("status").textContent = "Завантаження — близько 10 МБ. Звук увімкнеться після натискання.";
+    document.getElementById("status").textContent = "Завантаження — близько 13 МБ. Звук увімкнеться після натискання.";
     document.querySelector(".touch-only").textContent = "Ліворуч — джойстик, праворуч — палець крутить камеру, кнопки дій — праворуч унизу, «Меню» — праворуч угорі. У машині — кермо, яке крутиш пальцем, і педалі, як у Car Parking. Краще тримати телефон горизонтально.";
     const ukeys = ["іти, їхати", "дивитися", "дія, сісти", "поїсти", "журнал завдань", "мапа", "меню, миша", "радіо в машині", "усе керування"];
     document.querySelectorAll(".keys li").forEach(function (li, i) {

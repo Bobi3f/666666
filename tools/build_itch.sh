@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="$PWD/releases/itch/FirstGear-Web-itch.zip"
 TMP="$(mktemp -d /tmp/firstgear-itch.XXXX)"
-cp docs/index.html docs/index.js docs/index.wasm docs/index.pck docs/index.audio*.js docs/index.icon.png "$TMP/"
+cp docs/index.html docs/index.js docs/index.wasm docs/engine.gz.wasm docs/index.pck docs/index.audio*.js docs/index.icon.png "$TMP/"
 cp tools/windows/LICENSE-Godot.txt "$TMP/"
 # Pi работает только в Pi Browser и со своим сервером — на itch.io не нужен
 sed -i '/<script src="pi.js"><\/script>/d' "$TMP/index.html"

@@ -33,6 +33,8 @@ echo "== Web"
 timeout 300 "$GODOT" --headless --export-release "Web" build/web/index.html 2>&1 | grep -iE "error" || true
 test -s build/web/index.pck
 cp build/web/index.js build/web/index.wasm build/web/index.pck build/web/index.audio*.js "$ROOT/docs/"
+# Сжатый движок для телефона (~9 МБ вместо 38): страница распакует его сама
+gzip -9 -n -c build/web/index.wasm > "$ROOT/docs/engine.gz.wasm"
 PCK=$(stat -c %s build/web/index.pck)
 # Страница docs/index.html своя: размер мира прописан в ней для полоски загрузки
 sed -i -E "s/\"index.pck\": [0-9]+/\"index.pck\": $PCK/" "$ROOT/docs/index.html"
