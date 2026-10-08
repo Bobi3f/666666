@@ -400,6 +400,7 @@
     let crashed = false;
     try { crashed = localStorage.getItem("fg_boot") === "loading"; } catch (e) {}
     const lite = crashed || /[?&]lite=1/.test(location.search);
+    // Пусто — APK лежит на той же странице (itch.io, tools/build_itch.sh)
     const apk = "https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Android.apk";
     // Прошлый запуск оборвался — сразу видно, на каком этапе
     if (crashed && FG_DIAG.prev) diag.open = true;
@@ -409,7 +410,7 @@
       note.innerHTML = L("Прошлый запуск не дошёл до конца — может, телефону не хватило памяти. Сейчас запустится облегчённая версия. Закройте другие вкладки и приложения. Не запустится и так — пришлите автору снимок «Сведений для разработчика» ниже. На Android можно поставить игру приложением: ",
         "The last launch didn't finish — maybe the phone ran out of memory. A lighter version will start now. Close other tabs and apps. If it still won't start, send the author a screenshot of \"Info for the developer\" below. On Android you can install the game as an app: ",
         "Минулий запуск не дійшов до кінця — може, телефону забракло пам'яті. Зараз запуститься полегшена версія. Закрийте інші вкладки й застосунки. Не запуститься й так — надішліть авторові знімок «Відомостей для розробника» нижче. На Android гру можна встановити застосунком: ") +
-        '<a href="' + apk + '">FirstGear-Android.apk</a>';
+        (apk ? '<a href="' + apk + '">FirstGear-Android.apk</a>' : L("ниже на этой странице.", "below on this page.", "нижче на цій сторінці."));
     }
     // Телефон отобрал у игры видеопамять — объясняем и предлагаем облегчённый запуск
     canvas.addEventListener("webglcontextlost", function () {
