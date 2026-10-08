@@ -1224,15 +1224,25 @@ func _yard_fence(b: MeshBuilder, hi: HouseInterior) -> void:
 	var leaf := Color(0.3, 0.42, 0.32) if hi.wealth == W.RICH else Color(0.55, 0.44, 0.3)
 	if _princess_yard:
 		leaf = Color(0.96, 0.95, 0.93)
+	var post := Color(0.9, 0.55, 0.68) if _princess_yard else Color(0.3, 0.3, 0.32)
 	for gx in [gate0, gate1]:
-		b.box(Vector3(gx - 0.09, 0, z1 - 0.09), Vector3(gx + 0.09, 2.1, z1 + 0.09), Color(0.3, 0.3, 0.32))
+		b.box(Vector3(gx - 0.09, 0, z1 - 0.09), Vector3(gx + 0.09, 2.1, z1 + 0.09), post)
 		var lx: float = gx + (0.08 if gx < hi.entrance_offset else -0.08)
-		b.box(Vector3(lx - 0.03, 0.12, z1 - 2.2), Vector3(lx + 0.03, 1.8, z1 - 0.05), leaf)
+		if _princess_yard:
+			# Створки — тоже штакетник: две жерди и белые планки
+			for y in [0.35, 1.25]:
+				b.box(Vector3(lx - 0.03, y, z1 - 2.2), Vector3(lx + 0.03, y + 0.07, z1 - 0.05), leaf.darkened(0.08))
+			var zz := z1 - 2.15
+			while zz < z1 - 0.1:
+				b.box(Vector3(lx - 0.04, 0.12, zz), Vector3(lx + 0.04, 1.5, zz + 0.08), leaf)
+				zz += 0.2
+		else:
+			b.box(Vector3(lx - 0.03, 0.12, z1 - 2.2), Vector3(lx + 0.03, 1.8, z1 - 0.05), leaf)
 	if _princess_yard:
 		# Арка над воротами: розовая доска с надписью и короной — дом видно
 		# издалека, с любого конца улицы
 		var ex := hi.entrance_offset
-		b.box(Vector3(gate0 - 0.09, 2.1, z1 - 0.09), Vector3(gate1 + 0.09, 2.22, z1 + 0.09), Color(0.3, 0.3, 0.32))
+		b.box(Vector3(gate0 - 0.09, 2.1, z1 - 0.09), Vector3(gate1 + 0.09, 2.22, z1 + 0.09), Color(0.96, 0.95, 0.93))
 		b.box(Vector3(ex - 1.3, 2.22, z1 - 0.04), Vector3(ex + 1.3, 2.72, z1 + 0.04), Color(0.9, 0.55, 0.68))
 		_gold_crown(b, Vector3(ex, 2.72, z1), 0.22)
 		var sign := _label("ПРИНЦЕССА", b.xf * Vector3(ex, 2.47, z1 + 0.05), b.xf.basis.get_euler().y, 0.0028, Color.WHITE)

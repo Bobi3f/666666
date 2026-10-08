@@ -79,6 +79,8 @@ func _run() -> void:
 	await frames(2)
 	PR._snap(Princess.plan(TM.hour()))
 	ok(PR.where == Princess.HOME and PR._inside and PR.girl.visible, "вечером дома, на кухне")
+	ok(PR.home.to_local(PR.girl.global_position).distance_to(HouseInterior.PRINCESS_TEA) < 0.3, "у кухонного стола")
+	ok((PR.pets[0] as GeometryInstance3D).layers & HouseInterior.INSIDE_LAYER != 0, "питомцев в доме освещают лампы дома")
 	NM.water = 30.0
 	PR.set_mood(70.0)
 	PR.visit_day = -1

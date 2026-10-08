@@ -436,7 +436,7 @@ func _snap(want: int) -> void:
 	where = want
 	if want != OUT:
 		following = false
-	_inside = want != OUT
+	_set_indoor(want != OUT)
 	_sleeping = want == ASLEEP
 	girl.visible = not _sleeping
 	match want:
@@ -449,6 +449,16 @@ func _snap(want: int) -> void:
 			girl.position = _at(_bedside())
 	for i in pets.size():
 		(pets[i] as Node3D).position = _pet_spot(i)
+
+
+## Дома — в слое интерьера: лампы дома светят только на него, иначе корона
+## и питомцы в комнате чёрные. На улице — обычный слой, лишних проходов света нет.
+func _set_indoor(v: bool) -> void:
+	_inside = v
+	var mask := 1 | (HouseInterior.INSIDE_LAYER if v else 0)
+	for root_node in [girl] + pets:
+		for n in [root_node] + (root_node as Node).find_children("*", "GeometryInstance3D", true, false):
+			(n as GeometryInstance3D).layers = mask
 
 
 ## Стоит у стола лицом ко входу — видно, кто пришёл.
@@ -503,9 +513,9 @@ func _walk_path(delta: float) -> bool:
 			"close":
 				home.entrance_door(false)
 			"in":
-				_inside = true
+				_set_indoor(true)
 			"out":
-				_inside = false
+				_set_indoor(false)
 			"sleep":
 				_sleeping = true
 				girl.visible = false

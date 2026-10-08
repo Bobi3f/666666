@@ -1099,12 +1099,19 @@ static var _mat_cache := {}
 
 
 func _make_materials() -> Array[StandardMaterial3D]:
-	if _mat_cache.has(wealth):
-		return _mat_cache[wealth]
+	var key: Variant = "princess" if princess else wealth
+	if _mat_cache.has(key):
+		return _mat_cache[key]
 	var list: Array[StandardMaterial3D] = []
-	for t in texture_makers(wealth):
+	var makers := texture_makers(wealth)
+	# У Принцессы вместо бордовых — светлые обои, подкрашенные в розовый
+	if princess:
+		makers[0] = ["walls_middle", _tex_wallpaper]
+	for t in makers:
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = Assets.texture("interior/" + t[0], t[1], true)
+		if princess and list.is_empty():
+			m.albedo_color = Color(1.0, 0.74, 0.84)
 		m.vertex_color_use_as_albedo = true
 		m.roughness = 0.9
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -1115,7 +1122,7 @@ func _make_materials() -> Array[StandardMaterial3D]:
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.roughness = 0.1
 	list.append(glass)
-	_mat_cache[wealth] = list
+	_mat_cache[key] = list
 	return list
 
 
