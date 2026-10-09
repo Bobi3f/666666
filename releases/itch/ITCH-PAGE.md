@@ -15,6 +15,18 @@
 | **Release status** | In development |
 | **Pricing** | **$0 or donate in any amount**, Suggested donation: `$2.00` |
 
+## Скачать файлы на телефон
+
+Всё для загрузки лежит в репозитории — открыть ссылку, файл скачается:
+
+- Игра в браузере: https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/itch/FirstGear-Web-itch.zip
+- Windows: https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Windows.zip
+- Android: https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Android.apk
+- Обложка: https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/itch/cover.png
+- Снимки: https://github.com/Bobi3f/666666/tree/claude/wizardly-pasteur-r49r0n/releases/itch/screenshots
+
+Архив не распаковывать — itch.io берёт его целиком (внутри index.html).
+
 ## Uploads (файлы)
 
 1. `releases/itch/FirstGear-Web-itch.zip` → галочка **This file will be played in the browser**.
@@ -45,8 +57,8 @@
 - Відкритий світ: село, місто, сусідні села, траса, ліс і річка.
 - Машини, мотоцикли й мопеди: свій гараж, запчастини, тюнінг, вид із салону.
 - Роботи з рівнями, день і ніч, погода, чотири пори року.
-- Живе село: сусіди, базар із торгом і квасом, школа, ПТУ, лікарня, банк.
-- Сюжет: Оля і весілля, Принцеса з собачками, Дядько Владик і його гараж.
+- Живе село: сусіди, базар із торгом і квасом, школа, ПТУ зі студентами на мотоциклах, лікарня, банк.
+- Сюжет: Оля і весілля, Принцеса з собачками та її рожевий дім, Дядько Владик і його гараж.
 - Збереження просто в браузері. Українська, російська та англійська.
 
 ---
@@ -60,8 +72,8 @@
 - Машины, мотоциклы и мопеды: свой гараж, запчасти, тюнинг, вид из салона.
 - Работы с уровнями: подработки — 3 уровня, официальная работа — 5.
 - Смена дня и ночи, погода, четыре времени года, снег зимой.
-- Живое село: соседи, базар с торгом и квасом, школа, ПТУ, больница, банк.
-- Сюжет: подруга Оля и свадьба, Принцесса с собачками, Дядя Владик и его гараж.
+- Живое село: соседи, базар с торгом и квасом, школа, ПТУ с учениками на мотоциклах, больница, банк.
+- Сюжет: подруга Оля и свадьба, Принцесса с собачками и её розовый дом, Дядя Владик и его гараж.
 - Сохранения прямо в браузере.
 
 **Управление**
@@ -79,8 +91,8 @@ Start with a crooked old house and a few hryvnias. Work on the farm, drive a bre
 - Open world: the village, a town, neighbouring villages, highway, forest and river.
 - Cars, motorbikes and mopeds: your own garage, parts, tuning, cockpit view.
 - Jobs with levels, day and night, weather, four seasons.
-- A living village: neighbours, a bazaar where you can haggle, school, college, hospital, bank.
-- Story: Olya and the wedding, the Princess with her dogs, Uncle Vladik and his garage.
+- A living village: neighbours, a bazaar where you can haggle, school, a college where students ride in on motorbikes, hospital, bank.
+- Story: Olya and the wedding, the Princess with her dogs and her pink house, Uncle Vladik and his garage.
 - Saves right in your browser. Ukrainian, Russian and English.
 
 Made with Godot Engine.
@@ -98,13 +110,13 @@ Made with Godot Engine.
 | **Inputs** | Keyboard, Mouse, Touchscreen, Xbox controller |
 | **Accessibility** | Configurable controls |
 | **Cover image** | `releases/itch/cover.png` (630×500) |
-| **Screenshots** | все из `releases/itch/screenshots/` |
+| **Screenshots** | все 8 из `releases/itch/screenshots/` |
 | **Community** | Comments |
 | **Visibility & access** | сначала **Draft** — проверить, потом **Public** |
 
 ## Деньги (один раз на аккаунт)
 
 Чтобы принимать донаты: **Settings → Payouts**.
-- Payment mode: **Collected by itch.io, paid later** (выплаты на PayPal или Payoneer).
+- Payment mode: **Collected by itch.io, paid later**, выплаты — на **Payoneer** (PayPal не подключаем).
 - Заполнить налоговую анкету (**Tax interview**): форма W‑8BEN, страна — Польша,
   налоговый номер — PESEL или NIP.
