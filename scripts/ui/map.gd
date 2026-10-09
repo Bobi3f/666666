@@ -102,6 +102,9 @@ func _build_minimap() -> void:
 	_mini = Control.new()
 	_mini.add_to_group("minimap")
 	_mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Показывает её _process, когда играем. Игра начинается с меню на паузе —
+	# _process стоит, и видимая мини-карта нулевого размера торчала в углу
+	_mini.visible = false
 	_mini.draw.connect(_draw_mini)
 	add_child(_mini)
 

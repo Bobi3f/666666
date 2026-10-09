@@ -56,7 +56,9 @@ func _run() -> void:
 		t = Time.get_ticks_msec()
 	var total := Time.get_ticks_msec() - t_all
 	print("  скрипты собраны за %d кадров (%d мс), самый долгий: %d мс" % [pieces[0], total, longest])
-	ok(pieces[0] >= 20, "по кусочку за кадр")
+	# Кусок — около 0,15 с (boot.gd). Число кусков зависит от скорости машины,
+	# поэтому мерим средний кусок: не дольше 0,4 с — значит, не одним махом
+	ok(pieces[0] >= maxi(5, total / 400), "по кусочку за кадр: %d кусков, в среднем %d мс" % [pieces[0], total / maxi(pieces[0], 1)])
 	# Доля, а не миллисекунды: машина то быстрее, то медленнее
 	ok(longest < total * 0.3, "ни один кусок не дольше 30%% всей сборки скриптов")
 	ok(ResourceLoader.has_cached("res://scripts/world/world.gd"), "к концу собран и мир")

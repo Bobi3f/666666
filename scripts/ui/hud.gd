@@ -87,6 +87,9 @@ func _ready() -> void:
 	dot.position -= Vector2(2, 2)
 	add_child(dot)
 	GameManager.message.connect(show_message)
+	# Игра начинается с меню на паузе — _process стоит, и без этого кольца
+	# сытости лежали в углу поверх часов. Отложенный вызов идёт и на паузе.
+	_slow_update.call_deferred()
 
 
 var _money_pop: Label

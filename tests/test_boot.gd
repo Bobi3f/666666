@@ -35,6 +35,14 @@ func _run() -> void:
 	ok(root.get_node_or_null("Boot") == null, "экран загрузки убран")
 	var M = menu_of(W)
 	ok(M != null and M.is_open() and paused, "главное меню поверх мира, игра на паузе")
+	# Верх экрана под меню: часы, деньги, за ними кольца — не друг на друге
+	var hud: CanvasLayer = null
+	for c in W.get_children():
+		if c.get_script() and c.get_script().resource_path.ends_with("hud.gd"): hud = c
+	ok(hud != null and hud._top.text != "" and hud._needs.position.x >= 16.0 + hud._top.get_combined_minimum_size().x,
+		"под меню кольца сытости — после часов и денег, не поверх: x=%d" % (hud._needs.position.x if hud else -1))
+	var mini := get_first_node_in_group("minimap") as Control
+	ok(mini != null and not mini.visible, "под меню мини-карты нет (раньше в углу торчала буква «С»)")
 	ok(button(M, "Новая игра") != null, "без сохранения: «Новая игра»")
 	ok(button(M, "Настройки") != null, "есть «Настройки»")
 	ok(OS.has_feature("web") or button(M, "Выход") != null, "есть «Выход»")
@@ -48,6 +56,8 @@ func _run() -> void:
 	button(M, "Новая игра").pressed.emit()
 	await process_frame
 	ok(not M.is_open() and not paused, "«Новая игра» — играем")
+	for i in 2: await process_frame
+	ok(mini.visible == root.get_node("SettingsManager").minimap, "в игре мини-карта на месте")
 	var P = W.get_node("Player")
 	var SM = root.get_node("SettingsManager")
 	var was: bool = SM.invert_y
