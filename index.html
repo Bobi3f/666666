@@ -221,26 +221,47 @@
     const lines = [];
     let prev = "";
     try { prev = localStorage.getItem("fg_log") || ""; } catch (e) {}
-    const d = { prev: prev, onchange: null, onready: null };
-    d.add = function (s) {
-      lines.push(((Date.now() - t0) / 1000).toFixed(1) + " с  " + String(s).slice(0, 300));
-      if (lines.length > 80) lines.splice(0, lines.length - 80);
-      try { localStorage.setItem("fg_log", lines.join("\n")); } catch (e) {}
+    const d = { prev: prev, onchange: null, onready: null, engine: null };
+    // Последний процент загрузки — одной строкой в конце журнала: оборвался
+    // запуск — видно, на скольки процентах и сколько памяти было у игры
+    let last = "";
+    function since() { return ((Date.now() - t0) / 1000).toFixed(1) + " с  "; }
+    function save() {
+      try { localStorage.setItem("fg_log", lines.concat(last ? [last] : []).join("\n")); } catch (e) {}
       if (d.onchange) d.onchange();
+    }
+    // Память игры (куча WebAssembly) — та, за которую iPhone закрывает страницу
+    d.heap = function () {
+      const m = d.engine && d.engine.rtenv && d.engine.rtenv.HEAP8;
+      return m ? ", память " + Math.round(m.length / 1048576) + " МБ" : "";
     };
+    d.add = function (s) {
+      lines.push(since() + String(s).slice(0, 300));
+      if (lines.length > 80) lines.splice(0, lines.length - 80);
+      last = "";
+      save();
+    };
+    d.progress = function (p) {
+      last = since() + "загрузка " + p + "%" + d.heap();
+      save();
+    };
+    d.lines = function () { return lines.concat(last ? [last] : []); };
     // Godot пишет в консоль: print — в log (берём только «FIRST GEAR: …»),
     // ошибки движка и скриптов — в error и warn
     ["log", "warn", "error"].forEach(function (k) {
       const f = console[k];
       console[k] = function () {
         const s = Array.prototype.join.call(arguments, " ");
-        // «FIRST GEAR: 37%» — проценты экрана загрузки игры: на заставку, не в журнал
+        // «FIRST GEAR: 37%» — проценты экрана загрузки игры: на заставку
+        // и последней строкой в журнал
         const pct = /^FIRST GEAR: (\d+)%$/.exec(s);
         if (pct) {
+          d.progress(+pct[1]);
           if (d.onprogress) d.onprogress(+pct[1]);
           return f.apply(console, arguments);
         }
-        if (k !== "log" || s.indexOf("FIRST GEAR") >= 0) d.add((k === "log" ? "" : k + ": ") + s);
+        if (k === "log" && s.indexOf("FIRST GEAR") >= 0) d.add(s + d.heap());
+        else if (k !== "log") d.add(k + ": " + s);
         if (s.indexOf("FIRST GEAR:") === 0 && d.onstage) d.onstage(s.slice(12));
         if (s.indexOf("FIRST GEAR: игра готова") >= 0 && d.onready) d.onready();
         // Движок упал (нехватка памяти, ошибка WebAssembly) — сразу видно на заставке
@@ -254,13 +275,29 @@
     window.addEventListener("unhandledrejection", function (e) {
       d.add("ошибка: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
     });
+    // Свернули браузер посреди загрузки — iPhone может закрыть игру в фоне,
+    // по возвращении вместо неё чёрный экран. В журнале видно, было ли это
+    d.loading = false;
+    document.addEventListener("visibilitychange", function () {
+      if (d.loading) d.add(document.hidden ? "страницу свернули" : "страница снова на экране");
+    });
+    // Телефон: картинка игры — не плотнее 2 точек на точку CSS. У iPhone
+    // Pro Max их 3: холст 2868×1320, буферы кадра втрое больше, а 3D всё
+    // равно рисуется в ~560 строк (world.gd → _fit_render_scale). Память
+    // дороже: iPhone закрывает страницу, что съела слишком много
+    d.dpr = window.devicePixelRatio || 1;
+    if (d.dpr > 2 && matchMedia("(pointer: coarse)").matches) {
+      try {
+        Object.defineProperty(window, "devicePixelRatio", { configurable: true, get: function () { return 2; } });
+      } catch (e) {}
+    }
     // Устройство — один раз и только когда блок открыли: лишний WebGL при
     // запуске не нужен
     let dev = "";
     d.device = function () {
       if (dev) return dev;
       const out = [navigator.userAgent];
-      out.push("Экран " + screen.width + "×" + screen.height + " ×" + (window.devicePixelRatio || 1) + ", окно " + innerWidth + "×" + innerHeight);
+      out.push("Экран " + screen.width + "×" + screen.height + " ×" + d.dpr + (window.devicePixelRatio !== d.dpr ? " (игре ×" + window.devicePixelRatio + ")" : "") + ", окно " + innerWidth + "×" + innerHeight);
       out.push("Память ≈" + (navigator.deviceMemory || "?") + " ГБ, ядер " + (navigator.hardwareConcurrency || "?") + ", язык " + navigator.language);
       try {
         const gl = document.createElement("canvas").getContext("webgl2");
@@ -277,7 +314,7 @@
     };
     d.text = function () {
       return "FIRST GEAR — " + location.href + "\n" + d.device() +
-        "\n\n— Этот запуск —\n" + (lines.join("\n") || "(ещё не начат)") +
+        "\n\n— Этот запуск —\n" + (d.lines().join("\n") || "(ещё не начат)") +
         (prev ? "\n\n— Прошлый запуск —\n" + prev : "");
     };
     return d;
@@ -291,12 +328,12 @@
   const UK = /^uk\b/i.test(navigator.language || "");
   const EN = !UK && !/^(ru|be)\b/i.test(navigator.language || "ru");
   function L(ru, en, uk) { return EN ? en : (UK && uk ? uk : ru); }
+  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   // iPhone в Safari: на весь экран — только с экрана «Домой», подсказываем
   (function () {
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches;
     const tip = document.getElementById("ios");
-    if (ios && !standalone && tip) {
+    if (IOS && !standalone && tip) {
       tip.hidden = false;
       if (EN) tip.textContent = "On iPhone: Share → Add to Home Screen — the game opens full screen, without Safari bars, and the buttons get easier to use.";
       if (UK) tip.textContent = "На iPhone: «Поділитися» → «На початковий екран» — гра відкриється на весь екран, без панелей Safari, і кнопки стануть зручнішими.";
@@ -374,13 +411,21 @@
     const fs = document.getElementById("fs");
     const canvas = document.getElementById("canvas");
 
-    function fail(text) {
+    // Что делает кнопка: запускает игру; после ошибки — перезагружает
+    // страницу, после падения — перезапускает облегчённо (движок после
+    // падения не перезапустить без перезагрузки)
+    let action = "start";
+    let failed = false;
+    function fail(text, next) {
+      failed = true;
+      action = next || "reload";
+      FG_DIAG.loading = false;
       FG_DIAG.add(text);
       diag.open = true;
       status.textContent = text;
       status.classList.add("err");
       play.disabled = false;
-      play.textContent = L("Попробовать ещё раз", "Try again", "Спробувати ще раз");
+      play.textContent = action === "lite" ? L("Перезапустить облегчённо", "Restart, lighter", "Перезапустити полегшено") : L("Попробовать ещё раз", "Try again", "Спробувати ще раз");
     }
 
     if (typeof Engine === "undefined") {
@@ -398,30 +443,41 @@
     // памяти) — флаг так и остался «loading». Тогда облегчённый запуск:
     // игра с --lite сразу ставит самую простую картинку. ?lite=1 — вручную.
     let crashed = false;
-    try { crashed = localStorage.getItem("fg_boot") === "loading"; } catch (e) {}
+    // «ready»: игра сказала «готова», но её закрыли меньше чем через
+    // полминуты — может, вместо картинки был чёрный экран (так было на iPhone)
+    let brief = false;
+    try {
+      const boot = localStorage.getItem("fg_boot");
+      crashed = boot === "loading";
+      brief = boot === "ready";
+    } catch (e) {}
     const lite = crashed || /[?&]lite=1/.test(location.search);
     // Пусто — APK лежит на той же странице (itch.io, tools/build_itch.sh)
     const apk = "https://github.com/Bobi3f/666666/raw/claude/wizardly-pasteur-r49r0n/releases/FirstGear-Android.apk";
     // Прошлый запуск оборвался — сразу видно, на каком этапе
-    if (crashed && FG_DIAG.prev) diag.open = true;
+    if ((crashed || brief) && FG_DIAG.prev) diag.open = true;
     if (lite) {
       const note = document.getElementById("lite");
       note.hidden = false;
-      note.innerHTML = L("Прошлый запуск не дошёл до конца — может, телефону не хватило памяти. Сейчас запустится облегчённая версия. Закройте другие вкладки и приложения. Не запустится и так — пришлите автору снимок «Сведений для разработчика» ниже. На Android можно поставить игру приложением: ",
-        "The last launch didn't finish — maybe the phone ran out of memory. A lighter version will start now. Close other tabs and apps. If it still won't start, send the author a screenshot of \"Info for the developer\" below. On Android you can install the game as an app: ",
-        "Минулий запуск не дійшов до кінця — може, телефону забракло пам'яті. Зараз запуститься полегшена версія. Закрийте інші вкладки й застосунки. Не запуститься й так — надішліть авторові знімок «Відомостей для розробника» нижче. На Android гру можна встановити застосунком: ") +
-        (apk ? '<a href="' + apk + '">FirstGear-Android.apk</a>' : L("ниже на этой странице.", "below on this page.", "нижче на цій сторінці."));
+      note.innerHTML = L("Прошлый запуск не дошёл до конца — может, телефону не хватило памяти. Сейчас запустится облегчённая версия. Закройте другие вкладки и приложения. Не запустится и так — пришлите автору снимок «Сведений для разработчика» ниже. ",
+        "The last launch didn't finish — maybe the phone ran out of memory. A lighter version will start now. Close other tabs and apps. If it still won't start, send the author a screenshot of \"Info for the developer\" below. ",
+        "Минулий запуск не дійшов до кінця — може, телефону забракло пам'яті. Зараз запуститься полегшена версія. Закрийте інші вкладки й застосунки. Не запуститься й так — надішліть авторові знімок «Відомостей для розробника» нижче. ") +
+        // iPhone: APK не поставить, зато в самом Safari памяти больше, чем
+        // в браузере внутри другого приложения (Telegram, Claude и т. п.)
+        (IOS ? L("На iPhone откройте игру в самом Safari (значок компаса внизу) и не сворачивайте страницу, пока игра грузится.",
+          "On iPhone, open the game in Safari itself (the compass icon at the bottom) and don't minimize the page while it loads.",
+          "На iPhone відкрийте гру в самому Safari (значок компаса внизу) і не згортайте сторінку, поки гра вантажиться.") :
+        L("На Android можно поставить игру приложением: ", "On Android you can install the game as an app: ", "На Android гру можна встановити застосунком: ") +
+        (apk ? '<a href="' + apk + '">FirstGear-Android.apk</a>' : L("ниже на этой странице.", "below on this page.", "нижче на цій сторінці.")));
     }
     // Телефон отобрал у игры видеопамять — объясняем и предлагаем облегчённый запуск
     canvas.addEventListener("webglcontextlost", function () {
       FG_DIAG.add("webglcontextlost: телефон отобрал видеопамять");
-      diag.open = true;
       cover.hidden = false;
       fs.hidden = true;
       fail(L("Телефону не хватило видеопамяти. Нажмите — запустим облегчённую версию.",
         "The phone ran out of video memory. Tap to start the lighter version.",
-        "Телефону забракло відеопам'яті. Натисніть — запустимо полегшену версію."));
-      play.onclick = function (e) { e.stopImmediatePropagation(); location.search = "?lite=1"; };
+        "Телефону забракло відеопам'яті. Натисніть — запустимо полегшену версію."), "lite");
     });
 
     const engine = new Engine({
@@ -435,6 +491,7 @@
       experimentalVK: false,
       gdextensionLibs: []
     });
+    FG_DIAG.engine = engine;
 
     // На телефоне сразу на весь экран и горизонтально: адресная строка
     // не отнимает место, кнопки игры не прячутся под пальцем
@@ -451,9 +508,10 @@
       if (cover.hidden) fs.hidden = !!document.fullscreenElement;
     });
 
-    // Запуск удался — флаг «ok»: игра сообщила «готова» и полминуты отыграла,
-    // или после этого вкладку свернули/закрыли сами. Пока мир строится, флаг
-    // остаётся «loading»: оборвался запуск — в следующий раз облегчённый.
+    // Запуск удался — флаг «ok»: игра сообщила «готова» и полминуты отыграла.
+    // Пока мир строится, флаг «loading»: оборвался запуск — в следующий раз
+    // облегчённый. Закрыли раньше полминуты после «готова» — «ready»: в
+    // следующий раз сразу открыты «Сведения для разработчика».
     let ready = false;
     const ok = function () { try { localStorage.setItem("fg_boot", "ok"); } catch (e) {} };
     // Заставка сайта не уходит, пока игра не скажет «готова»: проценты и этапы
@@ -461,55 +519,81 @@
     // человек видит не чёрный экран, а где загрузка и «Сведения для разработчика»
     let started = 0;
     let stage = "";
-    let heard = false;
+    // Когда игра последний раз дала о себе знать. Замолчала надолго, пока
+    // страница на экране, — телефон её остановил: предлагаем перезапуск
+    let heardAt = 0;
+    let stuck = false;
+    const SILENCE = 60;
+    const loadingText = L("Загружаю…", "Loading…", "Завантажую…");
     function showCover(text) {
-      if (cover.hidden) return;
+      if (cover.hidden || failed) return;
       const sec = Math.round((Date.now() - started) / 1000);
       const time = " · " + Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
-      status.textContent = text + time + (sec > 20 ? L(". На телефоне первый запуск — до 2–3 минут, не закрывайте страницу",
-        ". On a phone the first launch takes up to 2–3 minutes, don't close the page",
-        ". На телефоні перший запуск — до 2–3 хвилин, не закривайте сторінку") : "");
+      status.textContent = text + time + (sec > 20 ? L(". На телефоне первый запуск — до 2–3 минут: не закрывайте и не сворачивайте страницу",
+        ". On a phone the first launch takes up to 2–3 minutes: don't close or minimize the page",
+        ". На телефоні перший запуск — до 2–3 хвилин: не закривайте й не згортайте сторінку") : "");
     }
     function stageText(p) {
       if (stage.indexOf("строю мир") === 0 || p >= 30 && p < 85) return L("Строю Каменку: ", "Building Kamenka: ", "Будую Кам'янку: ") + p + "%";
       if (p >= 85) return L("Готовлю картинку: ", "Preparing graphics: ", "Готую картинку: ") + p + "%";
       return L("Готовлю игру: ", "Preparing the game: ", "Готую гру: ") + p + "%";
     }
+    // Игра снова заговорила — кнопка перезапуска больше не нужна
+    function heard() {
+      heardAt = Date.now();
+      if (!stuck || failed) return;
+      stuck = false;
+      action = "none";
+      play.disabled = true;
+      play.textContent = loadingText;
+      status.classList.remove("err");
+    }
     let lastPct = 0;
     FG_DIAG.onprogress = function (p) {
-      heard = true;
+      heard();
       lastPct = p;
       fill.style.width = p + "%";
       showCover(stageText(p));
     };
-    FG_DIAG.onstage = function (t) { heard = true; stage = t; showCover(stageText(lastPct)); };
+    FG_DIAG.onstage = function (t) { heard(); stage = t; showCover(stageText(lastPct)); };
     FG_DIAG.oncrash = function (t) {
       if (cover.hidden) cover.hidden = false;
-      fail(L("Игра упала: ", "The game crashed: ", "Гра впала: ") + t.slice(0, 120));
-      // Движок после падения не перезапустить — только с перезагрузкой, облегчённо
-      play.onclick = function (e) { e.stopImmediatePropagation(); location.search = "?lite=1"; };
+      fail(L("Игра упала: ", "The game crashed: ", "Гра впала: ") + t.slice(0, 120), "lite");
     };
     function hideCover() {
       cover.hidden = true;
       fs.hidden = !!document.fullscreenElement;
       canvas.focus();
     }
-    FG_DIAG.onready = function () { ready = true; hideCover(); setTimeout(ok, 30000); };
-    window.addEventListener("pagehide", function () { if (ready) ok(); });
-    document.addEventListener("visibilitychange", function () { if (document.hidden && ready) ok(); });
+    FG_DIAG.onready = function () {
+      ready = true;
+      FG_DIAG.loading = false;
+      hideCover();
+      try { localStorage.setItem("fg_boot", "ready"); } catch (e) {}
+      setTimeout(ok, 30000);
+    };
+    document.addEventListener("visibilitychange", function () {
+      // Пока страница свёрнута, игра стоит — это не молчание
+      if (!document.hidden) heardAt = Date.now();
+    });
 
     play.addEventListener("click", function () {
+      if (action === "reload") { location.reload(); return; }
+      if (action === "lite") { location.search = "?lite=1"; return; }
+      if (action !== "start") return;
+      action = "none";
       started = Date.now();
       if (touch) goFullscreen();
-      FG_DIAG.add("нажата «Играть»" + (lite ? ", облегчённый запуск" : ""));
+      FG_DIAG.loading = true;
+      FG_DIAG.add("нажата «Играть»" + (lite ? ", облегчённый запуск" : "") + (FG_DIAG.dpr > window.devicePixelRatio ? ", картинка ×" + window.devicePixelRatio + " вместо ×" + FG_DIAG.dpr : ""));
       try { localStorage.setItem("fg_boot", "loading"); } catch (e) {}
       play.disabled = true;
-      play.textContent = L("Загружаю…", "Loading…", "Завантажую…");
+      play.textContent = loadingText;
       status.classList.remove("err");
       status.textContent = L("Скачиваю движок и мир…", "Downloading the engine and the world…", "Завантажую рушій і світ…");
       engine.startGame({
         onProgress: function (cur, total) {
-          if (total > 0) {
+          if (total > 0 && !failed) {
             const pct = Math.min(100, Math.round(cur / total * 100));
             fill.style.width = pct + "%";
             if (pct >= 100 && !status.dataset.done) {
@@ -521,16 +605,32 @@
           }
         }
       }).then(function () {
-        FG_DIAG.add("движок запущен, игра строит мир");
-        fill.style.width = "0%";
-        showCover(L("Готовлю игру…", "Preparing the game…", "Готую гру…"));
-        // Тикают секунды, пока игра молчит между процентами
+        FG_DIAG.add("движок запущен, игра строит мир" + FG_DIAG.heap());
+        if (failed) return;
+        if (!heardAt) heardAt = Date.now();
+        if (lastPct === 0) fill.style.width = "0%";
+        showCover(lastPct > 0 ? stageText(lastPct) : L("Готовлю игру…", "Preparing the game…", "Готую гру…"));
+        // Тикают секунды, пока игра молчит между процентами. Молчит дольше
+        // минуты на открытой странице — кнопка «Перезапустить облегчённо»
         const tick = setInterval(function () {
-          if (cover.hidden || ready) { clearInterval(tick); return; }
+          if (ready || failed) { clearInterval(tick); return; }
+          if (document.hidden) { heardAt = Date.now(); return; }
+          const quiet = Math.round((Date.now() - heardAt) / 1000);
+          if (quiet >= SILENCE && !stuck) {
+            stuck = true;
+            action = "lite";
+            FG_DIAG.add("игра молчит " + quiet + " с на " + lastPct + "%" + FG_DIAG.heap());
+            diag.open = true;
+            play.disabled = false;
+            play.textContent = L("Перезапустить облегчённо", "Restart, lighter", "Перезапустити полегшено");
+          }
+          if (stuck) {
+            status.classList.add("err");
+            status.textContent = L("Игра не отвечает уже ", "The game hasn't responded for ", "Гра не відповідає вже ") + quiet + L(" с (остановилась на ", " s (stopped at ", " с (зупинилася на ") + lastPct + L("%). Подождите ещё или перезапустите облегчённо.", "%). Wait a bit more or restart, lighter.", "%). Зачекайте ще або перезапустіть полегшено.");
+            return;
+          }
           showCover(lastPct > 0 ? stageText(lastPct) : L("Готовлю игру…", "Preparing the game…", "Готую гру…"));
         }, 1000);
-        // Старая сборка игры процентов не шлёт — тогда просто убираем заставку
-        setTimeout(function () { if (!heard) hideCover(); }, 25000);
       }).catch(function (err) {
         fail(L("Игра не запустилась: ", "The game didn't start: ", "Гра не запустилася: ") + (err && err.message ? err.message : err));
       });
