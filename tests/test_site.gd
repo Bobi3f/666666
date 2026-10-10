@@ -39,10 +39,10 @@ func _initialize() -> void:
 	ok(dpr_at < html.find("<script src=\"index.js\">"), "и до того, как движок загрузился")
 
 	print("== iPhone: память игры — одним куском в начале")
-	# Ступени роста памяти (46 → 55 → … → 343 МБ) iOS не прощает: закрывает
+	# Ступени роста памяти (46 → 55 → … → 238 МБ) iOS не прощает: закрывает
 	# страницу («Повторення проблеми на сайті»)
 	ok(html.contains("const go = IOS ? engine.init(\"index\").then(function () {\n        reserveHeap();"), "на iPhone: движок → запас памяти → мир")
-	ok(html.contains("for (const mb of [352, 288, 224])") and html.contains("m._free(ptr);"), "запас берётся и сразу отдаётся игре, не дали — пробуем меньше")
+	ok(html.contains("for (const mb of [272, 240, 208])") and html.contains("m._free(ptr);"), "запас ~280 МБ (игре нужно ~230) берётся и сразу отдаётся игре, не дали — пробуем меньше")
 	ok(html.contains("onProgress: progress,") and not html.contains("engine.startGame({\n        onProgress"), "полоска скачивания — с самого начала и на iPhone")
 	ok(html.contains(": engine.startGame();"), "остальные браузеры — как раньше")
 

@@ -4,8 +4,9 @@ extends Node3D
 ##
 ## Всё рисуется через MultiMesh: одна подробная модель — тысячи копий за
 ## один вызов отрисовки. Деревья — по MultiMesh на вид (их мало, видны
-## издалека). Трава, цветы и колосья — кусками 50×50 м, дальние куски не
-## рисуются (visibility_range), вблизи трава качается на ветру (шейдер).
+## издалека). Трава, цветы и колосья — кусками 25×25 м и только вокруг
+## камеры (update_cover): дальше grass_range её всё равно не видно, а
+## память на телефоне дорога. Вблизи трава качается на ветру (шейдер).
 ##
 ## Мир сначала регистрирует деревья (add_tree) и места, где травы быть не
 ## должно (block: дороги, дома, площадки), потом вызывает build().
@@ -86,6 +87,13 @@ static var grass_material: ShaderMaterial
 var counts := {}
 ## Где растёт трава: Каменка и сёла района (дальше — только земля).
 var areas: Array[Rect2] = [Rect2(-200, -200, 400, 400)]
+## Куски травы, что сейчас стоят: левый угол куска → его узлы.
+var _cover := {}
+## Все куски, где трава может расти, и запреты травы, разложенные по кускам.
+var _cover_cells: Array[Vector2] = []
+var _blocked_by_cell := {}
+var _cover_meshes := {}
+var _cover_t := 0.0
 ## Деревья целиком рисуются до SettingsManager.tree_range(), дальше —
 ## простые силуэты (ель — конус, берёза — ромб) до края видимости: лес
 ## видно до горизонта, а треугольников в десятки раз меньше.
@@ -174,7 +182,7 @@ func build() -> void:
 				fi.name = "TreesFar_%d_%d_%d" % [kind, key.x, key.y]
 				fi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				add_child(fi)
-	_build_ground_cover()
+	_prepare_ground_cover()
 	SettingsManager.changed.connect(apply_detail)
 	apply_detail()
 
@@ -198,9 +206,14 @@ func apply_detail() -> void:
 		if c.name.begins_with("Trees"):
 			gi.visibility_range_end = lod
 			continue
-		var mi := c as MultiMeshInstance3D
-		mi.visible = r > 0.0
-		mi.visibility_range_end = r * (1.6 if c.name.begins_with("wheat") else 1.0)
+		_cover_look(c as MultiMeshInstance3D, r)
+	_cover_t = 0.0
+
+
+## Трава, цветы и колосья видны до grass_range (пшеница — в 1,6 раза дальше).
+func _cover_look(mi: MultiMeshInstance3D, r: float) -> void:
+	mi.visible = r > 0.0
+	mi.visibility_range_end = r * (1.6 if mi.name.begins_with("wheat") else 1.0)
 
 
 # --- Трава, цветы, колосья, камни ------------------------------------------
@@ -210,97 +223,180 @@ static func _density() -> float:
 	return 0.6 if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") else 1.0
 
 
-func _build_ground_cover() -> void:
+const WHEAT_RECT := Rect2(26.0, -184.0, 73.0, 73.0)
+const PLOUGH_RECT := Rect2(25.0, -100.0, 165.0, 70.0)
+
+
+## Трава строится не вся сразу, а кусками вокруг камеры. Каждый MultiMesh
+## движок (Godot 4.5) держит в обычной памяти ещё трижды — для сглаживания
+## движения, даже выключенного: вся трава района разом занимала в браузере
+## ~56 МБ из 280, и iPhone закрывал страницу. Здесь — только материал,
+## модели пучков и список кусков; сами куски — update_cover().
+func _prepare_ground_cover() -> void:
 	var sh := Shader.new()
 	sh.code = GRASS_SHADER
 	_grass_mat = ShaderMaterial.new()
 	_grass_mat.shader = sh
 	grass_material = _grass_mat
-	var tuft := _tuft_mesh(0.34, 5, Color(0.26, 0.42, 0.16), Color(0.5, 0.66, 0.28))
-	var tall := _tuft_mesh(0.7, 7, Color(0.3, 0.42, 0.18), Color(0.58, 0.64, 0.3))
-	var wheat := _tuft_mesh(0.95, 6, Color(0.55, 0.47, 0.22), Color(0.92, 0.8, 0.42), true)
-	var flower := _flower_mesh()
-	var stone := _stone_mesh()
-	var wheat_rect := Rect2(26.0, -184.0, 73.0, 73.0)
-	var plough_rect := Rect2(25.0, -100.0, 165.0, 70.0)
-	var total := {"grass": 0, "flowers": 0, "wheat": 0, "stones": 0}
-	var cells_list: Array[Vector2] = []
+	_cover_meshes = {
+		"grass": _tuft_mesh(0.34, 5, Color(0.26, 0.42, 0.16), Color(0.5, 0.66, 0.28)),
+		"tall": _tuft_mesh(0.7, 7, Color(0.3, 0.42, 0.18), Color(0.58, 0.64, 0.3)),
+		"wheat": _tuft_mesh(0.95, 6, Color(0.55, 0.47, 0.22), Color(0.92, 0.8, 0.42), true),
+		"flowers": _flower_mesh(),
+		"stones": _stone_mesh(),
+	}
+	_cover_cells.clear()
+	var seen := {}
 	for area in areas:
 		for cx in int(ceilf(area.size.x / CHUNK)):
 			for cz in int(ceilf(area.size.y / CHUNK)):
-				cells_list.append(area.position + Vector2(cx, cz) * CHUNK)
-	for cell_pos in cells_list:
-		var x0 := cell_pos.x
-		var z0 := cell_pos.y
-		var cell := Rect2(x0, z0, CHUNK, CHUNK)
-		# Проверяем только те запреты, что задевают этот кусок
-		var local: Array[Rect2] = []
-		for r in _blocked:
-			if r.intersects(cell):
-				local.append(r)
-		var grass := PackedFloat32Array()
-		var tall_l := PackedFloat32Array()
-		var flowers := PackedFloat32Array()
-		var wheat_l := PackedFloat32Array()
-		var stones := PackedFloat32Array()
-		# Около 1.1 пучка на квадратный метр, пшеница — 5; на телефоне —
-		# 60 % (видно её всё равно только рядом, а память и видеочип слабее)
-		var tries := int(CHUNK * CHUNK * 1.1 * _density())
-		if cell.intersects(wheat_rect):
-			tries = int(CHUNK * CHUNK * 5.0 * _density())
-		for i in tries:
-			var x := x0 + _rng.randf() * CHUNK
-			var z := z0 + _rng.randf() * CHUNK
-			var pt := Vector2(x, z)
-			if wheat_rect.has_point(pt):
-				_push(wheat_l, x, 0.0, z, _rng.randf_range(0.85, 1.2))
-				continue
-			if plough_rect.has_point(pt):
-				continue
-			var blocked := false
-			for r in local:
-				if r.has_point(pt):
-					blocked = true
-					break
-			if blocked:
-				# На дорогах и площадках — только редкие камешки
-				if _rng.randf() < 0.012:
-					_push(stones, x, 0.03, z, _rng.randf_range(0.5, 1.3))
-				continue
-			if wheat_l.size() == 0 and tries > CHUNK * CHUNK * 2.0 and _rng.randf() < 0.78:
-				# Кусок с полем — на лугу вокруг сажаем реже, чтобы не было втрое гуще
-				continue
-			var r := _rng.randf()
-			if r < 0.03:
-				_push(flowers, x, 0.0, z, _rng.randf_range(0.8, 1.2))
-			elif r < 0.11:
-				_push(tall_l, x, 0.0, z, _rng.randf_range(0.7, 1.3))
-			else:
-				_push(grass, x, 0.0, z, _rng.randf_range(0.7, 1.35))
-		_chunk(tuft, grass, "grass")
-		_chunk(tall, tall_l, "tall")
-		_chunk(flower, flowers, "flowers")
-		_chunk(wheat, wheat_l, "wheat")
-		_chunk(stone, stones, "stones", false)
-		total.grass += (grass.size() + tall_l.size()) / 12
-		total.flowers += flowers.size() / 12
-		total.wheat += wheat_l.size() / 12
-		total.stones += stones.size() / 12
-	counts.merge(total)
+				var c: Vector2 = area.position + Vector2(cx, cz) * CHUNK
+				if not seen.has(c):
+					seen[c] = true
+					_cover_cells.append(c)
+	# Запреты — сразу по кускам сетки: кусок проверяет только свои
+	_blocked_by_cell.clear()
+	for r in _blocked:
+		for gx in range(floori(r.position.x / CHUNK), floori(r.end.x / CHUNK) + 1):
+			for gz in range(floori(r.position.y / CHUNK), floori(r.end.y / CHUNK) + 1):
+				var k := Vector2i(gx, gz)
+				if not _blocked_by_cell.has(k):
+					_blocked_by_cell[k] = []
+				_blocked_by_cell[k].append(r)
+	counts["grass_cells"] = _cover_cells.size()
+
+
+## Докуда от камеры держать куски травы: видно её до grass_range, пшеницу —
+## в 1,6 раза дальше, и ещё кусок про запас, чтобы не появлялась на глазах.
+func cover_radius() -> float:
+	var r := SettingsManager.grass_range()
+	return r * 1.6 + CHUNK if r > 0.0 else 0.0
+
+
+## Куски травы вокруг точки: недостающие — строим (ближние первыми, не дольше
+## budget_ms за раз), далёкие — убираем. Каждый кусок всякий раз выходит
+## одинаковым: случайность от его места, а не от порядка постройки.
+func update_cover(at: Vector3, budget_ms := 4.0) -> void:
+	var radius := cover_radius()
+	var here := Vector2(at.x, at.z)
+	var half := Vector2(CHUNK, CHUNK) * 0.5
+	var keep := radius + CHUNK * 1.5
+	for c in _cover.keys():
+		if ((c as Vector2) + half).distance_to(here) > keep:
+			for n in _cover[c]:
+				(n as Node).queue_free()
+			_cover.erase(c)
+	if radius <= 0.0:
+		return
+	var need: Array = []
+	for c in _cover_cells:
+		if not _cover.has(c):
+			var d := (c + half).distance_to(here)
+			if d < radius + CHUNK * 0.71:
+				need.append([d, c])
+	if need.is_empty():
+		return
+	need.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var t := Time.get_ticks_usec()
+	for item in need:
+		_build_cover_cell(item[1])
+		if (Time.get_ticks_usec() - t) / 1000.0 > budget_ms:
+			_cover_t = 0.0
+			return
+
+
+## Сколько кусков травы сейчас стоит (для тестов).
+func cover_count() -> int:
+	return _cover.size()
+
+
+func _process(delta: float) -> void:
+	if _cover_cells.is_empty():
+		return
+	_cover_t -= delta
+	if _cover_t > 0.0:
+		return
+	_cover_t = 0.25
+	var cam := get_viewport().get_camera_3d()
+	if cam:
+		update_cover(cam.global_position)
+	elif GameManager.player:
+		update_cover((GameManager.player as Node3D).global_position)
+
+
+func _build_cover_cell(cell_pos: Vector2) -> void:
+	var x0 := cell_pos.x
+	var z0 := cell_pos.y
+	var cell := Rect2(x0, z0, CHUNK, CHUNK)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector2i(roundi(x0), roundi(z0))) ^ 90210
+	# Проверяем только те запреты, что задевают этот кусок
+	var local: Array[Rect2] = []
+	var seen := {}
+	for gx in range(floori(x0 / CHUNK), floori((x0 + CHUNK) / CHUNK) + 1):
+		for gz in range(floori(z0 / CHUNK), floori((z0 + CHUNK) / CHUNK) + 1):
+			for r in _blocked_by_cell.get(Vector2i(gx, gz), []):
+				if not seen.has(r) and (r as Rect2).intersects(cell):
+					seen[r] = true
+					local.append(r)
+	var bufs := {"grass": PackedFloat32Array(), "tall": PackedFloat32Array(), "flowers": PackedFloat32Array(),
+		"wheat": PackedFloat32Array(), "stones": PackedFloat32Array()}
+	# Около 1.1 пучка на квадратный метр, пшеница — 5; на телефоне —
+	# 60 % (видно её всё равно только рядом, а память и видеочип слабее)
+	var tries := int(CHUNK * CHUNK * 1.1 * _density())
+	if cell.intersects(WHEAT_RECT):
+		tries = int(CHUNK * CHUNK * 5.0 * _density())
+	for i in tries:
+		var x := x0 + rng.randf() * CHUNK
+		var z := z0 + rng.randf() * CHUNK
+		var pt := Vector2(x, z)
+		if WHEAT_RECT.has_point(pt):
+			_push(rng, bufs.wheat, x, 0.0, z, rng.randf_range(0.85, 1.2))
+			continue
+		if PLOUGH_RECT.has_point(pt):
+			continue
+		var blocked := false
+		for r in local:
+			if r.has_point(pt):
+				blocked = true
+				break
+		if blocked:
+			# На дорогах и площадках — только редкие камешки
+			if rng.randf() < 0.012:
+				_push(rng, bufs.stones, x, 0.03, z, rng.randf_range(0.5, 1.3))
+			continue
+		if (bufs.wheat as PackedFloat32Array).size() == 0 and tries > CHUNK * CHUNK * 2.0 and rng.randf() < 0.78:
+			# Кусок с полем — на лугу вокруг сажаем реже, чтобы не было втрое гуще
+			continue
+		var roll := rng.randf()
+		if roll < 0.03:
+			_push(rng, bufs.flowers, x, 0.0, z, rng.randf_range(0.8, 1.2))
+		elif roll < 0.11:
+			_push(rng, bufs.tall, x, 0.0, z, rng.randf_range(0.7, 1.3))
+		else:
+			_push(rng, bufs.grass, x, 0.0, z, rng.randf_range(0.7, 1.35))
+	var nodes: Array[Node] = []
+	var seen_m := SettingsManager.grass_range()
+	for label in ["grass", "tall", "flowers", "wheat", "stones"]:
+		var mi := _chunk(_cover_meshes[label], bufs[label], label, label != "stones")
+		if mi:
+			_cover_look(mi, seen_m)
+			nodes.append(mi)
+	_cover[cell_pos] = nodes
 
 
 ## Дописывает в буфер MultiMesh поворот вокруг вертикали, масштаб и место
 ## (12 чисел: три строки базиса и сдвиг, как ждёт MultiMesh).
-func _push(buf: PackedFloat32Array, x: float, y: float, z: float, s: float) -> void:
-	var a := _rng.randf() * TAU
+func _push(rng: RandomNumberGenerator, buf: PackedFloat32Array, x: float, y: float, z: float, s: float) -> void:
+	var a := rng.randf() * TAU
 	var c := cos(a) * s
 	var n := sin(a) * s
 	buf.append_array([c, 0.0, n, x, 0.0, s, 0.0, y, -n, 0.0, c, z])
 
 
-func _chunk(mesh: Mesh, buf: PackedFloat32Array, label: String, sway := true) -> void:
+func _chunk(mesh: Mesh, buf: PackedFloat32Array, label: String, sway := true) -> MultiMeshInstance3D:
 	if buf.is_empty():
-		return
+		return null
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
@@ -314,6 +410,7 @@ func _chunk(mesh: Mesh, buf: PackedFloat32Array, label: String, sway := true) ->
 	if sway:
 		mi.material_override = _grass_mat
 	add_child(mi)
+	return mi
 
 
 ## Пучок травинок: узкие треугольники веером, у корня темнее.

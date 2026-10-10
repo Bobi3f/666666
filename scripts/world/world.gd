@@ -264,6 +264,9 @@ func _ready() -> void:
 	NeedsManager.fainted.connect(_faint)
 	await breathe(0.89)
 	_spawn_player_and_car()
+	# Трава — сразу вокруг игрока (экран загрузки её прогреет), дальше —
+	# кусками вокруг камеры по мере движения (Vegetation.update_cover)
+	_veg.update_cover((get_node("Player") as Node3D).global_position, INF)
 	await breathe(0.91)
 	add_child(preload("res://scripts/world/ambience.gd").new())
 	var shop := GearShop.new()
