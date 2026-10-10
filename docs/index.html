@@ -480,8 +480,22 @@
         "Телефону забракло відеопам'яті. Натисніть — запустимо полегшену версію."), "lite");
     });
 
+    // Полоска скачивания движка и мира
+    function progress(cur, total) {
+      if (total > 0 && !failed) {
+        const pct = Math.min(100, Math.round(cur / total * 100));
+        fill.style.width = pct + "%";
+        if (pct >= 100 && !status.dataset.done) {
+          status.dataset.done = "1";
+          FG_DIAG.add("скачано, запускаю движок");
+        }
+        // Запуск движка замораживает страницу на несколько секунд — предупреждаем
+        status.textContent = pct < 100 ? L("Загрузка: ", "Loading: ", "Завантаження: ") + pct + "%" : L("Запускаю движок — страница может замереть на несколько секунд…", "Starting the engine — the page may freeze for a few seconds…", "Запускаю рушій — сторінка може завмерти на кілька секунд…");
+      }
+    }
     const engine = new Engine({
       args: lite ? ["--lite"] : [],
+      onProgress: progress,
       canvas: canvas,
       canvasResizePolicy: 2,
       executable: "index",
@@ -492,6 +506,27 @@
       gdextensionLibs: []
     });
     FG_DIAG.engine = engine;
+
+    // iPhone: память игры растёт ступенями по 20 % (46 → 55 → … → 343 МБ),
+    // и на iOS каждая ступень — новый сплошной кусок памяти. Не нашлось —
+    // iOS молча закрывает страницу («Повторення проблеми на сайті»). Берём
+    // сразу ~400 МБ одним куском, пока игра маленькая, и отпускаем: память
+    // остаётся у игры, мир строится в ней без новых ступеней. Не дали
+    // столько — пробуем меньше; не дали ничего — игра растёт как раньше
+    function reserveHeap() {
+      const m = engine.rtenv;
+      if (!m || !m._malloc || !m._free) return;
+      for (const mb of [352, 288, 224]) {
+        let ptr = 0;
+        try { ptr = m._malloc(mb * 1048576); } catch (e) { ptr = 0; }
+        if (ptr) {
+          m._free(ptr);
+          FG_DIAG.add("память игры взята заранее" + FG_DIAG.heap());
+          return;
+        }
+      }
+      FG_DIAG.add("память заранее не дали" + FG_DIAG.heap());
+    }
 
     // На телефоне сразу на весь экран и горизонтально: адресная строка
     // не отнимает место, кнопки игры не прячутся под пальцем
@@ -591,20 +626,13 @@
       play.textContent = loadingText;
       status.classList.remove("err");
       status.textContent = L("Скачиваю движок и мир…", "Downloading the engine and the world…", "Завантажую рушій і світ…");
-      engine.startGame({
-        onProgress: function (cur, total) {
-          if (total > 0 && !failed) {
-            const pct = Math.min(100, Math.round(cur / total * 100));
-            fill.style.width = pct + "%";
-            if (pct >= 100 && !status.dataset.done) {
-              status.dataset.done = "1";
-              FG_DIAG.add("скачано, запускаю движок");
-            }
-            // Запуск движка замораживает страницу на несколько секунд — предупреждаем
-            status.textContent = pct < 100 ? L("Загрузка: ", "Loading: ", "Завантаження: ") + pct + "%" : L("Запускаю движок — страница может замереть на несколько секунд…", "Starting the engine — the page may freeze for a few seconds…", "Запускаю рушій — сторінка може завмерти на кілька секунд…");
-          }
-        }
-      }).then(function () {
+      // iPhone: сначала движок, сразу за ним — вся память игры одним куском
+      // (reserveHeap), потом мир. Остальные браузеры — как раньше, разом
+      const go = IOS ? engine.init("index").then(function () {
+        reserveHeap();
+        return engine.startGame();
+      }) : engine.startGame();
+      go.then(function () {
         FG_DIAG.add("движок запущен, игра строит мир" + FG_DIAG.heap());
         if (failed) return;
         if (!heardAt) heardAt = Date.now();
