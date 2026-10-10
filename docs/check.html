@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Gear — проверка телефона</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #17191b; color: #efe6cf; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: #f2b33d; }
+  p { margin: 6px 0; }
+  .row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #2d3135; }
+  .row b { min-width: 9.5em; color: #c9c3b4; font-weight: 600; }
+  .ok { color: #8fd18f; } .bad { color: #ff7b66; } .warn { color: #f2c35d; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #0f1011; padding: 10px; border-radius: 4px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  button, a.btn { display: inline-block; margin: 10px 8px 0 0; padding: 10px 14px; font: 600 15px system-ui, sans-serif; color: #fff; background: #d0140f; border: 0; border-radius: 4px; text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Проверка телефона для First Gear</h1>
+  <p>Эта страница не запускает игру — только проверяет, что умеет браузер. Сделайте снимок экрана целиком (или нажмите «Скопировать») и пришлите автору.</p>
+  <div id="rows"></div>
+  <p><b>Прошлый запуск игры</b> (журнал из этого браузера):</p>
+  <pre id="log">—</pre>
+  <button id="copy" type="button">Скопировать всё</button>
+  <a class="btn" href="./">К игре</a>
+</main>
+<script>
+  // Каждая проверка — строка «что — результат»; итоговый текст — для копирования
+  const rows = document.getElementById("rows");
+  const report = [];
+  function row(name, value, cls) {
+    const r = document.createElement("div");
+    r.className = "row";
+    const b = document.createElement("b");
+    b.textContent = name;
+    const s = document.createElement("span");
+    s.textContent = value;
+    if (cls) s.className = cls;
+    r.appendChild(b);
+    r.appendChild(s);
+    rows.appendChild(r);
+    report.push(name + ": " + value);
+  }
+
+  row("Браузер", navigator.userAgent);
+  row("Экран", screen.width + "×" + screen.height + " ×" + (window.devicePixelRatio || 1) + ", окно " + innerWidth + "×" + innerHeight);
+  row("Память", (navigator.deviceMemory ? "≈" + navigator.deviceMemory + " ГБ" : "не сообщает") + ", ядер " + (navigator.hardwareConcurrency || "?"));
+
+  // Видеочип и WebGL2 — без WebGL2 игра не рисуется
+  try {
+    const c = document.createElement("canvas");
+    const gl = c.getContext("webgl2");
+    if (!gl) {
+      const gl1 = c.getContext("webgl");
+      row("WebGL2", "НЕТ" + (gl1 ? " (есть только старый WebGL 1 — игре мало)" : " (и WebGL 1 тоже нет)"), "bad");
+    } else {
+      const info = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      row("WebGL2", "есть", "ok");
+      row("Видеочип", String(name));
+      row("Текстуры до", gl.getParameter(gl.MAX_TEXTURE_SIZE) + " точек");
+      const lose = gl.getExtension("WEBGL_lose_context");
+      if (lose) lose.loseContext();
+    }
+  } catch (e) {
+    row("WebGL2", "ошибка: " + e, "bad");
+  }
+
+  row("WebAssembly", typeof WebAssembly === "object" ? "есть" : "НЕТ", typeof WebAssembly === "object" ? "ok" : "bad");
+  row("Распаковка", "DecompressionStream" in window ? "есть (качается 9 МБ вместо 38)" : "нет (качается полный движок, 38 МБ)", "DecompressionStream" in window ? "ok" : "warn");
+
+  // Сколько памяти даст браузер игре: растим кусок памяти до 512 МБ (игре
+  // нужно около 300), потом отпускаем
+  (function () {
+    try {
+      const mem = new WebAssembly.Memory({ initial: 512, maximum: 8192 });
+      let mb = 32;
+      while (mb < 512) {
+        mem.grow(512);  // +32 МБ
+        mb += 32;
+      }
+      row("Память для игры", mb + " МБ — хватает", "ok");
+    } catch (e) {
+      row("Память для игры", "браузер не дал вырасти до 512 МБ: " + e.message, "bad");
+    }
+  })();
+
+  // Что отдаёт сервер: первые байты сжатого движка и заголовки
+  fetch("engine.gz.wasm", { headers: { Range: "bytes=0-7" }, cache: "no-store" }).then(function (r) {
+    return r.arrayBuffer().then(function (buf) {
+      const bytes = Array.from(new Uint8Array(buf).slice(0, 4)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join(" ");
+      const gz = bytes.indexOf("1f 8b") === 0;
+      row("Сервер, движок", r.status + ", " + (r.headers.get("content-type") || "?") +
+        (r.headers.get("content-encoding") ? ", сжатие " + r.headers.get("content-encoding") : "") + ", байты " + bytes, gz ? "ok" : "warn");
+    });
+  }).catch(function (e) {
+    row("Сервер, движок", "не скачался: " + e, "bad");
+  }).finally(showLog);
+
+  function showLog() {
+    let log = "", boot = "";
+    try { log = localStorage.getItem("fg_log") || ""; boot = localStorage.getItem("fg_boot") || ""; } catch (e) { log = "журнал недоступен: " + e; }
+    const state = boot === "loading" ? "оборвался (не дошёл до «игра готова»)" : boot === "ok" ? "удался" : "игру в этом браузере ещё не запускали";
+    row("Прошлый запуск", state, boot === "loading" ? "bad" : boot === "ok" ? "ok" : "warn");
+    document.getElementById("log").textContent = log || "—";
+    report.push("", "— Журнал прошлого запуска —", log || "—");
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    const text = "First Gear — проверка телефона\n" + report.join("\n");
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () {
+      document.getElementById("copy").textContent = "Скопировано";
+    }).catch(function () {});
+  });
+</script>
+</body>
+</html>
