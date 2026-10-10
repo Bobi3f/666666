@@ -38,6 +38,10 @@ test -s build/web/index.pck
 cp build/web/index.js build/web/index.wasm build/web/index.pck build/web/index.audio*.js "$ROOT/docs/"
 # Сжатый движок для телефона (~9 МБ вместо 38): страница распакует его сама
 gzip -9 -n -c build/web/index.wasm > "$ROOT/docs/engine.gz.wasm"
+# Для iPhone — тот же движок, но память с самого запуска 288 МБ: Safari на
+# iOS даёт её надёжно только сразу, наращивание по ходу закрывает страницу
+python3 "$ROOT/tools/wasm_memory.py" build/web/index.wasm build/web/engine-ios.wasm 288
+gzip -9 -n -c build/web/engine-ios.wasm > "$ROOT/docs/engine-ios.gz.wasm"
 PCK=$(stat -c %s build/web/index.pck)
 # Страница docs/index.html своя: размер мира прописан в ней для полоски загрузки
 sed -i -E "s/\"index.pck\": [0-9]+/\"index.pck\": $PCK/" "$ROOT/docs/index.html"

@@ -10,6 +10,38 @@ func ok(c: bool, w: String) -> void:
 	if not c: fails += 1
 
 
+## [начало, максимум] памяти движка в МБ — из раздела памяти wasm (id 5).
+func memory_mb(b: PackedByteArray) -> Array:
+	if b.size() < 8 or b[0] != 0 or b[1] != 0x61:
+		return []
+	var i := 8
+	while i < b.size():
+		var sid := b[i]
+		var r := leb(b, i + 1)
+		if sid == 5:
+			var k: int = leb(b, r[1])[1]
+			var flags := b[k]
+			var mn := leb(b, k + 1)
+			var mx: Array = leb(b, mn[1]) if flags & 1 else [0, 0]
+			return [mn[0] * 65536 / 1048576, mx[0] * 65536 / 1048576]
+		i = r[1] + r[0]
+	return []
+
+
+## Число LEB128 и место после него.
+func leb(b: PackedByteArray, i: int) -> Array:
+	var v := 0
+	var s := 0
+	while true:
+		var x := b[i]
+		i += 1
+		v |= (x & 0x7f) << s
+		s += 7
+		if x < 0x80:
+			break
+	return [v, i]
+
+
 func _initialize() -> void:
 	var html := FileAccess.get_file_as_string("res://docs/index.html")
 	ok(html.length() > 10000, "страница прочитана")
@@ -45,6 +77,26 @@ func _initialize() -> void:
 	ok(html.contains("for (const mb of [272, 240, 208])") and html.contains("m._free(ptr);"), "запас ~280 МБ (игре нужно ~230) берётся и сразу отдаётся игре, не дали — пробуем меньше")
 	ok(html.contains("onProgress: progress,") and not html.contains("engine.startGame({\n        onProgress"), "полоска скачивания — с самого начала и на iPhone")
 	ok(html.contains(": engine.startGame();"), "остальные браузеры — как раньше")
+
+	print("== iPhone: свой движок, память с самого запуска")
+	ok(html.contains("const pick = ios ? gz(\"engine-ios.gz.wasm\").catch(function () { return gz(\"engine.gz.wasm\"); }) : gz(\"engine.gz.wasm\");"),
+		"на iPhone — engine-ios.gz.wasm, нет его — обычный")
+	ok(html.contains("if (m.HEAP8.length >= 256 * 1048576)"), "с таким движком запас не берётся — память уже есть")
+	var ios_gz := FileAccess.get_file_as_bytes("res://docs/engine-ios.gz.wasm")
+	var plain := FileAccess.get_file_as_bytes("res://docs/index.wasm")
+	var ios_wasm := ios_gz.decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP) if ios_gz.size() > 0 else PackedByteArray()
+	ok(ios_wasm.size() == plain.size() and ios_wasm.size() > 1000000, "движок для iPhone того же размера, что обычный: %d" % ios_wasm.size())
+	ok(memory_mb(plain) == [32, 2048], "обычный движок: память с 32 МБ, до 2 ГБ: %s" % str(memory_mb(plain)))
+	ok(memory_mb(ios_wasm) == [288, 2048], "для iPhone — с 288 МБ сразу (игре нужно ~230): %s" % str(memory_mb(ios_wasm)))
+	var diff := 0
+	for i in mini(plain.size(), ios_wasm.size()):
+		if plain[i] != ios_wasm[i]:
+			diff += 1
+			if diff > 4: break
+	ok(diff > 0 and diff <= 4, "отличается только размер памяти: байт %d" % diff)
+	var build := FileAccess.get_file_as_string("res://tools/build_release.sh")
+	ok(build.contains("tools/wasm_memory.py\" build/web/index.wasm build/web/engine-ios.wasm 288") and build.contains("docs/engine-ios.gz.wasm"), "сборка делает его заново из каждого движка")
+	ok(FileAccess.get_file_as_string("res://tools/build_itch.sh").contains("docs/engine-ios.gz.wasm"), "и кладёт в архив itch.io")
 
 	print("== iPhone после неудачного запуска")
 	ok(html.contains("(IOS ? L(\"На iPhone откройте игру в самом Safari"), "совет открыть в самом Safari вместо APK")

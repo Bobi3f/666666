@@ -196,17 +196,26 @@
   // около 9 МБ: на телефоне по мобильному интернету качается вчетверо
   // быстрее, браузер распаковывает его сам (DecompressionStream). Нет такой
   // возможности или сжатого файла — берём обычный index.wasm.
+  // iPhone получает свой движок — engine-ios.gz.wasm: тот же, но память у него
+  // с самого запуска 288 МБ (tools/wasm_memory.py). Safari на iOS надёжно
+  // даёт память только сразу; наращивание по ходу закрывало страницу.
   (function () {
     if (!("DecompressionStream" in window)) return;
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const plainFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
       const url = typeof input === "string" ? input : (input && input.url) || "";
       if (!/(^|\/)index\.wasm(\?|$)/.test(url)) return plainFetch(input, init);
-      return plainFetch(url.replace("index.wasm", "engine.gz.wasm"), init).then(function (res) {
-        if (!res.ok || !res.body) return plainFetch(input, init);
-        const body = res.body.pipeThrough(new DecompressionStream("gzip"));
-        return new Response(body, { status: 200, headers: { "Content-Type": "application/wasm" } });
-      }).catch(function () { return plainFetch(input, init); });
+      function gz(name) {
+        return plainFetch(url.replace("index.wasm", name), init).then(function (res) {
+          if (!res.ok || !res.body) throw new Error(name + ": " + res.status);
+          if (window.FG_DIAG) FG_DIAG.add("движок: " + name);
+          const body = res.body.pipeThrough(new DecompressionStream("gzip"));
+          return new Response(body, { status: 200, headers: { "Content-Type": "application/wasm" } });
+        });
+      }
+      const pick = ios ? gz("engine-ios.gz.wasm").catch(function () { return gz("engine.gz.wasm"); }) : gz("engine.gz.wasm");
+      return pick.catch(function () { return plainFetch(input, init); });
     };
   })();
 </script>
@@ -517,6 +526,11 @@
     function reserveHeap() {
       const m = engine.rtenv;
       if (!m || !m._malloc || !m._free) return;
+      // Движок для iPhone уже с памятью — брать нечего
+      if (m.HEAP8.length >= 256 * 1048576) {
+        FG_DIAG.add("память игры есть с запуска" + FG_DIAG.heap());
+        return;
+      }
       for (const mb of [272, 240, 208]) {
         let ptr = 0;
         try { ptr = m._malloc(mb * 1048576); } catch (e) { ptr = 0; }

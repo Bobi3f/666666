@@ -42,8 +42,10 @@ Godot ставит хук `.claude/hooks/session-start.sh` в `~/.local/bin/godo
 - Память в браузере — главный предел для iPhone (надёжно ~300 МБ, игре
   нужно ~230). Каждый экземпляр MultiMesh движок держит в ОЗУ ещё трижды
   (данные сглаживания движения), поэтому трава строится кусками только
-  вокруг камеры (`Vegetation.update_cover`). На iPhone страница сразу
-  берёт память одним куском (`docs/index.html` → `reserveHeap`).
+  вокруг камеры (`Vegetation.update_cover`). iPhone получает свой движок
+  `docs/engine-ios.gz.wasm` — тот же, но с памятью 288 МБ с самого запуска
+  (`tools/wasm_memory.py`, делает `build_release.sh`): наращивание памяти
+  по ходу Safari на iOS не прощает.
 
 ## Правила
 
