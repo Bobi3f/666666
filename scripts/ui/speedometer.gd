@@ -27,7 +27,7 @@ func _vehicle() -> Vehicle:
 
 
 func _max_speed(v: Vehicle) -> float:
-	return {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(v.kind, 160.0)
+	return {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0, "bmw": 260.0}.get(v.kind, 160.0)
 
 
 func _process(delta: float) -> void:

@@ -3096,6 +3096,7 @@ const SALON_CARS := [
 	["truck", 28000, "грузовик с авторынка, после колхоза — развоз хлеба вдвое дороже", Vector3(247, 0.1, 38.5)],
 	["izh", 3500, "двухцилиндровый мотоцикл, мощнее «Влтавы», два глушителя", Vector3(52, 0.1, 23.0)],
 	["vaz2107", 12000, "«семёрка»: хромированная решётка, мотор сильнее, чем у «шестёрки»", Vector3(61, 0.1, 23.4), PI / 2.0],
+	["bmw", 52000, "немецкая «пятёрка» с пробегом: шесть цилиндров, быстрее «Волжанки», в такси платят больше всех", Vector3(231, 0.1, 24)],
 ]
 
 
@@ -3125,7 +3126,7 @@ func _spawn_salon_cars() -> void:
 		v.kind = entry[0]
 		v.price = entry[1]
 		v.blurb = entry[2]
-		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh", "vaz2107": "Vaz2107"}[entry[0]]
+		v.name = {"niva": "Niva", "volga": "Volga", "truck": "Truck", "izh": "Izh", "vaz2107": "Vaz2107", "bmw": "Izar"}[entry[0]]
 		add_child(v)
 		v.global_position = Town.w(entry[3])
 		if entry.size() > 4:

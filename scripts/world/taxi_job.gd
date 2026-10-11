@@ -185,6 +185,9 @@ func _pay(car: Vehicle) -> void:
 	if car.kind == "volga":
 		pay = int(pay * 1.4)
 		bits.append("на «Волжанке» — с шиком")
+	elif car.kind == "bmw":
+		pay = int(pay * 1.6)
+		bits.append("на иномарке — как большие люди")
 	var smooth := _cond0 - car.condition < 1.5
 	if _t < fast_time() and smooth:
 		pay += TIP

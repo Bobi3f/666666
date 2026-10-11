@@ -117,6 +117,22 @@ const SPECS := {
 		"wheels": [Vector3(-0.8, 0.33, -1.42), Vector3(0.8, 0.33, -1.42), Vector3(-0.8, 0.33, 1.42), Vector3(0.8, 0.33, 1.42)],
 		"tail": [Vector3(-0.79, 0.68, 2.39), Vector3(0.79, 0.68, 2.39)], "lamps": [Vector3(-0.74, 0.65, -2.4), Vector3(0.74, 0.65, -2.4)],
 	},
+	# «Изар 525» — немецкая «пятёрка» конца 80-х (как E34) с авторынка: рядная
+	# шестёрка, 5 передач, задний привод. Разгон и скорость — в масштабе игры:
+	# заметно быстрее «Волжанки» (до 100 — 6,2 с против 7,2; ~245 км/ч против
+	# ~205), тормоза лучше, сцепление шин выше, по грязи — хуже.
+	"bmw": {
+		"title": "Изар 525", "ratios": {-1: -3.46, 0: 0.0, 1: 3.83, 2: 2.2, 3: 1.4, 4: 1.0, 5: 0.81},
+		"final": 3.9, "wheel_r": 0.317, "mass": 1470.0, "idle": 750.0, "redline": 6500.0,
+		"torque": 340.0, "peak_rpm": 4700.0, "inertia": 0.15, "wheelbase": 2.76, "max_steer": 0.58,
+		"tank": 80.0, "fuel_k": 1.6, "grip": 10.6, "drag": 0.32, "brake": 11.5,
+		"shape": Vector3(1.75, 1.15, 4.72), "shape_y": 0.86,
+		"seat": Vector3(-0.38, 1.13, 0.22), "exit": Vector3(-1.7, 0.2, 0.1),
+		"chase": Vector3(0, 2.6, 7.4), "roof": true, "two_wheels": false,
+		"offroad": 0.8, "mud": 1.25, "paint": 4,
+		"wheels": [Vector3(-0.735, 0.317, -1.52), Vector3(0.735, 0.317, -1.52), Vector3(-0.75, 0.317, 1.24), Vector3(0.75, 0.317, 1.24)],
+		"tail": [Vector3(-0.6, 0.828, 2.32), Vector3(0.6, 0.828, 2.32)], "lamps": [Vector3(-0.6, 0.594, -2.36), Vector3(0.6, 0.594, -2.36)],
+	},
 	"truck": {
 		"title": "ГМЗ-53", "ratios": {-1: -6.4, 0: 0.0, 1: 6.5, 2: 3.1, 3: 1.7, 4: 1.0},
 		"final": 6.7, "wheel_r": 0.46, "mass": 3200.0, "idle": 700.0, "redline": 3800.0,
@@ -280,17 +296,18 @@ var _zone: InteractZone
 var _wheels: Array[Node3D] = []
 var _engine_snd: AudioStreamPlayer3D
 ## Свой мотор у каждого: «Карпаты» жужжат, «Ява» звенит, ИЖ бубнит,
-## грузовик и автобус — дизель, трактор тукает, «Волга» гудит мягко.
+## грузовик и автобус — дизель, трактор тукает, «Волга» гудит мягко,
+## «Изар» — тот же ровный гул, но выше: у него шесть цилиндров.
 const ENGINE_SOUND := {"moped": "engine_moped", "moto": "engine_moto", "izh": "engine_izh",
-	"truck": "engine_diesel", "bus": "engine_diesel", "tractor": "engine_tractor", "volga": "engine_volga"}
+	"truck": "engine_diesel", "bus": "engine_diesel", "tractor": "engine_tractor", "volga": "engine_volga", "bmw": "engine_volga"}
 ## Вспышек за оборот — от этого высота звука: у «Жигулей» 4 цилиндра — 2,
 ## мопед звучит выше, двухцилиндровый ИЖ — ниже «Явы».
 const ENGINE_FIRES := {"moped": 1.45, "moto": 1.2, "izh": 1.0, "truck": 1.8, "bus": 1.8, "tractor": 1.1,
-	"volga": 1.8, "niva": 1.9, "vaz2107": 2.1}
+	"volga": 1.8, "niva": 1.9, "vaz2107": 2.1, "bmw": 2.9}
 ## Громкость мотора: мопед записан тише — прибавляем; «Волга» тише, ИЖ, грузовик и трактор громче.
-const ENGINE_DB := {"moped": 3.0, "izh": 2.0, "truck": 2.0, "tractor": 3.0, "volga": -1.0}
+const ENGINE_DB := {"moped": 3.0, "izh": 2.0, "truck": 2.0, "tractor": 3.0, "volga": -1.0, "bmw": -2.0}
 ## Сигнал: у мопеда пискляво, у грузовика и «Волги» — басом.
-const HORN_PITCH := {"moped": 1.6, "moto": 1.35, "izh": 1.25, "vaz2107": 1.1, "niva": 1.05, "volga": 0.85,
+const HORN_PITCH := {"moped": 1.6, "moto": 1.35, "izh": 1.25, "vaz2107": 1.1, "niva": 1.05, "volga": 0.85, "bmw": 0.95,
 	"truck": 0.7, "kamaz": 0.65, "bus": 0.75, "tractor": 0.8, "zaz": 1.3, "moskvich": 1.08, "uaz": 0.95}
 var _skid_snd: AudioStreamPlayer3D
 var _rain_snd: AudioStreamPlayer
@@ -1516,6 +1533,8 @@ func _paint_body() -> void:
 			VehicleModels.niva(b, col, glass)
 		"volga":
 			VehicleModels.volga(b, col, glass)
+		"bmw":
+			VehicleModels.izar(b, col, glass)
 		"truck":
 			VehicleModels.gaz53(b, col, glass)
 		"bus":
@@ -1975,7 +1994,10 @@ func _wheel_mesh(moto: bool, r: float, w: float, disc: Variant) -> MeshInstance3
 	elif kind == "tractor" and disc == null:
 		VehicleModels.tractor_wheel(wb, r, w)
 	else:
-		VehicleModels.car_wheel(wb, r, w, disc)
+		if kind == "bmw":
+			VehicleModels.alloy_wheel(wb, r, w, disc)
+		else:
+			VehicleModels.car_wheel(wb, r, w, disc)
 	return wb.build_mesh()
 
 
@@ -2010,7 +2032,7 @@ func _process(_delta: float) -> void:
 	for g in _gauge_holders:
 		g.visible = inside
 	if driver != null and not _needles.is_empty():
-		var top: float = {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+		var top := _dial_top()
 		var k_speed := clampf(speed_kmh() / top, 0.0, 1.0)
 		var k_rpm := clampf(rpm / _tach_full(), 0.0, 1.0)
 		for i in _needles.size():
@@ -2039,6 +2061,9 @@ func _gauge_spots() -> Array:
 			return []
 		"moped":
 			return [[Vector3(0.0, 1.0, -0.63), 0.035, -1.1]]
+		"bmw":
+			# Два больших прибора под козырьком щитка «Изара», над рулём
+			return [[Vector3(-0.475, 0.925, -0.655), 0.056, 0.0], [Vector3(-0.285, 0.925, -0.655), 0.056, 0.0]]
 		"tractor":
 			# Средние два из четырёх приборов на голубой панели
 			return [[Vector3(-0.1, 1.79, -0.148), 0.045, 0.0], [Vector3(0.1, 1.79, -0.148), 0.045, 0.0]]
@@ -2107,6 +2132,11 @@ func _build_gauges() -> void:
 		_dial_numbers(holder, r, _needles.size() == 1)
 
 
+## Конец шкалы спидометра в салоне, км/ч: восемь больших рисок по 1/8.
+func _dial_top() -> float:
+	return {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0, "bmw": 240.0}.get(kind, 160.0)
+
+
 ## Шкала тахометра: до 8 тыс. об/мин, у тихоходных дизелей — до 4 тыс.
 func _tach_full() -> float:
 	return 8000.0 if float(spec.redline) > 4000.0 else 4000.0
@@ -2115,7 +2145,7 @@ func _tach_full() -> float:
 ## Цифры на циферблате — у восьми больших рисок шкалы: спидометр — км/ч
 ## (0 … максимум), тахометр — тысячи оборотов.
 func _dial_numbers(holder: Node3D, r: float, speedo: bool) -> void:
-	var top: float = {"moto": 180.0, "izh": 140.0, "moped": 60.0, "truck": 120.0, "tractor": 40.0}.get(kind, 160.0)
+	var top := _dial_top()
 	for i in 9:
 		var v: float = top * i / 8.0 if speedo else _tach_full() * i / 8.0 / 1000.0
 		if not speedo and absf(v - roundf(v)) > 0.01:
