@@ -540,6 +540,7 @@ static func bus(b: MeshBuilder, paint: Color, size: Vector3) -> void:
 		VehicleModels.pipe(b, [Vector3(s * hx, 2.6, -hz + 0.1), Vector3(s * (hx + 0.2), 2.6, -hz - 0.15), m], 0.02, dark)
 		b.box(m + Vector3(-0.08, -0.18, -0.02), m + Vector3(0.08, 0.18, 0.03), dark)
 		b.box(Vector3(s * (hx - 0.05) - 0.12, 0.95, -hz - 0.035), Vector3(s * (hx - 0.05) + 0.12, 1.03, -hz), Color(0.98, 0.55, 0.1))
+		turn_spot(b, Vector3(s * (hx - 0.05), 0.99, -hz - 0.0175), s, Vector3(0.25, 0.09, 0.046))
 		b.box_rot(Vector3(s * 0.45, 1.3, -hz - 0.03), Vector3(0.75, 0.03, 0.03), 0.1 * s, dark)
 	# Крыша: люки и козырёк
 	b.box(Vector3(-hx + 0.05, 3.1, -hz + 0.05), Vector3(hx - 0.05, 3.18, hz - 0.05), paint.lightened(0.1))
@@ -793,12 +794,23 @@ static func _trim(b: MeshBuilder, hx: float, seams: Array, sill: float, top: flo
 		b.box(m + Vector3(-0.05, -0.04, 0.03), m + Vector3(0.05, 0.04, 0.035), Color(0.75, 0.8, 0.85))
 		# Поворотник у фары
 		b.box(Vector3(s * blink.x - (0.12 if s > 0 else 0.0), blink.y, blink.z - 0.015), Vector3(s * blink.x + (0.12 if s < 0 else 0.0), blink.y + 0.07, blink.z), Color(0.98, 0.55, 0.1))
+		turn_spot(b, Vector3(s * (blink.x - 0.06), blink.y + 0.035, blink.z - 0.0075), s, Vector3(0.13, 0.08, 0.026))
 		if flap.x != 0.0:
 			b.box(Vector3(x - 0.3 if s > 0 else x + 0.02, 0.12, flap.x), Vector3(x - 0.02 if s > 0 else x + 0.3, flap.y, flap.x + 0.02), dark)
 	# Дворники: два поводка с щётками у низа лобового
 	for k in [-1.0, 1.0]:
 		var c := Vector3(k * wiper.z * 0.5, wiper.y, wiper.x)
 		b.box_rot(c, Vector3(wiper.z * 0.8, 0.02, 0.025), 0.12 * k, dark)
+
+
+## Где у модели поворотник: лампа Vehicle загорается ровно там, а не по
+## габаритам кузова. side −1 — левый, 1 — правый; size — светящаяся накладка
+## (чуть больше фонаря); axis — куда смотрит круглый фонарь (тогда накладка
+## круглая, size.x — диаметр, size.z — толщина), ноль — прямоугольный.
+static func turn_spot(b: MeshBuilder, c: Vector3, side: float, size: Vector3, axis := Vector3.ZERO) -> void:
+	var list: Array = b.get_meta("turns", [])
+	list.append([b.xf * c, side, size, b.xf.basis * axis])
+	b.set_meta("turns", list)
 
 
 ## Круглая шайба-восьмигранник: фара, крышки мотора, пробка бака.
@@ -1241,6 +1253,7 @@ static func tractor(b: MeshBuilder, _paint: Color, glass_b: MeshBuilder = null) 
 			disc(b, c, Vector3.FORWARD, 0.075, 0.08, dark)
 			disc(b, c + Vector3(0, 0, -0.045), Vector3.FORWARD, 0.06, 0.01, lamp)
 		b.box(Vector3(0.44 * sx - 0.05, 0.92, -2.1), Vector3(0.44 * sx + 0.05, 0.98, -2.06), amber)
+		turn_spot(b, Vector3(0.44 * sx, 0.95, -2.08), sx, Vector3(0.11, 0.07, 0.05))
 	# Грузы спереди
 	for i in 6:
 		b.box(Vector3(-0.48 + i * 0.16, 0.42, -2.32), Vector3(-0.34 + i * 0.16, 0.76, -2.08), Color(0.25, 0.3, 0.36))
@@ -1291,6 +1304,7 @@ static func tractor(b: MeshBuilder, _paint: Color, glass_b: MeshBuilder = null) 
 		b.box(Vector3(minf(x0, x1), 0.55, 1.62), Vector3(maxf(x0, x1), 1.05, 1.65), dark)
 		b.box(Vector3(0.95 * sx - 0.08, 1.42, 1.62), Vector3(0.95 * sx + 0.08, 1.5, 1.66), Color(0.75, 0.12, 0.08))
 		b.box(Vector3(0.95 * sx - 0.08, 1.36, 1.62), Vector3(0.95 * sx + 0.08, 1.42, 1.66), amber)
+		turn_spot(b, Vector3(0.95 * sx, 1.39, 1.64), sx, Vector3(0.17, 0.07, 0.05))
 		disc(b, Vector3(0.74 * sx, cy + 0.5, 1.3), Vector3.BACK, 0.08, 0.08, dark)
 		disc(b, Vector3(0.74 * sx, cy + 0.5, 1.345), Vector3.BACK, 0.065, 0.01, lamp)
 	plate(b, Vector3(-0.17, cy + 0.08, 1.28), Vector3(0.17, cy + 0.28, 1.29))
@@ -1660,6 +1674,12 @@ static func moped(b: MeshBuilder, paint: Color) -> void:
 	# Задний фонарь — красный прямоугольник на конце крыла, номер под ним
 	b.box(Vector3(-0.055, 0.6, 0.8), Vector3(0.055, 0.67, 0.86), Color(0.65, 0.06, 0.05))
 	b.box(Vector3(-0.06, 0.595, 0.79), Vector3(0.06, 0.6, 0.865), chrome)
+	# Задние поворотники — круглые, на коротких стойках по бокам фонаря
+	var amber := Color(1.0, 0.6, 0.12)
+	for sx in [-1.0, 1.0]:
+		_rt(b, Vector3(0.05 * sx, 0.635, 0.83), Vector3(0.14 * sx, 0.635, 0.83), 0.008, dark)
+		rdisc(b, Vector3(0.165 * sx, 0.635, 0.83), Vector3.BACK, 0.03, 0.06, amber, 12)
+		turn_spot(b, Vector3(0.165 * sx, 0.635, 0.83), sx, Vector3(0.07, 0.07, 0.07), Vector3.BACK)
 	plate(b, Vector3(-0.08, 0.46, 0.84), Vector3(0.08, 0.58, 0.86))
 	# Вилка: сверху красные кожухи, снизу хромированные перья с гармошкой
 	for sx in [-1.0, 1.0]:
@@ -1677,6 +1697,11 @@ static func moped(b: MeshBuilder, paint: Color) -> void:
 	PersonModel.ball(b, hp + Vector3(0, 0, 0.03), Vector3(0.075, 0.075, 0.065), chrome.darkened(0.15), 4, 16)
 	rdisc(b, hp + Vector3(0, 0, -0.03), Vector3.FORWARD, 0.08, 0.016, chrome, 18)
 	rdisc(b, hp + Vector3(0, 0, -0.04), Vector3.FORWARD, 0.066, 0.01, Color(1.0, 0.97, 0.86), 18)
+	# Передние поворотники — на стойках по бокам фары
+	for sx in [-1.0, 1.0]:
+		_rt(b, hp + Vector3(0.06 * sx, 0.0, 0.03), hp + Vector3(0.15 * sx, 0.0, 0.03), 0.008, dark)
+		rdisc(b, hp + Vector3(0.175 * sx, 0.0, 0.02), Vector3.FORWARD, 0.03, 0.06, amber, 12)
+		turn_spot(b, hp + Vector3(0.175 * sx, 0.0, 0.02), sx, Vector3(0.07, 0.07, 0.07), Vector3.FORWARD)
 	# Спидометр над фарой
 	rdisc(b, Vector3(0, 0.99, -0.62), Vector3(0, 0.6, -0.8), 0.045, 0.04, dark, 14)
 	rdisc(b, Vector3(0, 1.0, -0.635), Vector3(0, 0.6, -0.8), 0.037, 0.01, Color(0.92, 0.92, 0.88), 14)

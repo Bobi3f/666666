@@ -252,6 +252,8 @@ var _steer := 0.0
 var turn := 0
 var _turn_t := 0.0
 var _turn_steered := false
+## Где модель нарисовала поворотники (VehicleModels.turn_spot) — лампы там.
+var _model_turns: Array = []
 var _turn_lamps: Array = []  # [MeshInstance3D, сторона −1/1]
 static var _turn_mat: StandardMaterial3D
 var _yaw_rate := 0.0
@@ -1524,6 +1526,7 @@ func _paint_body() -> void:
 			VehicleModels.zhiguli(b, col, true, glass, true)
 		_:
 			VehicleModels.zhiguli(b, col, true, glass)
+	_model_turns = b.get_meta("turns", [])
 	_paint_mesh = b.build_mesh()
 	_paint_mesh.material_override = MeshBuilder.vehicle_material()
 	_body.add_child(_paint_mesh)
@@ -1732,9 +1735,12 @@ func _update_turn(delta: float) -> void:
 		_show_turn(now)
 		if driver:
 			SoundLibrary.play("click", -16.0, 1.9 if now else 1.6)
-	# Повернул руль в сторону поворота и вернул прямо — выключается сам
-	# Руль влево (A) — положительный, а левый поворотник — −1
-	var k := -_steer / maxf(float(spec.max_steer), 0.01)
+	# Повернул руль в сторону поворота и вернул прямо — выключается сам.
+	# Руль влево (A) — положительный, а левый поворотник — −1. Долю считаем
+	# от того, насколько руль поворачивается на этой скорости: на ходу он
+	# ходит меньше, и раньше поворотник после поворота на скорости не гас
+	var lim := float(spec.max_steer) / (1.0 + absf(speed) * 0.05)
+	var k := -_steer / maxf(lim, 0.01)
 	if signf(k) == float(turn) and absf(k) > 0.45:
 		_turn_steered = true
 	elif _turn_steered and absf(k) < 0.08:
@@ -1748,13 +1754,17 @@ func _show_turn(on: bool) -> void:
 
 
 ## Лампы поворотников — поверх оранжевых фонарей модели; горят светящимся
-## янтарём, в выключенном виде их не видно (виден фонарь модели).
+## янтарём, в выключенном виде их не видно (виден фонарь модели). У «Жигулей»,
+## «Явы» и ИЖа места подобраны вручную, у остальных их записала сама модель
+## (VehicleModels.turn_spot); сзади у машин без своих поворотников — рядом
+## со стоп-сигналом, ближе к середине. Раньше у мопеда и части машин лампы
+## ставились по габаритам кузова и висели в воздухе у колёс.
 func _build_turn_lamps() -> void:
 	if _turn_mat == null:
 		_turn_mat = StandardMaterial3D.new()
 		_turn_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_turn_mat.albedo_color = Color(1.0, 0.62, 0.1)
-	var spots: Array = []  # [центр, размер, сторона]
+	var spots: Array = []  # [центр, размер, сторона, ось круглого фонаря]
 	match kind:
 		"vaz2107":
 			for sx in [-1.0, 1.0]:
@@ -1775,17 +1785,40 @@ func _build_turn_lamps() -> void:
 				spots.append([Vector3(0.25 * sx, 0.92, -0.7), Vector3(0.085, 0.085, 0.09), sx])
 				spots.append([Vector3(0.19 * sx, 0.78, 0.88), Vector3(0.085, 0.085, 0.09), sx])
 		_:
-			var box := _paint_mesh.get_aabb() if _paint_mesh else AABB(Vector3(-0.8, 0.3, -2.0), Vector3(1.6, 1.2, 4.0))
-			var x := box.end.x - 0.08
-			var y := box.position.y + box.size.y * 0.3
-			for sx in [-1.0, 1.0]:
-				spots.append([Vector3(x * sx, y, box.position.z - 0.01), Vector3(0.12, 0.08, 0.03), sx])
-				spots.append([Vector3(x * sx, y, box.end.z + 0.01), Vector3(0.12, 0.08, 0.03), sx])
+			var rear := false
+			for t in _model_turns:
+				spots.append([t[0], t[2], t[1], t[3]])
+				rear = rear or (t[0] as Vector3).z > 0.0
+			if not rear and not spec.two_wheels:
+				# Стоп-сигнал — 0,3 м в ширину (_brake_lights); поворотник — вплотную
+				for p in spec.get("tail", []):
+					var sx := signf((p as Vector3).x)
+					spots.append([(p as Vector3) - Vector3(sx * 0.225, 0.0, -0.003), Vector3(0.14, 0.055, 0.026), sx])
+			if spots.is_empty():
+				# Модель без поворотников и без стоп-сигналов — по габаритам
+				var box := _paint_mesh.get_aabb() if _paint_mesh else AABB(Vector3(-0.8, 0.3, -2.0), Vector3(1.6, 1.2, 4.0))
+				var x := box.end.x - 0.08
+				var y := box.position.y + box.size.y * 0.3
+				for sx in [-1.0, 1.0]:
+					spots.append([Vector3(x * sx, y, box.position.z - 0.01), Vector3(0.12, 0.08, 0.03), sx])
+					spots.append([Vector3(x * sx, y, box.end.z + 0.01), Vector3(0.12, 0.08, 0.03), sx])
 	for sp in spots:
 		var m := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = sp[1]
-		m.mesh = bm
+		var axis: Vector3 = sp[3] if sp.size() > 3 else Vector3.ZERO
+		if axis != Vector3.ZERO:
+			# Круглый фонарь — круглая накладка, повёрнутая туда же, куда он смотрит
+			var cm := CylinderMesh.new()
+			cm.top_radius = (sp[1] as Vector3).x * 0.5
+			cm.bottom_radius = cm.top_radius
+			cm.height = (sp[1] as Vector3).z
+			cm.radial_segments = 12
+			cm.rings = 1
+			m.mesh = cm
+			m.basis = Basis(Quaternion(Vector3.UP, axis.normalized()))
+		else:
+			var bm := BoxMesh.new()
+			bm.size = sp[1]
+			m.mesh = bm
 		m.material_override = _turn_mat
 		m.position = sp[0]
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

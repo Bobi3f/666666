@@ -86,6 +86,53 @@ func _run() -> void:
 		if lit(M, 1) == 2: moto_on = true
 	ok(M.turn == 1 and moto_on and M._turn_lamps.size() == 4, "на «Яве» мигают правые — передний и задний")
 
+	print("== Лампы горят на поворотниках, а не висят в воздухе")
+	# Раньше у мопеда и части машин лампы ставились по габаритам кузова и
+	# висели у колёс. Теперь — там, где модель нарисовала поворотник, а сзади
+	# у машин без своих поворотников — вплотную к стоп-сигналу
+	var hand := ["car", "vaz2107", "moto", "izh"]
+	var kinds := {}
+	var bad := []
+	for v in W.find_children("*", "Vehicle", true, false):
+		if kinds.has(v.kind): continue
+		kinds[v.kind] = true
+		var sides := {-1: [false, false], 1: [false, false]}
+		for l in v._turn_lamps:
+			var p: Vector3 = (l[0] as Node3D).position
+			var s: int = l[1]
+			if signf(p.x) != float(s): bad.append("%s: не та сторона %s" % [v.kind, str(p)])
+			sides[s][0 if p.z < 0.0 else 1] = true
+			if hand.has(v.kind): continue
+			var near := false
+			for t in v._model_turns:
+				if (t[0] as Vector3).distance_to(p) < 0.01: near = true
+			for t in v.spec.get("tail", []):
+				if (t as Vector3).distance_to(p) < 0.3: near = true
+			if not near: bad.append("%s: лампа %s не на фонаре" % [v.kind, str(p.snapped(Vector3.ONE * 0.01))])
+		for s in [-1, 1]:
+			if not (sides[s][0] and sides[s][1]): bad.append("%s: сторона %d без переднего или заднего" % [v.kind, s])
+	ok(kinds.size() >= 8 and bad.is_empty(), "%d видов транспорта: лампы на своих фонарях, с нужной стороны, спереди и сзади %s" % [kinds.size(), str(bad)])
+	var MP: Vehicle = W.get_node("Moped")
+	ok(MP._model_turns.size() == 4 and MP._turn_lamps.size() == 4, "у мопеда свои поворотники: у фары и у заднего фонаря")
+	var mp_ok := true
+	for l in MP._turn_lamps:
+		var p: Vector3 = (l[0] as Node3D).position
+		mp_ok = mp_ok and absf(absf(p.x) - 0.175) < 0.02 and p.y > 0.6 and p.y < 0.85
+	ok(mp_ok, "лампы мопеда — на стойках у фары и фонаря, на высоте 0.6–0.85 м, а не у колёс")
+
+	print("== На скорости поворотник после поворота тоже гаснет")
+	# На ходу руль поворачивается меньше (до max_steer / (1 + v·0,05)), и раньше
+	# на скорости больше 90 км/ч доля «повернул» не набиралась
+	C.set_turn(-1)
+	C.speed = 26.0
+	C._steer = 0.2
+	C._update_turn(0.016)
+	ok(C._turn_steered, "94 км/ч, руль налево почти до упора на этой скорости — поворот засчитан")
+	C._steer = 0.0
+	C._update_turn(0.016)
+	ok(C.turn == 0, "выровнял руль — поворотник погас сам")
+	C.speed = 0.0
+
 	print("== Механика на компьютере")
 	var SM = root.get_node("SettingsManager")
 	M.exit_car()
