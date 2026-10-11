@@ -70,6 +70,7 @@ func _ready() -> void:
 	_makers["engine_tractor"] = func() -> AudioStreamWAV: return _make(_engine_tractor(), true)
 	_makers["engine_volga"] = func() -> AudioStreamWAV: return _make(_engine_volga(), true)
 	_makers["engine_zaz"] = func() -> AudioStreamWAV: return _make(_engine_zaz(), true)
+	_makers["engine_six"] = func() -> AudioStreamWAV: return _make(_engine_six(), true)
 	# Голоса людей: смех, крики, гомон толпы, болельщики
 	_makers["laugh_man"] = func() -> AudioStreamWAV: return _make(_laugh(5, 165.0, 120.0, "а", 1.0, 0.11, 0.06, 0.06), false)
 	_makers["laugh_woman"] = func() -> AudioStreamWAV: return _make(_laugh(5, 300.0, 250.0, "а", 1.17, 0.09, 0.05, 0.05), false)
@@ -508,6 +509,24 @@ func _engine_volga() -> PackedFloat32Array:
 		var ph := fmod(t * f, 1.0)
 		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.08
 		a[i] = (sin(TAU * f * t) * 0.5 + sin(TAU * f * 2.0 * t) * 0.25 + exp(-ph * 6.0) * 0.2 + lp * 0.12) * 0.8
+	return a
+
+
+## «Изар»: рядная шестёрка — вспышки сливаются в ровный «шёлковый» гул,
+## сверху сухой металлический призвук и шелест впуска; полутон (1,5 f) даёт
+## хрипотцу на оборотах. Две секунды — чтобы петлёй сходился и полутон.
+func _engine_six() -> PackedFloat32Array:
+	var a := _buf(2.0)
+	var f := 55.0
+	var k := _jitter(110, 0.08, 507)
+	var lp := 0.0
+	for i in a.size():
+		var t := float(i) / RATE
+		var ph := fmod(t * f, 1.0)
+		var pulse := exp(-ph * 5.0) * k[int(t * f) % 110]
+		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.25
+		a[i] = (sin(TAU * f * t) * 0.34 + sin(TAU * f * 2.0 * t) * 0.24 + sin(TAU * f * 1.5 * t) * 0.08
+				+ sin(TAU * f * 3.0 * t) * (0.06 + 0.06 * pulse) + pulse * 0.14 + lp * 0.1 * (0.5 + pulse)) * 0.8
 	return a
 
 

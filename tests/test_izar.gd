@@ -125,6 +125,32 @@ func _run() -> void:
 		wheels_ok = wheels_ok and absf(aabb.size.y - 0.634) < 0.03
 	ok(wheels_ok, "четыре литых колеса, радиус 0,317 м")
 
+	print("== Кузов и звук")
+	var tris := 0
+	var mesh: Mesh = I._paint_mesh.mesh
+	for si in mesh.get_surface_count():
+		tris += (mesh.surface_get_arrays(si)[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
+	var v_tris := 0
+	var vm: Mesh = V._paint_mesh.mesh
+	for si in vm.get_surface_count():
+		v_tris += (vm.surface_get_arrays(si)[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
+	print("       треугольников: Изар %d, Волжанка %d" % [tris, v_tris])
+	ok(tris < 16000, "гладкий кузов, но телефону по силам: %d треугольников" % tris)
+	# Борт гладкий: у соседних вершин одной точки борта нормали плавно
+	# поворачиваются, а не прыгают на 90°, как у коробки
+	var arr: Array = mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var slanted := 0
+	for i in verts.size():
+		var p: Vector3 = verts[i]
+		if absf(p.z) < 0.5 and p.y > 0.3 and p.y < 0.9 and absf(p.x) > 0.84:
+			var n: Vector3 = norms[i]
+			if absf(n.y) > 0.08 and absf(n.y) < 0.9: slanted += 1
+	ok(slanted > 20, "у бортов скруглённые нормали (наклонных вершин: %d)" % slanted)
+	var SL = root.get_node("SoundLibrary")
+	ok(I._engine_snd.stream == SL.stream("engine_six") and SL.stream("engine_six") != SL.stream("engine_volga"), "свой звук — рядная шестёрка")
+
 	print("== Такси")
 	var TX = W.get_node("Taxi")
 	var pays := {}

@@ -131,7 +131,7 @@ const SPECS := {
 		"chase": Vector3(0, 2.6, 7.4), "roof": true, "two_wheels": false,
 		"offroad": 0.8, "mud": 1.25, "paint": 4,
 		"wheels": [Vector3(-0.735, 0.317, -1.52), Vector3(0.735, 0.317, -1.52), Vector3(-0.75, 0.317, 1.24), Vector3(0.75, 0.317, 1.24)],
-		"tail": [Vector3(-0.6, 0.828, 2.32), Vector3(0.6, 0.828, 2.32)], "lamps": [Vector3(-0.6, 0.594, -2.36), Vector3(0.6, 0.594, -2.36)],
+		"tail": [Vector3(-0.6, 0.828, 2.32), Vector3(0.6, 0.828, 2.32)], "lamps": [Vector3(-0.6, 0.594, -2.36), Vector3(0.6, 0.594, -2.36)], "lamp_r": 0.068, "tinted": true,
 	},
 	"truck": {
 		"title": "ГМЗ-53", "ratios": {-1: -6.4, 0: 0.0, 1: 6.5, 2: 3.1, 3: 1.7, 4: 1.0},
@@ -299,7 +299,7 @@ var _engine_snd: AudioStreamPlayer3D
 ## грузовик и автобус — дизель, трактор тукает, «Волга» гудит мягко,
 ## «Изар» — тот же ровный гул, но выше: у него шесть цилиндров.
 const ENGINE_SOUND := {"moped": "engine_moped", "moto": "engine_moto", "izh": "engine_izh",
-	"truck": "engine_diesel", "bus": "engine_diesel", "tractor": "engine_tractor", "volga": "engine_volga", "bmw": "engine_volga"}
+	"truck": "engine_diesel", "bus": "engine_diesel", "tractor": "engine_tractor", "volga": "engine_volga", "bmw": "engine_six"}
 ## Вспышек за оборот — от этого высота звука: у «Жигулей» 4 цилиндра — 2,
 ## мопед звучит выше, двухцилиндровый ИЖ — ниже «Явы».
 const ENGINE_FIRES := {"moped": 1.45, "moto": 1.2, "izh": 1.0, "truck": 1.8, "bus": 1.8, "tractor": 1.1,
@@ -1328,7 +1328,7 @@ func _front_lamps(lamps: Array) -> void:
 	_marker_mat = _lamp_mat.duplicate()
 	_marker_mat.albedo_color = Color(0.35, 0.33, 0.3)
 	var glass := CylinderMesh.new()
-	var r := 0.085 if spec.roof else 0.06
+	var r: float = spec.get("lamp_r", 0.085 if spec.roof else 0.06)
 	glass.top_radius = r
 	glass.bottom_radius = r
 	glass.height = 0.01
@@ -1577,6 +1577,14 @@ func _paint_body() -> void:
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		mat.roughness = 0.1
 		mat.metallic = 0.4
+		# Тонированные стёкла: снаружи тёмные, изнутри светлые — цвет у
+		# каждой стороны свой (в вершинах), обратную сторону не рисуем
+		if spec.get("tinted", false):
+			mat.albedo_color = Color.WHITE
+			mat.vertex_color_use_as_albedo = true
+			mat.cull_mode = BaseMaterial3D.CULL_BACK
+			mat.roughness = 0.05
+			mat.metallic = 0.3
 		gm.material_override = mat
 		gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_paint_mesh.add_child(gm)

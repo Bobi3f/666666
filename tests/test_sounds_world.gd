@@ -57,7 +57,7 @@ func _run() -> void:
 
 	print("== Машины")
 	for v in W.find_children("*", "Vehicle", true, false):
-		if v.kind in ["truck", "volga", "tractor", "bus"] and v._engine_snd:
+		if v.kind in ["truck", "volga", "tractor", "bus", "bmw"] and v._engine_snd:
 			ok(v._engine_snd.stream == SL.stream(Vehicle.ENGINE_SOUND[v.kind]), "%s — %s" % [v.spec.title, Vehicle.ENGINE_SOUND[v.kind]])
 	var tr = null
 	for c in W.get_children():
@@ -71,7 +71,7 @@ func _run() -> void:
 				ok(kinds[k] == SL.stream("engine_diesel"), "попутка %s — дизель" % k)
 		if kinds.has("zaz"):
 			ok(kinds.zaz == SL.stream("engine_zaz"), "«Запорожец» тарахтит по-своему")
-	for n in ["engine_moped", "engine_moto", "engine_izh", "engine_diesel", "engine_tractor", "engine_volga", "engine_zaz", "chatter"]:
+	for n in ["engine_moped", "engine_moto", "engine_izh", "engine_diesel", "engine_tractor", "engine_volga", "engine_zaz", "engine_six", "chatter"]:
 		var w := SL.stream(n) as AudioStreamWAV
 		ok(Assets.has_sound("effects/" + n) and (w == null or w.loop_mode != AudioStreamWAV.LOOP_DISABLED), "%s — файл, петлёй" % n)
 
