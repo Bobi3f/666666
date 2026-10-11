@@ -1635,18 +1635,22 @@ func set_paint(i: int) -> void:
 ## Учебная машина: треугольник «У» на крыше, у легковой — жёлтая полоса
 ## со штриховкой по бокам и надпись «УЧЕБНАЯ».
 func _school_marks() -> void:
+	if spec.two_wheels:
+		return
 	var box := _paint_mesh.get_aabb()
 	var b := MeshBuilder.new()
 	b.ground_shade = false
 	var top := box.end.y
-	# Треугольник на крыше: стойка, красная кайма, белое поле, смотрит вперёд
+	# Треугольник «У» на крыше — небольшой, как настоящий (сторона ~30 см):
+	# короткая стойка, красная кайма, белое поле, смотрит вперёд и назад.
+	# У мотоцикла знака нет — его некуда ставить
 	var zc := box.position.z + box.size.z * (0.42 if kind == "car" else 0.15)
-	b.box(Vector3(-0.03, top, zc - 0.03), Vector3(0.03, top + 0.12, zc + 0.03), Color(0.2, 0.2, 0.2))
+	b.box(Vector3(-0.015, top, zc - 0.015), Vector3(0.015, top + 0.05, zc + 0.015), Color(0.2, 0.2, 0.2))
 	for side in [-1.0, 1.0]:
-		var z: float = zc + side * 0.01
-		b.tri(Vector3(-0.3, top + 0.1, z), Vector3(0.3, top + 0.1, z), Vector3(0, top + 0.62, z), Color(0.85, 0.12, 0.1), true)
-		var z2: float = zc + side * 0.02
-		b.tri(Vector3(-0.2, top + 0.15, z2), Vector3(0.2, top + 0.15, z2), Vector3(0, top + 0.5, z2), Color(0.97, 0.97, 0.97), true)
+		var z: float = zc + side * 0.008
+		b.tri(Vector3(-0.15, top + 0.04, z), Vector3(0.15, top + 0.04, z), Vector3(0, top + 0.3, z), Color(0.85, 0.12, 0.1), true)
+		var z2: float = zc + side * 0.014
+		b.tri(Vector3(-0.1, top + 0.065, z2), Vector3(0.1, top + 0.065, z2), Vector3(0, top + 0.24, z2), Color(0.97, 0.97, 0.97), true)
 	if kind == "car":
 		var yellow := Color(0.98, 0.75, 0.1)
 		for sx in [-1.0, 1.0]:
@@ -1672,28 +1676,32 @@ func _school_marks() -> void:
 	u.modulate = Color(0.05, 0.05, 0.05)
 	u.double_sided = false
 	# Буква — внутри белого треугольника
-	Plates.fit(u, Vector2(0.13, 0.13))
-	u.position = Vector3(0, top + 0.27, zc - 0.03)
+	Plates.fit(u, Vector2(0.065, 0.065))
+	u.position = Vector3(0, top + 0.125, zc - 0.018)
 	u.rotation.y = PI
 	m.add_child(u)
 	var u2 := u.duplicate() as Label3D
-	u2.position.z = zc + 0.03
+	u2.position.z = zc + 0.018
 	u2.rotation.y = 0.0
 	m.add_child(u2)
-	if kind == "car":
-		for sx in [-1.0, 1.0]:
-			var l := Label3D.new()
-			l.text = "УЧЕБНАЯ\nавтошкола «Каменка»"
-			l.font_size = 64
-			l.outline_size = 0
-			# На дверях: между полосой и окнами, от передней двери до задней
-			Plates.fit(l, Vector2(1.3, 0.27))
-			l.modulate = Color(0.97, 0.97, 0.97)
-			# Только снаружи — иначе просвечивает сквозь стёкла с другого борта
-			l.double_sided = false
-			l.position = Vector3((box.end.x + 0.012) * sx, 0.73, 0.2)
-			l.rotation.y = PI / 2.0 * sx
-			m.add_child(l)
+	# Надпись на бортах: у легковой — на дверях между полосой и окнами, у
+	# грузовика — на дверях кабины, у автобуса — под окнами
+	var sign: Array = {"car": [Vector2(1.3, 0.27), 0.73, 0.2], "truck": [Vector2(0.75, 0.2), 1.25, float(spec.seat.z) + 0.15],
+		"bus": [Vector2(2.2, 0.36), 0.95, 0.0]}.get(kind, [])
+	if sign.is_empty():
+		return
+	for sx in [-1.0, 1.0]:
+		var l := Label3D.new()
+		l.text = "УЧЕБНАЯ\nавтошкола «Каменка»"
+		l.font_size = 64
+		l.outline_size = 0
+		Plates.fit(l, sign[0])
+		l.modulate = Color(0.97, 0.97, 0.97)
+		# Только снаружи — иначе просвечивает сквозь стёкла с другого борта
+		l.double_sided = false
+		l.position = Vector3((box.end.x + 0.012) * sx, sign[1], sign[2])
+		l.rotation.y = PI / 2.0 * sx
+		m.add_child(l)
 
 
 ## Живой щиток на руле: вид → [картинка (точки), табличка (м), центр, наклон]

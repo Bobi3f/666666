@@ -94,6 +94,22 @@ func _run() -> void:
 	var SC: Vehicle = AS.car
 	ok(SC.paint_name() == "синий" and SC._body.has_node("SchoolMarks"), "учебная — синяя, с полосой и знаком «У»")
 	ok(not W.get_node("Car")._body.has_node("SchoolMarks"), "у своих машин знака нет")
+	# Знак «У» небольшой, как настоящий; у мотоцикла его нет; надпись
+	# «УЧЕБНАЯ» — на бортах легковой, грузовика и автобуса
+	for k in ["car", "truck", "bus", "moto"]:
+		var sv: Vehicle = AS.school_vehicle(k)
+		if k == "moto":
+			ok(not sv._body.has_node("SchoolMarks"), "на мотоцикле знака «У» нет")
+			continue
+		var mk: MeshInstance3D = sv._body.get_node("SchoolMarks")
+		var u_n := 0
+		var side_n := 0
+		for l in mk.get_children():
+			if (l as Label3D).text == "У": u_n += 1
+			elif (l as Label3D).text.begins_with("УЧЕБНАЯ"): side_n += 1
+		var top: float = sv._paint_mesh.get_aabb().end.y
+		var h: float = mk.get_aabb().end.y - top
+		ok(u_n == 2 and side_n == 2 and h < 0.35, "%s: «У» небольшой (%.2f м над крышей), «УЧЕБНАЯ» на обоих бортах" % [k, h])
 	var card: LicenseCard = W.get_node("LicenseCard")
 	ok(not card._any(), "прав ещё нет")
 	TM.day = 4
