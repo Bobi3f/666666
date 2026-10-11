@@ -1,6 +1,7 @@
 extends SceneTree
 ## Снимки «Изара 525» по ракурсам чертежа: спереди и сзади в три четверти,
-## сбоку, прямо спереди и сзади, салон от водителя, ночью с фарами.
+## сбоку, прямо спереди и сзади, сверху (люк, обогрев заднего стекла), салон
+## от водителя, за рулём и сзади на трассе.
 var W
 func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
@@ -40,9 +41,16 @@ func _run() -> void:
 	v._gauge_holders.map(func(g): g.visible = true)
 	for i in 8: await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/izar_cabin.png" % OS.get_environment("SHOTS"))
-	# За рулём на трассе: приборы видно сквозь руль; потом вид сзади
+	# Сверху — как на чертеже (люк, обогрев заднего стекла); купленная — без
+	# надписи «Продаётся»
 	var PR = root.get_node("Progress")
 	PR.buy_car("bmw"); PR.add_category("B"); PR.license = true
+	cam.fov = 32.0
+	cam.global_position = xf * Vector3(0.0, 14.0, 0.01)
+	cam.look_at(xf * Vector3(0, 0.7, 0), xf.basis * Vector3.FORWARD)
+	for i in 8: await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/izar_top.png" % OS.get_environment("SHOTS"))
+	# За рулём на трассе: приборы видно сквозь руль; потом вид сзади
 	if hud: hud.visible = true
 	cam.current = false
 	for sc in ["traffic.gd", "chase.gd", "police.gd", "gai_post.gd"]:
