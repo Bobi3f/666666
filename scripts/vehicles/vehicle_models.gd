@@ -1921,6 +1921,42 @@ static func _e34_vline(b: MeshBuilder, sx: float, z: float, y0: float, y1: float
 		b.quad(Vector3(sx * xa, ya, z), Vector3(sx * xb, yb, z), Vector3(sx * xb, yb, z + 0.008), Vector3(sx * xa, ya, z + 0.008), col, true)
 
 
+## Тонкая линия по борту от (z0, y0) до (z1, y1) шириной w — щели по дуге
+## арок, кромки арок. Вплотную к поверхности, видна с обеих сторон.
+static func _e34_seg(b: MeshBuilder, sx: float, z0: float, y0: float, z1: float, y1: float, col: Color, w := 0.006) -> void:
+	var d := Vector2(z1 - z0, y1 - y0).normalized()
+	var o := Vector2(-d.y, d.x) * (w * 0.5)
+	var pts: Array = []
+	for q in [Vector2(z0, y0) - o, Vector2(z0, y0) + o, Vector2(z1, y1) + o, Vector2(z1, y1) - o]:
+		var v := q as Vector2
+		pts.append(Vector3(sx * (_e34_x(v.x, v.y) + 0.0015), v.y, v.x))
+	b.quad(pts[0], pts[1], pts[2], pts[3], col, true)
+
+
+## Линия по дуге вокруг колеса wv радиуса rr: углы от t0 до t1 (0 — вверх,
+## минус — вперёд), n кусков.
+static func _e34_arc(b: MeshBuilder, sx: float, wv: Vector3, rr: float, t0: float, t1: float, col: Color, w := 0.006, n := 12) -> void:
+	for k in n:
+		var a := lerpf(t0, t1, float(k) / n)
+		var c := lerpf(t0, t1, float(k + 1) / n)
+		_e34_seg(b, sx, wv.z + rr * sin(a), wv.y + rr * cos(a), wv.z + rr * sin(c), wv.y + rr * cos(c), col, w)
+
+
+## Линия по капоту или багажнику от (x0, z0) до (x1, z1) шириной w.
+static func _e34_top_seg(b: MeshBuilder, x0: float, z0: float, x1: float, z1: float, col: Color, w := 0.006) -> void:
+	var n := maxi(1, ceili(Vector2(x1 - x0, z1 - z0).length() / 0.12))
+	var d := Vector2(x1 - x0, z1 - z0).normalized()
+	var o := Vector2(-d.y, d.x) * (w * 0.5)
+	for k in n:
+		var a := Vector2(x0, z0).lerp(Vector2(x1, z1), float(k) / n)
+		var c := Vector2(x0, z0).lerp(Vector2(x1, z1), float(k + 1) / n)
+		var pts: Array = []
+		for q in [a - o, c - o, c + o, a + o]:
+			var v := q as Vector2
+			pts.append(Vector3(v.x, _e34_top_y(v.y, v.x) + 0.0015, v.y))
+		b.quad(pts[0], pts[1], pts[2], pts[3], col, true)
+
+
 ## Полоса вдоль борта на высоте y..y+h от z0 до z1, вплотную к поверхности:
 ## щели, огни, заходящие на крыло.
 static func _e34_hline(b: MeshBuilder, sx: float, y: float, h: float, z0: float, z1: float, col: Color, out := 0.0015) -> void:
@@ -2147,13 +2183,26 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		var belt_f: float = _e34_at(E34_ZA + 0.02)[1]
 		_e34_vline(b, sx, E34_ZA + 0.02, 0.34, belt_f - 0.005, gap)
 		_e34_vline(b, sx, 0.2, 0.34, float(_e34_at(0.2)[1]) - 0.005, gap)
-		_e34_vline(b, sx, 1.22, 0.62, float(_e34_at(1.22)[1]) - 0.005, gap)
-		_e34_hline(b, sx, 0.345, 0.006, E34_ZA + 0.02, rw.z - E34_ARCH, gap)
-		# Ручки — чёрные скобы под ребром
+		# Задняя дверь сзади огибает арку: щель по дуге, потом вверх к окну
+		var rd := E34_ARCH + 0.025
+		var t_low := -acos((0.348 - rw.y) / rd)
+		var t_top := -asin((rw.z - 1.22) / rd)
+		_e34_arc(b, sx, rw, rd, t_low, t_top, gap)
+		var y_cut := rw.y + rd * cos(t_top)
+		_e34_vline(b, sx, 1.22, y_cut, float(_e34_at(1.22)[1]) - 0.005, gap)
+		_e34_hline(b, sx, 0.345, 0.006, E34_ZA + 0.02, rw.z + rd * sin(t_low), gap)
+		# Кромки арок — тонкий тёмный кант по краю проёма
+		for wv in [fw, rw]:
+			var ta := -acos((0.3 - wv.y) / (E34_ARCH + 0.006))
+			_e34_arc(b, sx, wv, E34_ARCH + 0.006, ta, -ta, paint.darkened(0.22), 0.01, 16)
+		# Ручки — чёрные скобы под ребром; у передней двери — личинка замка
 		for zh in [-0.12, 0.84]:
 			var xh := _e34_x(zh, 0.757)
 			b.box(Vector3(minf(xh * sx, (xh + 0.014) * sx), 0.745, zh), Vector3(maxf(xh * sx, (xh + 0.014) * sx), 0.77, zh + 0.15), trim)
 			b.box(Vector3(minf((xh + 0.012) * sx, (xh + 0.016) * sx), 0.749, zh + 0.01), Vector3(maxf((xh + 0.012) * sx, (xh + 0.016) * sx), 0.766, zh + 0.14), chrome.darkened(0.3))
+		var xl := _e34_x(0.06, 0.757)
+		rdisc(b, Vector3((xl + 0.004) * sx, 0.757, 0.065), Vector3(sx, 0, 0), 0.01, 0.008, chrome, 10)
+		rdisc(b, Vector3((xl + 0.008) * sx, 0.757, 0.065), Vector3(sx, 0, 0), 0.004, 0.002, dark, 8)
 		# Боковой повторитель поворота на переднем крыле
 		var rz := -1.96
 		var rx := _e34_x(rz, 0.632)
@@ -2185,6 +2234,10 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		_e34_panel(b, sx, [Vector2(E34_ZA, belt_a), Vector2(E34_ZR0, E34_TOP), Vector2(E34_ZR0 + 0.08, E34_TOP), Vector2(E34_ZA + 0.08, belt_a)], paint)
 		_e34_panel(b, sx, [Vector2(0.165, bm), Vector2(0.165, 1.36), Vector2(0.255, 1.36), Vector2(0.255, bm)], trim)
 		_e34_panel(b, sx, [Vector2(1.1, bc), Vector2(0.83, 1.36), Vector2(E34_ZR1, E34_TOP), Vector2(E34_ZC, belt_c)], paint)
+		# В задней двери — глухая форточка за чёрной стойкой стекла
+		var yq0 := lerpf(bm, bc, (0.79 - 0.255) / (1.1 - 0.255))
+		var yq1 := lerpf(bm, bc, (0.82 - 0.255) / (1.1 - 0.255))
+		_e34_panel(b, sx, [Vector2(0.79, yq0), Vector2(0.745, 1.36), Vector2(0.775, 1.36), Vector2(0.82, yq1)], trim, 0.004)
 		# Чёрные рамки: над окнами и уплотнитель по поясу; треугольник у
 		# зеркала в углу переднего стекла
 		_e34_panel(b, sx, [Vector2(E34_ZR0 + 0.06, 1.36), Vector2(E34_ZR0 + 0.06, E34_TOP), Vector2(E34_ZR1 - 0.02, E34_TOP), Vector2(0.86, 1.36)], trim)
@@ -2195,6 +2248,12 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		_e34_panel(b, sx, [Vector2(E34_ZA, belt_a), Vector2(E34_ZR0, E34_TOP), Vector2(E34_ZR0 + 0.08, E34_TOP), Vector2(E34_ZA + 0.08, belt_a)], lining, -0.01)
 		_e34_panel(b, sx, [Vector2(0.165, bm), Vector2(0.165, 1.36), Vector2(0.255, 1.36), Vector2(0.255, bm)], lining, -0.01)
 		_e34_panel(b, sx, [Vector2(1.1, bc), Vector2(0.83, 1.36), Vector2(E34_ZR1, E34_TOP), Vector2(E34_ZC, belt_c)], lining, -0.01)
+		# Водосток — чёрный молдинг по краю крыши
+		b.box(Vector3(minf((E34_RW - 0.014) * sx, (E34_RW - 0.002) * sx), E34_TOP + 0.002, E34_ZR0 + 0.02),
+			Vector3(maxf((E34_RW - 0.014) * sx, (E34_RW - 0.002) * sx), E34_TOP + 0.016, E34_ZR1 - 0.02), trim)
+		# Уплотнители по краям лобового и заднего стекла
+		tube(b, Vector3(0.776 * sx, belt_a + 0.006, E34_ZA + 0.01), Vector3((E34_RW + 0.002) * sx, E34_TOP, E34_ZR0), 0.007, trim)
+		tube(b, Vector3(0.776 * sx, belt_c + 0.006, E34_ZC - 0.01), Vector3((E34_RW + 0.002) * sx, E34_TOP, E34_ZR1), 0.007, trim)
 		# Скос от боковины к крыше
 		var e0 := Vector3(E34_RW * sx, E34_TOP, E34_ZR0)
 		var e1 := Vector3(E34_RW * sx, E34_TOP, E34_ZR1)
@@ -2219,6 +2278,8 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 	b.quad(Vector3(-0.34, 1.354, sr0 + 0.02), Vector3(0.34, 1.354, sr0 + 0.02), Vector3(0.34, 1.354, sr1 - 0.02), Vector3(-0.34, 1.354, sr1 - 0.02), Color(0.68, 0.67, 0.64))
 	# Лобовое и заднее стёкла, чёрная полоса у низа лобового, дворники
 	_glass(gb, Vector3(-0.775, belt_a + 0.005, E34_ZA + 0.01), Vector3(-E34_RW, E34_TOP, E34_ZR0), Vector3(E34_RW, E34_TOP, E34_ZR0), Vector3(0.775, belt_a + 0.005, E34_ZA + 0.01), tint, clear)
+	tube(b, Vector3(-E34_RW, E34_TOP + 0.002, E34_ZR0 - 0.004), Vector3(E34_RW, E34_TOP + 0.002, E34_ZR0 - 0.004), 0.007, trim)
+	tube(b, Vector3(-E34_RW, E34_TOP + 0.002, E34_ZR1 + 0.004), Vector3(E34_RW, E34_TOP + 0.002, E34_ZR1 + 0.004), 0.007, trim)
 	_glass(gb, Vector3(0.775, belt_c + 0.005, E34_ZC - 0.01), Vector3(E34_RW, E34_TOP, E34_ZR1), Vector3(-E34_RW, E34_TOP, E34_ZR1), Vector3(-0.775, belt_c + 0.005, E34_ZC - 0.01), tint, clear)
 	b.box(Vector3(-0.8, belt_a - 0.01, E34_ZA - 0.07), Vector3(0.8, belt_a + 0.012, E34_ZA + 0.01), dark)
 	# Нити обогрева на заднем стекле — поверх стекла, видно и изнутри
@@ -2246,6 +2307,13 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		_e34_top_line(b, 0.785 * sx, 0.795 * sx, -2.24, E34_ZA - 0.06, gap)
 		_e34_top_line(b, 0.785 * sx, 0.795 * sx, E34_ZC + 0.05, 2.28, gap)
 	_e34_top_line(b, -0.79, 0.79, E34_ZC + 0.05, E34_ZC + 0.06, gap)
+	# Задний край капота у решётки воздухозаборника, рёбра горба капота
+	# от «ноздрей» к углам лобового, форсунки омывателя
+	_e34_top_line(b, -0.785, 0.785, E34_ZA - 0.086, E34_ZA - 0.078, gap)
+	for sx in [-1.0, 1.0]:
+		_e34_top_seg(b, 0.19 * sx, -2.24, 0.5 * sx, E34_ZA - 0.12, paint.darkened(0.12), 0.007)
+		var wz := E34_ZA - 0.16
+		b.box(Vector3(0.28 * sx - 0.012, _e34_top_y(wz, 0.28) - 0.002, wz - 0.01), Vector3(0.28 * sx + 0.012, _e34_top_y(wz, 0.28) + 0.01, wz + 0.012), dark)
 	# --- Перед: чёрная панель, фары под стёклами, «ноздри», поворотники ------
 	var zf := -2.3
 	b.box(Vector3(-0.81, 0.5, zf - 0.03), Vector3(0.81, 0.69, zf), dark)
@@ -2286,7 +2354,7 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		front_line.append(Vector2(-(E34_BUMPER[i] as Vector2).x, zf + (E34_BUMPER[i] as Vector2).y))
 	for q in E34_BUMPER:
 		front_line.append(Vector2((q as Vector2).x, zf + (q as Vector2).y))
-	_e34_bumper(b, front_line, [[0.2, 0.3, -0.02, dark], [0.3, 0.41, 0.0, apron], [0.41, 0.465, 0.012, trim], [0.465, 0.505, 0.0, paint]], paint, dark)
+	_e34_bumper(b, front_line, [[0.18, 0.195, 0.0, dark], [0.195, 0.3, -0.02, dark], [0.3, 0.41, 0.0, apron], [0.41, 0.465, 0.012, trim], [0.465, 0.505, 0.0, paint]], paint, dark)
 	# Туманки, воздухозаборники, номер
 	for sx in [-1.0, 1.0]:
 		var zb := zf + _e34_bz(0.55)
@@ -2294,6 +2362,12 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 		b.box(Vector3(minf(0.51 * sx, 0.69 * sx), 0.322, zb - 0.009), Vector3(maxf(0.51 * sx, 0.69 * sx), 0.383, zb), Color(0.92, 0.9, 0.82))
 		var zi := zf + _e34_bz(0.36)
 		b.box(Vector3(minf(0.3 * sx, 0.42 * sx), 0.29, zi - 0.004), Vector3(maxf(0.3 * sx, 0.42 * sx), 0.38, zi + 0.01), dark)
+		for k in 3:
+			var ys := 0.305 + k * 0.026
+			b.box(Vector3(minf(0.305 * sx, 0.415 * sx), ys, zi - 0.008), Vector3(maxf(0.305 * sx, 0.415 * sx), ys + 0.008, zi - 0.003), apron.lightened(0.12))
+		# Крышка буксировочной проушины
+		var zt := zf + _e34_bz(0.74)
+		rdisc(b, Vector3(0.74 * sx, 0.255, zt - 0.02), Vector3.FORWARD, 0.018, 0.004, apron.lightened(0.08), 10)
 	plate(b, Vector3(-0.26, 0.29, zf - 0.072), Vector3(0.26, 0.4, zf - 0.064))
 	# --- Зад: широкие фонари, номер между ними, бампер, трубы, надпись ------
 	var zr := 2.3
@@ -2317,6 +2391,15 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 			var xk: float = (0.4 + k * 0.075) * sx
 			b.box(Vector3(xk - 0.002, 0.708, zr + 0.018), Vector3(xk + 0.002, 0.855, zr + 0.021), red_dark)
 	plate(b, Vector3(-0.26, 0.71, zr + 0.01), Vector3(0.26, 0.82, zr + 0.02))
+	# Крышка багажника спускается между фонарями до бампера — щели по краям
+	# и внизу, замок под номером
+	for sx in [-1.0, 1.0]:
+		b.box(Vector3(minf(0.352 * sx, 0.358 * sx), 0.53, zr), Vector3(maxf(0.352 * sx, 0.358 * sx), 0.9, zr + 0.003), gap)
+	b.box(Vector3(-0.358, 0.527, zr), Vector3(0.358, 0.533, zr + 0.003), gap)
+	rdisc(b, Vector3(0, 0.69, zr + 0.004), Vector3.BACK, 0.012, 0.006, chrome, 10)
+	# Подсветка номера в планке
+	for sx in [-1.0, 1.0]:
+		b.box(Vector3(0.12 * sx - 0.03, 0.824, zr + 0.002), Vector3(0.12 * sx + 0.03, 0.832, zr + 0.012), Color(0.85, 0.85, 0.8))
 	# Хромированная планка над номером, круглая эмблема на крышке багажника
 	b.box(Vector3(-0.3, 0.832, zr), Vector3(0.3, 0.848, zr + 0.016), chrome)
 	rdisc(b, Vector3(0, 0.884, zr + 0.004), Vector3.BACK, 0.027, 0.008, chrome, 16)
@@ -2327,6 +2410,10 @@ static func izar(b: MeshBuilder, paint: Color, glass_b: MeshBuilder = null) -> v
 	for q in E34_BUMPER:
 		rear_line.append(Vector2(-(q as Vector2).x, zr - (q as Vector2).y))
 	_e34_bumper(b, rear_line, [[0.2, 0.3, -0.02, dark], [0.3, 0.41, 0.0, apron], [0.41, 0.465, 0.012, trim], [0.465, 0.52, 0.0, paint]], paint, dark)
+	# Красные катафоты по краям бампера
+	for sx in [-1.0, 1.0]:
+		var zc := zr - _e34_bz(0.7)
+		b.box(Vector3(minf(0.62 * sx, 0.78 * sx), 0.34, zc - 0.004), Vector3(maxf(0.62 * sx, 0.78 * sx), 0.37, zc + 0.004), Color(0.55, 0.04, 0.03))
 	for x in [-0.56, -0.47]:
 		rdisc(b, Vector3(x, 0.172, zr + 0.01), Vector3.BACK, 0.03, 0.12, chrome.darkened(0.25), 12)
 		rdisc(b, Vector3(x, 0.172, zr + 0.072), Vector3.BACK, 0.02, 0.004, dark, 12)
@@ -2423,6 +2510,9 @@ static func alloy_wheel(b: MeshBuilder, r: float, w: float, rim: Variant = null)
 		_lathe(b, lip, 24, disc_col.lightened(0.2))
 		var xo: float = h * 0.86 * side
 		rdisc(b, Vector3(xo, 0, 0), Vector3.RIGHT, r * 0.6, 0.01, disc_col.darkened(0.55), 16)
+		# Тормозной диск в глубине, между спицами
+		rdisc(b, Vector3(xo + 0.004 * side, 0, 0), Vector3.RIGHT, r * 0.5, 0.004, Color(0.4, 0.4, 0.41), 20)
+		rdisc(b, Vector3(xo + 0.006 * side, 0, 0), Vector3.RIGHT, r * 0.24, 0.004, Color(0.26, 0.26, 0.27), 14)
 		# Спицы крест-накрест: по две из каждой точки у ступицы
 		for i in 15:
 			var a := TAU * i / 15.0
@@ -2432,6 +2522,10 @@ static func alloy_wheel(b: MeshBuilder, r: float, w: float, rim: Variant = null)
 				tube(b, p0, p1, 0.0065, disc_col.lightened(0.12))
 		rdisc(b, Vector3(xo + 0.012 * side, 0, 0), Vector3.RIGHT, r * 0.22, 0.012, disc_col.lightened(0.05), 16)
 		rdisc(b, Vector3(xo + 0.02 * side, 0, 0), Vector3.RIGHT, r * 0.12, 0.012, disc_col.lightened(0.25), 12)
+		# Пять болтов вокруг колпачка
+		for i in 5:
+			var a := TAU * i / 5.0
+			rdisc(b, Vector3(xo + 0.02 * side, sin(a) * r * 0.17, cos(a) * r * 0.17), Vector3.RIGHT, 0.008, 0.012, Color(0.3, 0.3, 0.32), 8)
 
 
 ## Тело вращения вокруг оси X: профиль — точки (x, радиус), лицом слева по

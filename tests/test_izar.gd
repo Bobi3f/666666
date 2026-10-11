@@ -148,6 +148,8 @@ func _run() -> void:
 			var n: Vector3 = norms[i]
 			if absf(n.y) > 0.08 and absf(n.y) < 0.9: slanted += 1
 	ok(slanted > 20, "у бортов скруглённые нормали (наклонных вершин: %d)" % slanted)
+	ok((MeshBuilder.vehicle_material().shader as Shader).code.contains("g = mix(g, 0.93, clamp(paint + chrome"), "краска гладкая — без зерна асфальта, рисунок не плывёт по едущей машине")
+	ok(tris > 9000, "кузов детальный: щели дверей по аркам, уплотнители, молдинги, болты колёс (%d треугольников)" % tris)
 	var SL = root.get_node("SoundLibrary")
 	ok(I._engine_snd.stream == SL.stream("engine_six") and SL.stream("engine_six") != SL.stream("engine_volga"), "свой звук — рядная шестёрка")
 

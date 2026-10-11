@@ -1,5 +1,6 @@
 extends SceneTree
 ## Снимки «Изара 525» по ракурсам чертежа: спереди и сзади в три четверти,
+## вблизи (двери и арки, перед, зад),
 ## сбоку, прямо спереди и сзади, сверху (люк, обогрев заднего стекла), салон
 ## от водителя, за рулём и сзади на трассе.
 var W
@@ -27,7 +28,9 @@ func _run() -> void:
 	var xf: Transform3D = v.global_transform
 	var views := [["front34", Vector3(-4.2, 1.7, -5.6), Vector3(0, 0.7, -0.3)], ["rear34", Vector3(4.0, 1.7, 5.8), Vector3(0, 0.7, 0.3)],
 		["side", Vector3(-8.5, 1.0, 0.0), Vector3(0, 0.7, 0.0)], ["front", Vector3(0, 1.0, -8.0), Vector3(0, 0.7, 0)],
-		["rear", Vector3(0, 1.0, 8.0), Vector3(0, 0.7, 0)], ["wheel", Vector3(-1.8, 0.5, -1.9), Vector3(-0.7, 0.32, -1.52)]]
+		["rear", Vector3(0, 1.0, 8.0), Vector3(0, 0.7, 0)], ["wheel", Vector3(-1.8, 0.5, -1.9), Vector3(-0.7, 0.32, -1.52)],
+		["near_side", Vector3(-3.4, 1.3, 2.4), Vector3(-0.8, 0.7, 0.7)], ["near_front", Vector3(-1.5, 1.1, -4.2), Vector3(-0.25, 0.5, -2.2)],
+		["near_rear", Vector3(1.5, 1.2, 4.3), Vector3(0.15, 0.6, 2.3)]]
 	for vw in views:
 		cam.global_position = xf * (vw[1] as Vector3)
 		cam.look_at(xf * (vw[2] as Vector3))

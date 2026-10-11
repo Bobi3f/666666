@@ -499,6 +499,9 @@ void fragment() {
 		rough = mix(rough, 0.12, chrome * gloss);
 		spec = mix(spec, 0.75, paint * gloss);
 		metal = 0.85 * chrome * gloss;
+		// Краска и хром гладкие: зерно мира (бетон, земля) на них не ложится,
+		// иначе кузов пятнистый и рисунок «плывёт» по едущей машине
+		g = mix(g, 0.93, clamp(paint + chrome, 0.0, 1.0) * gloss);
 	}
 	ALBEDO = c * g * 1.08;
 	ROUGHNESS = rough;
