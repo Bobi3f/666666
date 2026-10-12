@@ -1,0 +1,10 @@
+{
+  "name": "First Gear",
+  "short_name": "First Gear",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#141516",
+  "theme_color": "#d0140f",
+  "icons": [{"src": "index.icon.png", "sizes": "512x512", "type": "image/png"}]
+}

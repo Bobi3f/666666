@@ -8,11 +8,53 @@ extends Node
 ## всё работает.
 ##
 ## Сохраняется всё, что лежит в группе "persist" и умеет save_state/load_state,
-## плюс синглтоны с деньгами, временем и потребностями.
+## плюс синглтоны с деньгами, временем, потребностями, погодой и целями.
 
-const PATH := "user://save.json"
+## Три ячейки: первая — прежний файл, чтобы старые сохранения не пропали.
+static func path_for(slot: int) -> String:
+	return "user://save.json" if slot <= 1 else "user://save%d.json" % slot
 
-var _singletons := ["GameManager", "TimeManager", "NeedsManager"]
+
+var PATH: String:
+	get:
+		return path_for(SettingsManager.slot)
+## Автосохранение раз в столько секунд настоящей игры (не паузы).
+const AUTOSAVE_EVERY := 150.0
+## Город (town.gd) — по пути: грузится только для старых сохранений.
+const TOWN := "res://scripts/world/town.gd"
+
+var _singletons := ["GameManager", "TimeManager", "NeedsManager", "WeatherManager", "Progress", "QuestManager", "Daily", "Achievements"]
+var _since_save := 0.0
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Каждые пару минут игры — тихое сохранение: на телефоне вкладку легко
+## закрыть случайно, и день пропадёт.
+func _process(delta: float) -> void:
+	if not GameManager.in_game or get_tree().paused:
+		return
+	_since_save += delta
+	if _since_save >= AUTOSAVE_EVERY:
+		autosave()
+
+
+## Свернули игру, ушли на другую вкладку, позвонили — сохраняем сразу.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST:
+			autosave()
+
+
+## Сохранить без сообщения. Пока открыто главное меню при запуске, не
+## сохраняем: иначе пустая новая игра затрёт настоящее сохранение.
+func autosave() -> bool:
+	_since_save = 0.0
+	if not GameManager.in_game or not is_instance_valid(GameManager.player):
+		return false
+	return save_game(true)
 
 
 func _input(event: InputEvent) -> void:
@@ -28,23 +70,49 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func save_game() -> bool:
+func save_game(quiet := false) -> bool:
+	_since_save = 0.0
 	var data := {}
 	for n in _singletons:
 		data[n] = get_node("/root/" + n).save_state()
 	for node in get_tree().get_nodes_in_group("persist"):
 		data[str(node.get_path())] = node.save_state()
+	data["town_moved"] = true
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f == null:
 		GameManager.notify("Не удалось сохранить: " + error_string(FileAccess.get_open_error()))
 		return false
 	f.store_string(JSON.stringify(data, "\t"))
-	GameManager.notify("Игра сохранена (F9 — загрузить)")
+	if not quiet:
+		GameManager.notify("Игра сохранена (F9 — загрузить)")
 	return true
 
 
 func has_save() -> bool:
 	return FileAccess.file_exists(PATH)
+
+
+## Что лежит в ячейке — для кнопок меню: «день 5, 3200 грн» или «пусто».
+## Стереть игру в ячейке slot. true — было что стирать.
+func delete_slot(slot: int) -> bool:
+	var p := path_for(slot)
+	if not FileAccess.file_exists(p):
+		return false
+	DirAccess.remove_absolute(p)
+	return not FileAccess.file_exists(p)
+
+
+func slot_info(slot: int) -> String:
+	var p := path_for(slot)
+	if not FileAccess.file_exists(p):
+		return "пусто"
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(p))
+	if not parsed is Dictionary:
+		return "повреждено"
+	var d: Dictionary = parsed
+	var day := int(d.get("TimeManager", {}).get("day", 1))
+	var money := int(d.get("GameManager", {}).get("money", 0))
+	return "день %d, %d грн" % [day, money]
 
 
 func load_game() -> bool:
@@ -57,14 +125,40 @@ func load_game() -> bool:
 		return false
 	var data: Dictionary = parsed
 	for n in _singletons:
-		if data.has(n):
-			get_node("/root/" + n).load_state(data[n])
+		# В старых сохранениях новых разделов нет — начинаем их с нуля
+		get_node("/root/" + n).load_state(data.get(n, {}))
 	for node in get_tree().get_nodes_in_group("persist"):
 		var key := str(node.get_path())
 		if data.has(key):
 			node.load_state(data[key])
-	GameManager.notify("Игра загружена")
+	if not data.has("town_moved"):
+		_move_to_new_town()
+	# Просыпаемся дома, своя техника — во дворе (после отложенной посадки
+	# в машину из загрузки)
+	var world: Node = GameManager.player.get_parent() if GameManager.player else get_tree().current_scene
+	if world and world.has_method("park_home"):
+		world.park_home.call_deferred()
+	GameManager.notify("Игра загружена — ты дома, техника во дворе")
 	return true
+
+
+## Сохранение сделано, когда город стоял у самой Каменки: кто остался там
+## (игрок, свои машины), переезжает вместе с городом — иначе окажется в
+## чистом поле на старом месте.
+func _move_to_new_town() -> void:
+	var old_town := Rect2(-45.0, 0.5, 290.0, 250.0)
+	for node in get_tree().get_nodes_in_group("persist"):
+		var n := node as Node3D
+		# Машины и игрок — без имён классов: иначе при запуске игры
+		# собирались бы скрипты машин, игрока и всего мира
+		var is_player := n == GameManager.player
+		if n == null or not (n.is_in_group("vehicles") or is_player):
+			continue
+		var p := n.global_position
+		if old_town.has_point(Vector2(p.x, p.z)):
+			n.global_position = load(TOWN).w(p)
+			if is_player and n.camera:
+				n.camera.snap()
 
 
 # --- Помощники для сохранения векторов в JSON ----------------------------

@@ -6,6 +6,8 @@ extends Area3D
 signal activated
 
 @export var prompt := "E — действие"
+## Если задана — подсказка считается на лету (цена, остаток бензина).
+var prompt_fn: Callable
 
 
 static func create(p: String, size: Vector3) -> InteractZone:
@@ -28,6 +30,10 @@ func _ready() -> void:
 	body_exited.connect(func(b: Node3D) -> void:
 		if b.has_method("exit_zone"):
 			b.exit_zone(self))
+
+
+func text() -> String:
+	return prompt_fn.call() if prompt_fn.is_valid() else prompt
 
 
 func activate() -> void:
