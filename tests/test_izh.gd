@@ -52,7 +52,9 @@ func _run() -> void:
 			var w := 0.0
 			for line in lb.text.split("\n"):
 				w = maxf(w, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, lb.font_size).x * lb.pixel_size)
-			worst = maxf(worst, w)
+			# Борт автобуса длиннее: надпись «УЧЕБНАЯ» там до 2,2 м
+			var frame := 2.2 if (v as Vehicle).kind == "bus" else 1.3
+			worst = maxf(worst, w / frame)
 			checked += 1
 	var ij: Label3D = null
 	var ju: Label3D = null
@@ -62,7 +64,7 @@ func _run() -> void:
 	var wij := font.get_string_size("Иртыш", HORIZONTAL_ALIGNMENT_LEFT, -1, ij.font_size).x * ij.pixel_size
 	var wju := font.get_string_size("ИРТЫШ 5", HORIZONTAL_ALIGNMENT_LEFT, -1, ju.font_size).x * ju.pixel_size
 	ok(wij <= 0.171 and wju <= 0.201, "эмблемы в рамках: «ИЖ» %.2f ≤ 0.17 м, «ЮПИТЕР 5» %.2f ≤ 0.2 м" % [wij, wju])
-	ok(checked > 10 and worst <= 1.31, "все надписи на технике (%d) не шире своих рамок: самая широкая %.2f м" % [checked, worst])
+	ok(checked > 10 and worst <= 1.01, "все надписи на технике (%d) не шире своих рамок (1,3 м, у автобуса 2,2): самая широкая — %d%% рамки" % [checked, int(worst * 100.0)])
 
 	# «Жигули» — по чертежу ВАЗ-2106: база 2424, длина 4166, высота 1440 мм
 	var C: Vehicle = W.get_node("Car")
