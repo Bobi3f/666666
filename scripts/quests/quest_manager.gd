@@ -17,11 +17,11 @@ signal victory
 signal fired(name: String, amount: float)
 
 ## Главный путь: мопед → первые работы → права → первая машина → дом →
-## город (парк с Олей, бурса, СТО) → своё СТО → свадьба → автобус → хозяин района.
+## город (парк, бурса, СТО) → своё СТО → автобус → хозяин района.
 ## После победы — вторая часть «Жизнь хозяина района»: новые работы,
 ## Владик, гараж техники, дом в Липках и «Легенда района».
 const MAIN := ["m_morning", "m_wheels", "m_money", "m_license", "m_car", "m_neighbours", "m_house", "m_master",
-	"m_park", "m_college", "m_sto_work", "m_own_sto", "m_wedding", "m_bus", "m_district",
+	"m_park", "m_college", "m_sto_work", "m_own_sto", "m_bus", "m_district",
 	"p_jobs", "p_vladik", "p_collector", "p_lipki", "p_legend"]
 ## Глава, после которой — экран победы (дальше вторая часть).
 const VICTORY_AT := "m_district"
@@ -48,7 +48,7 @@ const QUESTS := {
 		{"text": "Накопи 30 000 грн на кирпичный дом", "event": "house_2", "count": 1}]},
 	# Шаг с "to" — к кому идти (поговорить или отдать вещь), "say" — что он ответит.
 	"m_park": {"title": "Огни города", "main": true, "reward": 300, "steps": [
-		{"text": "Позови Олю гулять и прокатись с ней на колесе обозрения в городском парке", "event": "wheel_olya", "count": 1}]},
+		{"text": "Прокатись на колесе обозрения в городском парке — весь город как на ладони", "event": "park_ride", "count": 1}]},
 	"m_college": {"title": "Бурса", "main": true, "reward": 500, "steps": [
 		{"text": "Пройди 3 урока на курсах автослесаря в бурсе (урок в день, 8:00–17:00)", "event": "college_lesson", "count": 3},
 		{"text": "Сдай экзамен в бурсе — получи корочку автослесаря", "event": "course", "count": 1}]},
@@ -61,12 +61,6 @@ const QUESTS := {
 		{"text": "Выкупи СТО у Каменки за 15 000 грн (табличка у ворот)", "event": "business_sto", "count": 1},
 		{"text": "Найми Васька механиком — поговори с ним", "talk": true, "to": "Механик Васёк",
 			"say": "По рукам, начальник! С утра открываю ворота — клиенты повалят. Доход с СТО теперь больше на 300 в день."}]},
-	"m_wedding": {"title": "Свадьба", "main": true, "reward": 2000, "steps": [
-		{"text": "Стань Оле парнем: симпатия 70 (разговоры, подарки, катание, танцы)", "event": "girl_love", "count": 1},
-		{"text": "Купи кольцо и свадебное платье на городском рынке (лавка «К свадьбе»)", "event": "wedding_set", "count": 1},
-		{"text": "Своди Олю в «Метелицу» и закажи столик (дискотека в городе, с 21:00)", "event": "metelitsa_table", "count": 1},
-		{"text": "Признайся Оле и сделай предложение — в разговоре с ней", "event": "proposal", "count": 1},
-		{"text": "Свадьба: приведи Олю в сельсовет Каменки — там распишут (8:00–17:00, кроме вс)", "event": "wedding", "count": 1}]},
 	"m_bus": {"title": "Рейсовый", "main": true, "reward": 1000, "steps": [
 		{"text": "Сдай в автошколе на категорию D (автобус)", "event": "license_d", "count": 1},
 		{"text": "Оформи трудовую книжку в сельсовете", "event": "doc_work_book", "count": 1},
@@ -483,18 +477,6 @@ func _step_done(id: String, step: int) -> bool:
 			return Progress.has_item("mechanic")
 		["m_own_sto", 0]:
 			return Daily.owns("sto")
-		["m_wedding", 0]:
-			var g := _girl()
-			return g != null and (g.rel >= g.LOVE or g.engaged or g.married)
-		["m_wedding", 1]:
-			var g2 := _girl()
-			return (Progress.has_item("ring") and Progress.has_item("dress")) or (g2 != null and (g2.engaged or g2.married))
-		["m_wedding", 3]:
-			var g3 := _girl()
-			return g3 != null and (g3.engaged or g3.married)
-		["m_wedding", 4]:
-			var g4 := _girl()
-			return g4 != null and g4.married
 		["m_bus", 0]:
 			return Progress.has_category("D")
 		["m_bus", 1]:
@@ -518,12 +500,6 @@ func _step_done(id: String, step: int) -> bool:
 			return int(items.get("oil2t", 0)) > 0
 	return false
 
-
-## Оля (Girl). Без типа: иначе при запуске собирались бы скрипты всего города.
-func _girl() -> Node:
-	if not is_inside_tree():
-		return null
-	return get_tree().get_first_node_in_group("girl")
 
 
 func _college_lessons() -> int:

@@ -21,6 +21,9 @@ const OTHER_ITEMS := {
 	"mechanic": "Корочка автослесаря",
 	"town_house": "Дом в городе, у восточной улицы",
 	"flat": "Квартира в новой шестиэтажке",
+	# Из прежних версий (свадьба с Олей) — в старых сохранениях
+	"ring": "Золотое кольцо",
+	"dress": "Свадебное платье",
 }
 const HOUSE_NAMES := ["Старая изба", "Штукатуренный дом под шифером", "Кирпичный дом под черепицей", "Двухэтажный коттедж с беседкой"]
 
@@ -226,9 +229,8 @@ func kit_target(cars: Array) -> Vehicle:
 ## Название купленной вещи: из лавок базара, «Хозтоваров» мира или списка
 ## выше. Мир — родитель: прямой preload мира дал бы петлю зависимостей.
 func item_name(id: String) -> String:
-	for list in [MarketPanel.HOME, MarketPanel.WEDDING]:
-		if list.has(id):
-			return list[id][0]
+	if MarketPanel.HOME.has(id):
+		return MarketPanel.HOME[id][0]
 	var goods: Dictionary = _world_const("HOME_GOODS", {})
 	if goods.has(id):
 		var t: String = goods[id].title

@@ -2624,4 +2624,12 @@ const EN := {
 	"Изар 525": "Izar 525",
 	"на иномарке — как большие люди": "in a foreign car — like a big shot",
 	"немецкая «пятёрка» с пробегом: шесть цилиндров, быстрее «Волжанки», в такси платят больше всех": "a used German \"five\": six cylinders, faster than the \"Volzhanka\", taxi pays the most",
+	"Прокатись на колесе обозрения в городском парке — весь город как на ладони": "Ride the Ferris wheel in the city park — the whole town at a glance",
+	"Свадебное платье": "Wedding dress",
+	"Своё СТО с Васьком, ларьки, автопарк, рейсовый автобус.": "Your own garage with Vasyok, kiosks, a car fleet, a scheduled bus.",
+	"Весь район знает: этот своего добьётся.[/center]": "The whole district knows: this one gets what he wants.[/center]",
+	"После кирпичного дома сюжет идёт в город: колесо обозрения, курсы в бурсе (3 урока": "After the brick house the story moves to town: the Ferris wheel, courses at the college (3 lessons",
+	"и экзамен), смены на СТО, своё СТО, рейсовый автобус — и хозяин района": "and an exam), shifts at the garage, your own garage, the scheduled bus — and master of the district",
+	"Из чего варят борщ?": "What is borscht made from?",
+	"В лавке «Для дома» ковры — как во дворце, не сомневайся.": "The \"For the Home\" stall has carpets fit for a palace, no doubt about it.",
 }

@@ -1,6 +1,6 @@
 extends SceneTree
 ## Инвентарь (I) и телефон (P): разделы инвентаря, «Съесть»; в телефоне —
-## девять приложений, такси домой, эвакуатор, звонок Оле, музыка пешком,
+## девять приложений, такси домой, эвакуатор, контакты, музыка пешком,
 ## сообщения, прогноз погоды, вклад, фото в галерею.
 var fails := 0
 var W
@@ -110,17 +110,9 @@ func _run() -> void:
 	ok(ph.tow(car), "эвакуатор вызван за %d грн" % (5000 - GM.money))
 	ok(car.global_position.distance_to(ph.tow_spots()[0]) < 12.0 and car.fuel >= 3.0, "Жигули у дома, в баке 3 л")
 
-	print("== Звонок Оле")
-	var girl: Girl = W.get_node("Girl")
+	print("== Контакты")
 	ph.show_app("calls")
-	ok(not labels(ph._content).contains("Оля"), "незнакомой Оли в контактах нет")
-	girl.met = true
-	girl.rel = 50
-	ph.show_app("calls")
-	ok(labels(ph._content).contains("Оля"), "Оля в контактах")
-	girl.global_position = player.global_position + Vector3(200, 0, 0)
-	var reply: String = ph.call_girl()
-	ok(girl.state == Girl.State.FOLLOW and girl.global_position.distance_to(player.global_position) < 6.0, "позвонил — Оля пришла: " + reply)
+	ok(labels(ph._content).contains("Такси") and not labels(ph._content).contains("Оля"), "в контактах такси, эвакуатор, СТО; Оли нет")
 
 	print("== Музыка")
 	var radio = get_first_node_in_group_safe("radio")

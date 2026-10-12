@@ -281,13 +281,6 @@ func _build() -> void:
 		return "E — лимонад «Буратино» (20 грн)" if is_open() else ""
 	drink.activated.connect(_drink)
 	add_child(drink)
-	if date_price > 0:
-		var table := InteractZone.create("", Vector3(2.6, 2.2, 2.6))
-		table.name = "DateTable"
-		table.transform = _xf * Transform3D(Basis.IDENTITY, Vector3(-hx + 1.8, 0, 1.0))
-		table.prompt_fn = _date_prompt
-		table.activated.connect(date)
-		add_child(table)
 	_music = AudioStreamPlayer3D.new()
 	_music.unit_size = 7.0
 	_music.max_distance = 70.0
@@ -501,32 +494,6 @@ func _date_table(b: MeshBuilder, p: Vector3) -> void:
 		b.box(c + Vector3(-0.22, 0.47, s * 0.18), c + Vector3(0.22, 1.0, s * 0.22), Color(0.42, 0.12, 0.14))
 		b.box(c + Vector3(-0.03, 0, -0.03), c + Vector3(0.03, 0.42, 0.03), Color(0.2, 0.18, 0.18))
 
-
-func _date_prompt() -> String:
-	if not is_open() or _paid_day != _night():
-		return ""
-	if _date_day == _night():
-		return "Столик ваш до закрытия — танцуйте!"
-	var g := get_tree().get_first_node_in_group("girl") as Girl
-	if g == null or not g.with_player(12.0):
-		return "Столик на двоих — приходи с девушкой"
-	return "E — столик на двоих: ужин и шампанское (%d грн)" % date_price
-
-
-## Ужин за столиком с Олей: симпатия, сытость, задание «Свадьба».
-func date() -> void:
-	var g := get_tree().get_first_node_in_group("girl") as Girl
-	if not is_open() or _date_day == _night() or g == null or not g.with_player(12.0):
-		return
-	if not GameManager.spend(date_price):
-		return
-	_date_day = _night()
-	TimeManager.advance(60.0)
-	NeedsManager.eat(40.0)
-	g.like(10)
-	SoundLibrary.play("cash", -4.0)
-	QuestManager.event("metelitsa_table")
-	GameManager.notify("Ужин при свечах в %s. Оля: «Как в кино… Спасибо тебе!»" % title)
 
 
 func save_state() -> Dictionary:

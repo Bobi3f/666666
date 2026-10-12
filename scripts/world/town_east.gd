@@ -135,7 +135,7 @@ func _town_people() -> void:
 		["Мастер Николаич", Vector3(STO.end.x + 2.2, 0, STO.position.y + 8.0), -PI / 2.0, Color(0.55, 0.3, 0.15), false,
 			["Машина — она как человек: не лечишь — ломается.", "Покраска полчаса, колодки — минут сорок. Подгоняй к воротам.", "Корочку автослесаря в бурсе получишь — бери смены, мне руки нужны."]],
 		["Продавщица Зоя", Vector3(88.5, 0, 137.5), -PI / 2.0, Color(0.7, 0.3, 0.45), true,
-			["Свежее сало, молоко с утра! Рынок до четырёх.", "В лавке «К свадьбе» кольца — золото настоящее, не сомневайся.", "Ярмарка у нас по выходным — урожай везут со всего района."]],
+			["Свежее сало, молоко с утра! Рынок до четырёх.", "В лавке «Для дома» ковры — как во дворце, не сомневайся.", "Ярмарка у нас по выходным — урожай везут со всего района."]],
 		["Лейтенант Сидоренко", Police.STATION + Vector3(-11.0, 0, 1.0), PI / 2.0, Color(0.3, 0.36, 0.3), false,
 			["Права при себе? Документы — первое дело.", "В патруль берём с правами. Смена — триста гривен.", "Гоняешь — штрафуем. Ездишь аккуратно — уважаем."]],
 		["Дворник Степаныч", Vector3(50.0, 0, 91.5), -PI / 2.0, Color(0.35, 0.4, 0.3), false,
@@ -911,9 +911,6 @@ func _ferris_wheel(b: MeshBuilder) -> void:
 		var h := TimeManager.hour()
 		if h < 10.0 or h >= 22.0:
 			return "Колесо обозрения работает с 10:00 до 22:00"
-		var g := get_tree().get_first_node_in_group("girl") as Girl
-		if g and g.with_player(20.0):
-			return "E — прокатиться с Олей на колесе обозрения (%d грн за двоих, 15 мин)" % (WHEEL_PRICE * 2)
 		return "E — прокатиться на колесе обозрения (%d грн, 15 мин): весь город как на ладони" % WHEEL_PRICE
 	zone.activated.connect(ride_wheel)
 	add_child(zone)
@@ -921,19 +918,11 @@ func _ferris_wheel(b: MeshBuilder) -> void:
 
 func ride_wheel() -> void:
 	var h := TimeManager.hour()
-	var g := get_tree().get_first_node_in_group("girl") as Girl
-	var with_girl := g != null and g.with_player(20.0)
-	var price := WHEEL_PRICE * (2 if with_girl else 1)
-	if h < 10.0 or h >= 22.0 or not GameManager.spend(price):
+	if h < 10.0 or h >= 22.0 or not GameManager.spend(WHEEL_PRICE):
 		return
 	TimeManager.advance(15.0)
 	NeedsManager.rest(10.0)
 	QuestManager.event("park_ride")
-	if with_girl:
-		g.like(8)
-		QuestManager.event("wheel_olya")
-		GameManager.notify("Прокатились с Олей на колесе обозрения. На самом верху она взяла тебя за руку: «Смотри, вон наша Каменка!»")
-		return
 	GameManager.notify("Прокатился на колесе обозрения: видно и Каменку, и реку, и завод. Отдохнул")
 
 

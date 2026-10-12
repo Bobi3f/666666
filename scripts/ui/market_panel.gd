@@ -12,11 +12,6 @@ const HOME := {
 	"fridge": ["Холодильник «Морозко»", 600, "каждое утро +1 еды в запас"],
 	"chair": ["Кресло-качалка", 250, "у телевизора, само покачивается"],
 }
-## К свадьбе — для Оли (сюжет «Свадьба»)
-const WEDDING := {
-	"ring": ["Золотое кольцо", 1500, "для предложения — сделать в разговоре с Олей"],
-	"dress": ["Свадебное платье с фатой", 1200, "без него в ЗАГСе не распишут"],
-}
 const PARTS := {
 	"speedo": ["Спидометр с подсветкой", 200, "зелёные приборы, хромовый обод"],
 	"exhaust": ["Прямоточный глушак", 350, "громче, ниже и +6% тяги"],
@@ -135,7 +130,7 @@ func open(m: String, vehicles: Array = []) -> void:
 	visible = true
 	get_tree().paused = true
 	_status.text = ""
-	_title.text = {"home": "Базар — для дома", "wedding": "Базар — к свадьбе", "shop": "Сельмаг «Продукты»"}.get(mode, "Базар — автозапчасти")
+	_title.text = {"home": "Базар — для дома", "shop": "Сельмаг «Продукты»"}.get(mode, "Базар — автозапчасти")
 	if mode == "shop":
 		_status.text = _stock()
 	_haggle.visible = mode == "food"
@@ -205,7 +200,7 @@ func _list() -> Dictionary:
 		return get_parent().SHOP_MENU
 	if mode == "food":
 		return bazaar.food_list(food_kind)
-	return {"home": HOME, "wedding": WEDDING}.get(mode, PARTS)
+	return HOME if mode == "home" else PARTS
 
 
 ## Что у игрока сейчас — под меню сельмага.
@@ -216,7 +211,7 @@ func _stock() -> String:
 func _has(id: String) -> bool:
 	if mode == "shop" or mode == "food":
 		return false
-	if mode == "home" or mode == "wedding":
+	if mode == "home":
 		return Progress.has_item(id)
 	if id == "rims" or id == "repair_kit":
 		return false
@@ -243,11 +238,9 @@ func buy(id: String) -> bool:
 		_status.text = "Не хватает денег: «%s» стоит %d грн" % [it[0], it[1]]
 		return false
 	SoundLibrary.play("cash")
-	if mode == "home" or mode == "wedding":
+	if mode == "home":
 		Progress.add_item(id)
 		_status.text = "«%s» уже у тебя дома" % it[0]
-		if Progress.has_item("ring") and Progress.has_item("dress"):
-			QuestManager.event("wedding_set")
 	elif id == "repair_kit":
 		Progress.repair_kits += 1
 		_status.text = "Ремнабор — в запасе (%d). Чинить — в инвентаре (I), рядом со своей техникой" % Progress.repair_kits

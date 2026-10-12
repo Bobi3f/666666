@@ -1,6 +1,6 @@
 extends SceneTree
 ## Снимки английской версии: главное меню, игра с заданием, журнал, карта,
-## настройки, разговор с Олей, лавка на базаре.
+## настройки, лавка на базаре.
 var W
 func _initialize() -> void:
 	root.size = Vector2i(1000, 460)
@@ -29,13 +29,6 @@ func _run() -> void:
 	root.get_node("TimeManager").minutes = 10 * 60.0
 	await save("lang_hud")
 	var P = W.get_node("Player")
-	var G = W.get_tree().get_first_node_in_group("girl")
-	P.global_position = G.doll.global_position + Vector3(0, 0.1, -1.5)
-	for i in 10: await physics_frame
-	await save("lang_girl_prompt")
-	G.open_talk()
-	await save("lang_girl")
-	G.panel.close_panel()
 	var j = child("journal.gd")
 	j._open(false)
 	await save("lang_journal")

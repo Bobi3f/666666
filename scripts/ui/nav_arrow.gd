@@ -74,13 +74,11 @@ func current() -> Array:
 	return [t[0], n.global_position]
 
 
-## Цели глав в городе и со свадьбой: где Оля нужна рядом — сперва к ней.
+## Цели глав в городе.
 func _late_target(key: String) -> Array:
-	var girl := get_tree().get_first_node_in_group("girl") as Girl
-	var to_girl := ["Оля", girl.doll.global_position] if girl and not girl.with_player(15.0) else []
 	match key:
 		"m_park:0":
-			return to_girl if not to_girl.is_empty() else ["Колесо обозрения", Town.w(TownEast.WHEEL + Vector3(0, 0, 3.0))]
+			return ["Колесо обозрения", Town.w(TownEast.WHEEL + Vector3(0, 0, 3.0))]
 		"m_college:0", "m_college:1":
 			return ["Бурса", Town.w(Vector3(TownEast.COLLEGE.end.x + 1.4, 0, TownEast.COLLEGE.get_center().y))]
 		"m_sto_work:0":
@@ -89,14 +87,6 @@ func _late_target(key: String) -> Array:
 			return ["Механик Васёк", Vector3(-82.0, 0, 12.3)]
 		"m_own_sto:0":
 			return ["СТО у Каменки", Vector3(-92.6, 0, 12.2)]
-		"m_wedding:0", "m_wedding:3":
-			return to_girl if girl and not girl.with_player(15.0) else ["", Vector3.INF]
-		"m_wedding:1":
-			return ["Рынок — «К свадьбе»", Town.w(Vector3(62.5, 0, 149.0))]
-		"m_wedding:2":
-			return to_girl if not to_girl.is_empty() else ["«Метелица»", Town.w(Vector3(125.0, 0, 109.6))]
-		"m_wedding:4":
-			return to_girl if not to_girl.is_empty() else ["Сельсовет — ЗАГС", Civic.COUNCIL]
 		"m_bus:0", "m_bus:2":
 			return ["Автошкола", Town.w(AutoSchool.HOUSE)]
 		"m_bus:1":

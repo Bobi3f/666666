@@ -1,6 +1,6 @@
 extends SceneTree
-## Сюжет после кирпичного дома: главы 9–15 — колесо обозрения с Олей,
-## бурса, подмастерье на СТО, своё СТО с Васьком, свадьба, рейсовый автобус,
+## Сюжет после кирпичного дома: главы 9–14 — колесо обозрения в парке,
+## бурса, подмастерье на СТО, своё СТО с Васьком, рейсовый автобус,
 ## хозяин района и финал. Плюс просьбы жителей в городе и в сёлах района,
 ## доходы своего дела и старое сохранение.
 var fails := 0
@@ -44,13 +44,11 @@ func _run() -> void:
 	QM.fired.disconnect(DL._on_event)
 	await frames(3)
 	var P = W.get_node("Player")
-	var girl = W.get_tree().get_first_node_in_group("girl")
 	var east = W.get_node("TownEast")
 	var state := func(id: String) -> int: return QM.quests[id].state
 	var step := func(id: String) -> int: return QM.quests[id].step
 	var near := func(p: Vector3) -> void:
 		P.global_position = p + Vector3(0, 0.1, 0)
-		girl.doll.global_position = p + Vector3(1.5, 0, 0)
 
 	print("== Старое сохранение: сюжет кончался кирпичным домом")
 	var old := {"quests": {}, "won": true}
@@ -61,23 +59,18 @@ func _run() -> void:
 	ok(state.call("m_park") == 1 and QM.active_main() == "m_park", "после «Хозяина Каменки» открылась глава «Огни города»")
 	ok(QM.tracker_lines()[0].contains("колесе обозрения"), "трекер: " + QM.tracker_lines()[0])
 	var nav = W.get_tree().get_first_node_in_group("nav")
-	ok(nav.current()[0] == "Оля", "стрелка ведёт сперва к Оле: " + str(nav.current()))
+	ok(nav.current()[0] == "Колесо обозрения", "стрелка ведёт к колесу обозрения: " + str(nav.current()))
+	ok(W.get_tree().get_first_node_in_group("girl") == null and not QM.quests.has("m_wedding") and not QM.MAIN.has("m_wedding"), "Оли и свадьбы в игре нет")
 
-	print("== Глава 9: колесо обозрения с Олей")
+	print("== Глава 9: колесо обозрения")
 	TM.minutes = 15 * 60.0
 	GM.money = 1000
 	near.call(Town.w(east.WHEEL + Vector3(0, 0, 6.0)))
-	east.ride_wheel()
-	ok(state.call("m_park") == 1 and GM.money == 1000 - east.WHEEL_PRICE, "один — просто покатался, глава не засчитана")
-	ok(girl.invite() != "" and girl.state == girl.State.FOLLOW, "позвал Олю гулять")
-	near.call(Town.w(east.WHEEL + Vector3(0, 0, 6.0)))
 	await frames(2)
-	var rel0: int = girl.rel
-	ok(zone_named("WheelZone").text().contains("с Олей"), "у колеса: " + zone_named("WheelZone").text())
-	GM.money = 1000
+	ok(not zone_named("WheelZone").text().contains("Ол"), "у колеса: " + zone_named("WheelZone").text())
 	east.ride_wheel()
 	await frames(2)
-	ok(state.call("m_park") == 2 and girl.rel > rel0 and GM.money == 1000 - east.WHEEL_PRICE * 2 + 300, "с Олей на колесе — глава пройдена (+300)")
+	ok(state.call("m_park") == 2 and GM.money == 1000 - east.WHEEL_PRICE + 300, "прокатился на колесе — глава пройдена (+300)")
 	ok(state.call("m_college") == 1, "дальше — «Бурса»")
 
 	print("== Глава 10: бурса — три урока и экзамен")
@@ -119,80 +112,15 @@ func _run() -> void:
 	say = QM.talk("Механик Васёк")
 	await frames(2)
 	ok(DL.hired.has("vasya") and DL.income("sto") == 900, "нанял Васька: СТО даёт +900 в день")
-	ok(state.call("m_own_sto") == 2 and GM.money >= 1000 and state.call("m_wedding") == 1, "«Своё СТО» пройдено (+1000), дальше — «Свадьба»")
+	ok(state.call("m_own_sto") == 2 and GM.money >= 1000 and state.call("m_bus") == 1, "«Своё СТО» пройдено (+1000), дальше — «Рейсовый»")
 
 	print("== Своё дело окупается")
 	var pay := func(id: String) -> float: return float(DL.BUSINESSES[id].price) / float(DL.BUSINESSES[id].income)
 	ok(pay.call("kiosk") <= 25.0 and pay.call("sto") <= 25.0 and pay.call("kiosk2") <= 25.0, "ларёк, СТО, ларёк Жоры окупаются за %d, %d, %d дней" % [pay.call("kiosk"), pay.call("sto"), pay.call("kiosk2")])
 	ok(DL.INTEREST_YEAR / DL.YEAR_DAYS * 25.0 < 0.15, "вклад за то же время даёт меньше 15%")
 
-	print("== Глава 13: свадьба")
-	girl.send_home()
-	girl.rel = 69
-	girl.like(1)
-	await frames(2)
-	ok(step.call("m_wedding") == 1, "Оля — твоя девушка")
-	ok(nav.current()[0].contains("свадьбе"), "стрелка — к лавке на рынке: " + str(nav.current()))
-	var south = W.get_node("TownSouth")
-	var stall: InteractZone = null
-	for z in _zones(south):
-		if z.name.ends_with("wedding"): stall = z
-	TM.minutes = 10 * 60.0
-	ok(stall != null and stall.text().contains("кольцо"), "на рынке лавка «К свадьбе»: " + (stall.text() if stall else ""))
-	ok(Town.w(Vector3(62.5, 0, 149.0)).distance_to(stall.global_position) < 3.0, "стрелка ведёт к самой лавке")
-	stall.activated.emit()
-	var MP = south.market_panel
-	GM.money = 5000
-	ok(MP.visible and MP.buy("ring") and MP.buy("dress") and GM.money == 5000 - 1500 - 1200, "купил кольцо и платье")
-	MP.close_panel()
-	await frames(2)
-	ok(step.call("m_wedding") == 2, "дальше — столик в «Метелице»")
-	var club = W.get_node("ClubTown")
-	TM.minutes = 21.5 * 60.0
-	var table := zone_named("DateTable")
-	near.call(table.global_position)
-	club._paid_day = club._night()
-	ok(table.text().contains("девушкой"), "без Оли столик не дают: " + table.text())
-	ok(girl.invite() != "" and girl.state == girl.State.FOLLOW, "своя девушка идёт гулять и в 21:30")
-	near.call(table.global_position)
-	await frames(2)
-	ok(table.text().contains("столик на двоих"), "с Олей: " + table.text())
-	GM.money = 1000
-	club.date()
-	await frames(2)
-	ok(step.call("m_wedding") == 3 and GM.money == 700, "ужин при свечах — «%s»" % last().left(40))
-	girl.send_home()
-	ok(not girl.engaged and girl.propose().contains("Да") and girl.engaged and girl.level() == "невеста", "предложение — Оля сказала «да»")
-	await frames(2)
-	ok(step.call("m_wedding") == 4, "дальше — сельсовет")
-	var civic = child("civic.gd")
-	var zags := zone_named("ZagsZone")
-	while TM.weekday() == "вс": TM.day += 1
-	TM.minutes = 11 * 60.0
-	near.call(zags.global_position)
-	ok(zags.text().contains("невеста где"), "без невесты не распишут: " + zags.text())
-	girl.invite()
-	near.call(zags.global_position)
-	await frames(2)
-	ok(zags.text().contains("расписаться"), "ЗАГС: " + zags.text())
-	GM.money = 0
-	civic.wedding()
-	await frames(2)
-	ok(girl.married and state.call("m_wedding") == 2 and GM.money == 2000, "свадьба! +2000 от гостей")
-	ok(girl.home_pos() == girl.WIFE_HOME and girl.level() == "жена", "Оля живёт у тебя во дворе")
-	girl.send_home()
-	TM.day += 1
-	NM.food = 20.0
-	girl.talk()
-	ok(NM.food > 60.0 and girl.talk_day == TM.day, "жена кормит обедом: сытость %d" % int(NM.food))
-	var gs: Dictionary = girl.save_state()
-	girl.load_state({})
-	ok(not girl.married, "старое сохранение — не женат")
-	girl.load_state(gs)
-	ok(girl.married and girl.engaged, "свадьба сохраняется")
-
-	print("== Глава 14: рейсовый")
-	ok(state.call("m_bus") == 1, "дальше — «Рейсовый»")
+	print("== Глава 13: рейсовый")
+	ok(zone_named("ZagsZone") == null and zone_named("DateTable") == null, "ЗАГСа и столика для свиданий нет")
 	PR.add_category("D"); QM.event("license_d")
 	PR.add_doc("work_book"); QM.event("doc_work_book")
 	await frames(2)
@@ -204,7 +132,7 @@ func _run() -> void:
 	await frames(2)
 	ok(state.call("m_bus") == 2 and state.call("m_district") == 1 and GM.money == 2000, "два рейса по 500 (+1000 за главу) — «Хозяин района»")
 
-	print("== Глава 15: хозяин района и финал")
+	print("== Глава 14: хозяин района и финал")
 	GM.money = 5000
 	ok(DL.buy("kiosk"), "выкупил ларёк")
 	await frames(2)
@@ -275,7 +203,7 @@ func _run() -> void:
 	GM.money = 0
 	ok(QM.talk("Студент Димка").contains("бурса") and GM.money == 400, "Димка: обогнал Кольку — +400")
 
-	print("== Сельсовет: почта, паспорт и ЗАГС не перекрываются")
+	print("== Сельсовет: почта и паспорт не перекрываются")
 	var desk := zone_named("CouncilDesk")
 	var post_z: InteractZone = null
 	for z in _zones(W):
@@ -286,7 +214,6 @@ func _run() -> void:
 	ok(post_z != null, "окошко почты найдено")
 	if post_z:
 		ok(not box.call(desk).intersects(box.call(post_z)), "окошко почты и стол паспортистки не перекрываются")
-		ok(not box.call(zags).intersects(box.call(post_z)) and not box.call(zags).intersects(box.call(desk)), "ЗАГС стоит отдельно")
 
 	print("\nИТОГО: %s, провалов: %d" % ["всё работает" if fails == 0 else "ЕСТЬ ОШИБКИ", fails])
 	quit()

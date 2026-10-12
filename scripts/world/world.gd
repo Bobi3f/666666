@@ -3834,7 +3834,6 @@ func _build_clubs() -> void:
 	t.close_hour = 3.0
 	t.fee = 50
 	t.prize = 150
-	t.date_price = 300
 	t.plaza = Rect2(-25.0, 7.0, 54.0, 10.0)
 	t.biz = "club_t"
 	add_child(t)
@@ -3842,10 +3841,6 @@ func _build_clubs() -> void:
 	var card := LicenseCard.new()
 	card.name = "LicenseCard"
 	add_child(card)
-	# Оля — девушка через улицу, с ней можно подружиться
-	var girl := Girl.new()
-	girl.name = "Girl"
-	add_child(girl)
 	# Дядя Владик — механик в своём гараже на окраине
 	var vladik := Vladik.new()
 	vladik.name = "Vladik"

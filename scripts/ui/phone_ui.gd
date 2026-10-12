@@ -353,10 +353,6 @@ func _redo(note: String) -> void:
 
 
 func _page_calls() -> void:
-	var girl := get_tree().get_first_node_in_group("girl") as Girl
-	if girl and girl.met:
-		var who := "Жена Оля" if girl.married else "Оля"
-		_contact(who, func() -> void: _redo(call_girl()))
 	_contact("Такси «Каменка»", func() -> void: show_app("taxi"))
 	_contact("Эвакуатор", func() -> void: show_app("tow"))
 	_contact("Мастер СТО", func() -> void:
@@ -375,25 +371,6 @@ func _contact(who: String, fn: Callable) -> void:
 	b.autowrap_mode = TextServer.AUTOWRAP_OFF
 	b.pressed.connect(fn)
 	row.add_child(b)
-
-
-## Позвонить Оле: позвать гулять. Далеко — приедет на автобусе к тебе.
-func call_girl() -> String:
-	var girl := get_tree().get_first_node_in_group("girl") as Girl
-	if girl == null or not girl.met:
-		return "Номера нет"
-	if girl.state == Girl.State.FOLLOW or girl.state == Girl.State.RIDE:
-		return "Оля: «Так я же рядом с тобой!»"
-	if girl.rel < Girl.FRIEND and not girl.married:
-		return "Оля: «Ой, а кто это? …А, привет. Давай лучше при встрече поговорим»"
-	var reply := girl.invite()
-	var p := GameManager.player as Node3D
-	if girl.state == Girl.State.FOLLOW and p and girl.global_position.distance_to(p.global_position) > 40.0:
-		var back := -p.global_transform.basis.z
-		girl.global_position = p.global_position + Vector3(back.x, 0, back.z).normalized() * -2.5 + Vector3(1.5, 0, 0)
-		reply += " (Оля приехала к тебе)"
-	QuestManager.event("phone_call")
-	return "Оля: «%s»" % reply
 
 
 func _page_sms() -> void:
@@ -578,10 +555,6 @@ func taxi(place: String) -> bool:
 		p.global_position = pl[1]
 		p.velocity = Vector3.ZERO
 		p.rotation.y = pl[2]
-		# Оля, что гуляет рядом, едет с тобой
-		var girl := get_tree().get_first_node_in_group("girl") as Girl
-		if girl and girl.state == Girl.State.FOLLOW:
-			girl.global_position = pl[1] + Vector3(1.5, 0, 0)
 		QuestManager.event("taxi")
 		close_phone()
 		GameManager.notify("Такси: %s — %d грн. %s" % [String(pl[0]).to_lower(), price, TimeManager.clock_text()])

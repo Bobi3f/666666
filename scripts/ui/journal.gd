@@ -155,9 +155,6 @@ func _journal_text() -> String:
 		var veh := v as Vehicle
 		if veh and veh.owned() and veh.kind != "tractor":
 			t += "  %s: бензин %d / %d л, состояние %d%%\n" % [veh.spec.title, int(ceilf(veh.fuel)), int(veh.tank()), int(veh.condition)]
-	var girl := get_tree().get_first_node_in_group("girl") as Girl
-	if girl and girl.met:
-		t += "  Оля — %s, симпатия %d/100 (разговор, подарки, катание, танцы)\n" % [girl.level(), girl.rel]
 	t += "\n" + _achievements_text()
 	t += "\n" + _stats_text()
 	return t
@@ -199,8 +196,8 @@ func _stats_text() -> String:
 
 func _victory_text() -> String:
 	var t := "[center]Из покосившейся избы — в кирпичный дом под черепицей.\n"
-	t += "Своё СТО с Васьком, ларьки, автопарк, рейсовый автобус —\n"
-	t += "и Оля рядом. Весь район знает: этот своего добьётся.[/center]\n\n"
+	t += "Своё СТО с Васьком, ларьки, автопарк, рейсовый автобус.\n"
+	t += "Весь район знает: этот своего добьётся.[/center]\n\n"
 	t += _stats_text()
 	t += "\n[color=#9a9a9a]Игра продолжается — дальше вторая часть, «Жизнь хозяина района»: новые работы, Дядя Владик, гараж техники, дом в Липках. Журнал — J.[/color]"
 	return t
